@@ -1,0 +1,366 @@
+[2026-05-07 11:38:14] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "25.04.2026 10:00:00",
+"date_start": "07.05.2026 09:37:41",
+"date_end": "",
+"date_zayavka_uvod": "04.05.2026 11:15:15",
+"date_uvod": "",
+"who_looked_id": "ANYANOVAYO",
+"who_start_id": "ANYANOVAYO",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94389533",
+"cont_number": "AAMU2602030",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "77995",
+"shop_info_id": "519011"
+},
+{
+"date_post": "25.04.2026 10:00:00",
+"date_start": "07.05.2026 09:37:54",
+"date_end": "",
+"date_zayavka_uvod": "04.05.2026 11:15:15",
+"date_uvod": "",
+"who_looked_id": "ANYANOVAYO",
+"who_start_id": "ANYANOVAYO",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94389533",
+"cont_number": "AAMU2602494",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "77996",
+"shop_info_id": "519012"
+}
+]
+}
+[2026-05-07 11:47:33] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "25.04.2026 10:00:00",
+"date_start": "07.05.2026 09:37:41",
+"date_end": "",
+"date_zayavka_uvod": "04.05.2026 11:15:15",
+"date_uvod": "",
+"who_looked_id": "ANYANOVAYO",
+"who_start_id": "ANYANOVAYO",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94389533",
+"cont_number": "AAMU2602030",
+"freight_name": "КФС",
+"tare_weight": "18000",
+"gross_weight": "46000",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "77995",
+"shop_info_id": "519011"
+},
+{
+"date_post": "25.04.2026 10:00:00",
+"date_start": "07.05.2026 09:37:54",
+"date_end": "",
+"date_zayavka_uvod": "04.05.2026 11:15:15",
+"date_uvod": "",
+"who_looked_id": "ANYANOVAYO",
+"who_start_id": "ANYANOVAYO",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94389533",
+"cont_number": "AAMU2602494",
+"freight_name": "КФС",
+"tare_weight": "18000",
+"gross_weight": "46000",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "77996",
+"shop_info_id": "519012"
+}
+]
+}
+[2026-05-07 13:53:57] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 14:30:47] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 14:32:36] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 14:33:30] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 14:43:02] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 14:47:30] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 15:17:00] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 15:21:07] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 15:24:53] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 16:08:08] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201781",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78058",
+"shop_info_id": "0"
+},
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201539",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78109",
+"shop_info_id": "0"
+}
+]
+}
+[2026-05-07 16:20:45] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "01.05.2026 17:10:07",
+"date_end": "02.05.2026 11:15:19",
+"date_zayavka_uvod": "07.05.2026 14:20:42",
+"date_uvod": "",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "KULINYAKLY",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201781",
+"freight_name": "КФС",
+"tare_weight": "13570",
+"gross_weight": "41570",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78058",
+"shop_info_id": "519014"
+},
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "01.05.2026 18:10:30",
+"date_end": "02.05.2026 16:18:34",
+"date_zayavka_uvod": "07.05.2026 14:20:42",
+"date_uvod": "",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "DYACHKOVDA",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201539",
+"freight_name": "КФС",
+"tare_weight": "13570",
+"gross_weight": "41570",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78109",
+"shop_info_id": "519015"
+}
+]
+}
+[2026-05-07 17:31:09] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "01.05.2026 17:10:07",
+"date_end": "02.05.2026 11:15:19",
+"date_zayavka_uvod": "07.05.2026 14:20:42",
+"date_uvod": "07.05.2026 17:30:17",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "KULINYAKLY",
+"who_zayavka_id": "KULINYAKLY",
+"car_number": "90963950",
+"cont_number": "FAVU1201781",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78058",
+"shop_info_id": "519014"
+},
+{
+"date_post": "01.05.2026 16:07:55",
+"date_start": "01.05.2026 18:10:30",
+"date_end": "02.05.2026 16:18:34",
+"date_zayavka_uvod": "07.05.2026 14:20:42",
+"date_uvod": "07.05.2026 17:30:17",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "DYACHKOVDA",
+"who_zayavka_id": "KULINYAKLY",
+"car_number": "90963950",
+"cont_number": "FAVU1201539",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78109",
+"shop_info_id": "519015"
+}
+]
+}
+[2026-05-07 20:12:04] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 20:19:27] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-07 20:20:40] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "25.04.2026 20:20:21",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201781",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78110",
+"shop_info_id": "0"
+},
+{
+"date_post": "25.04.2026 20:20:21",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201539",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78115",
+"shop_info_id": "0"
+}
+]
+}
+[2026-05-07 20:39:43] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "25.04.2026 20:20:21",
+"date_start": "26.04.2026 08:22:48",
+"date_end": "26.04.2026 12:21:00",
+"date_zayavka_uvod": "07.05.2026 18:39:40",
+"date_uvod": "",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "UFIMTSEVVV",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201781",
+"freight_name": "КФС",
+"tare_weight": "13570",
+"gross_weight": "41570",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78110",
+"shop_info_id": "519016"
+},
+{
+"date_post": "25.04.2026 20:20:21",
+"date_start": "26.04.2026 09:23:42",
+"date_end": "26.04.2026 12:27:36",
+"date_zayavka_uvod": "07.05.2026 18:39:40",
+"date_uvod": "",
+"who_looked_id": "UFIMTSEVVV",
+"who_start_id": "KULINYAKLY",
+"who_end_id": "KULINYAKLY",
+"who_zayavka_id": "",
+"car_number": "90963950",
+"cont_number": "FAVU1201539",
+"freight_name": "КФС",
+"tare_weight": "13570",
+"gross_weight": "41570",
+"cargo_weight": "28000",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78115",
+"shop_info_id": "519017"
+}
+]
+}

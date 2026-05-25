@@ -1,0 +1,4 @@
+[2026-05-14 11:45:49] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}

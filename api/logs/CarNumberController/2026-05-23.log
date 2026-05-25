@@ -1,0 +1,117 @@
+[2026-05-23 17:56:42] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::GetWeighingData] input: {
+"cars": [
+{
+"car_number": "94439742",
+"weight_type": "tare"
+},
+{
+"car_number": "54419767",
+"weight_type": "tare"
+},
+{
+"car_number": "42249722",
+"weight_type": "brutto"
+},
+{
+"car_number": "94389533",
+"weight_type": "brutto"
+}
+]
+}
+[2026-05-23 20:16:01] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::GetWeighingData] input: {
+"cars": [
+{
+"car_number": "94439742",
+"weight_type": "tare"
+},
+{
+"car_number": "94389533",
+"weight_type": "brutto"
+}
+]
+}
+[2026-05-23 20:30:02] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::GetWeighingData] input: {
+"cars": [
+{
+"car_number": "42078147",
+"weight_type": "tare"
+},
+{
+"car_number": "94389533",
+"weight_type": "brutto"
+}
+]
+}
+[2026-05-23 20:53:43] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": [
+"ЦС",
+"ПЛ"
+],
+"freight_name": "КФС"
+}
+[2026-05-23 20:54:40] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-23 20:56:59] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-23 20:57:21] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-23 20:59:33] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-23 21:01:26] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-23 21:14:04] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "21.05.2026 05:30:00",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94379666",
+"cont_number": "IBMU2650149",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78290",
+"shop_info_id": "0"
+},
+{
+"date_post": "21.05.2026 05:30:00",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "KULINYAKLY",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "94379666",
+"cont_number": "IBMU2650410",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78294",
+"shop_info_id": "0"
+}
+]
+}

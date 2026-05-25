@@ -1,0 +1,56 @@
+[2026-05-20 10:25:53] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-20 10:36:37] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-20 10:39:54] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-20 13:07:17] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-20 14:39:40] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::GetWeighingData] input: {
+"cars": [
+{
+"car_number": "94439742",
+"weight_type": "tare"
+},
+{
+"car_number": "42249722",
+"weight_type": "tare"
+},
+{
+"car_number": "94389533",
+"weight_type": "brutto"
+}
+]
+}
+[2026-05-20 16:41:12] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-20 16:42:14] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-20 16:42:32] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-20 16:42:57] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}
+[2026-05-20 16:45:46] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": "КФС"
+}
+[2026-05-20 17:36:41] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ПЛ",
+"freight_name": ""
+}

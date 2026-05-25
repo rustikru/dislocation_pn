@@ -1,0 +1,98 @@
+[2026-05-15 11:12:42] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": [
+"ЦС",
+"ПЛ"
+],
+"freight_name": ""
+}
+[2026-05-15 13:33:46] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-15 13:34:07] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "15.05.2026 13:30:19",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "DYACHKOVDA",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "53877718",
+"cont_number": "",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78141",
+"shop_info_id": "0"
+}
+]
+}
+[2026-05-15 14:32:10] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-15 14:33:08] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-15 14:33:15] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::getToDestination] input: {
+"type_car": "ЦС",
+"freight_name": ""
+}
+[2026-05-15 14:53:57] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "15.05.2026 14:50:11",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "DYACHKOVDA",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "53877718",
+"cont_number": "",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78141",
+"shop_info_id": "519021"
+}
+]
+}
+[2026-05-15 15:15:03] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [CarNumberController::createWagonLoading] input: {
+"data": [
+{
+"date_post": "15.05.2026 15:11:16",
+"date_start": "",
+"date_end": "",
+"date_zayavka_uvod": "",
+"date_uvod": "",
+"who_looked_id": "DYACHKOVDA",
+"who_start_id": "",
+"who_end_id": "",
+"who_zayavka_id": "",
+"car_number": "53877718",
+"cont_number": "",
+"freight_name": "КФС",
+"cargo_weight": "",
+"tare_weight": "",
+"gross_weight": "",
+"refusal": "",
+"scales_data": "Весы корп.1831 (карбамид)",
+"otgruzka_1c_id": "78141",
+"shop_info_id": "519021"
+}
+]
+}

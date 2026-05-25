@@ -1,0 +1,178 @@
+[2026-05-20 10:04:47] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158667
+[2026-05-20 10:25:14] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "",
+"deadline_date_in": "20.05.2026 8:25:04",
+"deadline_date_out": "20.05.2026 20:25:04",
+"task_header_id": "1",
+"criticality_id": "",
+"created_by": "ANYANOVAYO",
+"req_line": [
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ПЛ",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 10:26:21] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:26:42] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:27:53] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:27:54] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "158671",
+"deadline_date_in": "20.05.2026 8:25:04",
+"deadline_date_out": "20.05.2026 20:25:04",
+"task_header_id": "1",
+"criticality_id": "",
+"created_by": "ANYANOVAYO",
+"req_line": [
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ПЛ",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "54303995",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 10:30:21] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158667
+[2026-05-20 10:30:37] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158667
+[2026-05-20 10:31:08] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:31:14] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:31:15] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "158671",
+"deadline_date_in": "20.05.2026 8:25:04",
+"deadline_date_out": "20.05.2026 20:25:04",
+"task_header_id": "1",
+"criticality_id": "",
+"created_by": "ANYANOVAYO",
+"req_line": [
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ПЛ",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 10:31:21] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:36:47] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:36:53] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:37:26] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:37:32] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:38:16] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:38:34] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:39:43] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:40:09] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 10:41:05] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158671
+[2026-05-20 14:36:51] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "",
+"deadline_date_in": "20.05.2026 12:36:45",
+"deadline_date_out": "21.05.2026 0:36:45",
+"task_header_id": "14",
+"criticality_id": "",
+"created_by": "KULINYAKLY",
+"req_line": [
+{
+"railway_id": "",
+"car_type": "",
+"state": "",
+"freight": "",
+"car_count": "1",
+"criteria_line_id": "11",
+"car_number": "42249722",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 16:41:02] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "",
+"deadline_date_in": "20.05.2026 14:40:53",
+"deadline_date_out": "21.05.2026 2:40:53",
+"task_header_id": "1",
+"criticality_id": "",
+"created_by": "DYACHKOVDA",
+"req_line": [
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ПЛ",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+},
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ЦС",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 16:42:38] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158673
+[2026-05-20 16:42:38] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158673
+[2026-05-20 16:42:39] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::createRequests] input: {
+"request_id": "158673",
+"deadline_date_in": "20.05.2026 14:40:53",
+"deadline_date_out": "21.05.2026 2:40:53",
+"task_header_id": "1",
+"criticality_id": "",
+"created_by": "DYACHKOVDA",
+"req_line": [
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ПЛ",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+},
+{
+"railway_id": "14_СМОЛА_МЕТАДИНЕА",
+"car_type": "ЦС",
+"state": "пор.",
+"freight": "СМОЛА МД",
+"car_count": "1",
+"criteria_line_id": "1",
+"car_number": "50366574",
+"note": "",
+"send_weighing": "0",
+"send_psp": "0"
+}
+]
+}
+[2026-05-20 22:52:34] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158665
+[2026-05-20 22:53:07] [IP: 192.168.116.26] [CLIENT_HOST: MD-Server1c.mf.metafrax.ru] [RequestController::getStatus] input: 158665
