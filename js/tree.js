@@ -131,9 +131,12 @@ $(document).ready(function() {
     });
     
     start_loading_animation();
-    tree('currentCarstree', null,'Y'); 
-    tree('comingCarsTree', null,'N');
-    stop_loading_animation();
+    $.when(
+        tree('currentCarstree', null, 'Y'),
+        tree('comingCarsTree', null, 'N')
+    ).always(function() {
+        stop_loading_animation();
+    });
     
     $('#selectStation').change(function(event) {
         start_loading_animation();
@@ -161,12 +164,14 @@ $(document).ready(function() {
         $('#currentCarstree > li, #comingCarsTree > li').removeClass('tree_ExpandClosed');
         $('#currentCarstree > li > ul *, #comingCarsTree > li > ul *').remove();
         $('#currentCarstree > li, #comingCarsTree > li').attr('data-id',$(this).val());
-        //$('#currentCarstree > li > div.tree_Content').text($('option:selected', $(this)).text());
-        tree('currentCarstree', null,'Y');
-        tree('comingCarsTree', null,'N');
         $('table.addInfoTable tbody').empty();
         $('#notification_btn').attr('disabled',false);
-        stop_loading_animation();
+        $.when(
+            tree('currentCarstree', null, 'Y'),
+            tree('comingCarsTree', null, 'N')
+        ).always(function() {
+            stop_loading_animation();
+        });
     });
     
     $('#refreshComingRailcar').click(function(event) {
@@ -174,19 +179,19 @@ $(document).ready(function() {
         $('#comingCarsTree > li').addClass('tree_ExpandOpen');
         $('#comingCarsTree > li').removeClass('tree_ExpandClosed');
         $('#comingCarsTree > li > ul *').remove();
-
-        tree('comingCarsTree', null,'N');
-        stop_loading_animation();
+        tree('comingCarsTree', null, 'N').always(function() {
+            stop_loading_animation();
+        });
     });
-    
+
     $('#refreshRailcar').click(function(event) {
         start_loading_animation();
         $('#currentCarstree > li').addClass('tree_ExpandOpen');
         $('#currentCarstree > li').removeClass('tree_ExpandClosed');
         $('#currentCarstree > li > ul *').remove();
-
-        tree('currentCarstree', null,'Y');
-        stop_loading_animation();
+        tree('currentCarstree', null, 'Y').always(function() {
+            stop_loading_animation();
+        });
     });
 });
 
@@ -394,25 +399,17 @@ function tree(p_ul_id, mode,p_flag) {
         
         showLoading(false);
     }
-	//console.log('station_id:'+l_ul.children('li').attr('data-id'));
-    $.ajax({
+    return $.ajax({
         url: 'data.php',
         type: 'POST',
-        dataType: "text",
-        async: false,
-        data: { station_id: l_ul.children('li').attr('data-id')
-               ,flag_come: p_flag
-               ,ajax_action: 'get_tree_station'
-              },
-        success: function(data){
-            //alert(data);
-			
-			
+        dataType: 'text',
+        data: { station_id: l_ul.children('li').attr('data-id'),
+                flag_come: p_flag,
+                ajax_action: 'get_tree_station' },
+        success: function(data) {
             l_tree = JSON.parse(data);
-			//console.log(l_tree);
             load(l_ul.children('li'));
             l_tree = [];
-            
         }
     });
 }

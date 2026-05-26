@@ -175,245 +175,72 @@ $(document).ready(function() {
     changeBackground();
     
 	
-	/* Переменные, которые отвечают за полномочия, присваиваем значения */
+    /* Загрузка прав пользователя и всех справочников одним запросом */
     $.ajax({
         url: 'data.php',
         type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'getLoginData'
-              },
-        success: function (data) {
-			//console.log(data);
-            var result = JSON.parse(data);
-            user_station_id = result.stationId;
-            user_station_name = result.stationName;
-            user_name = result.userName;
-            user_id = result.user_id;
-			user_admin = (result.administrator==='Y');
-            
-            r_moving_inside_railway = (result.moving_inside_railway==='Y');
-            r_moving_inside_shop = (result.moving_inside_shop==='Y');
-            r_moving_inside_station = (result.moving_inside_station==='Y');
-            r_moving_between_station = (result.moving_between_station==='Y');
-            r_change_attribute = (result.change_attribute==='Y');
-            r_change_weight = (result.change_weight==='Y');
-            r_enter_inspection = (result.enter_inspection==='Y');
-            r_enter_inspection_add = (result.enter_inspection_add==='Y');
-            r_register_notification = (result.register_notification==='Y');
-            r_entry_foreign_car = (result.entry_foreign_car==='Y');
-            r_receive_to_station = (result.receive_to_station==='Y');
-            r_work_with_groups = (result.work_with_groups==='Y');
-            r_out_from_ugl = (result.out_from_ugl==='Y');
-            r_add_attribute = (result.add_attribute==='Y');
-            r_create_request = (result.create_request==='Y');
-            r_change_request = (result.change_request==='Y');
-            r_view_request = (result.view_request==='Y');
-            r_del_ins_doc = (result.del_ins_doc==='Y');
-            r_complete_request = (result.complete_request==='Y');
-            r_return_from_psp = (result.return_from_psp==='Y');
-            r_create_request = (result.create_request==='Y');
-            r_weigh_import = (result.weigh_import==='Y');
-            r_weigh_import_corr = (result.weigh_import_corr==='Y');
-            r_weigh_delete = (result.weigh_delete==='Y');
-            r_export_shop_info = (result.export_shop_info==='Y');
-            r_create_invoice_out = (result.create_invoice_out==='Y');
-            r_send_invoice_to_etran = (result.send_invoice_to_etran==='Y');
-            r_register_notification_gu = (result.register_notification_gu==='Y');
-            r_output_defective_cars = (result.output_defective_cars==='Y');
-			
-			r_fix_dev_add = (result.fix_dev_add==='Y');
-			r_fix_dev_undock = (result.fix_dev_undock==='Y');
-			r_fix_dev_update = (result.fix_dev_update==='Y');
-			
-			r_weighing_dispatcher = (result.weighing_dispatcher==='Y');
-			
-			r_process_of_wagons = (result.process_of_wagons==='Y');
-			
-			r_update_of_nsi = (result.update_of_nsi==='Y');
-			r_scale_type_1831_manual = (result.scale_type_1831_manual==='Y');
-			r_export_samples = (result.export_samples==='Y');
-			
+        dataType: 'json',
+        data: { ajax_action: 'get_init_data' },
+        success: function (d) {
+            var r = d.login;
+            user_station_id   = r.stationId;
+            user_station_name = r.stationName;
+            user_name         = r.userName;
+            user_id           = r.user_id;
+            user_admin        = (r.administrator === 'Y');
+
+            r_moving_inside_railway    = (r.moving_inside_railway === 'Y');
+            r_moving_inside_shop       = (r.moving_inside_shop === 'Y');
+            r_moving_inside_station    = (r.moving_inside_station === 'Y');
+            r_moving_between_station   = (r.moving_between_station === 'Y');
+            r_change_attribute         = (r.change_attribute === 'Y');
+            r_change_weight            = (r.change_weight === 'Y');
+            r_enter_inspection         = (r.enter_inspection === 'Y');
+            r_enter_inspection_add     = (r.enter_inspection_add === 'Y');
+            r_register_notification    = (r.register_notification === 'Y');
+            r_entry_foreign_car        = (r.entry_foreign_car === 'Y');
+            r_receive_to_station       = (r.receive_to_station === 'Y');
+            r_work_with_groups         = (r.work_with_groups === 'Y');
+            r_out_from_ugl             = (r.out_from_ugl === 'Y');
+            r_add_attribute            = (r.add_attribute === 'Y');
+            r_create_request           = (r.create_request === 'Y');
+            r_change_request           = (r.change_request === 'Y');
+            r_view_request             = (r.view_request === 'Y');
+            r_del_ins_doc              = (r.del_ins_doc === 'Y');
+            r_complete_request         = (r.complete_request === 'Y');
+            r_return_from_psp          = (r.return_from_psp === 'Y');
+            r_weigh_import             = (r.weigh_import === 'Y');
+            r_weigh_import_corr        = (r.weigh_import_corr === 'Y');
+            r_weigh_delete             = (r.weigh_delete === 'Y');
+            r_export_shop_info         = (r.export_shop_info === 'Y');
+            r_create_invoice_out       = (r.create_invoice_out === 'Y');
+            r_send_invoice_to_etran    = (r.send_invoice_to_etran === 'Y');
+            r_register_notification_gu = (r.register_notification_gu === 'Y');
+            r_output_defective_cars    = (r.output_defective_cars === 'Y');
+            r_fix_dev_add              = (r.fix_dev_add === 'Y');
+            r_fix_dev_undock           = (r.fix_dev_undock === 'Y');
+            r_fix_dev_update           = (r.fix_dev_update === 'Y');
+            r_weighing_dispatcher      = (r.weighing_dispatcher === 'Y');
+            r_process_of_wagons        = (r.process_of_wagons === 'Y');
+            r_update_of_nsi            = (r.update_of_nsi === 'Y');
+            r_scale_type_1831_manual   = (r.scale_type_1831_manual === 'Y');
+            r_export_samples           = (r.export_samples === 'Y');
+
+            g_masters            = d.masters;
+            g_inspection_persons = d.inspection_persons;
+            g_freight_list       = d.freight_list;
+            g_org_name_list      = d.org_name_list;
+            g_scales_type_list   = d.scales_type_list;
+            g_define_task        = d.define_task_list;
+            g_car_type_list      = d.car_type_list;
+            g_train_drivers      = d.train_drivers;
+            g_conductors         = d.conductors;
+            g_locomotives        = d.locomotives;
+            g_users_for_naliv    = d.users_for_naliv;
+            g_inspection_results = d.ins_results;
+            g_ins_doc_types      = d.ins_doc_types;
         },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    /*мастер смены (Регистрация осмотров)*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        //async:false,
-        data: { ajax_action: 'get_masters'
-              },
-        success: function (data) {
-            //alert(data);
-            g_masters = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    /*Осмотр произвел (Регистрация осмотров)*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        //async:false,
-        data: { ajax_action: 'get_inspection_persons'
-              },
-        success: function (data) {
-            //alert(data);
-            g_inspection_persons = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-       
-    /*заполним массив с продуктами*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_freight_list'
-              },
-        success: function (data) {
-            //alert(data);
-            g_freight_list = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-	
-	
-	/*заполним массив с организациями*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_org_name_list'
-              },
-        success: function (data) {
-            //alert(data);
-            g_org_name_list = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-	
-	/*заполним массив весов*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_scales_type_list'
-              },
-        success: function (data) {
-            //alert(data);
-            g_scales_type_list = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-	 $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_define_task_list'
-              },
-        success: function (data) {
-            //alert(data);
-            g_define_task = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-	
-    
-    /*заполним массив с типами вагонов*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_car_type_list'
-              },
-        success: function (data) {
-            //alert(data);
-            g_car_type_list = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    /*заполним массив с машинистами*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_train_drivers'
-              },
-        success: function (data) {
-            g_train_drivers = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    /*заполним массив с кондукторами*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_conductors'
-              },
-        success: function (data) {
-            g_conductors = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-	
-	
-    /*заполним массив с локомотивов*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_locomotives'
-              },
-        success: function (data) {
-            g_locomotives = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    /*заполним массив с пользователями налива*/
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_users_for_naliv'
-              },
-        success: function (data) {
-            g_users_for_naliv = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_ins_results'
-              },
-        success: function (data) {
-            //alert(data);
-            g_inspection_results = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
-    });
-    
-    $.ajax({
-        url: 'data.php',
-        type: 'POST',
-        dataType: "text",
-        data: { ajax_action: 'get_ins_doc_types'
-              },
-        success: function (data) {
-            //alert(data);
-            g_ins_doc_types = JSON.parse(data);
-        },
-        error: function (m1,m2) {window.alert(m1+m2);}
+        error: function (xhr) { window.alert('Ошибка загрузки данных: ' + xhr.status); }
     });
     
     /*обработчик нажатия по дереву*/  

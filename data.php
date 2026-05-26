@@ -602,7 +602,55 @@ if ($_POST['ajax_action'] === 'getLoginData') {
 
         echo json_encode($mas_login_data);
 }
-/* 
+
+if ($_POST['ajax_action'] === 'get_init_data') {
+        $right = $auth->getRights();
+        $login_data = $right;
+        $login_data['stationId']     = $auth->getStationId();
+        $login_data['stationName']   = $auth->getStation();
+        $login_data['userName']      = $auth->getFullName();
+        $login_data['user_id']       = $auth->getUserId();
+        $login_data['administrator'] = $auth->getAdministrator();
+
+        $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
+        if (!$conn) {
+                $e = oci_error();
+                trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+        }
+
+        $queries = [
+                'freight_list'       => 'select * from table(xx_dislocation.get_freight_list)',
+                'org_name_list'      => 'select * from table(xx_dislocation.get_org_name_list)',
+                'scales_type_list'   => 'select * from table(xx_dislocation.get_scales_type_list)',
+                'define_task_list'   => 'select * from table(xx_dislocation.get_define_task_list)',
+                'car_type_list'      => 'select * from table(xx_dislocation.get_car_type_list)',
+                'train_drivers'      => 'select * from table(xx_dislocation.get_train_drivers)',
+                'users_for_naliv'    => 'select * from table(xx_dislocation.get_users_for_naliv)',
+                'conductors'         => 'select * from table(xx_dislocation.get_conductors)',
+                'locomotives'        => 'select * from table(xx_dislocation.get_locomotives)',
+                'inspection_persons' => 'select * from table(xx_dislocation.get_inspection_persons)',
+                'masters'            => 'select * from table(xx_dislocation.get_masters)',
+                'ins_results'        => 'select * from table(xx_dislocation.get_ins_results)',
+                'ins_doc_types'      => 'select * from table(xx_dislocation.get_ins_doc_types)',
+        ];
+
+        $result = ['login' => $login_data];
+
+        foreach ($queries as $key => $sql) {
+                $stmt = oci_parse($conn, $sql);
+                oci_execute($stmt);
+                $rows = [];
+                while ($row = oci_fetch_array($stmt, OCI_ASSOC + OCI_RETURN_NULLS)) {
+                        $rows[] = $row;
+                }
+                $result[$key] = $rows;
+        }
+
+        oci_close($conn);
+        echo json_encode($result);
+}
+
+/*
 	Авторизовался пользователь. (Да/Нет)
 */
 if ($_POST['ajax_action'] === 'get_is_auth') {
