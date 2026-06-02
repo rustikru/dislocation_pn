@@ -9,8 +9,6 @@ require_once __DIR__ . '/core/OracleConnection.php';
 
 $config = require __DIR__ . '/core/Config.php';
 
-/* ========== CORS ========== */
-
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: ' . $config['cors']['origin']);
 header('Access-Control-Allow-Methods: ' . $config['cors']['methods']);

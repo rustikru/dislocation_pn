@@ -13,8 +13,7 @@ function get_phone_data()
 
     return $cache->remember(function () {
 
-        // активная БД, по умолчанию MSSQL
-        // Если вдруг БД не доступна, данные берутся с файла cache/data.json
+        // активная БД
         $driver = defined('DB_DRIVER') ? DB_DRIVER : 'mssql';
 
         if ($driver === 'oracle') {

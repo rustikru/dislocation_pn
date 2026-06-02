@@ -127,7 +127,7 @@ class MSSQL
     {
         $rows = $this->fetchAll(
             "
-        WITH 
+        		WITH 
             -- уникальные подраздления, могут быть с одним и тем же DEPT_ID , но с разным manager, лень огрниивать
 			Dept_uniq AS (
 				SELECT DISTINCT 
@@ -272,18 +272,24 @@ class MSSQL
                     mghr.FMCphone                                                AS phone_fmc,
                     
                     mghr.MobileCorp                                              AS phone_mobile,
-                    ''                                                          AS place
+                    lco.Worklocation                                             AS place
+                    
                 FROM dbo.MGHRv2 mghr
                 LEFT JOIN dbo.Meta_Organisation org 
                     ON org.Organisation_ID = mghr.Organisation_ID
                 LEFT JOIN DeptLevels lv 
                     ON lv.start_dept_id = mghr.Department_ID 
                     AND lv.start_org_id  = mghr.Organisation_ID
+            	 LEFT JOIN dbo.location_service_object lco
+            	 	ON mghr.SNN = lco.SNN
+            	 		-- and replace(mghr.TelephonenumberFull,' ','') = lco.Service_object  
                 WHERE 1=1
-                    and mghr.uvolen = 'False' 
-					and (mghr.VidPriema = 1 OR len(mghr.Firstname) = 0)
+					 and mghr.uvolen = 'False' 
+					 and (mghr.VidPriema = 1 OR len(mghr.Firstname) = 0)
                 
-                ORDER BY org, [DIV], dep, sector, full_name, pos, phone_inner, phone_city, phone_mobile, place
+                
+                -- AND mghr.Lastname + ' ' + mghr.Firstname + ' ' + mghr.Patronymic  LIKE '%Бекмансуров Рус%'
+                ORDER BY org, [DIV], dep, sector, full_name, pos
 "
         );
 
@@ -348,24 +354,7 @@ class MSSQL
         return $result;
     }
 
-    /**
-     * Определяет тип параметра для MSSQL
-     */
-    private function getParamType($value): int
-    {
-        if (is_int($value)) {
-            return SQLSRV_SQLTYPE_INT;
-        } elseif (is_float($value)) {
-            return SQLSRV_SQLTYPE_FLOAT;
-        } elseif (is_bool($value)) {
-            return SQLSRV_SQLTYPE_BIT;
-        } elseif ($value === null) {
-            return SQLSRV_SQLTYPE_VARCHAR('max');
-        } else {
-            return SQLSRV_SQLTYPE_VARCHAR('max');
-        }
-    }
-
+    
     /**
      * Упорядочивает параметры в SQL-запросе
      */

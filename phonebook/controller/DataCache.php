@@ -12,7 +12,7 @@ class DataCache
         $this->file = $file;
         $this->ttl = $ttl;
     }
-    // Отдаем файл на сторону js, вызывается в data.php
+
     public function remember(callable $loader): array
     {
         try {
@@ -27,14 +27,14 @@ class DataCache
 
         }
 
-        // Пытаемся отдать кэш, даже если он просрочен (когда возникают проблемы с БД)
+        // Пытаемся отдать кэш, даже если он просрочен (stale cache)
         if (file_exists($this->file)) {
             return $this->read();
         }
 
         return [];
     }
-    
+
     private function isValid(): bool
     {
         if (!file_exists($this->file)) {
@@ -42,7 +42,7 @@ class DataCache
         }
         return (time() - filemtime($this->file)) < $this->ttl;
     }
-    // Чтение файла
+
     private function read(): array
     {
         if (!file_exists($this->file)) {
@@ -50,7 +50,7 @@ class DataCache
         }
         return json_decode(file_get_contents($this->file), true) ?? [];
     }
-    // Запись файла
+
     private function write(array $data): void
     {
         $dir = dirname($this->file);

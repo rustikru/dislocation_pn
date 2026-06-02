@@ -7,8 +7,7 @@ require_once __DIR__ . '/../models/SystemModel.php';
 class SystemController
 {
     private $model;
-    private $fileName = 'SystemController';
-
+    
     public function __construct($dbConn)
     {
         $this->model = new SystemModel($dbConn);

@@ -21,15 +21,12 @@ final class Bootstrap
 
     private static function definePaths(): void
     {
-        // Путь главный
         if (!defined('ROOT_DIR')) {
             define('ROOT_DIR', dirname(__DIR__));
         }
-        // Путь до папки /controller
         if (!defined('CONTROLLER_DIR')) {
             define('CONTROLLER_DIR', ROOT_DIR . '/controller');
         }
-        // Путь до папки /cache
         if (!defined('CACHE_DIR')) {
             define('CACHE_DIR', ROOT_DIR . '/cache');
         }

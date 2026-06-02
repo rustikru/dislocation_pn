@@ -437,21 +437,41 @@ mark {
   padding: 0 1px;
   color: inherit;
 }
-  th:nth-last-child(5),
-  td:nth-last-child(5) {
-    min-width: auto;   
-    max-width: 15%;   
-    word-break: break-all; 
-  }
-
   th:nth-last-child(-n+4),
   td:nth-last-child(-n+4) {
-    width: 10%;       
+    width: 5%;       
     min-width: auto;   
     max-width: 10%;   
     word-break: break-all; 
   }
-
+  th:nth-last-child(5),
+  td:nth-last-child(5) {
+    width: 10%;         
+    min-width: auto;   
+    max-width: 15%;   
+    word-break: break-all; 
+  }
+  th:nth-last-child(1),
+  td:nth-last-child(1) {
+    width: 15%;       
+    min-width: auto;
+    max-width: 20%;   
+    word-break: break-all; 
+  }
+    th:nth-last-child(3),
+  td:nth-last-child(3) {
+    width: 10%;         
+    min-width: auto;   
+    max-width: 15%;   
+    word-break: break-all; 
+  }
+    th:nth-last-child(4),
+  td:nth-last-child(4) {
+    width: 10%;         
+    min-width: auto;   
+    max-width: 15%;   
+    word-break: break-all; 
+  }
 /* ── Load more ── */
 .load-more-row {
   display: flex;

@@ -205,7 +205,7 @@ class Directory {
         </div>
         <div class="collapsible open"><div class="collapsible-inner">`
 
-      // Корневые записи (только организация, без подразд-я) — запихиываем прямо в организацию
+      // Корневые записи (только организация, без подразд.) — прямо в организацию
       if (rootCount > 0) {
         html += this._renderTable(orgData._root, q)
       }
@@ -222,7 +222,7 @@ class Directory {
             </div>
             <div class="collapsible open"><div class="collapsible-inner">`
 
-        // Записи с орагнизация+подразд, но без отдела — запихиываем прямо в подразделение
+        // Записи с орагнизация+подразд, но без отдела — прямо в подразделение
         if (divData._root.length > 0) {
           html += this._renderTable(divData._root, q)
         }
@@ -286,8 +286,8 @@ class Directory {
           <th>ФИО</th>
           <th>Внутр. номер</th>
           <th>Город. номер</th>
-          <th>FMC номер</th>
           <th>Сотовый</th>
+          <th>FMC номер</th>
           <th>Расположение</th>
         </tr></thead>
         <tbody id="tbody_${tid}">${firstPage.map((r) => this._renderRow(r, q)).join('')}</tbody>
@@ -364,8 +364,8 @@ class Directory {
       <td class="td-name">${v(r.name)}</td>
       <td data-label="Внутр. номер">${this._renderList(r.phone_inner, q, 'inner', '/')}</td>
       <td data-label="Город. номер">${this._renderList(r.phone_city, q, 'city', '/')}</td>
-      <td data-label="FMC">${this._renderList(r.phone_fmc, q, 'fmc', '/')}</td>
       <td data-label="Сотовый">${this._renderList(r.phone_mobile, q, 'mobile', '/')}</td>
+      <td data-label="FMC">${this._renderList(r.phone_fmc, q, 'fmc', '/')}</td>
       <td data-label="Расположение">${this._renderList(r.place, q, 'corp', ';')}</td>
     </tr>`
   }
@@ -373,7 +373,7 @@ class Directory {
   _renderList(arr, q, type = 'phone', separator = '/') {
     if (!arr || !arr.length) return '<span class="dash">—</span>'
 
-    // Убираем нецифровые символы
+    // Убираем нецифровые символы для поиска по цифрам
     const qDigits = q ? q.replace(/\D/g, '') : ''
 
     const items = [
@@ -520,7 +520,7 @@ class Directory {
       ]
       XLSX.utils.book_append_sheet(wb, ws, 'Справочник')
       const date = new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')
-      XLSX.writeFile(wb, 'Справочник_${date}.xlsx')
+      XLSX.writeFile(wb, `Справочник_${date}.xlsx`)
     }
 
     if (typeof XLSX !== 'undefined') {
@@ -568,15 +568,12 @@ function expandAll() {
 function collapseAll() {
   app.collapseAll()
 }
-/* Сбросить параметры */
 function resetAll() {
   app.resetAll()
 }
-/* Экспорт в эксельку */
 function exportExcel() {
   app.exportExcel()
 }
-/* Загрузить еще */
 function loadMore(tid) {
   app.loadMore(tid)
 }
