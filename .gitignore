@@ -1,9 +1,0 @@
-api/logs/
-request_data/
-phonebook/
-
-# Локальный dev-конфиг и загруженные файлы модуля ГУ-23
-db_config.local.php
-gu23/request_data/
-=======
-.DS_Store
