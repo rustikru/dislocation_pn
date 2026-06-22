@@ -616,7 +616,7 @@ function renderNewActView(container) {
             requestWagonInformation(wagonsTextArea.value)
           },
         },
-        'Запросить из Дислокации',
+        'Запросить данные из Дислокации',
       ),
     )
   }
@@ -693,7 +693,7 @@ function renderNewActView(container) {
           saveActRemote('active')
         },
       },
-      'Сохранить и создать акт',
+      'Сохранить и отправить на подписание',
     ),
   )
 
@@ -1194,7 +1194,7 @@ function saveActRemote(status, skipWarning) {
       showToast(
         status === 'draft'
           ? 'Черновик сохранён'
-          : 'Акт заведён, № ' + response.number,
+          : 'Акт зарегстирован, № ' + response.number,
         'ok',
       )
       currentDraft = null
@@ -1204,7 +1204,7 @@ function saveActRemote(status, skipWarning) {
       if (/уже есть открытый акт начала/.test(serverMsg)) {
         openConfirmModal(
           'Дубль открытого простоя',
-          serverMsg + '. Завести акт всё равно?',
+          serverMsg + '. Зарегстировать акт ?',
           function () {
             saveActRemote(status, true)
           },
