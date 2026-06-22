@@ -14,10 +14,10 @@
  */
 
 // ---- параметры подключения к локальному Oracle в Docker ----
-$user        = 'xx_etw';
-$pwd         = 'xx_etw';          // <-- укажите свой пароль
-$host        = '127.0.0.1';
-$port        = '1521';
+$user = 'xx_etw';
+$pwd = 'xx_etw123';          // <-- укажите свой пароль
+$host = '127.0.0.1';
+$port = '1521';
 $serviceName = 'FREEPDB1';
 $db = '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(HOST = ' . $host . ')(PORT = ' . $port . '))
@@ -25,7 +25,6 @@ $db = '(DESCRIPTION =
               (SERVICE_NAME = ' . $serviceName . ')
             )
        )';
-
 // =====================================================================
 //  DEV-ОБХОД АВТОРИЗАЦИИ (только локально!)
 //  Подставляет фейкового авторизованного пользователя, чтобы можно было
@@ -36,15 +35,15 @@ if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
 if (empty($_SESSION['is_auth'])) {
-    $_SESSION['is_auth']        = true;
-    $_SESSION['is_auth_admin']  = true;
-    $_SESSION['login']          = 'dev';
-    $_SESSION['user_id']        = 1;
-    $_SESSION['full_name']      = 'Локальный разработчик';
-    $_SESSION['enterprise']     = 'DEV';
+    $_SESSION['is_auth'] = true;
+    $_SESSION['is_auth_admin'] = true;
+    $_SESSION['login'] = 'dev';
+    $_SESSION['user_id'] = 1;
+    $_SESSION['full_name'] = 'Локальный разработчик';
+    $_SESSION['enterprise'] = 'DEV';
     $_SESSION['flag_change_pwd'] = 'N';
     // права (на всякий случай — если страница их проверяет)
-    $_SESSION['administrator']  = 'Y';
-    $_SESSION['gu23_add']       = 'Y';
-    $_SESSION['gu23_view']      = 'Y';
+    $_SESSION['administrator'] = 'Y';
+    $_SESSION['gu23_add'] = 'Y';
+    $_SESSION['gu23_view'] = 'Y';
 }
