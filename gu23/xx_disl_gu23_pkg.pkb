@@ -846,6 +846,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_has_start number;
       v_tot       number;   -- всего вагонов в акте начала
       v_closed    number;   -- закрыто вагонов действующими окончаниями
+      v_cur_status varchar2(16);  -- текущий статус акта при редактировании
    begin
       -- ===================================================================
       -- 1. ВАЛИДАЦИЯ ТИПОВ АКТОВ И ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ ШАПКИ
@@ -981,10 +982,22 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                     sysdate,
                     p_user_id );
       else
-         select act_number
-           into v_number
-           from xx_disl_gu23_act
-          where id = v_id;
+         -- Защита: редактировать можно ТОЛЬКО черновик. Действующий/закрытый/
+         -- аннулированный акт не изменяется (его можно только аннулировать).
+         begin
+            select act_number, status
+              into v_number, v_cur_status
+              from xx_disl_gu23_act
+             where id = v_id;
+         exception
+            when no_data_found then
+               return 'ERR' || c_us || 'Акт не найден';
+         end;
+         if v_cur_status <> 'draft' then
+            return 'ERR'
+                   || c_us
+                   || 'Действующий/закрытый акт не редактируется — аннулируйте и заведите новый';
+         end if;
          update xx_disl_gu23_act
             set act_type = p_type,
                 status = p_status,
