@@ -1,9 +1,4 @@
--- =====================================================================
---  xx_disl_gu23_pkg_gu23.pkb  —  ТЕЛО пакета (локальная мини-версия)
---  Все select'ы и обработка ГУ-23 живут здесь (на проде — врезать в
---  настоящий пакет xx_disl_gu23_pkg).
--- =====================================================================
-create or replace package body xx_disl_gu23_pkg as
+create or replace package body xx_etw.xx_disl_gu23_pkg as
 
    c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us  constant char(1) := chr(31);   -- разделитель полей
@@ -792,37 +787,38 @@ create or replace package body xx_disl_gu23_pkg as
       p_signers         in clob,
       p_force           in varchar2 default 'N'
    ) return varchar2 is
-      v_id      number := p_id;
-      v_number  varchar2(64);
-      v_start   date := g_to_date(p_start_at);
-      v_end     date := g_to_date(p_end_at);
-      v_dd      number;
-      v_dh      number;
-      v_th      number;
-      v_cd      number;
-      v_isnew   boolean := ( p_id is null
+      v_id        number := p_id;
+      v_number    varchar2(64);
+      v_start     date := g_to_date(p_start_at);
+      v_end       date := g_to_date(p_end_at);
+      v_dd        number;
+      v_dh        number;
+      v_th        number;
+      v_cd        number;
+      v_isnew     boolean := ( p_id is null
       or p_id = 0 );
-      v_dup     varchar2(2000);
-      v_len     pls_integer;
-      v_from    pls_integer;
-      v_to      pls_integer;
-      v_rec     varchar2(4000);
-      v_ord     number := 0;
-      v_wcnt    number := 0;
-        -- распарсенные поля записи (g_field нельзя звать из SQL → парсим в переменные)
-      vw_no     varchar2(16);
-      vw_owner  varchar2(128);
-      vw_kind   varchar2(128);
-      vw_from   varchar2(128);
-      vw_to     varchar2(128);
-      vw_cargo  varchar2(256);
-      vw_weight varchar2(32);
-      vs_fio    varchar2(256);
-      vs_post   varchar2(256);
-      vs_org    varchar2(256);
-      v_dupnum  varchar2(64);
+      v_len       pls_integer;
+      v_from      pls_integer;
+      v_to        pls_integer;
+      v_rec       varchar2(4000);
+      v_ord       number := 0;
+      v_wcnt      number := 0;
+      vw_no       varchar2(16);
+      vw_owner    varchar2(128);
+      vw_kind     varchar2(128);
+      vw_from     varchar2(128);
+      vw_to       varchar2(128);
+      vw_cargo    varchar2(256);
+      vw_weight   varchar2(32);
+      vs_fio      varchar2(256);
+      vs_post     varchar2(256);
+      vs_org      varchar2(256);
+      v_dupnum    varchar2(64);
+      v_has_start number;
    begin
-        -- --- валидация ---
+      -- ===================================================================
+      -- 1. ВАЛИДАЦИЯ ТИПОВ АКТОВ И ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ ШАПКИ
+      -- ===================================================================
       if p_type not in ( 'start',
                          'end',
                          'other' ) then
@@ -838,6 +834,8 @@ create or replace package body xx_disl_gu23_pkg as
                 || c_us
                 || 'Не указан цех';
       end if;
+      
+      -- Проверки дат для акта "Начало простоя"
       if
          p_type = 'start'
          and v_start is null
@@ -846,6 +844,8 @@ create or replace package body xx_disl_gu23_pkg as
                 || c_us
                 || 'Не указана дата начала простоя';
       end if;
+      
+      -- Проверки дат и связей для акта "Окончание простоя"
       if p_type = 'end' then
          if p_linked_start_id is null then
             return 'ERR'
@@ -857,31 +857,39 @@ create or replace package body xx_disl_gu23_pkg as
                    || c_us
                    || 'Не указана дата окончания простоя';
          end if;
-            -- подтягиваем дату начала из связанного акта, если не передана
+         
+         -- Если дата начала не передана с фронтенда, безопасно извлекаем её из БД
          if v_start is null then
             begin
                select start_at
                  into v_start
                  from xx_disl_gu23_act
-                where id = p_linked_start_id;            exception
+                where id = p_linked_start_id;
+            exception
                when no_data_found then
                   null;
             end;
          end if;
+         
+         -- Контроль ошибок: дата окончания не должна быть меньше даты начала
          if
             v_start is not null
             and v_end < v_start
          then
             return 'ERR'
                    || c_us
-                   || 'Дата окончания меньше даты начала';
+                   || 'Дата окончания не может быть меньше даты начала';
+         end if;
+         
+         -- Контроль ошибок: дата окончания не должна быть больше текущей (в будущем)
+         if v_end > sysdate then
+            return 'ERR'
+                   || c_us
+                   || 'Дата окончания не может быть больше текущей даты (в будущем)';
          end if;
       end if;
 
-        -- Запрет дубля открытого простоя (для start/active) выполняется ниже,
-        -- при разборе вагонов — по каждому номеру.
-
-        -- --- расчёт простоя (для end) ---
+      -- Расчет длительности простоя (только для актов окончания простоя)
       if
          p_type = 'end'
          and v_start is not null
@@ -896,7 +904,9 @@ create or replace package body xx_disl_gu23_pkg as
          v_cd := ceil(v_end - v_start);
       end if;
 
-        -- --- номер ---
+      -- ===================================================================
+      -- 2. СОХРАНЕНИЕ ИЛИ ОБНОВЛЕНИЕ ЗАПИСИ АКТА (ШАПКА)
+      -- ===================================================================
       if v_isnew then
          v_number := g_next_number(p_cex);
          v_id := xx_disl_gu23_act_seq.nextval;
@@ -961,13 +971,17 @@ create or replace package body xx_disl_gu23_pkg as
                 modified_at = sysdate,
                 modified_by = p_user_id
           where id = v_id;
+          
+         -- Очищаем старые строки вагонов и подписантов для перезаписи
          delete from xx_disl_gu23_act_row
           where act_id = v_id;
          delete from xx_disl_gu23_signer
           where act_id = v_id;
       end if;
 
-        -- --- разбор и вставка вагонов ---
+      -- ===================================================================
+      -- 3. РАЗБОР, АВТОМАТИЧЕСКАЯ ПОДГРУЗКА ДАННЫХ И ВАЛИДАЦИЯ ВАГОНОВ
+      -- ===================================================================
       v_len := nvl(
          dbms_lob.getlength(p_wagons),
          0
@@ -989,40 +1003,78 @@ create or replace package body xx_disl_gu23_pkg as
          );
          v_from := v_to + 1;
 
-            -- парсим поля в переменные (g_field нельзя из SQL)
+         -- Считываем номер вагона
          vw_no := trim(g_field(
             v_rec,
             1
          ));
-         vw_owner := g_field(
-            v_rec,
-            2
-         );
-         vw_kind := g_field(
-            v_rec,
-            3
-         );
-         vw_from := g_field(
-            v_rec,
-            4
-         );
-         vw_to := g_field(
-            v_rec,
-            5
-         );
-         vw_cargo := g_field(
-            v_rec,
-            6
-         );
-         vw_weight := g_field(
-            v_rec,
-            7
-         );
          if vw_no is null then
             continue;
          end if;
 
-            -- проверка дубля открытого простоя
+         -- БЛОКИРОВКА РУЧНОГО ВВОДА ХАРАКТЕРИСТИК:
+         -- Данные загружаются строго автоматически на бэкенде
+         if p_type in ( 'start',
+                        'other' ) then
+            -- Для создания нового простоя запрашиваем верифицированные данные из интеграционной функции
+            begin
+               select owner,
+                      kind,
+                      st_from,
+                      st_to,
+                      cargo,
+                      weight
+                 into
+                  vw_owner,
+                  vw_kind,
+                  vw_from,
+                  vw_to,
+                  vw_cargo,
+                  vw_weight
+                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
+                  vw_no,
+                  p_station
+               ) )
+                where rownum = 1;
+            exception
+               when others then
+                  -- Если вагон не найден в BI, оставляем характеристики пустыми
+                  vw_owner := null;
+                  vw_kind := null;
+                  vw_from := null;
+                  vw_to := null;
+                  vw_cargo := null;
+                  vw_weight := null;
+            end;
+         else
+            -- Для типа 'end' данные наследуются строго из отправленного клиентом слепка оригинального акта начала
+            vw_owner := g_field(
+               v_rec,
+               2
+            );
+            vw_kind := g_field(
+               v_rec,
+               3
+            );
+            vw_from := g_field(
+               v_rec,
+               4
+            );
+            vw_to := g_field(
+               v_rec,
+               5
+            );
+            vw_cargo := g_field(
+               v_rec,
+               6
+            );
+            vw_weight := g_field(
+               v_rec,
+               7
+            );
+         end if;
+
+         -- ПРОВЕРКА: Запрет создания акта «Начало простоя», если по вагону уже открыт другой цикл простоя
          if
             p_type = 'start'
             and p_status = 'active'
@@ -1032,10 +1084,10 @@ create or replace package body xx_disl_gu23_pkg as
             begin
                select a.act_number
                  into v_dupnum
-                 from xx_disl_gu23_act a
-                 join xx_disl_gu23_act_row r
-               on r.act_id = a.id
-                where a.act_type = 'start'
+                 from xx_disl_gu23_act a,
+                      xx_disl_gu23_act_row r
+                where r.act_id = a.id
+                  and a.act_type = 'start'
                   and a.status = 'active'
                   and a.id <> v_id
                   and r.wagon_no = vw_no
@@ -1044,18 +1096,43 @@ create or replace package body xx_disl_gu23_pkg as
                when no_data_found then
                   v_dupnum := null;
             end;
+
             if v_dupnum is not null then
                rollback;
                return 'ERR'
                       || c_us
-                      || 'По вагону '
+                      || 'Нельзя создать акт «Начало простоя»: по вагону '
                       || vw_no
-                      || ' уже есть открытый акт начала ('
-                      || v_dupnum
-                      || ')';
+                      || ' уже есть открытый цикл в акте '
+                      || v_dupnum;
             end if;
          end if;
 
+         -- ПРОВЕРКА: Запрет добавления вагона в «Окончание простоя», если по нему нет оформленного «Начала простоя»
+         if
+            p_type = 'end'
+            and p_status = 'active'
+         then
+            select count(*)
+              into v_has_start
+              from xx_disl_gu23_act a,
+                   xx_disl_gu23_act_row r
+             where r.act_id = a.id
+               and a.act_type = 'start'
+               and a.status = 'active'
+               and r.wagon_no = vw_no;
+
+            if v_has_start = 0 then
+               rollback;
+               return 'ERR'
+                      || c_us
+                      || 'Нельзя добавить вагон '
+                      || vw_no
+                      || ' в акт окончания: по нему отсутствует оформленный открытый акт «Начало простоя»';
+            end if;
+         end if;
+
+         -- Сохраняем проверенную строку вагона
          insert into xx_disl_gu23_act_row (
             id,
             act_id,
@@ -1085,7 +1162,9 @@ create or replace package body xx_disl_gu23_pkg as
                 || 'Не добавлен ни один вагон';
       end if;
 
-        -- --- разбор и вставка подписантов ---
+      -- ===================================================================
+      -- 4. РАЗБОР И ЗАПИСЬ ОЧЕРЕДИ ПОДПИСАНТОВ
+      -- ===================================================================
       v_len := nvl(
          dbms_lob.getlength(p_signers),
          0
@@ -1137,7 +1216,7 @@ create or replace package body xx_disl_gu23_pkg as
                     v_ord );
       end loop;
 
-        -- --- закрытие связанного акта начала (для активного акта окончания) ---
+      -- Автоматическое закрытие связанного акта начала простоя при проводке акта окончания
       if
          p_type = 'end'
          and p_status = 'active'
@@ -1164,7 +1243,7 @@ create or replace package body xx_disl_gu23_pkg as
          end if;
       end if;
 
-        -- --- история ---
+      -- Логирование операции в историю изменений
       insert into xx_disl_gu23_hist (
          id,
          act_id,
@@ -1192,7 +1271,6 @@ create or replace package body xx_disl_gu23_pkg as
                        end
                  end
       );
-
       commit;
       return 'OK'
              || c_us
@@ -1300,4 +1378,3 @@ create or replace package body xx_disl_gu23_pkg as
    end;
 
 end xx_disl_gu23_pkg;
-/

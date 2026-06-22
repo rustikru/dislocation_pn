@@ -306,8 +306,17 @@ class GuActRepository
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
 
-        // физически храним в одном месте; имя на диске = ID записи
-        $baseDir = __DIR__ . '/request_data/' . $actId . '/';
+        // [Исправление] Сначала определяем тип акта для формирования корректного пути
+        $actType = 'other'; // значение по умолчанию
+        $stType = oci_parse($this->conn, 'select act_type from xx_disl_gu23_act where id = :b1');
+        oci_bind_by_name($stType, ':b1', $actId);
+        oci_execute($stType);
+        if ($rType = oci_fetch_array($stType, OCI_ASSOC)) {
+            $actType = strtolower($rType['ACT_TYPE']);
+        }
+
+        // Физически храним в папке в разрезе типа акта
+        $baseDir = __DIR__ . '/request_data/' . $actType . '/' . $actId . '/';
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
@@ -319,7 +328,7 @@ class GuActRepository
                 $errors[] = $file['name'] ?? 'файл';
                 continue;
             }
-            // получим ID будущей записи
+
             $stId = oci_parse($this->conn, 'begin :id := xx_disl_gu23_pkg.gu23_new_file_id; end;');
             $fileId = 0;
             oci_bind_by_name($stId, ':id', $fileId, 32);
