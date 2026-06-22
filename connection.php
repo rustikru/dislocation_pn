@@ -1,5 +1,11 @@
 <?php
-    require_once "db_config.php";
+    // Локальный (dev) конфиг имеет приоритет, если присутствует.
+    // db_config.local.php в .gitignore и на прод не попадает.
+    if (file_exists(__DIR__ . '/db_config.local.php')) {
+        require_once __DIR__ . '/db_config.local.php';
+    } else {
+        require_once __DIR__ . '/db_config.php';
+    }
 	
 	$conn1 = oci_connect($user,$pwd,$db,"AL32UTF8");
 	if (!$conn1) {
