@@ -1,4 +1,390 @@
 -- =====================================================================
+--  install_gu23_all.sql  —  САМОДОСТАТОЧНЫЙ инсталл (без sqlplus/@@).
+--  Запускать одним файлом в SQL Developer / VS Code Oracle / SQLcl
+--  под пользователем XX_ETW в локальной БД (FREEPDB1).
+--  Можно перезапускать повторно — старые объекты дропаются безопасно.
+-- =====================================================================
+
+-- ---- безопасный сброс старых объектов (ошибки игнорируются) ----
+BEGIN
+  FOR x IN (
+    SELECT 'DROP TABLE '||t||' CASCADE CONSTRAINTS PURGE' ddl FROM (
+      SELECT column_value t FROM TABLE(sys.odcivarchar2list(
+        'XX_DISL_GU23_HIST','XX_DISL_GU23_SIGNER','XX_DISL_GU23_FILE',
+        'XX_DISL_GU23_ACT_ROW','XX_DISL_GU23_ACT','XX_DISL_GU23_COUNTER',
+        'XX_DISL_GU23_REF_SIGNER','XX_DISL_GU23_REF_WAGON_KIND','XX_DISL_GU23_REF_OWNER',
+        'XX_DISL_GU23_REF_STATION','XX_DISL_GU23_REF_REASON','XX_DISL_GU23_REF_CEX',
+        'XX_DISL_GU23_USERS'))
+    )
+    UNION ALL
+    SELECT 'DROP SEQUENCE '||s FROM (
+      SELECT column_value s FROM TABLE(sys.odcivarchar2list(
+        'XX_DISL_GU23_HIST_SEQ','XX_DISL_GU23_SIGNER_SEQ','XX_DISL_GU23_FILE_SEQ',
+        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
+        'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
+        'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
+    )
+  ) LOOP
+    BEGIN EXECUTE IMMEDIATE x.ddl; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END LOOP;
+END;
+/
+
+
+CREATE TABLE xx_disl_gu23_users (
+    user_id    NUMBER        PRIMARY KEY,
+    login      VARCHAR2(64)  NOT NULL,
+    full_name  VARCHAR2(256) NOT NULL
+);
+CREATE SEQUENCE xx_disl_gu23_users_seq START WITH 100 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_cex (
+    id      NUMBER PRIMARY KEY,
+    code    VARCHAR2(32)  NOT NULL,
+    name    VARCHAR2(256) NOT NULL,
+    active  CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_cex_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_reason (
+    id        NUMBER PRIMARY KEY,
+    name      VARCHAR2(512) NOT NULL,
+    act_kind  VARCHAR2(16) DEFAULT 'any',   -- start/end/other/any
+    active    CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_reason_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_station (
+    id      NUMBER PRIMARY KEY,
+    name    VARCHAR2(128) NOT NULL,
+    active  CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_station_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_owner (
+    id      NUMBER PRIMARY KEY,
+    name    VARCHAR2(128) NOT NULL,
+    active  CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_owner_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_wagon_kind (
+    id      NUMBER PRIMARY KEY,
+    name    VARCHAR2(128) NOT NULL,
+    active  CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_wagon_kind_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_ref_signer (
+    id      NUMBER PRIMARY KEY,
+    fio     VARCHAR2(256) NOT NULL,
+    post    VARCHAR2(256),
+    org     VARCHAR2(256),
+    unit    VARCHAR2(256),
+    stype   VARCHAR2(128),                 -- тип подписанта
+    active  CHAR(1) DEFAULT 'Y'
+);
+CREATE SEQUENCE xx_disl_gu23_ref_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_counter (
+    cex_code  VARCHAR2(32),
+    yr        NUMBER,
+    cnt       NUMBER DEFAULT 0,
+    CONSTRAINT xx_disl_gu23_counter_pk PRIMARY KEY (cex_code, yr)
+);
+
+CREATE TABLE xx_disl_gu23_act (
+    id                  NUMBER PRIMARY KEY,
+    act_number          VARCHAR2(64),
+    act_type            VARCHAR2(16)  NOT NULL,    -- start / end / other
+    status              VARCHAR2(16)  NOT NULL,    -- draft / active / closed / annulled
+    cex_code            VARCHAR2(32),
+    station             VARCHAR2(128),
+    reason              VARCHAR2(512),
+    circumstances       VARCHAR2(4000),
+    start_at            DATE,
+    end_at              DATE,
+    dur_days            NUMBER,
+    dur_hours           NUMBER,
+    dur_total_h         NUMBER,
+    cal_days            NUMBER,
+    linked_start_id     NUMBER,
+    annul_reason        VARCHAR2(1000),
+    created_at          DATE,
+    created_by          NUMBER,
+    modified_at         DATE,
+    modified_by         NUMBER
+);
+CREATE SEQUENCE xx_disl_gu23_act_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE xx_disl_gu23_act_row (
+    id        NUMBER PRIMARY KEY,
+    act_id    NUMBER NOT NULL,
+    wagon_no  VARCHAR2(16) NOT NULL,
+    owner     VARCHAR2(128),
+    kind      VARCHAR2(128),
+    st_from   VARCHAR2(128),
+    st_to     VARCHAR2(128),
+    cargo     VARCHAR2(256),
+    weight    VARCHAR2(32),
+    CONSTRAINT xx_disl_gu23_row_fk FOREIGN KEY (act_id)
+        REFERENCES xx_disl_gu23_act (id) ON DELETE CASCADE
+);
+CREATE SEQUENCE xx_disl_gu23_act_row_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX xx_disl_gu23_row_act_i  ON xx_disl_gu23_act_row (act_id);
+CREATE INDEX xx_disl_gu23_row_wgn_i  ON xx_disl_gu23_act_row (wagon_no);
+
+CREATE TABLE xx_disl_gu23_file (
+    id          NUMBER PRIMARY KEY,
+    act_id      NUMBER NOT NULL,
+    file_name   VARCHAR2(512),   -- оригинальное имя
+    file_ext    VARCHAR2(32),    -- расширение
+    mime_type   VARCHAR2(128),
+    real_path   VARCHAR2(1024),  -- физический путь (имя на диске = id)
+    created_at  DATE,
+    created_by  NUMBER,
+    CONSTRAINT xx_disl_gu23_file_fk FOREIGN KEY (act_id)
+        REFERENCES xx_disl_gu23_act (id) ON DELETE CASCADE
+);
+CREATE SEQUENCE xx_disl_gu23_file_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX xx_disl_gu23_file_act_i ON xx_disl_gu23_file (act_id);
+
+CREATE TABLE xx_disl_gu23_signer (
+    id      NUMBER PRIMARY KEY,
+    act_id  NUMBER NOT NULL,
+    fio     VARCHAR2(256),
+    post    VARCHAR2(256),
+    org     VARCHAR2(256),
+    ord_no  NUMBER,
+    CONSTRAINT xx_disl_gu23_signer_fk FOREIGN KEY (act_id)
+        REFERENCES xx_disl_gu23_act (id) ON DELETE CASCADE
+);
+CREATE SEQUENCE xx_disl_gu23_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX xx_disl_gu23_signer_act_i ON xx_disl_gu23_signer (act_id);
+
+CREATE TABLE xx_disl_gu23_hist (
+    id      NUMBER PRIMARY KEY,
+    act_id  NUMBER NOT NULL,
+    ts      DATE,
+    usr     NUMBER,
+    txt     VARCHAR2(1000),
+    CONSTRAINT xx_disl_gu23_hist_fk FOREIGN KEY (act_id)
+        REFERENCES xx_disl_gu23_act (id) ON DELETE CASCADE
+);
+CREATE SEQUENCE xx_disl_gu23_hist_seq START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE INDEX xx_disl_gu23_hist_act_i ON xx_disl_gu23_hist (act_id);
+
+-- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
+-- здесь один раз. Пакет читает акты только через это представление.
+CREATE OR REPLACE VIEW xx_disl_gu23_act_v AS
+SELECT a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
+       a.reason, a.circumstances, a.start_at, a.end_at,
+       a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
+       a.linked_start_id,
+       (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_start_number,
+       (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+       (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt,
+       a.annul_reason, a.created_at, a.created_by, a.modified_at, a.modified_by
+  FROM xx_disl_gu23_act a;
+
+-- =====================================================================
+--  ОБЪЕКТНЫЕ ТИПЫ ДЛЯ КОНВЕЙЕРНЫХ ФУНКЦИЙ
+-- =====================================================================
+
+CREATE OR REPLACE TYPE xx_disl_gu23_ref_obj AS OBJECT (
+    code  VARCHAR2(512),
+    name  VARCHAR2(512)
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_ref_tab AS TABLE OF xx_disl_gu23_ref_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_signer_obj AS OBJECT (
+    id      NUMBER,
+    fio     VARCHAR2(256),
+    post    VARCHAR2(256),
+    org     VARCHAR2(256),
+    unit    VARCHAR2(256),
+    stype   VARCHAR2(128),
+    ord_no  NUMBER
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_signer_tab AS TABLE OF xx_disl_gu23_signer_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_act_obj AS OBJECT (
+    id                   NUMBER,
+    act_number           VARCHAR2(64),
+    act_type             VARCHAR2(16),
+    status               VARCHAR2(16),
+    cex                  VARCHAR2(32),
+    station              VARCHAR2(128),
+    reason               VARCHAR2(512),
+    circumstances        VARCHAR2(4000),
+    start_at             VARCHAR2(20),
+    end_at               VARCHAR2(20),
+    dur_days             NUMBER,
+    dur_hours            NUMBER,
+    dur_total_h          NUMBER,
+    cal_days             NUMBER,
+    linked_start_id      NUMBER,
+    linked_start_number  VARCHAR2(64),
+    wagon_cnt            NUMBER,
+    file_cnt             NUMBER,
+    annul_reason         VARCHAR2(1000),
+    created_at           VARCHAR2(20),
+    created_by           VARCHAR2(256),
+    modified_at          VARCHAR2(20)
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_act_tab AS TABLE OF xx_disl_gu23_act_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_row_obj AS OBJECT (
+    id        NUMBER,
+    act_id    NUMBER,
+    wagon_no  VARCHAR2(16),
+    owner     VARCHAR2(128),
+    kind      VARCHAR2(128),
+    st_from   VARCHAR2(128),
+    st_to     VARCHAR2(128),
+    cargo     VARCHAR2(256),
+    weight    VARCHAR2(32)
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_row_tab AS TABLE OF xx_disl_gu23_row_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_file_obj AS OBJECT (
+    id          NUMBER,
+    act_id      NUMBER,
+    file_name   VARCHAR2(512),
+    file_ext    VARCHAR2(32),
+    mime_type   VARCHAR2(128),
+    real_path   VARCHAR2(1024),
+    created_at  VARCHAR2(20),
+    created_by  VARCHAR2(256)
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_file_tab AS TABLE OF xx_disl_gu23_file_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_hist_obj AS OBJECT (
+    id      NUMBER,
+    act_id  NUMBER,
+    ts      VARCHAR2(20),
+    usr     VARCHAR2(256),
+    txt     VARCHAR2(1000)
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_hist_tab AS TABLE OF xx_disl_gu23_hist_obj;
+/
+
+CREATE OR REPLACE TYPE xx_disl_gu23_wagon_obj AS OBJECT (
+    wagon_no  VARCHAR2(16),
+    owner     VARCHAR2(128),
+    kind      VARCHAR2(128),
+    st_from   VARCHAR2(128),
+    st_to     VARCHAR2(128),
+    cargo     VARCHAR2(256),
+    weight    VARCHAR2(32),
+    found     NUMBER
+);
+/
+CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj;
+/
+
+-- =====================================================================
+--  xx_dislocation_gu23.pks  —  СПЕЦИФИКАЦИЯ пакета (локальная мини-версия)
+--
+--  ВНИМАНИЕ: локально создаётся пакет xx_dislocation, содержащий ТОЛЬКО
+--  функции gu23_*. На проде эти объявления нужно ДОБАВИТЬ в спецификацию
+--  настоящего пакета xx_dislocation (не затирая остальные ~300 функций).
+--
+--  Разделители для передачи коллекций из PHP без JSON (совместимо с 11g):
+--     записи (вагоны/подписанты)  — CHR(30)
+--     поля внутри записи          — CHR(31)
+-- =====================================================================
+CREATE OR REPLACE PACKAGE xx_dislocation AS
+
+    -- ---- справочники (select из таблиц ref_*, легко заменить источник) ----
+    FUNCTION gu23_get_ref_cex          RETURN xx_disl_gu23_ref_tab     PIPELINED;
+    FUNCTION gu23_get_ref_reason (p_kind IN VARCHAR2 DEFAULT NULL)
+                                       RETURN xx_disl_gu23_ref_tab     PIPELINED;
+    FUNCTION gu23_get_ref_station      RETURN xx_disl_gu23_ref_tab     PIPELINED;
+    FUNCTION gu23_get_ref_owner        RETURN xx_disl_gu23_ref_tab     PIPELINED;
+    FUNCTION gu23_get_ref_wagon_kind   RETURN xx_disl_gu23_ref_tab     PIPELINED;
+    FUNCTION gu23_get_ref_signer       RETURN xx_disl_gu23_signer_tab  PIPELINED;
+
+    -- ---- акты ----
+    FUNCTION gu23_get_acts (
+        p_q       IN VARCHAR2 DEFAULT NULL,
+        p_type    IN VARCHAR2 DEFAULT NULL,
+        p_status  IN VARCHAR2 DEFAULT NULL,
+        p_cex     IN VARCHAR2 DEFAULT NULL
+    ) RETURN xx_disl_gu23_act_tab PIPELINED;
+
+    FUNCTION gu23_get_act        (p_id IN NUMBER)      RETURN xx_disl_gu23_act_tab     PIPELINED;
+    FUNCTION gu23_get_rows       (p_act_id IN NUMBER)  RETURN xx_disl_gu23_row_tab     PIPELINED;
+    FUNCTION gu23_get_files      (p_act_id IN NUMBER)  RETURN xx_disl_gu23_file_tab    PIPELINED;
+    FUNCTION gu23_get_signers    (p_act_id IN NUMBER)  RETURN xx_disl_gu23_signer_tab  PIPELINED;
+    FUNCTION gu23_get_hist       (p_act_id IN NUMBER)  RETURN xx_disl_gu23_hist_tab    PIPELINED;
+
+    -- открытые акты начала простоя (для выбора в акте окончания)
+    FUNCTION gu23_get_open_starts RETURN xx_disl_gu23_act_tab PIPELINED;
+
+    -- все акты по номеру вагона (поиск по вагону)
+    FUNCTION gu23_get_by_wagon (p_wagon IN VARCHAR2) RETURN xx_disl_gu23_act_tab PIPELINED;
+
+    -- ---- интеграция Oracle BI / Дислокация (имитация через select из dual) ----
+    FUNCTION gu23_get_wagon_info (
+        p_wagons   IN CLOB,
+        p_station  IN VARCHAR2 DEFAULT NULL
+    ) RETURN xx_disl_gu23_wagon_tab PIPELINED;
+
+    -- ---- запись ----
+    -- получить id для нового файла (имя на диске = id)
+    FUNCTION gu23_new_file_id RETURN NUMBER;
+
+    FUNCTION gu23_add_file (
+        p_act_id    IN NUMBER,
+        p_file_id   IN NUMBER,
+        p_name      IN VARCHAR2,
+        p_ext       IN VARCHAR2,
+        p_mime      IN VARCHAR2,
+        p_path      IN VARCHAR2,
+        p_user_id   IN NUMBER
+    ) RETURN VARCHAR2;
+
+    FUNCTION gu23_del_file (p_file_id IN NUMBER, p_user_id IN NUMBER) RETURN VARCHAR2;
+
+    -- сохранение акта (создание/правка черновика) вместе со строками и подписантами.
+    -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
+    FUNCTION gu23_save_act (
+        p_user_id          IN NUMBER,
+        p_id               IN NUMBER,        -- 0/NULL = новый
+        p_type             IN VARCHAR2,      -- start / end / other
+        p_status           IN VARCHAR2,      -- draft / active
+        p_cex              IN VARCHAR2,
+        p_station          IN VARCHAR2,
+        p_reason           IN VARCHAR2,
+        p_circumstances    IN VARCHAR2,
+        p_start_at         IN VARCHAR2,      -- 'YYYY-MM-DD HH24:MI' или NULL
+        p_end_at           IN VARCHAR2,
+        p_linked_start_id  IN NUMBER,
+        p_wagons           IN CLOB,          -- записи CHR(30); поля CHR(31): no,owner,kind,from,to,cargo,weight
+        p_signers          IN CLOB,          -- записи CHR(30); поля CHR(31): fio,post,org
+        p_force            IN VARCHAR2 DEFAULT 'N'  -- 'Y' = разрешить дубль открытого простоя
+    ) RETURN VARCHAR2;
+
+    FUNCTION gu23_del_act   (p_id IN NUMBER, p_user_id IN NUMBER) RETURN VARCHAR2;
+    FUNCTION gu23_annul_act (p_id IN NUMBER, p_user_id IN NUMBER, p_reason IN VARCHAR2) RETURN VARCHAR2;
+
+END xx_dislocation;
+/
+
+
+-- =====================================================================
 --  xx_dislocation_gu23.pkb  —  ТЕЛО пакета (локальная мини-версия)
 --  Все select'ы и обработка ГУ-23 живут здесь (на проде — врезать в
 --  настоящий пакет xx_dislocation).
@@ -581,3 +967,73 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
 
 END xx_dislocation;
 /
+
+
+-- =====================================================================
+--  seed_gu23.sql  —  демо-наполнение справочников и dev-пользователя
+--  (значения из прототипа; редактируются прямо в таблицах ref_*)
+-- =====================================================================
+
+-- --- dev-пользователь (его user_id должен совпадать с db_config.local.php) ---
+DELETE FROM xx_disl_gu23_users WHERE user_id = 1;
+INSERT INTO xx_disl_gu23_users (user_id, login, full_name)
+VALUES (1, 'dev', 'Локальный разработчик');
+
+-- --- цеха ---
+INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ЖДЦ', 'Железнодорожный цех');
+INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ВЧД', 'Вагонное депо');
+INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПТО', 'Пункт техн. обслуживания');
+INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПРР', 'Погрузо-разгрузочный район');
+
+-- --- причины ---
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Простой под выгрузкой');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Простой под погрузкой');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Неприём вагонов станцией');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Ожидание подачи/уборки');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Неудовлетворительное состояние вагона');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Техническая неисправность');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Коммерческая неисправность');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Повреждение вагона');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Следы течи / просыпания / загрязнения');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Несоответствие требованиям погрузки/выгрузки');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Качество перевозимого груза');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации собственнику');
+INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации экспедитору');
+
+-- --- станции ---
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Углеуральская');
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Чусовская');
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Пермь-Сортировочная');
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Гороблагодатская');
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Кизел');
+INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Березники');
+
+-- --- собственники ---
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ОАО «РЖД»');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ПГК');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ФГК');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'НефтеТрансСервис');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'СУЭК');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'Собственный парк');
+INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'Уралкалий');
+
+-- --- род вагона ---
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Полувагон');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Цистерна');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Крытый');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Платформа');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Хоппер');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Думпкар');
+INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Окатышевоз');
+
+-- --- подписанты ---
+INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
+VALUES (xx_disl_gu23_ref_signer_seq.NEXTVAL, 'Смирнов А.В.', 'Начальник смены', 'Предприятие', 'ЖДЦ', 'Работник предприятия');
+INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
+VALUES (xx_disl_gu23_ref_signer_seq.NEXTVAL, 'Петрова Е.Н.', 'Инженер по перевозкам', 'Предприятие', 'ЖДЦ', 'Работник предприятия');
+INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
+VALUES (xx_disl_gu23_ref_signer_seq.NEXTVAL, 'Козлов Д.А.', 'Приёмосдатчик', 'ОАО «РЖД»', 'ст. Углеуральская', 'Работник станции ОАО «РЖД»');
+INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
+VALUES (xx_disl_gu23_ref_signer_seq.NEXTVAL, 'Орлова М.С.', 'Мастер', 'Предприятие', 'ВЧД', 'Работник предприятия');
+
+COMMIT;

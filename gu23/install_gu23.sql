@@ -206,6 +206,20 @@ CREATE TABLE xx_disl_gu23_hist (
 CREATE SEQUENCE xx_disl_gu23_hist_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_hist_act_i ON xx_disl_gu23_hist (act_id);
 
+PROMPT === Представление акта (шапка + вычисляемые поля) ===
+-- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
+-- здесь один раз. Пакет читает акты только через это представление.
+CREATE OR REPLACE VIEW xx_disl_gu23_act_v AS
+SELECT a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
+       a.reason, a.circumstances, a.start_at, a.end_at,
+       a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
+       a.linked_start_id,
+       (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_start_number,
+       (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+       (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt,
+       a.annul_reason, a.created_at, a.created_by, a.modified_at, a.modified_by
+  FROM xx_disl_gu23_act a;
+
 -- =====================================================================
 --  ОБЪЕКТНЫЕ ТИПЫ ДЛЯ КОНВЕЙЕРНЫХ ФУНКЦИЙ
 -- =====================================================================
