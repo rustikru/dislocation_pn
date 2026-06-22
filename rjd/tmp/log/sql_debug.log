@@ -1,0 +1,51 @@
+[2026-06-22 09:17:11]
+SELECT /*+ CARDINALITY(t 1) */ kpi.id, kpi.type, kpi.label AS x_label,
+                    t.x_value, t.trend_pct, t.trend_dir
+             FROM XX_RJD_KPI_TBL_V kpi,
+                  TABLE(xx_rjd_dislocation_new_pkg.get_kpi_row(kpi.id)) t
+             WHERE 1=1 AND type = 'dashboard_kpi'
+            order by kpi.ORDER_BY
+
+[2026-06-22 09:17:11]
+SELECT MAX(report_dt) AS latest_dt FROM xx_dislocation_rjd
+
+[2026-06-22 09:17:12]
+SELECT DISTINCT cargo_name
+             FROM xx_dislocation_rjd
+             WHERE 1=1
+             ORDER BY cargo_name
+
+[2026-06-22 09:17:13]
+SELECT /*+ CARDINALITY(t 1) */ kpi.id, kpi.type, kpi.label AS x_label,
+                    t.x_value, t.trend_pct, t.trend_dir
+             FROM XX_RJD_KPI_TBL_V kpi,
+                  TABLE(xx_rjd_dislocation_new_pkg.get_kpi_row(kpi.id)) t
+             WHERE 1=1 AND type = 'approach_kpi'
+            order by kpi.ORDER_BY
+
+[2026-06-22 09:17:13]
+SELECT MAX(report_dt) AS latest_dt FROM xx_dislocation_rjd
+
+[2026-06-22 09:17:14]
+SELECT DISTINCT wagon_no, wagon_type_code, idle_time_days, cargo_name, cargo_weight_kg, oper_station, oper_mnemonic, oper_dt, dest_road, dest_station, depart_road, depart_station, train_index, train_no, waybill_no, wagon_state, norm_delivery_dt, consignor_name, consignee_name, container_nos, oper_road, idle_time_hhmmss, asoup_depart_dt, asoup_arrive_dt, lessee, lease_home_station
+             FROM xx_dislocation_rjd
+             WHERE 1=1 AND TRUNC(oper_dt) >= TO_DATE('2026-06-15', 'YYYY-MM-DD') AND TRUNC(oper_dt) <= TO_DATE('2026-06-22', 'YYYY-MM-DD')
+             ORDER BY oper_dt DESC, wagon_no
+
+[2026-06-22 09:17:28]
+SELECT /*+ CARDINALITY(t 1) */ kpi.id, kpi.type, kpi.label AS x_label,
+                    t.x_value, t.trend_pct, t.trend_dir
+             FROM XX_RJD_KPI_TBL_V kpi,
+                  TABLE(xx_rjd_dislocation_new_pkg.get_kpi_row(kpi.id)) t
+             WHERE 1=1 AND type = 'departue_kpi'
+            order by kpi.ORDER_BY
+
+[2026-06-22 09:17:29]
+SELECT MAX(report_dt) AS latest_dt FROM xx_dislocation_rjd
+
+[2026-06-22 09:17:29]
+SELECT DISTINCT cargo_name
+             FROM xx_dislocation_rjd
+             WHERE 1=1
+             ORDER BY cargo_name
+
