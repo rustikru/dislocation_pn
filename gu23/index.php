@@ -9,11 +9,11 @@ if (isset($_POST["logout"])) {
 }
 
 if ($auth->isAuth()) {
-    // доступ: администратор или право на модуль ГУ-23
-    $rights = $auth->getRights() ?: array();
+    // доступ: администратор или право на модуль ГУ-23 (читаем из сессии,
+    // без обращения к пакету — чтобы работать и в локальном dev-режиме)
     $allowed = $auth->isAuthAdmin()
-        || (isset($rights['gu23_add'])  && $rights['gu23_add']  === 'Y')
-        || (isset($rights['gu23_view']) && $rights['gu23_view'] === 'Y');
+        || (isset($_SESSION['gu23_add'])  && $_SESSION['gu23_add']  === 'Y')
+        || (isset($_SESSION['gu23_view']) && $_SESSION['gu23_view'] === 'Y');
     if ($allowed) {
 ?>
 <!DOCTYPE html>

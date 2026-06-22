@@ -136,7 +136,11 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
         v_q VARCHAR2(512) := LOWER(p_q);
     BEGIN
         FOR a IN (
-            SELECT * FROM xx_disl_gu23_act a
+            SELECT a.*,
+                   (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_number,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt
+              FROM xx_disl_gu23_act a
              WHERE (p_type   IS NULL OR a.act_type = p_type)
                AND (p_status IS NULL OR a.status   = p_status)
                AND (p_cex    IS NULL OR a.cex_code = p_cex)
@@ -152,10 +156,7 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
                 a.reason, a.circumstances,
                 TO_CHAR(a.start_at, c_dtf), TO_CHAR(a.end_at, c_dtf),
                 a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
-                a.linked_start_id,
-                (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id),
+                a.linked_start_id, a.linked_number, a.wagon_cnt, a.file_cnt,
                 a.annul_reason,
                 TO_CHAR(a.created_at, c_dtf), g_user_name(a.created_by),
                 TO_CHAR(a.modified_at, c_dtf)));
@@ -165,16 +166,19 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
 
     FUNCTION gu23_get_act (p_id IN NUMBER) RETURN xx_disl_gu23_act_tab PIPELINED IS
     BEGIN
-        FOR a IN (SELECT * FROM xx_disl_gu23_act WHERE id = p_id) LOOP
+        FOR a IN (
+            SELECT a.*,
+                   (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_number,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt
+              FROM xx_disl_gu23_act a WHERE a.id = p_id
+        ) LOOP
             PIPE ROW (xx_disl_gu23_act_obj(
                 a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
                 a.reason, a.circumstances,
                 TO_CHAR(a.start_at, c_dtf), TO_CHAR(a.end_at, c_dtf),
                 a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
-                a.linked_start_id,
-                (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id),
+                a.linked_start_id, a.linked_number, a.wagon_cnt, a.file_cnt,
                 a.annul_reason,
                 TO_CHAR(a.created_at, c_dtf), g_user_name(a.created_by),
                 TO_CHAR(a.modified_at, c_dtf)));
@@ -220,17 +224,20 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
 
     FUNCTION gu23_get_open_starts RETURN xx_disl_gu23_act_tab PIPELINED IS
     BEGIN
-        FOR a IN (SELECT * FROM xx_disl_gu23_act
-                   WHERE act_type = 'start' AND status = 'active'
-                   ORDER BY start_at) LOOP
+        FOR a IN (
+            SELECT a.*,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id) AS wagon_cnt,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)   AS file_cnt
+              FROM xx_disl_gu23_act a
+             WHERE a.act_type = 'start' AND a.status = 'active'
+             ORDER BY a.start_at
+        ) LOOP
             PIPE ROW (xx_disl_gu23_act_obj(
                 a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
                 a.reason, a.circumstances,
                 TO_CHAR(a.start_at, c_dtf), TO_CHAR(a.end_at, c_dtf),
                 a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
-                a.linked_start_id, NULL,
-                (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id),
+                a.linked_start_id, NULL, a.wagon_cnt, a.file_cnt,
                 a.annul_reason,
                 TO_CHAR(a.created_at, c_dtf), g_user_name(a.created_by),
                 TO_CHAR(a.modified_at, c_dtf)));
@@ -240,19 +247,22 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
 
     FUNCTION gu23_get_by_wagon (p_wagon IN VARCHAR2) RETURN xx_disl_gu23_act_tab PIPELINED IS
     BEGIN
-        FOR a IN (SELECT a.* FROM xx_disl_gu23_act a
-                   WHERE EXISTS (SELECT 1 FROM xx_disl_gu23_act_row r
-                                  WHERE r.act_id = a.id AND r.wagon_no = p_wagon)
-                   ORDER BY a.created_at DESC, a.id DESC) LOOP
+        FOR a IN (
+            SELECT a.*,
+                   (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_number,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+                   (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt
+              FROM xx_disl_gu23_act a
+             WHERE EXISTS (SELECT 1 FROM xx_disl_gu23_act_row r
+                            WHERE r.act_id = a.id AND r.wagon_no = p_wagon)
+             ORDER BY a.created_at DESC, a.id DESC
+        ) LOOP
             PIPE ROW (xx_disl_gu23_act_obj(
                 a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
                 a.reason, a.circumstances,
                 TO_CHAR(a.start_at, c_dtf), TO_CHAR(a.end_at, c_dtf),
                 a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
-                a.linked_start_id,
-                (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id),
-                (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id),
+                a.linked_start_id, a.linked_number, a.wagon_cnt, a.file_cnt,
                 a.annul_reason,
                 TO_CHAR(a.created_at, c_dtf), g_user_name(a.created_by),
                 TO_CHAR(a.modified_at, c_dtf)));
