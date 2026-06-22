@@ -1192,9 +1192,10 @@ function saveActRemote(status, skipWarning) {
   callApi('gu23_save_act', payload).done(function (response) {
     if (response && response.ok) {
       showToast(
-        status === 'draft'
+        (status === 'draft'
           ? 'Черновик сохранён'
-          : 'Акт зарегстирован, № ' + response.number,
+          : 'Акт зарегистрирован') +
+          (response.number ? ', № ' + response.number : ''),
         'ok',
       )
       currentDraft = null

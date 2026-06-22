@@ -329,8 +329,8 @@ CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj
 /
 
 PROMPT === Установка пакета ===
-@@xx_dislocation_gu23.pks
-@@xx_dislocation_gu23.pkb
+@@xx_disl_gu23_pkg.pks
+@@xx_disl_gu23_pkg.pkb
 
 PROMPT === Засев справочников и демо-данных ===
 @@seed_gu23.sql

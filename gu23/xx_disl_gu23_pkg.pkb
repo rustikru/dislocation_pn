@@ -499,6 +499,35 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+   -- ещё открытые вагоны акта начала (не закрытые действующим актом окончания)
+   function gu23_get_open_rows (
+      p_start_id in number
+   ) return xx_disl_gu23_row_tab
+      pipelined
+   is
+   begin
+      for r in (
+         select *
+           from xx_disl_gu23_act_row sr
+          where sr.act_id = p_start_id
+            and not exists (
+               select 1
+                 from xx_disl_gu23_act e,
+                      xx_disl_gu23_act_row er
+                where er.act_id = e.id
+                  and e.act_type = 'end'
+                  and e.status = 'active'
+                  and e.linked_start_id = p_start_id
+                  and er.wagon_no = sr.wagon_no
+            )
+          order by sr.id
+      ) loop
+         pipe row ( xx_disl_gu23_row_obj(r.id, r.act_id, r.wagon_no, r.owner,
+                                         r.kind, r.st_from, r.st_to, r.cargo, r.weight) );
+      end loop;
+      return;
+   end;
+
    function gu23_get_by_wagon (
       p_wagon in varchar2
    ) return xx_disl_gu23_act_tab
@@ -815,6 +844,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       vs_org      varchar2(256);
       v_dupnum    varchar2(64);
       v_has_start number;
+      v_tot       number;   -- всего вагонов в акте начала
+      v_closed    number;   -- закрыто вагонов действующими окончаниями
    begin
       -- ===================================================================
       -- 1. ВАЛИДАЦИЯ ТИПОВ АКТОВ И ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ ШАПКИ
@@ -1108,27 +1139,47 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             end if;
          end if;
 
-         -- ПРОВЕРКА: Запрет добавления вагона в «Окончание простоя», если по нему нет оформленного «Начала простоя»
+         -- ПРОВЕРКА (окончание): вагон должен принадлежать ВЫБРАННОМУ акту начала
+         -- и быть ещё открытым (не закрыт другим действующим актом окончания).
          if
             p_type = 'end'
             and p_status = 'active'
          then
+            -- (а) принадлежность выбранному акту начала
             select count(*)
               into v_has_start
-              from xx_disl_gu23_act a,
-                   xx_disl_gu23_act_row r
-             where r.act_id = a.id
-               and a.act_type = 'start'
-               and a.status = 'active'
+              from xx_disl_gu23_act_row r
+             where r.act_id = p_linked_start_id
                and r.wagon_no = vw_no;
 
             if v_has_start = 0 then
                rollback;
                return 'ERR'
                       || c_us
-                      || 'Нельзя добавить вагон '
+                      || 'Вагон '
                       || vw_no
-                      || ' в акт окончания: по нему отсутствует оформленный открытый акт «Начало простоя»';
+                      || ' не относится к выбранному акту начала';
+            end if;
+
+            -- (б) вагон ещё не закрыт другим действующим окончанием
+            select count(*)
+              into v_has_start
+              from xx_disl_gu23_act e,
+                   xx_disl_gu23_act_row er
+             where er.act_id = e.id
+               and e.act_type = 'end'
+               and e.status = 'active'
+               and e.linked_start_id = p_linked_start_id
+               and e.id <> v_id
+               and er.wagon_no = vw_no;
+
+            if v_has_start > 0 then
+               rollback;
+               return 'ERR'
+                      || c_us
+                      || 'Вагон '
+                      || vw_no
+                      || ' уже закрыт другим актом окончания';
             end if;
          end if;
 
@@ -1216,30 +1267,50 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                     v_ord );
       end loop;
 
-      -- Автоматическое закрытие связанного акта начала простоя при проводке акта окончания
+      -- Закрытие циклов акта начала: частичное/полное.
+      -- Акт начала переводится в «Закрыт» ТОЛЬКО когда закрыты ВСЕ его вагоны.
       if
          p_type = 'end'
          and p_status = 'active'
          and p_linked_start_id is not null
       then
-         update xx_disl_gu23_act
-            set status = 'closed',
-                modified_at = sysdate,
-                modified_by = p_user_id
-          where id = p_linked_start_id
-            and status = 'active';
-         if sql%rowcount > 0 then
+         select count(*)
+           into v_tot
+           from xx_disl_gu23_act_row
+          where act_id = p_linked_start_id;
+
+         select count(distinct er.wagon_no)
+           into v_closed
+           from xx_disl_gu23_act e,
+                xx_disl_gu23_act_row er
+          where er.act_id = e.id
+            and e.act_type = 'end'
+            and e.status = 'active'
+            and e.linked_start_id = p_linked_start_id;
+
+         if v_closed >= v_tot then
+            update xx_disl_gu23_act
+               set status = 'closed',
+                   modified_at = sysdate,
+                   modified_by = p_user_id
+             where id = p_linked_start_id
+               and status = 'active';
             insert into xx_disl_gu23_hist (
-               id,
-               act_id,
-               ts,
-               usr,
-               txt
+               id, act_id, ts, usr, txt
             ) values ( xx_disl_gu23_hist_seq.nextval,
                        p_linked_start_id,
                        sysdate,
                        p_user_id,
-                       'Цикл простоя закрыт актом окончания ' || v_number );
+                       'Цикл простоя полностью закрыт актом окончания ' || v_number );
+         else
+            insert into xx_disl_gu23_hist (
+               id, act_id, ts, usr, txt
+            ) values ( xx_disl_gu23_hist_seq.nextval,
+                       p_linked_start_id,
+                       sysdate,
+                       p_user_id,
+                       'Частично закрыто актом окончания ' || v_number
+                       || ' (' || v_closed || ' из ' || v_tot || ')' );
          end if;
       end if;
 

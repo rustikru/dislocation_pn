@@ -70,9 +70,9 @@ a {
 .app {
   display: grid;
   grid-template-columns: 236px 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
   height: 100vh;
-  grid-template-areas: 'top top' 'side main';
+  grid-template-areas: 'side main';
 }
 .topbar {
   grid-area: top;
@@ -878,7 +878,7 @@ textarea.inp {
 @media (max-width: 880px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-areas: 'top' 'main';
+    grid-template-areas: 'main';
   }
   .side {
     display: none;

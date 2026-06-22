@@ -31,20 +31,7 @@ if ($auth->isAuth()) {
 </head>
 <body>
     <div class="app">
-        <div class="topbar">
-            <div class="brand">
-                <div class="mark">23</div>
-                <div>ГУ-23 · Акты общей формы<small>Учёт простоя вагонов</small></div>
-            </div>
-            <div class="spacer"></div>
-            <div class="station-chip"><i></i> Станция операции: Углеуральская</div>
-            <div class="rolebox">
-                <span class="u" id="userline"><?php echo htmlspecialchars($auth->getFullName() ?? ''); ?></span>
-            </div>
-        </div>
-
         <nav class="side" id="nav"></nav>
-
         <main class="main"><div class="view" id="view"></div></main>
     </div>
 

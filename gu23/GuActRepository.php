@@ -164,10 +164,10 @@ class GuActRepository
     private function getOpenStarts(): void
     {
         $acts = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_open_starts())');
-        // подтянем вагоны для каждого открытого акта начала (нужно для выбора в акте окончания)
+        // подтянем ТОЛЬКО ещё открытые вагоны (для выбора в акте окончания)
         foreach ($acts as &$a) {
             $a['WAGONS'] = $this->pipe(
-                'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',
+                'select * from table(xx_disl_gu23_pkg.gu23_get_open_rows(:b1))',
                 [':b1' => $a['ID']]
             );
         }

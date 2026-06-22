@@ -61,6 +61,12 @@ create or replace package xx_disl_gu23_pkg as
    function gu23_get_open_starts return xx_disl_gu23_act_tab
       pipelined;
 
+    -- ещё открытые (не закрытые действующим окончанием) вагоны акта начала
+   function gu23_get_open_rows (
+      p_start_id in number
+   ) return xx_disl_gu23_row_tab
+      pipelined;
+
     -- все акты по номеру вагона (поиск по вагону)
    function gu23_get_by_wagon (
       p_wagon in varchar2
