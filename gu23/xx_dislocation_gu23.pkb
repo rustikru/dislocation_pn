@@ -390,6 +390,18 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
         v_rec       VARCHAR2(4000);
         v_ord       NUMBER := 0;
         v_wcnt      NUMBER := 0;
+        -- распарсенные поля записи (g_field нельзя звать из SQL → парсим в переменные)
+        vw_no       VARCHAR2(16);
+        vw_owner    VARCHAR2(128);
+        vw_kind     VARCHAR2(128);
+        vw_from     VARCHAR2(128);
+        vw_to       VARCHAR2(128);
+        vw_cargo    VARCHAR2(256);
+        vw_weight   VARCHAR2(32);
+        vs_fio      VARCHAR2(256);
+        vs_post     VARCHAR2(256);
+        vs_org      VARCHAR2(256);
+        v_dupnum    VARCHAR2(64);
     BEGIN
         -- --- валидация ---
         IF p_type NOT IN ('start','end','other') THEN
@@ -462,26 +474,40 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
             IF v_to = 0 THEN v_to := v_len + 1; END IF;
             v_rec := DBMS_LOB.SUBSTR(p_wagons, v_to - v_from, v_from);
             v_from := v_to + 1;
-            IF TRIM(g_field(v_rec, 1)) IS NULL THEN CONTINUE; END IF;
+
+            -- парсим поля в переменные (g_field нельзя из SQL)
+            vw_no     := TRIM(g_field(v_rec, 1));
+            vw_owner  := g_field(v_rec, 2);
+            vw_kind   := g_field(v_rec, 3);
+            vw_from   := g_field(v_rec, 4);
+            vw_to     := g_field(v_rec, 5);
+            vw_cargo  := g_field(v_rec, 6);
+            vw_weight := g_field(v_rec, 7);
+            IF vw_no IS NULL THEN CONTINUE; END IF;
 
             -- проверка дубля открытого простоя
             IF p_type = 'start' AND p_status = 'active' AND p_force <> 'Y' THEN
-                FOR d IN (SELECT a.act_number FROM xx_disl_gu23_act a
-                           JOIN xx_disl_gu23_act_row r ON r.act_id = a.id
-                          WHERE a.act_type = 'start' AND a.status = 'active'
-                            AND a.id <> v_id AND r.wagon_no = TRIM(g_field(v_rec,1))
-                            AND ROWNUM = 1) LOOP
+                v_dupnum := NULL;
+                BEGIN
+                    SELECT a.act_number INTO v_dupnum
+                      FROM xx_disl_gu23_act a
+                      JOIN xx_disl_gu23_act_row r ON r.act_id = a.id
+                     WHERE a.act_type = 'start' AND a.status = 'active'
+                       AND a.id <> v_id AND r.wagon_no = vw_no
+                       AND ROWNUM = 1;
+                EXCEPTION WHEN NO_DATA_FOUND THEN v_dupnum := NULL;
+                END;
+                IF v_dupnum IS NOT NULL THEN
                     ROLLBACK;
-                    RETURN 'ERR' || c_us || 'По вагону ' || TRIM(g_field(v_rec,1)) ||
-                           ' уже есть открытый акт начала (' || d.act_number || ')';
-                END LOOP;
+                    RETURN 'ERR' || c_us || 'По вагону ' || vw_no ||
+                           ' уже есть открытый акт начала (' || v_dupnum || ')';
+                END IF;
             END IF;
 
             INSERT INTO xx_disl_gu23_act_row (id, act_id, wagon_no, owner, kind,
                                               st_from, st_to, cargo, weight)
             VALUES (xx_disl_gu23_act_row_seq.NEXTVAL, v_id,
-                    TRIM(g_field(v_rec,1)), g_field(v_rec,2), g_field(v_rec,3),
-                    g_field(v_rec,4), g_field(v_rec,5), g_field(v_rec,6), g_field(v_rec,7));
+                    vw_no, vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight);
             v_wcnt := v_wcnt + 1;
         END LOOP;
 
@@ -498,11 +524,14 @@ CREATE OR REPLACE PACKAGE BODY xx_dislocation AS
             IF v_to = 0 THEN v_to := v_len + 1; END IF;
             v_rec := DBMS_LOB.SUBSTR(p_signers, v_to - v_from, v_from);
             v_from := v_to + 1;
-            IF TRIM(g_field(v_rec, 1)) IS NULL THEN CONTINUE; END IF;
+            vs_fio  := g_field(v_rec, 1);
+            vs_post := g_field(v_rec, 2);
+            vs_org  := g_field(v_rec, 3);
+            IF TRIM(vs_fio) IS NULL THEN CONTINUE; END IF;
             v_ord := v_ord + 1;
             INSERT INTO xx_disl_gu23_signer (id, act_id, fio, post, org, ord_no)
             VALUES (xx_disl_gu23_signer_seq.NEXTVAL, v_id,
-                    g_field(v_rec,1), g_field(v_rec,2), g_field(v_rec,3), v_ord);
+                    vs_fio, vs_post, vs_org, v_ord);
         END LOOP;
 
         -- --- закрытие связанного акта начала (для активного акта окончания) ---
