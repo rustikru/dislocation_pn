@@ -202,8 +202,8 @@ class GuActRepository
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: '%';
-        $destStation = filter_input(INPUT_POST, 'dest_station') ?: '%';
+        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: '';
+        $destStation = filter_input(INPUT_POST, 'dest_station') ?: '';
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
 

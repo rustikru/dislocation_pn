@@ -398,7 +398,7 @@ function loadWagonsDataFromDislocation() {
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
-
+    activeDraft.wagons = []
     records.forEach((row) => {
       // Только добавляем когда нашли данные из БД
       if (String(row.FOUND) === '1') {
@@ -443,6 +443,7 @@ function loadWagonsDataFromDislocation() {
       `Получено ${foundCount} из ${finalNums.length}`,
       foundCount ? 'ok' : 'err',
     )
+    $('#txt-wagons').val('')
     showForm($('#view')[0])
   })
 }
