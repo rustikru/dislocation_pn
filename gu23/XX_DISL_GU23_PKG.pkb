@@ -892,9 +892,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_id         number;
       v_number     varchar2(64);
       v_cex_id     number;
-      v_station_id number;
-      v_st_from_id number;
-      v_st_to_id   number;
+      v_station_id varchar2(100);
+      v_st_from_id varchar2(100);
+      v_st_to_id   varchar2(100);
       v_start      date;
       v_end        date;
       v_dd         number;
@@ -971,15 +971,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       end;
 
         -- преобразуем строковые ID станций в числа
-      v_station_id := to_number ( nullif(
+      v_station_id := ( nullif(
          trim(p_data.p_station),
          ''
       ) );
-      v_st_from_id := to_number ( nullif(
+      v_st_from_id := ( nullif(
          trim(p_data.p_st_from),
          ''
       ) );
-      v_st_to_id := to_number ( nullif(
+      v_st_to_id := ( nullif(
          trim(p_data.p_st_to),
          ''
       ) );

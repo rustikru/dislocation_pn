@@ -40,11 +40,11 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          status              varchar2(16),
          cex_id              number,           -- ID цеха
          cex                 varchar2(32),     -- код цеха (для отображения)
-         station_id          number,           -- ID ст. составления
+         station_id          varchar2(150),           -- ID ст. составления
          station             varchar2(128),    -- ст. составления (название)
-         st_from_id          number,           -- ID ст. отправления
+         st_from_id          varchar2(150),           -- ID ст. отправления
          st_from             varchar2(128),    -- ст. отправления (название)
-         st_to_id            number,           -- ID ст. назначения
+         st_to_id            varchar2(150),           -- ID ст. назначения
          st_to               varchar2(128),    -- ст. назначения (название)
          cargo_ref           varchar2(256),    -- груз
          reason              varchar2(512),
@@ -115,50 +115,46 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
 
     -- ---- Типы записей для параметров DML-функций ----
    type t_gu23_save_act is record (
-      p_user_id           number,
-      p_id                number,          -- 0/NULL = новый
-      p_type              varchar2(16),    -- start / end / other
-      p_status            varchar2(16),    -- draft / active
-      p_cex               varchar2(32),    -- код цеха (для g_next_number)
-      p_station           varchar2(128),   -- ID ст. составления как строка
-      p_st_from           varchar2(128),   -- ID ст. отправления как строка
-      p_st_to             varchar2(128),   -- ID ст. назначения как строка
-      p_waybill_no        varchar2(64),    -- № накладной (только для поиска Дислокации, не хранится)
-      p_cargo_ref         varchar2(256),
-      p_reason            varchar2(512),
-      p_circumstances     varchar2(4000),
-      p_start_at          varchar2(20),    -- 'YYYY-MM-DD HH24:MI' или NULL
-      p_end_at            varchar2(20),
-      p_linked_start_id   number,
-      p_wagons            clob,            -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
-      p_signers           clob,            -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
-      p_force             varchar2(1)      -- 'Y' = разрешить дубль открытого простоя
+         p_user_id         number,
+         p_id              number,          -- 0/NULL = новый
+         p_type            varchar2(16),    -- start / end / other
+         p_status          varchar2(16),    -- draft / active
+         p_cex             varchar2(32),    -- код цеха (для g_next_number)
+         p_station         varchar2(128),   -- ID ст. составления как строка
+         p_st_from         varchar2(128),   -- ID ст. отправления как строка
+         p_st_to           varchar2(128),   -- ID ст. назначения как строка
+         p_waybill_no      varchar2(64),    -- № накладной (только для поиска Дислокации, не хранится)
+         p_cargo_ref       varchar2(256),
+         p_reason          varchar2(512),
+         p_circumstances   varchar2(4000),
+         p_start_at        varchar2(20),    -- 'YYYY-MM-DD HH24:MI' или NULL
+         p_end_at          varchar2(20),
+         p_linked_start_id number,
+         p_wagons          clob,            -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
+         p_signers         clob,            -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
+         p_force           varchar2(1)      -- 'Y' = разрешить дубль открытого простоя
    );
-
    type t_gu23_add_file is record (
-      p_act_id    number,
-      p_file_id   number,
-      p_name      varchar2(512),
-      p_ext       varchar2(32),
-      p_mime      varchar2(128),
-      p_path      varchar2(1024),
-      p_user_id   number
+         p_act_id  number,
+         p_file_id number,
+         p_name    varchar2(512),
+         p_ext     varchar2(32),
+         p_mime    varchar2(128),
+         p_path    varchar2(1024),
+         p_user_id number
    );
-
    type t_gu23_annul_act is record (
-      p_id        number,
-      p_user_id   number,
-      p_reason    varchar2(1000)
+         p_id      number,
+         p_user_id number,
+         p_reason  varchar2(1000)
    );
-
    type t_gu23_del_act is record (
-      p_id        number,
-      p_user_id   number
+         p_id      number,
+         p_user_id number
    );
-
    type t_gu23_del_file is record (
-      p_file_id   number,
-      p_user_id   number
+         p_file_id number,
+         p_user_id number
    );
 
     /* ************* end Типы ************************* */

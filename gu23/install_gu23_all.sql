@@ -196,9 +196,9 @@ create or replace view xx_disl_gu23_act_v as
           a.station_id,
           ss.name as station,
           a.st_from_id,
-          ssf.name as st_from,
+          ssf.st_name as st_from,
           a.st_to_id,
-          sst.name as st_to,
+          sst.st_name as st_to,
           a.cargo_ref,
           a.reason,
           a.circumstances,
@@ -234,10 +234,10 @@ create or replace view xx_disl_gu23_act_v as
    on rc.id = a.cex_id
      left join xx_disl_stations ss
    on ss.station_id = a.station_id
-     left join xx_disl_stations ssf
-   on ssf.station_id = a.st_from_id
-     left join xx_disl_stations sst
-   on sst.station_id = a.st_to_id;
+     left join xx_etw_station_bi_v ssf
+   on ssf.st_code = a.st_from_id
+     left join xx_etw_station_bi_v sst
+   on sst.st_code = a.st_to_id; 
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ
