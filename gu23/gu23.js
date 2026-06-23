@@ -573,11 +573,20 @@ function showForm(container) {
       true,
     ),
   )
+  colRow1.appendChild(
+    formField(
+      'Ст. отправления',
+      stationSelect(refs.stations, draft.stFromId, function (val) {
+        draft.stFromId = val
+      }),
+      true,
+    ),
+  )
   cardBody.appendChild(colRow1)
 
   // строка 3: ст. отправления + ст. назначения (autocomplete)
   var colRow2 = createElement('div', { class: 'cols' })
-  colRow2.appendChild(
+  /* colRow2.appendChild(
     formField(
       'Ст. отправления',
       stationAutocomplete(
@@ -590,7 +599,7 @@ function showForm(container) {
       ),
       false,
     ),
-  )
+  ) */
   colRow2.appendChild(
     formField(
       'Ст. назначения',

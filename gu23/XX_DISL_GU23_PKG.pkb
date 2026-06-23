@@ -258,7 +258,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   -- where short_name = 'Вод'
           order by name
       ) loop
-         l_row.id := r.station_id;
+         l_row.code := r.station_id;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
