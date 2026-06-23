@@ -168,8 +168,9 @@ function showFormFields() {
   $body.append(`
     <div class="cols">
       ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`)}
-      ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}
+      
       ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`)}
+      
     </div>
   `)
 
@@ -193,7 +194,7 @@ function showFormFields() {
   $body.append(`
     ${showFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
-  `)
+    ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
   $('#sel-reason').on('change', function () {
     activeDraft.reason = this.value
