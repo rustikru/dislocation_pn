@@ -293,6 +293,7 @@ function editDraftAct(data) {
       fio: s.FIO,
       post: s.POST,
       org: s.ORG,
+      manual: !s.SIGNER_REF_ID,
     })),
     _summary: null,
     _openStarts: null,

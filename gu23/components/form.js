@@ -580,47 +580,86 @@ function showSignersFields() {
       }
     }
 
-    const currentSigner = activeDraft.signers[i]
-    const optionsHtml = signersList
-      .map(
-        (s) => `
-      <option value="${s.ID}" ${currentSigner && String(currentSigner.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>
-    `,
-      )
-      .join('')
+    const signer = activeDraft.signers[i]
+    const isManual = signer && signer.manual === true
 
-    const fieldHtml = showFormField(
-      `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${helpText}</span>`,
+    const toggleHtml = `
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button type="button" class="btn sm signer-mode-btn ${!isManual ? 'primary' : ''}" data-slot="${i}" data-mode="ref">Из справочника</button>
+        <button type="button" class="btn sm signer-mode-btn ${isManual ? 'primary' : ''}" data-slot="${i}" data-mode="manual">Вручную</button>
+      </div>
+    `
+
+    let inputHtml = ''
+    if (isManual) {
+      inputHtml = `
+        <input class="inp signer-fio" data-slot="${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}" style="margin-bottom:6px">
+        <input class="inp signer-post" data-slot="${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}" style="margin-bottom:6px">
+        <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
       `
-      <select class="inp signer-select" data-slot="${i}">
-        <option value="">— выберите —</option>
-        ${optionsHtml}
-      </select>
-    `,
-    )
+    } else {
+      const optionsHtml = signersList
+        .map(
+          (s) =>
+            `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
+        )
+        .join('')
+      inputHtml = `
+        <select class="inp signer-select" data-slot="${i}">
+          <option value="">— выберите —</option>
+          ${optionsHtml}
+        </select>
+      `
+    }
 
-    $container.append(fieldHtml)
+    $container.append(
+      showFormField(
+        `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${helpText}</span>`,
+        `<div>${toggleHtml}${inputHtml}</div>`,
+      ),
+    )
   }
+
+  $('.signer-mode-btn').on('click', function () {
+    const slot = $(this).data('slot')
+    const mode = $(this).data('mode')
+    const current = activeDraft.signers[slot]
+    if (mode === 'manual') {
+      activeDraft.signers[slot] = {
+        id: null,
+        fio: current ? current.fio : '',
+        post: current ? current.post : '',
+        org: current ? current.org : '',
+        manual: true,
+      }
+    } else {
+      activeDraft.signers[slot] = null
+    }
+    showSignersFields()
+  })
 
   $('.signer-select').on('change', function () {
     const slot = $(this).data('slot')
     const value = this.value
-    let pool =
+    const pool =
       activeDraft.type === 'other'
         ? references.signersOwnList
         : slot < 2
           ? references.signersOwnList
           : references.signersRzdList
     const matched = pool.find((x) => String(x.ID) === value)
-
     activeDraft.signers[slot] = matched
-      ? {
-          id: matched.ID,
-          fio: matched.FIO,
-          post: matched.POST,
-          org: matched.ORG,
-        }
+      ? { id: matched.ID, fio: matched.FIO, post: matched.POST, org: matched.ORG, manual: false }
       : null
+  })
+
+  $('.signer-fio, .signer-post, .signer-org').on('input', function () {
+    const slot = $(this).data('slot')
+    if (!activeDraft.signers[slot])
+      activeDraft.signers[slot] = { id: null, fio: '', post: '', org: '', manual: true }
+    if ($(this).hasClass('signer-fio')) activeDraft.signers[slot].fio = this.value
+    else if ($(this).hasClass('signer-post')) activeDraft.signers[slot].post = this.value
+    else activeDraft.signers[slot].org = this.value
   })
 }
 
@@ -673,7 +712,7 @@ function validateForm(checkSigners) {
 
   if (checkSigners) {
     const needed = activeDraft.type === 'other' ? 2 : 3
-    const filled = activeDraft.signers.filter(Boolean).length
+    const filled = activeDraft.signers.filter((s) => s && s.fio && s.fio.trim()).length
     if (filled < needed)
       errors.push(`Указано подписантов ${filled} из ${needed}`)
   }
