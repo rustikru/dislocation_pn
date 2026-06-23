@@ -372,6 +372,13 @@ function showWagonActions() {
     )
     $btn.on('click', () => loadWagonsDataFromDislocation())
     $actions.append($btn)
+
+    const $btnClear = $(
+      '<button class="btn sm primary">Очистить таблицу</button>',
+    )
+    const $wtbl = $('#wtbl').empty()
+    $btnClear.on('click', () => ClearTableDislocation())
+    $wtbl.append($btnClear)
   }
 
   if (activeDraft.type === 'end') {
@@ -385,11 +392,10 @@ function loadWagonsDataFromDislocation() {
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
 
-  if (!inputNums.length) return showToast('Введите номера вагонов', 'err')
-
   // Синхронизируем поле накладной из DOM до перерисовки
   activeDraft.waybillNumber = $('#inp-waybill').val() || ''
-
+  if (!inputNums.length && !activeDraft.waybillNumber)
+    return showToast('Введите номера вагонов или номер накладной!', 'err')
   sendApiRequest('gu23_get_wagon_info', {
     wagons: JSON.stringify(inputNums),
     waybill_no: activeDraft.waybillNumber,
@@ -397,7 +403,7 @@ function loadWagonsDataFromDislocation() {
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
-    activeDraft.wagons = []
+    //activeDraft.wagons = []
     records.forEach((row) => {
       if (String(row.FOUND) === '1') {
         foundCount++
@@ -461,6 +467,10 @@ function findOpenStayByWagons() {
   } else {
     runSearch()
   }
+}
+
+function ClearTableDislocation() {
+  $('#wtbl').empty()
 }
 
 function showWagonsTable() {
