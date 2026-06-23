@@ -66,14 +66,6 @@ create table xx_disl_gu23_ref_reason (
 );
 create sequence xx_disl_gu23_ref_reason_seq start with 1 increment by 1 nocache;
 
-
-create table xx_disl_gu23_ref_wagon_kind (
-   id     number primary key,
-   name   varchar2(128) not null,
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_wagon_kind_seq start with 1 increment by 1 nocache;
-
 create table xx_disl_gu23_counter (
    id     number primary key,
    cex_id number not null,
@@ -199,14 +191,14 @@ create or replace view xx_disl_gu23_act_v as
           a.act_type,
           a.status,
           a.cex_id,
-          rc.code                     as cex_code,
-          rc.name                     as cex_name,
+          rc.code as cex_code,
+          rc.name as cex_name,
           a.station_id,
-          ss.name                     as station,
+          ss.name as station,
           a.st_from_id,
-          ssf.name                    as st_from,
+          ssf.name as st_from,
           a.st_to_id,
-          sst.name                    as st_to,
+          sst.name as st_to,
           a.cargo_ref,
           a.reason,
           a.circumstances,
@@ -238,10 +230,14 @@ create or replace view xx_disl_gu23_act_v as
           a.modified_at,
           a.modified_by
      from xx_disl_gu23_act a
-     left join xx_disl_gu23_ref_cex rc  on rc.id           = a.cex_id
-     left join xx_disl_stations      ss  on ss.station_id   = a.station_id
-     left join xx_disl_stations      ssf on ssf.station_id  = a.st_from_id
-     left join xx_disl_stations      sst on sst.station_id  = a.st_to_id;
+     left join xx_disl_gu23_ref_cex rc
+   on rc.id = a.cex_id
+     left join xx_disl_stations ss
+   on ss.station_id = a.station_id
+     left join xx_disl_stations ssf
+   on ssf.station_id = a.st_from_id
+     left join xx_disl_stations sst
+   on sst.station_id = a.st_to_id;
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ
