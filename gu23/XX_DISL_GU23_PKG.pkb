@@ -1,5 +1,4 @@
-/* Formatted on 23.06.2026 18:00:38 (QP5 v5.417) */
-create or replace package body xx_etw.xx_disl_gu23_pkg as
+create or replace package body xx_disl_gu23_pkg as
    c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us  constant char(1) := chr(31);                -- разделитель полей
    c_rs  constant char(1) := chr(30);              -- разделитель записей

@@ -136,6 +136,7 @@ var refs = {
   cexes: [],
   reasons: [],
   stations: [],
+  stations_from: [],
   owners: [],
   kinds: [],
   cargos: [],
@@ -445,8 +446,8 @@ function newDraft(type) {
     type: type,
     status: 'draft',
     cex: (refs.cexes[0] || {}).CODE || '',
-    stationId: String((refs.stations[0] || {}).ID || ''),
-    stFromId: '',
+    stationId: String((refs.stations[0] || {}).CODE || ''),
+    stFromId: String((refs.stations_from[0] || {}).CODE || ''),
     stFromName: '',
     stToId: '',
     stToName: '',
@@ -576,7 +577,7 @@ function showForm(container) {
   colRow1.appendChild(
     formField(
       'Ст. отправления',
-      stationSelect(refs.stations, draft.stFromId, function (val) {
+      stationSelect(refs.stations_from, draft.stFromId, function (val) {
         draft.stFromId = val
       }),
       true,
@@ -2043,8 +2044,8 @@ function stationSelect(options, selectedId, onChange) {
   })
   select.appendChild(createElement('option', { value: '' }, '— выберите —'))
   ;(options || []).forEach(function (opt) {
-    var option = createElement('option', { value: String(opt.ID) }, opt.NAME)
-    if (String(opt.ID) === String(selectedId)) option.selected = true
+    var option = createElement('option', { value: String(opt.CODE) }, opt.NAME)
+    if (String(opt.CODE) === String(selectedId)) option.selected = true
     select.appendChild(option)
   })
   return select

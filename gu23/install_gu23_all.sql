@@ -185,7 +185,39 @@ create index xx_disl_gu23_hist_act_i on
 
 -- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
 -- здесь один раз. Пакет читает акты только через это представление.
-create or replace view xx_disl_gu23_act_v as
+create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
+   "ID",
+   "ACT_NUMBER",
+   "ACT_TYPE",
+   "STATUS",
+   "CEX_ID",
+   "CEX_CODE",
+   "CEX_NAME",
+   "STATION_ID",
+   "STATION",
+   "ST_FROM_ID",
+   "ST_FROM",
+   "ST_TO_ID",
+   "ST_TO",
+   "CARGO_REF",
+   "REASON",
+   "CIRCUMSTANCES",
+   "START_AT",
+   "END_AT",
+   "DUR_DAYS",
+   "DUR_HOURS",
+   "DUR_TOTAL_H",
+   "CAL_DAYS",
+   "LINKED_START_ID",
+   "LINKED_START_NUMBER",
+   "WAGON_CNT",
+   "FILE_CNT",
+   "ANNUL_REASON",
+   "CREATED_AT",
+   "CREATED_BY",
+   "MODIFIED_AT",
+   "MODIFIED_BY"
+) as
    select a.id,
           a.act_number,
           a.act_type,
@@ -233,11 +265,11 @@ create or replace view xx_disl_gu23_act_v as
      left join xx_disl_gu23_ref_cex rc
    on rc.id = a.cex_id
      left join xx_disl_stations ss
-   on ss.station_id = a.station_id
+   on to_char(ss.station_id) = a.station_id
      left join xx_etw_station_bi_v ssf
    on ssf.st_code = a.st_from_id
      left join xx_etw_station_bi_v sst
-   on sst.st_code = a.st_to_id; 
+   on sst.st_code = a.st_to_id;
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ

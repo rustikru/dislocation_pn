@@ -1,4 +1,4 @@
-create or replace package xx_etw.xx_disl_gu23_pkg as
+create or replace package xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
     PURPOSE:   Акты: составление актов (форма ГУ-23)
