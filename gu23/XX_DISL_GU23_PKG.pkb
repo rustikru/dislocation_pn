@@ -158,6 +158,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       o.status := a.status;
       o.cex := a.cex_code;
       o.station := a.station;
+      o.st_from := a.st_from;
+      o.st_to := a.st_to;
+      o.waybill_no := a.waybill_no;
+      o.cargo_ref := a.cargo_ref;
       o.reason := a.reason;
       o.circumstances := a.circumstances;
       o.start_at := to_char(
@@ -236,6 +240,68 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+    -- ст. составления — собственная станция предприятия (Углеуральская)
+   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select station_id,
+                name
+           from xx_disl_stations
+          where short_name = 'Угл'
+          order by name
+      ) loop
+         l_row.id := r.station_id;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- ст. отправления — любая станция сети
+   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select station_id,
+                name
+           from xx_disl_stations
+          order by name
+      ) loop
+         l_row.id := r.station_id;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- ст. назначения — любая станция сети
+   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select station_id,
+                name
+           from xx_disl_stations
+          order by name
+      ) loop
+         l_row.id := r.station_id;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- старое имя оставлено для обратной совместимости (= ст. составления)
    function gu23_get_ref_station return xx_disl_gu23_ref_tab
       pipelined
    is
@@ -294,6 +360,91 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+   function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select id,
+                name
+           from xx_disl_gu23_ref_cargo
+          where active = 'Y'
+          order by name
+      ) loop
+         l_row.id := r.id;
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- подписанты — работники предприятия (реальные пользователи)
+   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select du.id,
+                du.full_name as fio,
+                null as post,
+                dnt.name as org,
+                null as unit,
+                'Работник предприятия' as stype
+           from xx_disl_users du,
+                xx_disl_enterprise dnt
+          where du.open = 'Y'
+            and du.enterprise = dnt.id
+          order by du.full_name
+      ) loop
+         l_row.id := r.id;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := r.unit;
+         l_row.stype := r.stype;
+         l_row.ord_no := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- подписанты — работники станции ОАО «РЖД» (локальный справочник)
+   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select id,
+                fio,
+                post,
+                org,
+                unit,
+                stype
+           from xx_disl_gu23_ref_signer
+          where active = 'Y'
+            and stype = 'Работник станции ОАО «РЖД»'
+          order by fio
+      ) loop
+         l_row.id := r.id;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := r.unit;
+         l_row.stype := r.stype;
+         l_row.ord_no := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- старое имя оставлено для обратной совместимости (= работники предприятия)
    function gu23_get_ref_signer return xx_disl_gu23_signer_tab
       pipelined
    is
@@ -372,6 +523,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_row.status := a.status;
          l_row.cex := a.cex_code;
          l_row.station := a.station;
+         l_row.st_from := a.st_from;
+         l_row.st_to := a.st_to;
+         l_row.waybill_no := a.waybill_no;
+         l_row.cargo_ref := a.cargo_ref;
          l_row.reason := a.reason;
          l_row.circumstances := a.circumstances;
          l_row.start_at := to_char(
@@ -424,6 +579,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_row.status := a.status;
          l_row.cex := a.cex_code;
          l_row.station := a.station;
+         l_row.st_from := a.st_from;
+         l_row.st_to := a.st_to;
+         l_row.waybill_no := a.waybill_no;
+         l_row.cargo_ref := a.cargo_ref;
          l_row.reason := a.reason;
          l_row.circumstances := a.circumstances;
          l_row.start_at := to_char(
@@ -656,8 +815,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
     -- заменить тело на реальный запрос к источнику
     -- ----------------------------------------------------------------
    function gu23_get_wagon_info (
-      p_wagons  in clob,
-      p_station in varchar2 default null
+      p_wagons     in clob,
+      p_station    in varchar2 default null,
+      p_waybill_no in varchar2 default null,
+      p_cargo_ref  in varchar2 default null
    ) return xx_disl_gu23_wagon_tab
       pipelined
    is
@@ -785,7 +946,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                l_row.kind := d.kind;
                l_row.st_from := d.st_from;
                l_row.st_to := d.st_to;
-               l_row.cargo := d.cargo;
+                    -- если груз задан в контексте запроса (из формы) — берём его
+               l_row.cargo := nvl(
+                  p_cargo_ref,
+                  d.cargo
+               );
                l_row.weight := d.weight;
                l_row.found := 1;
                pipe row ( l_row );
@@ -910,6 +1075,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_status          in varchar2,
       p_cex             in varchar2,
       p_station         in varchar2,
+      p_st_from         in varchar2,
+      p_st_to           in varchar2,
+      p_waybill_no      in varchar2,
+      p_cargo_ref       in varchar2,
       p_reason          in varchar2,
       p_circumstances   in varchar2,
       p_start_at        in varchar2,
@@ -1070,6 +1239,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             status,
             cex_code,
             station,
+            st_from,
+            st_to,
+            waybill_no,
+            cargo_ref,
             reason,
             circumstances,
             start_at,
@@ -1089,6 +1262,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                     p_status,
                     p_cex,
                     p_station,
+                    p_st_from,
+                    p_st_to,
+                    p_waybill_no,
+                    p_cargo_ref,
                     p_reason,
                     p_circumstances,
                     v_start,
@@ -1140,6 +1317,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 status = p_status,
                 cex_code = p_cex,
                 station = p_station,
+                st_from = p_st_from,
+                st_to = p_st_to,
+                waybill_no = p_waybill_no,
+                cargo_ref = p_cargo_ref,
                 reason = p_reason,
                 circumstances = p_circumstances,
                 start_at = v_start,
@@ -1212,7 +1393,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   vw_weight
                  from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
                   vw_no,
-                  p_station
+                  p_station,
+                  p_waybill_no,
+                  p_cargo_ref
                ) )
                 where rownum = 1;
             exception

@@ -6,6 +6,10 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
     Ver        Date        Author           Description
     ---------  ----------  ---------------  ------------------------------------
     1.0        23.06.2026  BekmansurovRR    1. Created this package.
+    1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
+                                              waybill_no, cargo_ref; раздельные
+                                              справочники станций и подписантов;
+                                              справочник грузов.
  ******************************************************************************/
 
     /* ************* Begin Типы ************************* */
@@ -34,7 +38,11 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          act_type            varchar2(16),
          status              varchar2(16),
          cex                 varchar2(32),
-         station             varchar2(128),
+         station             varchar2(128),    -- ст. составления
+         st_from             varchar2(128),    -- ст. отправления
+         st_to               varchar2(128),    -- ст. назначения
+         waybill_no          varchar2(64),     -- № накладной
+         cargo_ref           varchar2(256),    -- груз
          reason              varchar2(512),
          circumstances       varchar2(4000),
          start_at            varchar2(20),
@@ -114,6 +122,17 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
+    -- ---- Справочники станций (три отдельные процедуры по назначению)
+   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab   -- ст. составления
+      pipelined;
+
+   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab           -- ст. отправления
+      pipelined;
+
+   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab             -- ст. назначения
+      pipelined;
+
+    -- старое имя оставлено для обратной совместимости
    function gu23_get_ref_station return xx_disl_gu23_ref_tab
       pipelined;
 
@@ -123,6 +142,17 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
       pipelined;
 
+   function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
+      pipelined;
+
+    -- ---- Справочники подписантов (две отдельные процедуры по типу)
+   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab     -- работники предприятия
+      pipelined;
+
+   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab     -- работники станции ОАО «РЖД»
+      pipelined;
+
+    -- старое имя оставлено для обратной совместимости
    function gu23_get_ref_signer return xx_disl_gu23_signer_tab
       pipelined;
 
@@ -177,9 +207,12 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       pipelined;
 
     -- ---- Интеграция Oracle BI / получить данные по вагонам из дислокации ----
+    -- p_waybill_no и p_cargo_ref передаются как контекст запроса к Дислокации
    function gu23_get_wagon_info (
-      p_wagons  in clob,
-      p_station in varchar2 default null
+      p_wagons     in clob,
+      p_station    in varchar2 default null,
+      p_waybill_no in varchar2 default null,
+      p_cargo_ref  in varchar2 default null
    ) return xx_disl_gu23_wagon_tab
       pipelined;
 
@@ -210,7 +243,11 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_type            in varchar2, -- start / end / other
       p_status          in varchar2, -- draft / active
       p_cex             in varchar2,
-      p_station         in varchar2,
+      p_station         in varchar2, -- ст. составления
+      p_st_from         in varchar2, -- ст. отправления
+      p_st_to           in varchar2, -- ст. назначения
+      p_waybill_no      in varchar2, -- № накладной
+      p_cargo_ref       in varchar2, -- груз
       p_reason          in varchar2,
       p_circumstances   in varchar2,
       p_start_at        in varchar2, -- 'YYYY-MM-DD HH24:MI' или NULL

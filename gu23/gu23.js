@@ -40,7 +40,7 @@ function api(action, data) {
     url: '/data.php',
     type: 'POST',
     dataType: 'json',
-    data: $.extend({ ajax_action: action }, data || {}),
+    data: $.extend({ ajax_action: action }, data || {})
   })
 }
 
@@ -87,7 +87,7 @@ function calcDuration(startMs, endMs) {
     totalHours: diff / 3600000,
     days: days,
     hours: hours,
-    calendarDays: Math.ceil(diff / 86400000),
+    calendarDays: Math.ceil(diff / 86400000)
   }
 }
 
@@ -107,14 +107,14 @@ function hoursText(duration) {
 var actTypes = {
   start: { label: 'Начало простоя', className: 'typ-start' },
   end: { label: 'Окончание простоя', className: 'typ-end' },
-  other: { label: 'Прочий акт', className: 'typ-other' },
+  other: { label: 'Прочий акт', className: 'typ-other' }
 }
 
 var actStatuses = {
   draft: { label: 'Черновик', className: 'st-draft' },
   active: { label: 'Действующий', className: 'st-signed' },
   closed: { label: 'Закрыт', className: 'st-closed' },
-  annulled: { label: 'Аннулирован', className: 'st-annulled' },
+  annulled: { label: 'Аннулирован', className: 'st-annulled' }
 }
 
 function statusChip(status) {
@@ -136,9 +136,14 @@ var refs = {
   cexes: [],
   reasons: [],
   stations: [],
+  stationsFrom: [],
+  stationsTo: [],
   owners: [],
   kinds: [],
+  cargos: [],
   signers: [],
+  signersOwn: [],
+  signersRzd: []
 }
 
 var state = { page: 'archive', selectedId: null }
@@ -206,7 +211,8 @@ function drawNav() {
 
   nav.appendChild(
     createElement('div', {
-      class: 'foot'
+      class: 'foot',
+      html: ''
     })
   )
 }
@@ -234,7 +240,7 @@ function draw() {
     archive: showArchive,
     new: showForm,
     card: showCard,
-    wsearch: showWagonSearch,
+    wsearch: showWagonSearch
   }
 
   var renderFunc = views[state.page] || showArchive
@@ -261,8 +267,8 @@ function showArchive(container) {
       { class: 'phead' },
       createElement('h1', {}, 'Архив актов'),
       createElement('p', {}, ''),
-      createElement('div', { class: 'spacer' }),
-    ),
+      createElement('div', { class: 'spacer' })
+    )
   )
 
   var filterState = { q: '', type: '', status: '', cex: '' }
@@ -277,10 +283,10 @@ function showArchive(container) {
           'div',
           {
             class: 'cardpad muted',
-            style: 'border-top:1px solid var(--line);font-size:12px',
+            style: 'border-top:1px solid var(--line);font-size:12px'
           },
-          'Найдено актов: ' + (list ? list.length : 0),
-        ),
+          'Найдено актов: ' + (list ? list.length : 0)
+        )
       )
     })
   }
@@ -289,7 +295,7 @@ function showArchive(container) {
   var searchBox = createElement('div', { class: 'searchbox' })
   var searchInput = createElement('input', {
     class: 'inp',
-    placeholder: 'Номер акта, номер вагона, причина…',
+    placeholder: 'Номер акта, номер вагона, причина…'
   })
 
   searchInput.addEventListener('input', function () {
@@ -308,8 +314,8 @@ function showArchive(container) {
       function (val) {
         filterState.type = val
         loadData()
-      },
-    ),
+      }
+    )
   )
   filtersRow.appendChild(
     makeFilter(
@@ -318,8 +324,8 @@ function showArchive(container) {
       function (val) {
         filterState.status = val
         loadData()
-      },
-    ),
+      }
+    )
   )
   filtersRow.appendChild(
     makeFilter(
@@ -328,8 +334,8 @@ function showArchive(container) {
       function (val) {
         filterState.cex = val
         loadData()
-      },
-    ),
+      }
+    )
   )
 
   container.appendChild(filtersRow)
@@ -342,7 +348,7 @@ function makeFilter(values, labels, onChange) {
     class: 'inp',
     onchange: function (e) {
       onChange(e.target.value)
-    },
+    }
   })
   values.forEach(function (val, idx) {
     select.appendChild(createElement('option', { value: val }, labels[idx]))
@@ -366,11 +372,11 @@ function makeActsTable(list) {
           {
             colspan: 7,
             class: 'muted',
-            style: 'padding:24px;text-align:center',
+            style: 'padding:24px;text-align:center'
           },
-          'Актов не найдено',
-        ),
-      ),
+          'Актов не найдено'
+        )
+      )
     )
   }
 
@@ -378,7 +384,7 @@ function makeActsTable(list) {
     var tr = createElement('tr', {
       onclick: function () {
         openAct(act.ID)
-      },
+      }
     })
     tr.innerHTML =
       '<td class="num">' +
@@ -417,6 +423,10 @@ function newDraft(type) {
     status: 'draft',
     cex: (refs.cexes[0] || {}).CODE || '',
     station: 'Углеуральская',
+    stFrom: '',
+    stTo: '',
+    waybillNo: '',
+    cargoRef: '',
     reason: '',
     circumstances: '',
     wagons: [],
@@ -426,7 +436,7 @@ function newDraft(type) {
     linkedStartId: '',
     linkedStartNumber: '',
     _summary: null,
-    _openStarts: null,
+    _openStarts: null
   }
 }
 
@@ -440,21 +450,21 @@ function showForm(container) {
       createElement(
         'h1',
         {},
-        draft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23',
+        draft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23'
       ),
       createElement('p', {}, ''),
-      createElement('div', { class: 'spacer' }),
-    ),
+      createElement('div', { class: 'spacer' })
+    )
   )
 
   var seg = createElement('div', {
     class: 'seg',
-    style: 'margin-bottom:18px',
+    style: 'margin-bottom:18px'
   })
   ;[
     ['start', 'Начало простоя'],
     ['end', 'Окончание простоя'],
-    ['other', 'Прочий акт'],
+    ['other', 'Прочий акт']
   ].forEach(function (item) {
     seg.appendChild(
       createElement(
@@ -464,10 +474,10 @@ function showForm(container) {
           onclick: function () {
             draft = newDraft(item[0])
             draw()
-          },
+          }
         },
-        item[1],
-      ),
+        item[1]
+      )
     )
   })
   if (!draft.id) container.appendChild(seg)
@@ -478,6 +488,7 @@ function showForm(container) {
 
   if (draft.type === 'end') addEndPicker(cardBody)
 
+  // строка 1: цех + ст. составления
   var colRow1 = createElement('div', { class: 'cols' })
   colRow1.appendChild(
     formField(
@@ -485,26 +496,87 @@ function showForm(container) {
       selectInput(cexCodes(), draft.cex, function (val) {
         draft.cex = val
       }),
-      true,
-    ),
+      true
+    )
   )
   colRow1.appendChild(
     formField(
-      'Станция',
+      'Ст. составления',
       selectInput(
         namesOf(refs.stations),
         draft.station,
         function (val) {
           draft.station = val
-        },
+        }
       ),
-      true,
-    ),
+      true
+    )
   )
   cardBody.appendChild(colRow1)
 
+  // строка 2: ст. отправления + ст. назначения
   var colRow2 = createElement('div', { class: 'cols' })
   colRow2.appendChild(
+    formField(
+      'Ст. отправления',
+      selectInput(
+        [''].concat(namesOf(refs.stationsFrom)),
+        draft.stFrom,
+        function (val) {
+          draft.stFrom = val
+        }
+      ),
+      false
+    )
+  )
+  colRow2.appendChild(
+    formField(
+      'Ст. назначения',
+      selectInput(
+        [''].concat(namesOf(refs.stationsTo)),
+        draft.stTo,
+        function (val) {
+          draft.stTo = val
+        }
+      ),
+      false
+    )
+  )
+  cardBody.appendChild(colRow2)
+
+  // строка 3: № накладной + груз
+  var colRow3 = createElement('div', { class: 'cols' })
+  colRow3.appendChild(
+    formField(
+      '№ накладной',
+      createElement('input', {
+        class: 'inp',
+        value: draft.waybillNo || '',
+        onchange: function (e) {
+          draft.waybillNo = e.target.value
+        }
+      }),
+      false
+    )
+  )
+  colRow3.appendChild(
+    formField(
+      'Груз',
+      selectInput(
+        [''].concat(namesOf(refs.cargos)),
+        draft.cargoRef,
+        function (val) {
+          draft.cargoRef = val
+        }
+      ),
+      false
+    )
+  )
+  cardBody.appendChild(colRow3)
+
+  // строка 4: причина + дата
+  var colRow4 = createElement('div', { class: 'cols' })
+  colRow4.appendChild(
     formField(
       'Причина составления',
       selectInput(
@@ -512,36 +584,36 @@ function showForm(container) {
         draft.reason,
         function (val) {
           draft.reason = val
-        },
+        }
       ),
-      true,
-    ),
+      true
+    )
   )
 
   if (draft.type === 'start') {
-    colRow2.appendChild(
+    colRow4.appendChild(
       formField(
         'Дата и время начала простоя',
         dateInput(draft.startAt, function (val) {
           draft.startAt = val
         }),
-        true,
-      ),
+        true
+      )
     )
   }
   if (draft.type === 'end') {
-    colRow2.appendChild(
+    colRow4.appendChild(
       formField(
         'Дата и время окончания простоя',
         dateInput(draft.endAt, function (val) {
           draft.endAt = val
           if (val) draw()
         }),
-        true,
-      ),
+        true
+      )
     )
   }
-  cardBody.appendChild(colRow2)
+  cardBody.appendChild(colRow4)
 
   if (draft.type === 'end' && draft.startAt) {
     var badDate =
@@ -550,8 +622,8 @@ function showForm(container) {
     cardBody.appendChild(
       createElement('div', {
         class: 'banner ' + (badDate ? 'err' : 'info'),
-        html: durPreview(),
-      }),
+        html: durPreview()
+      })
     )
   }
 
@@ -561,8 +633,8 @@ function showForm(container) {
       textArea(draft.circumstances, function (val) {
         draft.circumstances = val
       }),
-      true,
-    ),
+      true
+    )
   )
 
   cardBody.appendChild(createElement('div', { style: 'height:6px' }))
@@ -570,40 +642,25 @@ function showForm(container) {
     createElement(
       'label',
       {
-        style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px',
+        style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px'
       },
-      'Вагоны',
-    ),
+      'Вагоны'
+    )
   )
 
   var wagonsInput = createElement('textarea', {
     class: 'inp',
     style: 'min-height:56px',
     placeholder:
-      'Введите номера вагонов: через запятую, пробел, построчно или вставьте из Excel…',
+      'Введите номера вагонов: через запятую, пробел, построчно или вставьте из Excel…'
   })
   cardBody.appendChild(wagonsInput)
 
   var actions = createElement('div', {
-    style: 'display:flex;gap:9px;flex-wrap:wrap;margin:10px 0',
+    style: 'display:flex;gap:9px;flex-wrap:wrap;margin:10px 0'
   })
 
-  actions.appendChild(
-    createElement(
-      'button',
-      {
-        class: 'btn sm',
-        onclick: function () {
-          addWagons(wagonsInput.value)
-          wagonsInput.value = ''
-          draw()
-        },
-      },
-      ' Добавить вагоны',
-    ),
-  )
-
-  if (draft.type === 'start') {
+  if (draft.type === 'start' || draft.type === 'other') {
     actions.appendChild(
       createElement(
         'button',
@@ -611,10 +668,10 @@ function showForm(container) {
           class: 'btn sm primary',
           onclick: function () {
             loadWagonInfo(wagonsInput.value)
-          },
+          }
         },
-        'Запросить данные из Дислокации',
-      ),
+        'Заполнить данные из Дислокации'
+      )
     )
   }
   if (draft.type === 'end') {
@@ -626,10 +683,10 @@ function showForm(container) {
           onclick: function () {
             findOpenByWagons(wagonsInput.value)
             wagonsInput.value = ''
-          },
+          }
         },
-        'Найти открытый простой',
-      ),
+        'Найти открытый простой'
+      )
     )
   }
   cardBody.appendChild(actions)
@@ -640,8 +697,8 @@ function showForm(container) {
     cardBody.appendChild(
       createElement('div', {
         class: 'banner ' + summaryClass,
-        html: draft._summary.text,
-      }),
+        html: draft._summary.text
+      })
     )
   }
 
@@ -653,7 +710,7 @@ function showForm(container) {
   var cardFooter = createElement('div', {
     class: 'cardpad',
     style:
-      'border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end',
+      'border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end'
   })
 
   cardFooter.appendChild(
@@ -664,10 +721,10 @@ function showForm(container) {
         onclick: function () {
           draft = null
           goTo('archive')
-        },
+        }
       },
-      'Отмена',
-    ),
+      'Отмена'
+    )
   )
   cardFooter.appendChild(
     createElement(
@@ -676,10 +733,10 @@ function showForm(container) {
         class: 'btn',
         onclick: function () {
           saveAct('draft')
-        },
+        }
       },
-      'Сохранить черновик',
-    ),
+      'Сохранить черновик'
+    )
   )
   cardFooter.appendChild(
     createElement(
@@ -688,10 +745,10 @@ function showForm(container) {
         class: 'btn primary',
         onclick: function () {
           saveAct('active')
-        },
+        }
       },
-      'Сохранить и отправить на подписание',
-    ),
+      'Сохранить и отправить на подписание'
+    )
   )
 
   cardElement.appendChild(cardFooter)
@@ -708,15 +765,15 @@ function addEndPicker(box) {
   box.appendChild(
     createElement('div', {
       class: 'banner info',
-      html: 'Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.',
-    }),
+      html: 'Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.'
+    })
   )
 
   var row = createElement('div', { class: 'frow' })
   row.appendChild(
     createElement('label', {
-      html: 'Открытый акт начала простоя <span class="req">*</span>',
-    }),
+      html: 'Открытый акт начала простоя <span class="req">*</span>'
+    })
   )
 
   var select = createElement('select', {
@@ -724,10 +781,10 @@ function addEndPicker(box) {
     onchange: function (e) {
       pickStart(e.target.value)
       draw()
-    },
+    }
   })
   select.appendChild(
-    createElement('option', { value: '' }, '— выберите открытый акт начала —'),
+    createElement('option', { value: '' }, '— выберите открытый акт начала —')
   )
   row.appendChild(select)
   row.appendChild(createElement('div', { class: 'hint' }))
@@ -753,7 +810,7 @@ function fillEndList(sel) {
     var option = createElement(
       'option',
       { value: act.ID },
-      act.ACT_NUMBER + ' · ' + wagonNumbers + ' · ' + act.REASON,
+      act.ACT_NUMBER + ' · ' + wagonNumbers + ' · ' + act.REASON
     )
     if (String(draft.linkedStartId) === String(act.ID))
       option.selected = true
@@ -776,6 +833,8 @@ function pickStart(id) {
   draft.startAt = toInputDate(selectedAct.START_AT)
   draft.cex = selectedAct.CEX
   draft.station = selectedAct.STATION
+  draft.stFrom = selectedAct.ST_FROM || ''
+  draft.stTo = selectedAct.ST_TO || ''
   draft.reason = selectedAct.REASON
   draft.wagons = (selectedAct.WAGONS || []).map(function (w) {
     return {
@@ -785,7 +844,7 @@ function pickStart(id) {
       from: w.ST_FROM,
       to: w.ST_TO,
       cargo: w.CARGO,
-      weight: w.WEIGHT,
+      weight: w.WEIGHT
     }
   })
 
@@ -797,7 +856,7 @@ function pickStart(id) {
       selectedAct.ACT_NUMBER +
       ': вагоны, причина, цех, станция, дата начала ' +
       formatDateTime(selectedAct.START_AT) +
-      '.',
+      '.'
   }
 }
 
@@ -833,7 +892,7 @@ function findOpenByWagons(rawText) {
         'Введённые вагоны относятся к разным актам начала (' +
           numbers +
           '). Выберите вагоны одного акта.',
-        'err',
+        'err'
       )
     } else {
       var act = foundActs[ids[0]]
@@ -893,7 +952,7 @@ function addWagons(rawText) {
         from: '',
         to: '',
         cargo: '',
-        weight: '',
+        weight: ''
       })
       added++
     }
@@ -907,7 +966,7 @@ function addWagons(rawText) {
       nums.length +
       ' вагон(ов), добавлено новых: ' +
       added +
-      '. Дубли и пустые строки исключены.',
+      '. Дубли и пустые строки исключены.'
   }
 }
 
@@ -927,6 +986,8 @@ function loadWagonInfo(rawText) {
   api('gu23_get_wagon_info', {
     wagons: JSON.stringify(nums),
     station: draft.station,
+    waybill_no: draft.waybillNo || '',
+    cargo_ref: draft.cargoRef || ''
   }).done(function (rows) {
     rows = rows || []
     var found = 0
@@ -943,7 +1004,7 @@ function loadWagonInfo(rawText) {
           from: '',
           to: '',
           cargo: '',
-          weight: '',
+          weight: ''
         }
         draft.wagons.push(wagon)
       }
@@ -969,12 +1030,12 @@ function loadWagonInfo(rawText) {
         ' вагонов.' +
         (draft.station !== 'Углеуральская'
           ? ' <br> Внимание: данные подтягиваются только если станция операции — Углеуральская.'
-          : ''),
+          : '')
     }
 
     showToast(
       'Получено ' + found + ' из ' + nums.length,
-      found ? 'ok' : 'err',
+      found ? 'ok' : 'err'
     )
     draw()
   })
@@ -985,12 +1046,12 @@ function makeWagonsTable() {
     return createElement(
       'div',
       { class: 'banner info' },
-      'Вагоны не добавлены. Введите номера выше и нажмите «Запросить в Oracle BI / Дислокация».',
+      'Вагоны не добавлены. Введите номера выше и нажмите «Заполнить данные из Дислокации».'
     )
   }
 
   var wrap = createElement('div', {
-    style: 'overflow:auto;border:1px solid var(--line);border-radius:7px',
+    style: 'overflow:auto;border:1px solid var(--line);border-radius:7px'
   })
   var table = createElement('table', { class: 'wtbl' })
   var isEndType = draft.type === 'end'
@@ -1012,13 +1073,13 @@ function makeWagonsTable() {
             'span',
             {
               style:
-                'padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;',
+                'padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;'
             },
-            wagon[fieldKey] || '—',
-          ),
+            wagon[fieldKey] || '—'
+          )
         )
         tr.appendChild(td)
-      },
+      }
     )
 
     if (isEndType) {
@@ -1043,11 +1104,11 @@ function makeWagonsTable() {
             onclick: function () {
               draft.wagons.splice(idx, 1)
               draw()
-            },
+            }
           },
-          '×',
-        ),
-      ),
+          '×'
+        )
+      )
     )
     tbody.appendChild(tr)
   })
@@ -1064,8 +1125,8 @@ function makeWagonsTable() {
       { class: 'hint', style: 'margin-top:6px' },
       'Вагонов в акте: ' +
         draft.wagons.length +
-        '. В печатной форме строк будет столько же.',
-    ),
+        '. В печатной форме строк будет столько же.'
+    )
   )
 }
 
@@ -1077,25 +1138,31 @@ function makeSigners() {
     createElement(
       'label',
       {
-        style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px',
+        style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px'
       },
-      'Подписанты',
-    ),
+      'Подписанты'
+    )
   )
-
-  var signers = refs.signers || []
 
   for (var i = 0; i < need; i++) {
     ;(function (idx) {
+      var isOtherType = draft.type === 'other'
+      var signers, helpText
+
+      if (isOtherType) {
+        signers = refs.signersOwn || []
+        helpText = idx === 0 ? 'Представитель предприятия' : 'Второй подписант'
+      } else {
+        if (idx < 2) {
+          signers = refs.signersOwn || []
+          helpText = 'Работник предприятия'
+        } else {
+          signers = refs.signersRzd || []
+          helpText = 'Работник станции ОАО «РЖД»'
+        }
+      }
+
       var activeSigner = draft.signers[idx]
-      var helpText =
-        draft.type === 'other'
-          ? idx === 0
-            ? 'Представитель предприятия'
-            : 'Второй подписант'
-          : idx < 2
-            ? 'Работник предприятия'
-            : 'Работник станции ОАО «РЖД»'
 
       var row = createElement('div', { class: 'frow' })
       row.appendChild(
@@ -1105,8 +1172,8 @@ function makeSigners() {
             (idx + 1) +
             ' <span class="muted" style="font-weight:400">· ' +
             helpText +
-            '</span>',
-        }),
+            '</span>'
+        })
       )
 
       var select = createElement('select', {
@@ -1118,7 +1185,7 @@ function makeSigners() {
           draft.signers[idx] = match
             ? { id: match.ID, fio: match.FIO, post: match.POST, org: match.ORG }
             : null
-        },
+        }
       })
 
       select.appendChild(createElement('option', { value: '' }, '— выберите —'))
@@ -1126,7 +1193,7 @@ function makeSigners() {
         var option = createElement(
           'option',
           { value: signer.ID },
-          signer.FIO + ' · ' + (signer.POST || '') + ' · ' + (signer.ORG || ''),
+          signer.FIO + ' · ' + (signer.POST || '') + ' · ' + (signer.ORG || '')
         )
         if (activeSigner && String(activeSigner.id) === String(signer.ID))
           option.selected = true
@@ -1170,7 +1237,7 @@ function checkForm(checkSigners) {
     var filled = draft.signers.filter(Boolean).length
     if (filled < need)
       errors.push(
-        'Указано подписантов ' + filled + ' из ' + need,
+        'Указано подписантов ' + filled + ' из ' + need
       )
   }
   return errors
@@ -1190,6 +1257,10 @@ function saveAct(status, skipWarning) {
     status: status,
     cex: draft.cex,
     station: draft.station,
+    st_from: draft.stFrom || '',
+    st_to: draft.stTo || '',
+    waybill_no: draft.waybillNo || '',
+    cargo_ref: draft.cargoRef || '',
     reason: draft.reason,
     circumstances: draft.circumstances,
     start_at: toDbDate(draft.startAt),
@@ -1197,7 +1268,7 @@ function saveAct(status, skipWarning) {
     linked_start_id: draft.linkedStartId || '',
     wagons: JSON.stringify(draft.wagons),
     signers: JSON.stringify(draft.signers.filter(Boolean)),
-    force: skipWarning ? 'Y' : 'N',
+    force: skipWarning ? 'Y' : 'N'
   }
 
   api('gu23_save_act', payload).done(function (response) {
@@ -1207,7 +1278,7 @@ function saveAct(status, skipWarning) {
           ? 'Черновик сохранён'
           : 'Акт зарегистрирован') +
           (response.number ? ', № ' + response.number : ''),
-        'ok',
+        'ok'
       )
       draft = null
       openAct(response.id)
@@ -1219,7 +1290,7 @@ function saveAct(status, skipWarning) {
           serverMsg + '. Зарегстировать акт ?',
           function () {
             saveAct(status, true)
-          },
+          }
         )
       } else {
         showToast(serverMsg, 'err')
@@ -1234,7 +1305,7 @@ function showCard(container) {
     container.innerHTML = ''
     if (!data || !data.ok) {
       container.appendChild(
-        createElement('div', { class: 'empty-state' }, 'Акт не найден'),
+        createElement('div', { class: 'empty-state' }, 'Акт не найден')
       )
       return
     }
@@ -1254,23 +1325,23 @@ function buildCard(container, data) {
           class: 'btn sm ghost',
           onclick: function () {
             goTo('archive')
-          },
+          }
         },
-        '← Архив',
+        '← Архив'
       ),
       createElement(
         'h1',
         { style: 'font-family:var(--mono);font-size:18px' },
-        act.ACT_NUMBER,
+        act.ACT_NUMBER
       ),
       createElement('span', { html: typeChip(act.ACT_TYPE) }),
       createElement('span', { html: statusChip(act.STATUS) }),
-      createElement('div', { class: 'spacer' }),
-    ),
+      createElement('div', { class: 'spacer' })
+    )
   )
 
   var toolbar = createElement('div', {
-    style: 'display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px',
+    style: 'display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px'
   })
   toolbar.appendChild(
     createElement(
@@ -1279,10 +1350,10 @@ function buildCard(container, data) {
         class: 'btn',
         onclick: function () {
           window.print()
-        },
+        }
       },
-      '⎙ Печать',
-    ),
+      '⎙ Печать'
+    )
   )
 
   if (act.STATUS === 'draft') {
@@ -1293,10 +1364,10 @@ function buildCard(container, data) {
           class: 'btn primary',
           onclick: function () {
             editAct(data)
-          },
+          }
         },
-        '✎ Редактировать',
-      ),
+        '✎ Редактировать'
+      )
     )
     toolbar.appendChild(
       createElement(
@@ -1305,10 +1376,10 @@ function buildCard(container, data) {
           class: 'btn danger',
           onclick: function () {
             delDraft(act)
-          },
+          }
         },
-        '🗑 Удалить черновик',
-      ),
+        '🗑 Удалить черновик'
+      )
     )
   }
   if (act.STATUS === 'active' || act.STATUS === 'closed') {
@@ -1319,10 +1390,10 @@ function buildCard(container, data) {
           class: 'btn danger',
           onclick: function () {
             annulAct(act)
-          },
+          }
         },
-        '⊘ Аннулировать',
-      ),
+        '⊘ Аннулировать'
+      )
     )
   }
   container.appendChild(toolbar)
@@ -1331,14 +1402,14 @@ function buildCard(container, data) {
     container.appendChild(
       createElement('div', {
         class: 'banner err',
-        html: '<b>Аннулирован.</b> Причина: ' + escapeHtml(act.ANNUL_REASON),
-      }),
+        html: '<b>Аннулирован.</b> Причина: ' + escapeHtml(act.ANNUL_REASON)
+      })
     )
   }
 
   var grid = createElement('div', {
     style:
-      'display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start',
+      'display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start'
   })
 
   var left = createElement('div', {})
@@ -1347,13 +1418,13 @@ function buildCard(container, data) {
     createElement(
       'div',
       { class: 'cardpad', style: 'border-bottom:1px solid var(--line)' },
-      createElement('b', {}, 'Реквизиты акта'),
-    ),
+      createElement('b', {}, 'Реквизиты акта')
+    )
   )
 
   var dl = createElement('dl', {
     class: 'kv',
-    style: 'padding:16px 18px',
+    style: 'padding:16px 18px'
   })
   function appendRow(label, htmlContent) {
     dl.appendChild(createElement('dt', {}, label))
@@ -1362,20 +1433,24 @@ function buildCard(container, data) {
 
   appendRow('Тип акта', actTypes[act.ACT_TYPE].label)
   appendRow('Цех составления', escapeHtml(act.CEX))
-  appendRow('Станция', escapeHtml(act.STATION))
+  appendRow('Ст. составления', escapeHtml(act.STATION))
+  if (act.ST_FROM) appendRow('Ст. отправления', escapeHtml(act.ST_FROM))
+  if (act.ST_TO) appendRow('Ст. назначения', escapeHtml(act.ST_TO))
+  if (act.WAYBILL_NO) appendRow('№ накладной', escapeHtml(act.WAYBILL_NO))
+  if (act.CARGO_REF) appendRow('Груз', escapeHtml(act.CARGO_REF))
   appendRow('Причина', escapeHtml(act.REASON))
   appendRow('Дата составления', formatDateTime(act.CREATED_AT))
 
   if (act.ACT_TYPE !== 'other') {
     appendRow(
       'Начало простоя',
-      '<span class="mono">' + formatDateTime(act.START_AT) + '</span>',
+      '<span class="mono">' + formatDateTime(act.START_AT) + '</span>'
     )
   }
   if (act.ACT_TYPE === 'end') {
     appendRow(
       'Окончание простоя',
-      '<span class="mono">' + formatDateTime(act.END_AT) + '</span>',
+      '<span class="mono">' + formatDateTime(act.END_AT) + '</span>'
     )
     appendRow(
       'Длительность',
@@ -1387,7 +1462,7 @@ function buildCard(container, data) {
         (act.DUR_TOTAL_H || 0) +
         ' ч. · ' +
         (act.CAL_DAYS || 0) +
-        ' кал. дн.',
+        ' кал. дн.'
     )
     if (act.LINKED_START_ID) {
       appendRow(
@@ -1396,7 +1471,7 @@ function buildCard(container, data) {
           act.LINKED_START_ID +
           ');return false">' +
           escapeHtml(act.LINKED_START_NUMBER || '—') +
-          '</a>',
+          '</a>'
       )
     }
   }
@@ -1408,14 +1483,14 @@ function buildCard(container, data) {
 
   var wagonsCard = createElement('div', {
     class: 'card',
-    style: 'margin-top:16px',
+    style: 'margin-top:16px'
   })
   wagonsCard.appendChild(
     createElement(
       'div',
       { class: 'cardpad', style: 'border-bottom:1px solid var(--line)' },
-      createElement('b', {}, 'Вагоны (' + data.wagons.length + ')'),
-    ),
+      createElement('b', {}, 'Вагоны (' + data.wagons.length + ')')
+    )
   )
 
   var wagonsTable = createElement('table', { class: 'tbl' })
@@ -1448,7 +1523,7 @@ function buildCard(container, data) {
   })
   wagonsTable.appendChild(wagonsTbody)
   wagonsCard.appendChild(
-    createElement('div', { style: 'overflow:auto' }, wagonsTable),
+    createElement('div', { style: 'overflow:auto' }, wagonsTable)
   )
   left.appendChild(wagonsCard)
   grid.appendChild(left)
@@ -1459,14 +1534,14 @@ function buildCard(container, data) {
     createElement(
       'div',
       { class: 'cardpad', style: 'border-bottom:1px solid var(--line)' },
-      createElement('b', {}, 'Подписанты'),
-    ),
+      createElement('b', {}, 'Подписанты')
+    )
   )
 
   var signersBox = createElement('div', { class: 'cardpad' })
   if (!data.signers.length) {
     signersBox.appendChild(
-      createElement('div', { class: 'muted' }, 'Подписанты не назначены'),
+      createElement('div', { class: 'muted' }, 'Подписанты не назначены')
     )
   }
 
@@ -1480,15 +1555,15 @@ function buildCard(container, data) {
           'div',
           { style: 'flex:1' },
           createElement('div', {
-            html: '<b>' + escapeHtml(signer.FIO) + '</b>',
+            html: '<b>' + escapeHtml(signer.FIO) + '</b>'
           }),
           createElement(
             'div',
             { class: 'muted', style: 'font-size:11.5px' },
-            (signer.POST || '') + ' · ' + (signer.ORG || ''),
-          ),
-        ),
-      ),
+            (signer.POST || '') + ' · ' + (signer.ORG || '')
+          )
+        )
+      )
     )
   })
   signersCard.appendChild(signersBox)
@@ -1496,17 +1571,17 @@ function buildCard(container, data) {
 
   var filesCard = createElement('div', {
     class: 'card',
-    style: 'margin-top:16px',
+    style: 'margin-top:16px'
   })
   var filesHead = createElement(
     'div',
     {
       class: 'cardpad',
       style:
-        'border-bottom:1px solid var(--line);display:flex;align-items:center',
+        'border-bottom:1px solid var(--line);display:flex;align-items:center'
     },
     createElement('b', {}, 'Приложения'),
-    createElement('div', { style: 'flex:1' }),
+    createElement('div', { style: 'flex:1' })
   )
 
   if (act.STATUS !== 'annulled') {
@@ -1515,7 +1590,7 @@ function buildCard(container, data) {
       type: 'file',
       multiple: true,
       style: 'display:none',
-      accept: 'image/*,.pdf,.doc,.docx,.xls,.xlsx',
+      accept: 'image/*,.pdf,.doc,.docx,.xls,.xlsx'
     })
     fileInput.addEventListener('change', function () {
       uploadFiles(act.ID, fileInput.files)
@@ -1531,8 +1606,8 @@ function buildCard(container, data) {
       createElement(
         'div',
         { class: 'muted', style: 'font-size:12.5px' },
-        'Фото и файлы не прикреплены.',
-      ),
+        'Фото и файлы не прикреплены.'
+      )
     )
   }
 
@@ -1540,7 +1615,7 @@ function buildCard(container, data) {
     var isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
     var fileRow = createElement('div', {
       style:
-        'display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)',
+        'display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)'
     })
 
     if (isImage) {
@@ -1551,8 +1626,8 @@ function buildCard(container, data) {
             'width:38px;height:38px;object-fit:cover;border-radius:5px;cursor:pointer',
           onclick: function () {
             window.open('get_file.php?inline=1&id=' + file.ID)
-          },
-        }),
+          }
+        })
       )
     } else {
       fileRow.appendChild(
@@ -1560,10 +1635,10 @@ function buildCard(container, data) {
           'div',
           {
             style:
-              'width:38px;height:38px;border-radius:5px;background:var(--surface2);display:grid;place-items:center;color:var(--muted)',
+              'width:38px;height:38px;border-radius:5px;background:var(--surface2);display:grid;place-items:center;color:var(--muted)'
           },
-          '📄',
-        ),
+          '📄'
+        )
       )
     }
 
@@ -1574,16 +1649,16 @@ function buildCard(container, data) {
         createElement(
           'a',
           { href: 'get_file.php?id=' + file.ID },
-          escapeHtml(file.FILE_NAME),
+          escapeHtml(file.FILE_NAME)
         ),
         createElement(
           'div',
           { class: 'muted', style: 'font-size:11px' },
           formatDateTime(file.CREATED_AT) +
             ' · ' +
-            escapeHtml(file.CREATED_BY || ''),
-        ),
-      ),
+            escapeHtml(file.CREATED_BY || '')
+        )
+      )
     )
 
     if (act.STATUS !== 'annulled') {
@@ -1594,10 +1669,10 @@ function buildCard(container, data) {
             class: 'delx',
             onclick: function () {
               delFile(file.ID, act.ID)
-            },
+            }
           },
-          '×',
-        ),
+          '×'
+        )
       )
     }
     filesBox.appendChild(fileRow)
@@ -1607,20 +1682,20 @@ function buildCard(container, data) {
 
   var historyCard = createElement('div', {
     class: 'card',
-    style: 'margin-top:16px',
+    style: 'margin-top:16px'
   })
   historyCard.appendChild(
     createElement(
       'div',
       { class: 'cardpad', style: 'border-bottom:1px solid var(--line)' },
-      createElement('b', {}, 'История'),
-    ),
+      createElement('b', {}, 'История')
+    )
   )
 
   var histWrap = createElement('div', { class: 'hist-container' })
   var historyUl = createElement('ul', {
     class: 'hist',
-    style: 'padding:0 18px',
+    style: 'padding:0 18px'
   })
 
   data.history.forEach(function (log) {
@@ -1634,9 +1709,9 @@ function buildCard(container, data) {
             escapeHtml(log.TXT) +
             (log.USR
               ? ' · <span class="muted">' + escapeHtml(log.USR) + '</span>'
-              : ''),
-        }),
-      ),
+              : '')
+        })
+      )
     )
   })
 
@@ -1656,6 +1731,10 @@ function editAct(data) {
     status: 'draft',
     cex: act.CEX,
     station: act.STATION,
+    stFrom: act.ST_FROM || '',
+    stTo: act.ST_TO || '',
+    waybillNo: act.WAYBILL_NO || '',
+    cargoRef: act.CARGO_REF || '',
     reason: act.REASON,
     circumstances: act.CIRCUMSTANCES || '',
     startAt: toInputDate(act.START_AT),
@@ -1670,14 +1749,14 @@ function editAct(data) {
         from: w.ST_FROM,
         to: w.ST_TO,
         cargo: w.CARGO,
-        weight: w.WEIGHT,
+        weight: w.WEIGHT
       }
     }),
     signers: data.signers.map(function (s) {
       return { id: null, fio: s.FIO, post: s.POST, org: s.ORG }
     }),
     _summary: null,
-    _openStarts: null,
+    _openStarts: null
   }
   state.page = 'new'
   state.selectedId = null
@@ -1697,7 +1776,7 @@ function delDraft(act) {
           showToast((response && response.msg) || 'Ошибка удаления', 'err')
         }
       })
-    },
+    }
   )
 }
 
@@ -1715,9 +1794,9 @@ function annulAct(act) {
           } else {
             showToast((response && response.msg) || 'Ошибка', 'err')
           }
-        },
+        }
       )
-    },
+    }
   )
 }
 
@@ -1737,7 +1816,7 @@ function uploadFiles(actId, files) {
     data: formData,
     processData: false,
     contentType: false,
-    dataType: 'json',
+    dataType: 'json'
   }).done(function (response) {
     if (response && response.ok) showToast('Файлы загружены', 'ok')
     else showToast('Часть файлов не загружена', 'err')
@@ -1765,8 +1844,8 @@ function showWagonSearch(container) {
       'div',
       { class: 'phead' },
       createElement('h1', {}, 'Поиск по вагону'),
-      createElement('p', {}, 'Все акты, где участвовал вагон'),
-    ),
+      createElement('p', {}, 'Все акты, где участвовал вагон')
+    )
   )
 
   var resultsBox = createElement('div', {})
@@ -1774,13 +1853,13 @@ function showWagonSearch(container) {
   var searchBox = createElement('div', { class: 'searchbox' })
   var input = createElement('input', {
     class: 'inp',
-    placeholder: 'Номер вагона…',
+    placeholder: 'Номер вагона…'
   })
 
   searchBox.appendChild(input)
   filtersRow.appendChild(searchBox)
   filtersRow.appendChild(
-    createElement('button', { class: 'btn', onclick: executeSearch }, 'Найти'),
+    createElement('button', { class: 'btn', onclick: executeSearch }, 'Найти')
   )
 
   container.appendChild(filtersRow)
@@ -1816,21 +1895,21 @@ function confirmBox(title, message, onConfirm) {
       callback: function () {
         closeModal()
         onConfirm()
-      },
-    },
+      }
+    }
   ])
 }
 
 function promptBox(title, message, onConfirm) {
   var textarea = createElement('textarea', {
     class: 'inp',
-    style: 'min-height:80px',
+    style: 'min-height:80px'
   })
   var bodyNode = createElement(
     'div',
     {},
     createElement('p', {}, message),
-    textarea,
+    textarea
   )
 
   openModal(title, bodyNode, [
@@ -1842,8 +1921,8 @@ function promptBox(title, message, onConfirm) {
         var value = textarea.value.trim()
         closeModal()
         onConfirm(value)
-      },
-    },
+      }
+    }
   ])
 }
 
@@ -1854,8 +1933,8 @@ function openModal(title, bodyNode, buttons) {
       createElement(
         'button',
         { class: btn.className, onclick: btn.callback },
-        btn.label,
-      ),
+        btn.label
+      )
     )
   })
 
@@ -1866,10 +1945,10 @@ function openModal(title, bodyNode, buttons) {
       'div',
       { class: 'mhead' },
       createElement('h3', {}, title),
-      createElement('button', { class: 'x', onclick: closeModal }, '×'),
+      createElement('button', { class: 'x', onclick: closeModal }, '×')
     ),
     createElement('div', { class: 'mbody' }, bodyNode),
-    footer,
+    footer
   )
 
   var backdrop = createElement(
@@ -1878,9 +1957,9 @@ function openModal(title, bodyNode, buttons) {
       class: 'scrim',
       onclick: function (e) {
         if (e.target === backdrop) closeModal()
-      },
+      }
     },
-    modalBox,
+    modalBox
   )
   $$('#modalRoot').appendChild(backdrop)
 }
@@ -1893,7 +1972,7 @@ function showToast(message, kind) {
   var icon = kind === 'ok' ? '✓ ' : kind === 'err' ? '⚠ ' : ''
   var toastElement = createElement('div', {
     class: 'toast ' + (kind || ''),
-    html: icon + escapeHtml(message),
+    html: icon + escapeHtml(message)
   })
   document.body.appendChild(toastElement)
   setTimeout(function () {
@@ -1909,7 +1988,7 @@ function formField(label, inputNode, isRequired) {
     'div',
     { class: 'frow' },
     createElement('label', { html: escapeHtml(label) + mark }),
-    inputNode,
+    inputNode
   )
 }
 
@@ -1918,13 +1997,13 @@ function selectInput(optionsList, selectedValue, onChange) {
     class: 'inp',
     onchange: function (e) {
       onChange(e.target.value)
-    },
+    }
   })
   optionsList.forEach(function (optValue) {
     var option = createElement(
       'option',
       { value: optValue },
-      optValue || '— выберите —',
+      optValue || '— выберите —'
     )
     if (optValue === selectedValue) option.selected = true
     select.appendChild(option)
@@ -1939,7 +2018,7 @@ function dateInput(currentValue, onChange) {
   var inp = createElement('input', {
     class: 'inp',
     placeholder: 'ддммгг ччмм',
-    value: currentValue || '',
+    value: currentValue || ''
   })
   var $inp = $(inp)
   init_date_time_input($inp)
@@ -1960,8 +2039,8 @@ function textArea(currentValue, onChange) {
       class: 'inp',
       onchange: function (e) {
         onChange(e.target.value)
-      },
+      }
     },
-    currentValue || '',
+    currentValue || ''
   )
 }
