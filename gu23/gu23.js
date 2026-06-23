@@ -171,9 +171,11 @@ $(document).ready(function () {
   })
   $(document).ajaxError(function (event, jqXHR, settings, thrownError) {
     var detail = thrownError || jqXHR.statusText || ''
-    var body = jqXHR.responseText ? jqXHR.responseText.substring(0, 300) : ''
-    console.error('AJAX error', jqXHR.status, detail, body)
-    showToast('Ошибка связи с сервером [' + jqXHR.status + ']' + (detail ? ': ' + detail : ''), 'err')
+    var body = jqXHR.responseText || ''
+    var msg = ''
+    try { msg = JSON.parse(body).msg || '' } catch (ignore) {}
+    console.error('AJAX error', jqXHR.status, detail, body.substring(0, 500))
+    showToast('Ошибка сервера [' + jqXHR.status + ']' + (msg ? ': ' + msg : (detail ? ': ' + detail : '')), 'err')
   })
 
   api('gu23_get_refs').done(function (response) {

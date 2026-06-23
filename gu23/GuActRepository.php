@@ -21,6 +21,7 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
+        try {
         switch ($action) {
             case 'gu23_get_refs':
                 $this->getRefs();
@@ -62,6 +63,10 @@ class GuActRepository
                 http_response_code(400);
                 echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
         }
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+        }
     }
 
     /* ----------------------------------------------------------------- */
@@ -72,10 +77,17 @@ class GuActRepository
     private function pipe(string $sql, array $binds = []): array
     {
         $st = oci_parse($this->conn, $sql);
+        if (!$st) {
+            $e = oci_error($this->conn);
+            throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
+        }
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
-        oci_execute($st);
+        if (!oci_execute($st)) {
+            $e = oci_error($st);
+            throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
+        }
         $rows = [];
         while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
             $rows[] = $r;
