@@ -136,9 +136,12 @@ var refs = {
   cexes: [],
   reasons: [],
   stations: [],
+  stations_from: [],
   owners: [],
   kinds: [],
-  signers: [],
+  cargos: [],
+  signersOwn: [],
+  signersRzd: [],
 }
 
 var state = { page: 'archive', selectedId: null }
@@ -167,8 +170,30 @@ $(document).ready(function () {
   $(document).ajaxStop(function () {
     $('.loadImg').hide()
   })
-  $(document).ajaxError(function () {
-    showToast('Ошибка связи с сервером', 'err')
+  $(document).ajaxError(function (event, jqXHR, settings, thrownError) {
+    var detail = thrownError || jqXHR.statusText || ''
+    var body = jqXHR.responseText || ''
+    var msg = ''
+    try {
+      msg = JSON.parse(body).msg || ''
+    } catch (ignore) {}
+    var action = ''
+    try {
+      action = new URLSearchParams(settings.data).get('ajax_action') || ''
+    } catch (ignore) {}
+    console.error(
+      'AJAX error [' + action + ']',
+      jqXHR.status,
+      detail,
+      body.substring(0, 500),
+    )
+    showToast(
+      'Ошибка сервера [' +
+        (action || jqXHR.status) +
+        ']' +
+        (msg ? ': ' + msg : detail ? ': ' + detail : ''),
+      'err',
+    )
   })
 
   api('gu23_get_refs').done(function (response) {
@@ -238,8 +263,8 @@ function draw() {
     wsearch: showWagonSearch,
   }
 
-  var renderFunc = views[state.page] || showArchive
-  renderFunc(view)
+  var showFunc = views[state.page] || showArchive
+  showFunc(view)
 }
 
 function namesOf(arr) {
@@ -324,7 +349,11 @@ function showArchive(container) {
   )
   filtersRow.appendChild(
     makeFilter(
-      [''].concat(cexCodes()),
+      [''].concat(
+        (refs.cexes || []).map(function (c) {
+          return String(c.ID)
+        }),
+      ),
       ['Все цеха'].concat(cexCodes()),
       function (val) {
         filterState.cex = val
@@ -417,7 +446,13 @@ function newDraft(type) {
     type: type,
     status: 'draft',
     cex: (refs.cexes[0] || {}).CODE || '',
-    station: 'Углеуральская',
+    stationId: String((refs.stations[0] || {}).CODE || ''),
+    stFromId: String((refs.stations_from[0] || {}).CODE || ''),
+    stFromName: '',
+    stToId: '',
+    stToName: '',
+    waybillNo: '',
+    cargoRef: '',
     reason: '',
     circumstances: '',
     wagons: [],
@@ -479,6 +514,47 @@ function showForm(container) {
 
   if (draft.type === 'end') addEndPicker(cardBody)
 
+  // строка 1: дата начала/окончания (самое первое поле)
+  if (draft.type === 'start' || draft.type === 'end') {
+    var colRow0 = createElement('div', { class: 'cols' })
+    if (draft.type === 'start') {
+      colRow0.appendChild(
+        formField(
+          'Дата и время начала простоя',
+          dateInput(draft.startAt, function (val) {
+            draft.startAt = val
+          }),
+          true,
+        ),
+      )
+    }
+    if (draft.type === 'end') {
+      colRow0.appendChild(
+        formField(
+          'Дата и время окончания простоя',
+          dateInput(draft.endAt, function (val) {
+            draft.endAt = val
+            if (val) draw()
+          }),
+          true,
+        ),
+      )
+    }
+    colRow0.appendChild(createElement('div', {}))
+    cardBody.appendChild(colRow0)
+  }
+
+  if (draft.type === 'end' && draft.startAt) {
+    var badDate = draft.endAt && toMs(draft.endAt) < toMs(draft.startAt)
+    cardBody.appendChild(
+      createElement('div', {
+        class: 'banner ' + (badDate ? 'err' : 'info'),
+        html: durPreview(),
+      }),
+    )
+  }
+
+  // строка 2: цех + ст. составления
   var colRow1 = createElement('div', { class: 'cols' })
   colRow1.appendChild(
     formField(
@@ -491,21 +567,84 @@ function showForm(container) {
   )
   colRow1.appendChild(
     formField(
-      'Станция',
-      selectInput(
-        namesOf(refs.stations),
-        draft.station,
-        function (val) {
-          draft.station = val
-        },
-      ),
+      'Ст. составления',
+      stationSelect(refs.stations, draft.stationId, function (val) {
+        draft.stationId = val
+      }),
+      true,
+    ),
+  )
+  colRow1.appendChild(
+    formField(
+      'Ст. отправления',
+      stationSelect(refs.stations_from, draft.stFromId, function (val) {
+        draft.stFromId = val
+      }),
       true,
     ),
   )
   cardBody.appendChild(colRow1)
 
+  // строка 3: ст. отправления + ст. назначения (autocomplete)
   var colRow2 = createElement('div', { class: 'cols' })
+  /* colRow2.appendChild(
+    formField(
+      'Ст. отправления',
+      stationAutocomplete(
+        draft.stFromId,
+        draft.stFromName,
+        function (id, name) {
+          draft.stFromId = id
+          draft.stFromName = name
+        },
+      ),
+      false,
+    ),
+  ) */
   colRow2.appendChild(
+    formField(
+      'Ст. назначения',
+      stationAutocomplete(draft.stToId, draft.stToName, function (id, name) {
+        draft.stToId = id
+        draft.stToName = name
+      }),
+      false,
+    ),
+  )
+  cardBody.appendChild(colRow2)
+
+  // строка 4: № накладной + груз
+  var colRow3 = createElement('div', { class: 'cols' })
+  colRow3.appendChild(
+    formField(
+      '№ накладной',
+      createElement('input', {
+        class: 'inp',
+        value: draft.waybillNo || '',
+        onchange: function (e) {
+          draft.waybillNo = e.target.value
+        },
+      }),
+      false,
+    ),
+  )
+  colRow3.appendChild(
+    formField(
+      'Груз',
+      selectInput(
+        [''].concat(namesOf(refs.cargos)),
+        draft.cargoRef,
+        function (val) {
+          draft.cargoRef = val
+        },
+      ),
+      false,
+    ),
+  )
+  cardBody.appendChild(colRow3)
+
+  // строка 5: причина (полная ширина)
+  cardBody.appendChild(
     formField(
       'Причина составления',
       selectInput(
@@ -518,43 +657,6 @@ function showForm(container) {
       true,
     ),
   )
-
-  if (draft.type === 'start') {
-    colRow2.appendChild(
-      formField(
-        'Дата и время начала простоя',
-        dateInput(draft.startAt, function (val) {
-          draft.startAt = val
-        }),
-        true,
-      ),
-    )
-  }
-  if (draft.type === 'end') {
-    colRow2.appendChild(
-      formField(
-        'Дата и время окончания простоя',
-        dateInput(draft.endAt, function (val) {
-          draft.endAt = val
-          if (val) draw()
-        }),
-        true,
-      ),
-    )
-  }
-  cardBody.appendChild(colRow2)
-
-  if (draft.type === 'end' && draft.startAt) {
-    var badDate =
-      draft.endAt &&
-      toMs(draft.endAt) < toMs(draft.startAt)
-    cardBody.appendChild(
-      createElement('div', {
-        class: 'banner ' + (badDate ? 'err' : 'info'),
-        html: durPreview(),
-      }),
-    )
-  }
 
   cardBody.appendChild(
     formField(
@@ -589,22 +691,7 @@ function showForm(container) {
     style: 'display:flex;gap:9px;flex-wrap:wrap;margin:10px 0',
   })
 
-  actions.appendChild(
-    createElement(
-      'button',
-      {
-        class: 'btn sm',
-        onclick: function () {
-          addWagons(wagonsInput.value)
-          wagonsInput.value = ''
-          draw()
-        },
-      },
-      '＋ Добавить вагоны',
-    ),
-  )
-
-  if (draft.type === 'start') {
+  if (draft.type === 'start' || draft.type === 'other') {
     actions.appendChild(
       createElement(
         'button',
@@ -614,7 +701,7 @@ function showForm(container) {
             loadWagonInfo(wagonsInput.value)
           },
         },
-        'Запросить данные из Дислокации',
+        'Заполнить данные из Дислокации',
       ),
     )
   }
@@ -636,8 +723,7 @@ function showForm(container) {
   cardBody.appendChild(actions)
 
   if (draft._summary) {
-    var summaryClass =
-      draft._summary.found < draft._summary.req ? 'warn' : 'ok'
+    var summaryClass = draft._summary.found < draft._summary.req ? 'warn' : 'ok'
     cardBody.appendChild(
       createElement('div', {
         class: 'banner ' + summaryClass,
@@ -756,8 +842,7 @@ function fillEndList(sel) {
       { value: act.ID },
       act.ACT_NUMBER + ' · ' + wagonNumbers + ' · ' + act.REASON,
     )
-    if (String(draft.linkedStartId) === String(act.ID))
-      option.selected = true
+    if (String(draft.linkedStartId) === String(act.ID)) option.selected = true
     sel.appendChild(option)
   })
 }
@@ -776,7 +861,11 @@ function pickStart(id) {
   draft.linkedStartNumber = selectedAct.ACT_NUMBER
   draft.startAt = toInputDate(selectedAct.START_AT)
   draft.cex = selectedAct.CEX
-  draft.station = selectedAct.STATION
+  draft.stationId = String(selectedAct.STATION_ID || '')
+  draft.stFromId = String(selectedAct.ST_FROM_ID || '')
+  draft.stFromName = selectedAct.ST_FROM || ''
+  draft.stToId = String(selectedAct.ST_TO_ID || '')
+  draft.stToName = selectedAct.ST_TO || ''
   draft.reason = selectedAct.REASON
   draft.wagons = (selectedAct.WAGONS || []).map(function (w) {
     return {
@@ -862,9 +951,9 @@ function durPreview() {
   var endMs = toMs(draft.endAt)
 
   if (endMs < startMs)
-    return '⚠ Дата окончания меньше даты начала — сохранение будет заблокировано.'
+    return 'Дата окончания меньше даты начала — сохранение будет заблокировано.'
   if (endMs === startMs)
-    return '⚠ Длительность простоя составляет 0 часов (даты совпадают).'
+    return 'Длительность простоя составляет 0 часов (даты совпадают).'
 
   var duration = calcDuration(startMs, endMs)
   return (
@@ -927,7 +1016,7 @@ function loadWagonInfo(rawText) {
 
   api('gu23_get_wagon_info', {
     wagons: JSON.stringify(nums),
-    station: draft.station,
+    waybill_no: draft.waybillNo || '',
   }).done(function (rows) {
     rows = rows || []
     var found = 0
@@ -963,20 +1052,10 @@ function loadWagonInfo(rawText) {
       req: nums.length,
       found: found,
       text:
-        'Запрошено ' +
-        nums.length +
-        ' вагонов, найдено ' +
-        found +
-        ' вагонов.' +
-        (draft.station !== 'Углеуральская'
-          ? ' <br>⚠ Внимание: данные подтягиваются только если станция операции — Углеуральская.'
-          : ''),
+        'Запрошено ' + nums.length + ' вагонов, найдено ' + found + ' вагонов.',
     }
 
-    showToast(
-      'Получено ' + found + ' из ' + nums.length,
-      found ? 'ok' : 'err',
-    )
+    showToast('Получено ' + found + ' из ' + nums.length, found ? 'ok' : 'err')
     draw()
   })
 }
@@ -986,7 +1065,7 @@ function makeWagonsTable() {
     return createElement(
       'div',
       { class: 'banner info' },
-      'Вагоны не добавлены. Введите номера выше и нажмите «Запросить в Oracle BI / Дислокация».',
+      'Вагоны не добавлены. Введите номера выше и нажмите «Заполнить данные из Дислокации».',
     )
   }
 
@@ -997,7 +1076,7 @@ function makeWagonsTable() {
   var isEndType = draft.type === 'end'
 
   table.innerHTML =
-    '<thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес</th>' +
+    '<thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th>' +
     (isEndType ? '<th>Простой</th>' : '') +
     '<th></th></tr></thead>'
 
@@ -1005,30 +1084,27 @@ function makeWagonsTable() {
   draft.wagons.forEach(function (wagon, idx) {
     var tr = createElement('tr')
     tr.appendChild(createElement('td', { class: 'wn' }, wagon.n))
-    ;['owner', 'kind', 'from', 'to', 'cargo', 'weight'].forEach(
-      function (fieldKey) {
-        var td = createElement('td')
-        td.appendChild(
-          createElement(
-            'span',
-            {
-              style:
-                'padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;',
-            },
-            wagon[fieldKey] || '—',
-          ),
-        )
-        tr.appendChild(td)
-      },
-    )
+    ;['owner', 'kind', 'from', 'to', 'cargo'].forEach(function (fieldKey) {
+      var td = createElement('td')
+      td.appendChild(
+        createElement(
+          'span',
+          {
+            style:
+              'padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;',
+          },
+          wagon[fieldKey] || '—',
+        ),
+      )
+      tr.appendChild(td)
+    })
 
     if (isEndType) {
       var dur = '—'
       if (draft.startAt && draft.endAt) {
         var startMs = toMs(draft.startAt)
         var endMs = toMs(draft.endAt)
-        if (endMs >= startMs)
-          dur = durText(calcDuration(startMs, endMs))
+        if (endMs >= startMs) dur = durText(calcDuration(startMs, endMs))
       }
       tr.appendChild(createElement('td', { class: 'dur' }, dur))
     }
@@ -1063,9 +1139,7 @@ function makeWagonsTable() {
     createElement(
       'div',
       { class: 'hint', style: 'margin-top:6px' },
-      'Вагонов в акте: ' +
-        draft.wagons.length +
-        '. В печатной форме строк будет столько же.',
+      'Вагонов в акте: ' + draft.wagons.length + '.',
     ),
   )
 }
@@ -1080,23 +1154,29 @@ function makeSigners() {
       {
         style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px',
       },
-      'Подписанты (требуется ' + need + ')',
+      'Подписанты',
     ),
   )
 
-  var signers = refs.signers || []
-
   for (var i = 0; i < need; i++) {
     ;(function (idx) {
+      var isOtherType = draft.type === 'other'
+      var signers, helpText
+
+      if (isOtherType) {
+        signers = refs.signersOwn || []
+        helpText = idx === 0 ? 'Представитель предприятия' : 'Второй подписант'
+      } else {
+        if (idx < 2) {
+          signers = refs.signersOwn || []
+          helpText = 'Работник предприятия'
+        } else {
+          signers = refs.signersRzd || []
+          helpText = 'Работник станции ОАО «РЖД»'
+        }
+      }
+
       var activeSigner = draft.signers[idx]
-      var helpText =
-        draft.type === 'other'
-          ? idx === 0
-            ? 'Представитель предприятия'
-            : 'Второй подписант'
-          : idx < 2
-            ? 'Работник предприятия'
-            : 'Работник станции ОАО «РЖД»'
 
       var row = createElement('div', { class: 'frow' })
       row.appendChild(
@@ -1147,16 +1227,23 @@ function checkForm(checkSigners) {
   if (!draft.reason) errors.push('Не указана причина составления')
   if (!String(draft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')
-  if (!draft.wagons.length)
-    errors.push('Не добавлен ни один вагон')
+
+  // хотя бы одно из: вагоны, груз, накладная
+  if (!draft.wagons.length && !draft.cargoRef && !draft.waybillNo)
+    errors.push('Добавьте вагоны или укажите груз / номер накладной')
+
+  // все станции обязательны при отправке
+  if (!draft.stationId) errors.push('Не указана ст. составления')
+  if (!draft.stFromId) errors.push('Не указана ст. отправления')
+  if (!draft.stToId) errors.push('Не указана ст. назначения')
+
   if (draft.type === 'start' && !draft.startAt)
     errors.push('Не указана дата начала простоя')
 
   if (draft.type === 'end') {
     if (!draft.linkedStartId)
       errors.push('Не выбран открытый акт начала простоя')
-    if (!draft.endAt)
-      errors.push('Не указана дата окончания простоя')
+    if (!draft.endAt) errors.push('Не указана дата окончания простоя')
     if (
       draft.startAt &&
       draft.endAt &&
@@ -1170,16 +1257,14 @@ function checkForm(checkSigners) {
     var need = draft.type === 'other' ? 2 : 3
     var filled = draft.signers.filter(Boolean).length
     if (filled < need)
-      errors.push(
-        'Указано подписантов ' + filled + ' из ' + need,
-      )
+      errors.push('Указано подписантов ' + filled + ' из ' + need)
   }
   return errors
 }
 
 function saveAct(status, skipWarning) {
-  // черновик сохраняется как есть, без обязательных полей; проверяем только при отправке
-  var errors = status === 'active' ? checkForm(true) : []
+  var errors =
+    status === 'active' ? checkForm(true) : draft.cex ? [] : ['Не указан цех']
   if (errors.length) {
     showToast(errors[0], 'err')
     return
@@ -1189,8 +1274,12 @@ function saveAct(status, skipWarning) {
     id: draft.id || 0,
     type: draft.type,
     status: status,
-    cex: draft.cex,
-    station: draft.station,
+    cex: draft.cex, // CODE цеха
+    station: draft.stationId || '', // station_id as string
+    st_from: draft.stFromId || '', // st_from_id as string
+    st_to: draft.stToId || '', // st_to_id as string
+    waybill_no: draft.waybillNo || '',
+    cargo_ref: draft.cargoRef || '',
     reason: draft.reason,
     circumstances: draft.circumstances,
     start_at: toDbDate(draft.startAt),
@@ -1204,9 +1293,7 @@ function saveAct(status, skipWarning) {
   api('gu23_save_act', payload).done(function (response) {
     if (response && response.ok) {
       showToast(
-        (status === 'draft'
-          ? 'Черновик сохранён'
-          : 'Акт зарегистрирован') +
+        (status === 'draft' ? 'Черновик сохранён' : 'Акт зарегистрирован') +
           (response.number ? ', № ' + response.number : ''),
         'ok',
       )
@@ -1363,7 +1450,10 @@ function buildCard(container, data) {
 
   appendRow('Тип акта', actTypes[act.ACT_TYPE].label)
   appendRow('Цех составления', escapeHtml(act.CEX))
-  appendRow('Станция', escapeHtml(act.STATION))
+  appendRow('Ст. составления', escapeHtml(act.STATION))
+  if (act.ST_FROM) appendRow('Ст. отправления', escapeHtml(act.ST_FROM))
+  if (act.ST_TO) appendRow('Ст. назначения', escapeHtml(act.ST_TO))
+  if (act.CARGO_REF) appendRow('Груз', escapeHtml(act.CARGO_REF))
   appendRow('Причина', escapeHtml(act.REASON))
   appendRow('Дата составления', formatDateTime(act.CREATED_AT))
 
@@ -1443,7 +1533,7 @@ function buildCard(container, data) {
       '<td>' +
       escapeHtml(w.CARGO || '—') +
       '</td><td class="num">' +
-      escapeHtml(w.WEIGHT || '—') +
+      // escapeHtml(w.WEIGHT || '—') +
       '</td>'
     wagonsTbody.appendChild(tr)
   })
@@ -1655,8 +1745,14 @@ function editAct(data) {
     id: act.ID,
     type: act.ACT_TYPE,
     status: 'draft',
-    cex: act.CEX,
-    station: act.STATION,
+    cex: act.CEX, // CODE цеха
+    stationId: String(act.STATION_ID || ''),
+    stFromId: String(act.ST_FROM_ID || ''),
+    stFromName: act.ST_FROM || '',
+    stToId: String(act.ST_TO_ID || ''),
+    stToName: act.ST_TO || '',
+    waybillNo: '', // не хранится, очищаем
+    cargoRef: act.CARGO_REF || '',
     reason: act.REASON,
     circumstances: act.CIRCUMSTANCES || '',
     startAt: toInputDate(act.START_AT),
@@ -1671,11 +1767,16 @@ function editAct(data) {
         from: w.ST_FROM,
         to: w.ST_TO,
         cargo: w.CARGO,
-        weight: w.WEIGHT,
+        // weight: w.WEIGHT
       }
     }),
     signers: data.signers.map(function (s) {
-      return { id: null, fio: s.FIO, post: s.POST, org: s.ORG }
+      return {
+        id: s.SIGNER_REF_ID || null,
+        fio: s.FIO,
+        post: s.POST,
+        org: s.ORG,
+      }
     }),
     _summary: null,
     _openStarts: null,
@@ -1931,6 +2032,96 @@ function selectInput(optionsList, selectedValue, onChange) {
     select.appendChild(option)
   })
   return select
+}
+
+// select из справочника {ID, NAME} — значение = ID
+function stationSelect(options, selectedId, onChange) {
+  var select = createElement('select', {
+    class: 'inp',
+    onchange: function (e) {
+      onChange(e.target.value)
+    },
+  })
+  select.appendChild(createElement('option', { value: '' }, '— выберите —'))
+  ;(options || []).forEach(function (opt) {
+    var option = createElement('option', { value: String(opt.CODE) }, opt.NAME)
+    if (String(opt.CODE) === String(selectedId)) option.selected = true
+    select.appendChild(option)
+  })
+  return select
+}
+
+// autocomplete-поле для поиска станции по 3+ символам (debounce 300ms)
+function stationAutocomplete(currentId, currentName, onChange) {
+  var wrapper = createElement('div', {
+    style: 'position:relative',
+  })
+  var inp = createElement('input', {
+    class: 'inp',
+    placeholder: 'Введите название станции (мин. 3 символа)…',
+    value: currentName || '',
+  })
+  var dropdown = createElement('div', {
+    style:
+      'display:none;position:absolute;z-index:99;background:var(--surface);' +
+      'border:1px solid var(--line);border-radius:6px;width:100%;' +
+      'max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)',
+  })
+  wrapper.appendChild(inp)
+  wrapper.appendChild(dropdown)
+
+  var timer = null
+
+  inp.addEventListener('input', function () {
+    var q = inp.value.trim()
+    clearTimeout(timer)
+    if (q.length < 3) {
+      dropdown.style.display = 'none'
+      dropdown.innerHTML = ''
+      if (!q) onChange('', '')
+      return
+    }
+    timer = setTimeout(function () {
+      api('gu23_search_station', { q: q }).done(function (rows) {
+        dropdown.innerHTML = ''
+        rows = rows || []
+        if (!rows.length) {
+          dropdown.style.display = 'none'
+          return
+        }
+        rows.forEach(function (row) {
+          var item = createElement(
+            'div',
+            {
+              style: 'padding:8px 12px;cursor:pointer;font-size:13px',
+              onclick: function () {
+                inp.value = row.NAME
+                onChange(String(row.CODE), row.NAME)
+                dropdown.style.display = 'none'
+              },
+            },
+            row.NAME,
+          )
+          item.addEventListener('mouseenter', function () {
+            item.style.background = 'var(--surface2)'
+          })
+          item.addEventListener('mouseleave', function () {
+            item.style.background = ''
+          })
+          dropdown.appendChild(item)
+        })
+        dropdown.style.display = 'block'
+      })
+    }, 300)
+  })
+
+  inp.addEventListener('blur', function () {
+    setTimeout(function () {
+      dropdown.style.display = 'none'
+    }, 200)
+  })
+
+  return wrapper
 }
 
 // поле даты как в остальных модулях: короткий ввод (ддммгг ччмм) -> dd.mm.yyyy HH:MM.
