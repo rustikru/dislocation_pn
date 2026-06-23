@@ -714,7 +714,11 @@ function validateForm(checkSigners) {
 
   if (checkSigners) {
     const needed = activeDraft.type === 'other' ? 2 : 3
-    const filled = activeDraft.signers.filter((s) => s && s.fio && s.fio.trim()).length
+    const filled = activeDraft.signers.filter((s) => {
+      if (!s || !s.fio || !s.fio.trim()) return false
+      if (s.manual) return !!(s.post && s.post.trim() && s.org && s.org.trim())
+      return true
+    }).length
     if (filled < needed)
       errors.push(`Указано подписантов ${filled} из ${needed}`)
   }
