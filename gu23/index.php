@@ -30,7 +30,8 @@ if ($auth->isAuth()) {
             <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script>
 
             <script src="../js/general_function.js" type="text/javascript"></script>
-            <script src="gu23.js?ver=1" type="text/javascript"></script>
+            <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
+            <script type="module" src="app.js"></script>
         </head>
 
         <body>
