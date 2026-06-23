@@ -1,4 +1,4 @@
-create or replace package body xx_etw.xx_disl_gu23_pkg as
+create or replace package body xx_disl_gu23_pkg as
 
    c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us  constant char(1) := chr(31);   -- разделитель полей

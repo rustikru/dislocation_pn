@@ -293,16 +293,12 @@ CREATE OR REPLACE TYPE xx_disl_gu23_wagon_obj AS OBJECT (
 CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj;
 /
 
--- спецификация пакета (локальная мини-версия)
---
---  ВНИМАНИЕ: локально создаётся пакет xx_disl_gu23_pkg, содержащий ТОЛЬКО
---  функции gu23_*. На проде эти объявления нужно ДОБАВИТЬ в спецификацию
---  настоящего пакета xx_disl_gu23_pkg (не затирая остальные ~300 функций).
---
---  Разделители для передачи коллекций из PHP без JSON (совместимо с 11g):
---     записи (вагоны/подписанты)  — CHR(30)
---     поля внутри записи          — CHR(31)
 create or replace package xx_disl_gu23_pkg as
+-- спецификация пакета (локальная мини-версия)
+-- локально создаётся пакет xx_disl_gu23_pkg только с функциями gu23_*.
+-- на проде эти объявления нужно добавить в спецификацию настоящего
+-- пакета xx_disl_gu23_pkg (не затирая остальные ~300 функций).
+-- разделители коллекций из PHP без JSON (11g): записи CHR(30), поля CHR(31).
 
     -- ---- справочники (select из таблиц ref_*, легко заменить источник) ----
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
@@ -424,7 +420,7 @@ create or replace package xx_disl_gu23_pkg as
 end xx_disl_gu23_pkg;
 /
 
-create or replace package body xx_etw.xx_disl_gu23_pkg as
+create or replace package body xx_disl_gu23_pkg as
 
    c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us  constant char(1) := chr(31);   -- разделитель полей
