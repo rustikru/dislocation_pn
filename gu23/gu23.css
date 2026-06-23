@@ -577,6 +577,10 @@ textarea.inp {
   resize: vertical;
   min-height: 64px;
 }
+/* подсветка ошибки ввода (как в остальных модулях) */
+.red_bckg_color {
+  background: lightcoral !important;
+}
 .cols {
   display: flex;
   flex-wrap: wrap;

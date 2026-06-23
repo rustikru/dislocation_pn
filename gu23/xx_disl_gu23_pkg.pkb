@@ -856,7 +856,8 @@ create or replace package body xx_disl_gu23_pkg as
                 || c_us
                 || 'Неверный тип акта';
       end if;
-      if nvl(
+      -- обязательные поля проверяем только при отправке (active); черновик — как есть
+      if p_status = 'active' and nvl(
          p_cex,
          'X'
       ) = 'X' then
@@ -864,10 +865,11 @@ create or replace package body xx_disl_gu23_pkg as
                 || c_us
                 || 'Не указан цех';
       end if;
-      
+
       -- Проверки дат для акта "Начало простоя"
       if
          p_type = 'start'
+         and p_status = 'active'
          and v_start is null
       then
          return 'ERR'
@@ -875,8 +877,8 @@ create or replace package body xx_disl_gu23_pkg as
                 || 'Не указана дата начала простоя';
       end if;
       
-      -- Проверки дат и связей для акта "Окончание простоя"
-      if p_type = 'end' then
+      -- Проверки дат и связей для акта "Окончание простоя" (только при отправке)
+      if p_type = 'end' and p_status = 'active' then
          if p_linked_start_id is null then
             return 'ERR'
                    || c_us
@@ -936,7 +938,10 @@ create or replace package body xx_disl_gu23_pkg as
 
       -- сохраняем или обновляем шапку акта
       if v_isnew then
-         v_number := g_next_number(p_cex);
+         -- номер генерируем при наличии цеха (черновик без цеха — номер позже)
+         if p_cex is not null then
+            v_number := g_next_number(p_cex);
+         end if;
          v_id := xx_disl_gu23_act_seq.nextval;
          insert into xx_disl_gu23_act (
             id,
@@ -994,8 +999,13 @@ create or replace package body xx_disl_gu23_pkg as
                    || c_us
                    || 'Действующий/закрытый акт не редактируется — аннулируйте и заведите новый';
          end if;
+         -- если у черновика ещё нет номера, а цех уже указан — присваиваем номер
+         if v_number is null and p_cex is not null then
+            v_number := g_next_number(p_cex);
+         end if;
          update xx_disl_gu23_act
-            set act_type = p_type,
+            set act_number = v_number,
+                act_type = p_type,
                 status = p_status,
                 cex_code = p_cex,
                 station = p_station,
@@ -1213,7 +1223,8 @@ create or replace package body xx_disl_gu23_pkg as
          v_wcnt := v_wcnt + 1;
       end loop;
 
-      if v_wcnt = 0 then
+      -- вагоны обязательны только при отправке (active); в черновике можно без них
+      if v_wcnt = 0 and p_status = 'active' then
          rollback;
          return 'ERR'
                 || c_us

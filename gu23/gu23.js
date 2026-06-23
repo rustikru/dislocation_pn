@@ -51,31 +51,31 @@ function parseDateTime(str) {
   return isNaN(date.getTime()) ? null : date
 }
 
+// из формата БД (YYYY-MM-DD HH:MM:SS) в формат поля (dd.mm.yyyy HH:MM)
 function toInputDate(str) {
   if (!str) return ''
-  return String(str).replace(' ', 'T').slice(0, 16)
+  var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  return m ? m[3] + '.' + m[2] + '.' + m[1] + ' ' + m[4] + ':' + m[5] : ''
 }
 
+// из формата поля (dd.mm.yyyy HH:MM) в формат БД (YYYY-MM-DD HH:MM) — без TZ
+function toDbDate(str) {
+  if (!str) return ''
+  var m = String(str).match(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/)
+  return m ? m[3] + '-' + m[2] + '-' + m[1] + ' ' + m[4] + ':' + m[5] : ''
+}
+
+// отображение даты-времени: чисто строкой, без new Date() (никакого сдвига TZ)
 function formatDateTime(str) {
-  var date = parseDateTime(str)
-  if (!date) return '—'
-  return date.toLocaleString('ru', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  if (!str) return '—'
+  var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  return m ? m[3] + '.' + m[2] + '.' + m[1] + ' ' + m[4] + ':' + m[5] : '—'
 }
 
 function formatDate(str) {
-  var date = parseDateTime(str)
-  if (!date) return '—'
-  return date.toLocaleDateString('ru', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  if (!str) return '—'
+  var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})/)
+  return m ? m[3] + '.' + m[2] + '.' + m[1] : '—'
 }
 
 function calcDuration(startMs, endMs) {
@@ -536,7 +536,7 @@ function showForm(container) {
         'Дата и время окончания простоя',
         dateInput(draft.endAt, function (val) {
           draft.endAt = val
-          draw()
+          if (val) draw()
         }),
         true,
       ),
@@ -699,8 +699,10 @@ function showForm(container) {
   container.appendChild(cardElement)
 }
 
+// мс из dd.mm.yyyy HH:MM (локально, только для расчёта длительности)
 function toMs(localStr) {
-  return new Date(localStr).getTime()
+  var m = String(localStr).match(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/)
+  return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime() : NaN
 }
 
 function addEndPicker(box) {
@@ -1158,12 +1160,8 @@ function checkForm(checkSigners) {
 }
 
 function saveAct(status, skipWarning) {
-  var errors = checkForm(status === 'active')
-  if (status === 'draft') {
-    errors = errors.filter(function (msg) {
-      return msg.indexOf('подписант') < 0
-    })
-  }
+  // черновик сохраняется как есть, без обязательных полей; проверяем только при отправке
+  var errors = status === 'active' ? checkForm(true) : []
   if (errors.length) {
     showToast(errors[0], 'err')
     return
@@ -1177,10 +1175,8 @@ function saveAct(status, skipWarning) {
     station: draft.station,
     reason: draft.reason,
     circumstances: draft.circumstances,
-    start_at: draft.startAt
-      ? draft.startAt.replace('T', ' ')
-      : '',
-    end_at: draft.endAt ? draft.endAt.replace('T', ' ') : '',
+    start_at: toDbDate(draft.startAt),
+    end_at: toDbDate(draft.endAt),
     linked_start_id: draft.linkedStartId || '',
     wagons: JSON.stringify(draft.wagons),
     signers: JSON.stringify(draft.signers.filter(Boolean)),
@@ -1919,15 +1915,25 @@ function selectInput(optionsList, selectedValue, onChange) {
   return select
 }
 
+// поле даты как в остальных модулях: короткий ввод (ддммгг ччмм) -> dd.mm.yyyy HH:MM.
+// init_date_time_input красит поле и держит фокус при ошибке; в модель пишем
+// значение только когда оно корректное, иначе пусто (сохранение не пройдёт).
 function dateInput(currentValue, onChange) {
-  return createElement('input', {
+  var inp = createElement('input', {
     class: 'inp',
-    type: 'datetime-local',
+    placeholder: 'ддммгг ччмм',
     value: currentValue || '',
-    onchange: function (e) {
-      onChange(e.target.value)
-    },
   })
+  var $inp = $(inp)
+  init_date_time_input($inp)
+  $inp.on('blur', function () {
+    var v = $inp.val()
+    var ok =
+      /^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/.test(v) &&
+      !$inp.hasClass('red_bckg_color')
+    onChange(ok ? v : '')
+  })
+  return inp
 }
 
 function textArea(currentValue, onChange) {

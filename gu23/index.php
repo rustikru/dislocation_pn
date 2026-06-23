@@ -33,6 +33,8 @@ if ($auth->isAuth()) {
     <!-- jQuery 3.7.1 (+migrate) — подключается только на этой странице -->
     <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
     <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script>
+    <!-- общие хелперы сайта: init_date_time_input, add_day_to_date_trunc и т.п. -->
+    <script src="../js/general_function.js" type="text/javascript"></script>
     <script src="gu23.js?ver=1" type="text/javascript"></script>
 </head>
 <body>
