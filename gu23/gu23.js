@@ -1,6 +1,4 @@
-/* ============================================================================
- * ГУ-23 · Акты общей формы — клиентская логика (jQuery + AJAX к /data.php)
- * ==========================================================================*/
+// ГУ-23, акты общей формы — клиентская часть (jQuery + ajax на /data.php)
 
 var $$ = function (selector, root) {
   return (root || document).querySelector(selector)
@@ -36,8 +34,8 @@ function escapeHtml(str) {
   })
 }
 
-/* ---------- AJAX API ---------- */
-function callApi(action, data) {
+// запрос к серверу
+function api(action, data) {
   return $.ajax({
     url: '/data.php',
     type: 'POST',
@@ -46,14 +44,14 @@ function callApi(action, data) {
   })
 }
 
-/* ---------- Работа с датами ---------- */
+// даты
 function parseDateTime(str) {
   if (!str) return null
   var date = new Date(String(str).replace(' ', 'T'))
   return isNaN(date.getTime()) ? null : date
 }
 
-function convertToInputDateTime(str) {
+function toInputDate(str) {
   if (!str) return ''
   return String(str).replace(' ', 'T').slice(0, 16)
 }
@@ -80,7 +78,7 @@ function formatDate(str) {
   })
 }
 
-function calculateDuration(startMs, endMs) {
+function calcDuration(startMs, endMs) {
   var diff = endMs - startMs
   var days = Math.floor(diff / 86400000)
   var hours = Math.round((diff - days * 86400000) / 3600000)
@@ -93,19 +91,19 @@ function calculateDuration(startMs, endMs) {
   }
 }
 
-function formatDuration(duration) {
+function durText(duration) {
   return duration.ms < 0
     ? '—'
     : duration.days + ' дн. ' + duration.hours + ' ч.'
 }
 
-function formatTotalHours(duration) {
+function hoursText(duration) {
   return duration.ms < 0
     ? '—'
     : (Math.round(duration.totalHours * 10) / 10).toLocaleString('ru') + ' ч.'
 }
 
-/* ---------- Словари ---------- */
+// справочники
 var ACT_TYPES = {
   start: { label: 'Начало простоя', className: 'typ-start' },
   end: { label: 'Окончание простоя', className: 'typ-end' },
@@ -119,21 +117,21 @@ var ACT_STATUSES = {
   annulled: { label: 'Аннулирован', className: 'st-annulled' },
 }
 
-function renderStatusChip(status) {
+function statusChip(status) {
   var config = ACT_STATUSES[status] || { label: status, className: 'st-draft' }
   return (
     '<span class="chip ' + config.className + '">' + config.label + '</span>'
   )
 }
 
-function renderTypeChip(type) {
+function typeChip(type) {
   var config = ACT_TYPES[type] || { label: type, className: 'typ-other' }
   return (
     '<span class="typchip ' + config.className + '">' + config.label + '</span>'
   )
 }
 
-/* ---------- Глобальное состояние ---------- */
+// что сейчас на экране
 var REFERENCES = {
   cexes: [],
   reasons: [],
@@ -161,7 +159,7 @@ function parseWagons(rawText) {
   return result
 }
 
-/* ============================ Инициализация ============================ */
+// старт
 $(document).ready(function () {
   $(document).ajaxStart(function () {
     $('.loadImg').show()
@@ -173,14 +171,14 @@ $(document).ready(function () {
     showToast('Ошибка связи с сервером', 'err')
   })
 
-  callApi('gu23_get_refs').done(function (response) {
+  api('gu23_get_refs').done(function (response) {
     REFERENCES = response || REFERENCES
-    renderApp()
+    draw()
   })
 })
 
-/* ============================ Навигация ============================ */
-function renderNavigation() {
+// меню слева
+function drawNav() {
   var menuItems = [
     { page: 'new', icon: '＋', label: 'Создать акт' },
     { page: 'archive', icon: '', label: 'Архив актов' },
@@ -197,7 +195,7 @@ function renderNavigation() {
       {
         class: 'navbtn' + (isActive ? ' active' : ''),
         onclick: function () {
-          navigateTo(item.page)
+          goTo(item.page)
         },
       },
       createElement('span', { class: 'ic' }, item.icon),
@@ -214,50 +212,50 @@ function renderNavigation() {
   )
 }
 
-function navigateTo(page) {
+function goTo(page) {
   AppState.page = page
   AppState.selectedId = null
   if (page === 'new') currentDraft = null
-  renderApp()
+  draw()
 }
 
-function openActDetails(id) {
+function openAct(id) {
   AppState.selectedId = id
   AppState.page = 'card'
-  renderApp()
+  draw()
 }
 
-/* ============================ Роутер страницы ============================ */
-function renderApp() {
-  renderNavigation()
+// показать нужную страницу
+function draw() {
+  drawNav()
   var viewContainer = $$('#view')
   viewContainer.innerHTML = ''
 
   var views = {
-    archive: renderArchiveView,
-    new: renderNewActView,
-    card: renderActCardView,
-    wsearch: renderWagonSearchView,
+    archive: showArchive,
+    new: showForm,
+    card: showCard,
+    wsearch: showWagonSearch,
   }
 
-  var renderFunc = views[AppState.page] || renderArchiveView
+  var renderFunc = views[AppState.page] || showArchive
   renderFunc(viewContainer)
 }
 
-function getReferenceNames(arr) {
+function namesOf(arr) {
   return (arr || []).map(function (item) {
     return item.NAME != null ? item.NAME : item.CODE
   })
 }
 
-function getCexCodes() {
+function cexCodes() {
   return (REFERENCES.cexes || []).map(function (item) {
     return item.CODE
   })
 }
 
-/* ============================ Архив ============================ */
-function renderArchiveView(container) {
+// архив
+function showArchive(container) {
   container.appendChild(
     createElement(
       'div',
@@ -272,9 +270,9 @@ function renderArchiveView(container) {
   var tableBox = createElement('div', { class: 'card' })
 
   function loadData() {
-    callApi('gu23_get_acts', filterState).done(function (list) {
+    api('gu23_get_acts', filterState).done(function (list) {
       tableBox.innerHTML = ''
-      tableBox.appendChild(buildActsTable(list || []))
+      tableBox.appendChild(makeActsTable(list || []))
       tableBox.appendChild(
         createElement(
           'div',
@@ -305,7 +303,7 @@ function renderArchiveView(container) {
   filtersRow.appendChild(searchBox)
 
   filtersRow.appendChild(
-    createFilterSelect(
+    makeFilter(
       ['', 'start', 'end', 'other'],
       ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
       function (val) {
@@ -315,7 +313,7 @@ function renderArchiveView(container) {
     ),
   )
   filtersRow.appendChild(
-    createFilterSelect(
+    makeFilter(
       ['', 'draft', 'active', 'closed', 'annulled'],
       ['Все статусы', 'Черновик', 'Действующий', 'Закрыт', 'Аннулирован'],
       function (val) {
@@ -325,9 +323,9 @@ function renderArchiveView(container) {
     ),
   )
   filtersRow.appendChild(
-    createFilterSelect(
-      [''].concat(getCexCodes()),
-      ['Все цеха'].concat(getCexCodes()),
+    makeFilter(
+      [''].concat(cexCodes()),
+      ['Все цеха'].concat(cexCodes()),
       function (val) {
         filterState.cex = val
         loadData()
@@ -340,7 +338,7 @@ function renderArchiveView(container) {
   loadData()
 }
 
-function createFilterSelect(values, labels, onChangeCallback) {
+function makeFilter(values, labels, onChangeCallback) {
   var select = createElement('select', {
     class: 'inp',
     onchange: function (e) {
@@ -353,7 +351,7 @@ function createFilterSelect(values, labels, onChangeCallback) {
   return select
 }
 
-function buildActsTable(list) {
+function makeActsTable(list) {
   var table = createElement('table', { class: 'tbl' })
   table.innerHTML =
     '<thead><tr><th>Номер</th><th>Тип</th><th>Цех</th><th>Причина</th><th>Вагоны</th><th>Создан</th><th>Статус</th></tr></thead>'
@@ -380,7 +378,7 @@ function buildActsTable(list) {
   list.forEach(function (act) {
     var tr = createElement('tr', {
       onclick: function () {
-        openActDetails(act.ID)
+        openAct(act.ID)
       },
     })
     tr.innerHTML =
@@ -388,7 +386,7 @@ function buildActsTable(list) {
       escapeHtml(act.ACT_NUMBER) +
       '</td>' +
       '<td>' +
-      renderTypeChip(act.ACT_TYPE) +
+      typeChip(act.ACT_TYPE) +
       '</td>' +
       '<td>' +
       escapeHtml(act.CEX) +
@@ -403,7 +401,7 @@ function buildActsTable(list) {
       formatDate(act.CREATED_AT) +
       '</td>' +
       '<td>' +
-      renderStatusChip(act.STATUS) +
+      statusChip(act.STATUS) +
       '</td>'
     tbody.appendChild(tr)
   })
@@ -412,8 +410,8 @@ function buildActsTable(list) {
   return createElement('div', { style: 'overflow:auto' }, table)
 }
 
-/* ============================ Создание акта ============================ */
-function initNewDraft(type) {
+// создание и правка акта
+function newDraft(type) {
   return {
     id: 0,
     type: type,
@@ -433,8 +431,8 @@ function initNewDraft(type) {
   }
 }
 
-function renderNewActView(container) {
-  if (!currentDraft) currentDraft = initNewDraft('start')
+function showForm(container) {
+  if (!currentDraft) currentDraft = newDraft('start')
 
   container.appendChild(
     createElement(
@@ -465,8 +463,8 @@ function renderNewActView(container) {
         {
           class: currentDraft.type === item[0] ? 'on' : '',
           onclick: function () {
-            currentDraft = initNewDraft(item[0])
-            renderApp()
+            currentDraft = newDraft(item[0])
+            draw()
           },
         },
         item[1],
@@ -479,23 +477,23 @@ function renderNewActView(container) {
   var cardBody = createElement('div', { class: 'cardpad' })
   cardElement.appendChild(cardBody)
 
-  if (currentDraft.type === 'end') buildEndPicker(cardBody)
+  if (currentDraft.type === 'end') addEndPicker(cardBody)
 
   var colRow1 = createElement('div', { class: 'cols' })
   colRow1.appendChild(
-    createFormField(
+    formField(
       'Цех составления',
-      createSelectInput(getCexCodes(), currentDraft.cex, function (val) {
+      selectInput(cexCodes(), currentDraft.cex, function (val) {
         currentDraft.cex = val
       }),
       true,
     ),
   )
   colRow1.appendChild(
-    createFormField(
+    formField(
       'Станция',
-      createSelectInput(
-        getReferenceNames(REFERENCES.stations),
+      selectInput(
+        namesOf(REFERENCES.stations),
         currentDraft.station,
         function (val) {
           currentDraft.station = val
@@ -508,10 +506,10 @@ function renderNewActView(container) {
 
   var colRow2 = createElement('div', { class: 'cols' })
   colRow2.appendChild(
-    createFormField(
+    formField(
       'Причина составления',
-      createSelectInput(
-        [''].concat(getReferenceNames(REFERENCES.reasons)),
+      selectInput(
+        [''].concat(namesOf(REFERENCES.reasons)),
         currentDraft.reason,
         function (val) {
           currentDraft.reason = val
@@ -523,9 +521,9 @@ function renderNewActView(container) {
 
   if (currentDraft.type === 'start') {
     colRow2.appendChild(
-      createFormField(
+      formField(
         'Дата и время начала простоя',
-        createDateTimeInput(currentDraft.startAt, function (val) {
+        dateInput(currentDraft.startAt, function (val) {
           currentDraft.startAt = val
         }),
         true,
@@ -534,11 +532,11 @@ function renderNewActView(container) {
   }
   if (currentDraft.type === 'end') {
     colRow2.appendChild(
-      createFormField(
+      formField(
         'Дата и время окончания простоя',
-        createDateTimeInput(currentDraft.endAt, function (val) {
+        dateInput(currentDraft.endAt, function (val) {
           currentDraft.endAt = val
-          renderApp()
+          draw()
         }),
         true,
       ),
@@ -549,19 +547,19 @@ function renderNewActView(container) {
   if (currentDraft.type === 'end' && currentDraft.startAt) {
     var isInvalidDate =
       currentDraft.endAt &&
-      getTimeMs(currentDraft.endAt) < getTimeMs(currentDraft.startAt)
+      toMs(currentDraft.endAt) < toMs(currentDraft.startAt)
     cardBody.appendChild(
       createElement('div', {
         class: 'banner ' + (isInvalidDate ? 'err' : 'info'),
-        html: getDurationPreviewHtml(),
+        html: durPreview(),
       }),
     )
   }
 
   cardBody.appendChild(
-    createFormField(
+    formField(
       'Обстоятельства, вызвавшие составление акта',
-      createTextArea(currentDraft.circumstances, function (val) {
+      textArea(currentDraft.circumstances, function (val) {
         currentDraft.circumstances = val
       }),
       true,
@@ -597,9 +595,9 @@ function renderNewActView(container) {
       {
         class: 'btn sm',
         onclick: function () {
-          processAddedWagons(wagonsTextArea.value)
+          addWagons(wagonsTextArea.value)
           wagonsTextArea.value = ''
-          renderApp()
+          draw()
         },
       },
       '＋ Добавить вагоны',
@@ -613,7 +611,7 @@ function renderNewActView(container) {
         {
           class: 'btn sm primary',
           onclick: function () {
-            requestWagonInformation(wagonsTextArea.value)
+            loadWagonInfo(wagonsTextArea.value)
           },
         },
         'Запросить данные из Дислокации',
@@ -627,7 +625,7 @@ function renderNewActView(container) {
         {
           class: 'btn sm',
           onclick: function () {
-            findOpenActByWagonsInput(wagonsTextArea.value)
+            findOpenByWagons(wagonsTextArea.value)
             wagonsTextArea.value = ''
           },
         },
@@ -648,10 +646,10 @@ function renderNewActView(container) {
     )
   }
 
-  cardBody.appendChild(buildWagonsEditorTable())
+  cardBody.appendChild(makeWagonsTable())
 
   cardBody.appendChild(createElement('div', { style: 'height:14px' }))
-  cardBody.appendChild(buildSignersPickerSection())
+  cardBody.appendChild(makeSigners())
 
   var cardFooter = createElement('div', {
     class: 'cardpad',
@@ -666,7 +664,7 @@ function renderNewActView(container) {
         class: 'btn ghost',
         onclick: function () {
           currentDraft = null
-          navigateTo('archive')
+          goTo('archive')
         },
       },
       'Отмена',
@@ -678,7 +676,7 @@ function renderNewActView(container) {
       {
         class: 'btn',
         onclick: function () {
-          saveActRemote('draft')
+          saveAct('draft')
         },
       },
       'Сохранить черновик',
@@ -690,7 +688,7 @@ function renderNewActView(container) {
       {
         class: 'btn primary',
         onclick: function () {
-          saveActRemote('active')
+          saveAct('active')
         },
       },
       'Сохранить и отправить на подписание',
@@ -701,11 +699,11 @@ function renderNewActView(container) {
   container.appendChild(cardElement)
 }
 
-function getTimeMs(localStr) {
+function toMs(localStr) {
   return new Date(localStr).getTime()
 }
 
-function buildEndPicker(bodyContainer) {
+function addEndPicker(bodyContainer) {
   bodyContainer.appendChild(
     createElement('div', {
       class: 'banner info',
@@ -723,8 +721,8 @@ function buildEndPicker(bodyContainer) {
   var select = createElement('select', {
     class: 'inp',
     onchange: function (e) {
-      applySelectedStartAct(e.target.value)
-      renderApp()
+      pickStart(e.target.value)
+      draw()
     },
   })
   select.appendChild(
@@ -735,16 +733,16 @@ function buildEndPicker(bodyContainer) {
   bodyContainer.appendChild(row)
 
   if (currentDraft._openStarts == null) {
-    callApi('gu23_get_open_starts').done(function (list) {
+    api('gu23_get_open_starts').done(function (list) {
       currentDraft._openStarts = list || []
-      populateEndOptions(select)
+      fillEndList(select)
     })
   } else {
-    populateEndOptions(select)
+    fillEndList(select)
   }
 }
 
-function populateEndOptions(selectElement) {
+function fillEndList(selectElement) {
   ;(currentDraft._openStarts || []).forEach(function (act) {
     var wagonNumbers = (act.WAGONS || [])
       .map(function (w) {
@@ -762,7 +760,7 @@ function populateEndOptions(selectElement) {
   })
 }
 
-function applySelectedStartAct(id) {
+function pickStart(id) {
   var selectedAct = (currentDraft._openStarts || []).filter(function (item) {
     return String(item.ID) === String(id)
   })[0]
@@ -774,7 +772,7 @@ function applySelectedStartAct(id) {
 
   currentDraft.linkedStartId = selectedAct.ID
   currentDraft.linkedStartNumber = selectedAct.ACT_NUMBER
-  currentDraft.startAt = convertToInputDateTime(selectedAct.START_AT)
+  currentDraft.startAt = toInputDate(selectedAct.START_AT)
   currentDraft.cex = selectedAct.CEX
   currentDraft.station = selectedAct.STATION
   currentDraft.reason = selectedAct.REASON
@@ -802,7 +800,7 @@ function applySelectedStartAct(id) {
   }
 }
 
-function findOpenActByWagonsInput(rawText) {
+function findOpenByWagons(rawText) {
   var wagonNums = parseWagons(rawText)
   if (!wagonNums.length) {
     showToast('Введите номер вагона', 'err')
@@ -818,16 +816,16 @@ function findOpenActByWagonsInput(rawText) {
     })
 
     if (matchAct) {
-      applySelectedStartAct(matchAct.ID)
+      pickStart(matchAct.ID)
       showToast('Найден открытый акт ' + matchAct.ACT_NUMBER, 'ok')
-      renderApp()
+      draw()
     } else {
       showToast('Открытый простой по этим вагонам не найден', 'err')
     }
   }
 
   if (currentDraft._openStarts == null) {
-    callApi('gu23_get_open_starts').done(function (list) {
+    api('gu23_get_open_starts').done(function (list) {
       currentDraft._openStarts = list || []
       executeSearch()
     })
@@ -836,31 +834,31 @@ function findOpenActByWagonsInput(rawText) {
   }
 }
 
-function getDurationPreviewHtml() {
+function durPreview() {
   if (!currentDraft.startAt || !currentDraft.endAt) {
     return 'Длительность простоя будет рассчитана автоматически по дате начала и окончания.'
   }
-  var startMs = getTimeMs(currentDraft.startAt)
-  var endMs = getTimeMs(currentDraft.endAt)
+  var startMs = toMs(currentDraft.startAt)
+  var endMs = toMs(currentDraft.endAt)
 
   if (endMs < startMs)
     return '⚠ Дата окончания меньше даты начала — сохранение будет заблокировано.'
   if (endMs === startMs)
     return '⚠ Длительность простоя составляет 0 часов (даты совпадают).'
 
-  var duration = calculateDuration(startMs, endMs)
+  var duration = calcDuration(startMs, endMs)
   return (
     'Расчёт простоя: <b>' +
-    formatDuration(duration) +
+    durText(duration) +
     '</b>, всего ' +
-    formatTotalHours(duration) +
+    hoursText(duration) +
     ' · для претензий: ' +
     duration.calendarDays +
     ' кал. дн. Значение рассчитано автоматически.'
   )
 }
 
-function processAddedWagons(rawText) {
+function addWagons(rawText) {
   var parsedNums = parseWagons(rawText)
   var addedCount = 0
 
@@ -894,7 +892,7 @@ function processAddedWagons(rawText) {
   }
 }
 
-function requestWagonInformation(rawText) {
+function loadWagonInfo(rawText) {
   var inputNums = parseWagons(rawText)
   var targetWagons = inputNums.length
     ? inputNums
@@ -907,7 +905,7 @@ function requestWagonInformation(rawText) {
     return
   }
 
-  callApi('gu23_get_wagon_info', {
+  api('gu23_get_wagon_info', {
     wagons: JSON.stringify(targetWagons),
     station: currentDraft.station,
   }).done(function (rows) {
@@ -959,11 +957,11 @@ function requestWagonInformation(rawText) {
       'Получено ' + foundCount + ' из ' + targetWagons.length,
       foundCount ? 'ok' : 'err',
     )
-    renderApp()
+    draw()
   })
 }
 
-function buildWagonsEditorTable() {
+function makeWagonsTable() {
   if (!currentDraft.wagons.length) {
     return createElement(
       'div',
@@ -1007,10 +1005,10 @@ function buildWagonsEditorTable() {
     if (isEndType) {
       var calculatedDur = '—'
       if (currentDraft.startAt && currentDraft.endAt) {
-        var startMs = getTimeMs(currentDraft.startAt)
-        var endMs = getTimeMs(currentDraft.endAt)
+        var startMs = toMs(currentDraft.startAt)
+        var endMs = toMs(currentDraft.endAt)
         if (endMs >= startMs)
-          calculatedDur = formatDuration(calculateDuration(startMs, endMs))
+          calculatedDur = durText(calcDuration(startMs, endMs))
       }
       tr.appendChild(createElement('td', { class: 'dur' }, calculatedDur))
     }
@@ -1025,7 +1023,7 @@ function buildWagonsEditorTable() {
             class: 'delx',
             onclick: function () {
               currentDraft.wagons.splice(idx, 1)
-              renderApp()
+              draw()
             },
           },
           '×',
@@ -1052,7 +1050,7 @@ function buildWagonsEditorTable() {
   )
 }
 
-function buildSignersPickerSection() {
+function makeSigners() {
   var requiredSignersCount = currentDraft.type === 'other' ? 2 : 3
   var container = createElement('div', {})
 
@@ -1123,7 +1121,7 @@ function buildSignersPickerSection() {
   return container
 }
 
-function validateDraftForm(checkSigners) {
+function checkForm(checkSigners) {
   var errorMessages = []
   if (!currentDraft.cex) errorMessages.push('Не указан цех')
   if (!currentDraft.reason) errorMessages.push('Не указана причина составления')
@@ -1142,7 +1140,7 @@ function validateDraftForm(checkSigners) {
     if (
       currentDraft.startAt &&
       currentDraft.endAt &&
-      getTimeMs(currentDraft.endAt) < getTimeMs(currentDraft.startAt)
+      toMs(currentDraft.endAt) < toMs(currentDraft.startAt)
     ) {
       errorMessages.push('Дата окончания меньше даты начала')
     }
@@ -1159,8 +1157,8 @@ function validateDraftForm(checkSigners) {
   return errorMessages
 }
 
-function saveActRemote(status, skipWarning) {
-  var errors = validateDraftForm(status === 'active')
+function saveAct(status, skipWarning) {
+  var errors = checkForm(status === 'active')
   if (status === 'draft') {
     errors = errors.filter(function (msg) {
       return msg.indexOf('подписант') < 0
@@ -1189,7 +1187,7 @@ function saveActRemote(status, skipWarning) {
     force: skipWarning ? 'Y' : 'N',
   }
 
-  callApi('gu23_save_act', payload).done(function (response) {
+  api('gu23_save_act', payload).done(function (response) {
     if (response && response.ok) {
       showToast(
         (status === 'draft'
@@ -1199,15 +1197,15 @@ function saveActRemote(status, skipWarning) {
         'ok',
       )
       currentDraft = null
-      openActDetails(response.id)
+      openAct(response.id)
     } else {
       var serverMsg = (response && response.msg) || 'Ошибка сохранения'
       if (/уже есть открытый акт начала/.test(serverMsg)) {
-        openConfirmModal(
+        confirmBox(
           'Дубль открытого простоя',
           serverMsg + '. Зарегстировать акт ?',
           function () {
-            saveActRemote(status, true)
+            saveAct(status, true)
           },
         )
       } else {
@@ -1217,9 +1215,9 @@ function saveActRemote(status, skipWarning) {
   })
 }
 
-/* ============================ Карточка акта ============================ */
-function renderActCardView(container) {
-  callApi('gu23_get_act', { id: AppState.selectedId }).done(function (data) {
+// карточка акта
+function showCard(container) {
+  api('gu23_get_act', { id: AppState.selectedId }).done(function (data) {
     container.innerHTML = ''
     if (!data || !data.ok) {
       container.appendChild(
@@ -1227,11 +1225,11 @@ function renderActCardView(container) {
       )
       return
     }
-    buildCardInterface(container, data)
+    buildCard(container, data)
   })
 }
 
-function buildCardInterface(container, data) {
+function buildCard(container, data) {
   var act = data.act
   container.appendChild(
     createElement(
@@ -1242,7 +1240,7 @@ function buildCardInterface(container, data) {
         {
           class: 'btn sm ghost',
           onclick: function () {
-            navigateTo('archive')
+            goTo('archive')
           },
         },
         '← Архив',
@@ -1252,8 +1250,8 @@ function buildCardInterface(container, data) {
         { style: 'font-family:var(--mono);font-size:18px' },
         act.ACT_NUMBER,
       ),
-      createElement('span', { html: renderTypeChip(act.ACT_TYPE) }),
-      createElement('span', { html: renderStatusChip(act.STATUS) }),
+      createElement('span', { html: typeChip(act.ACT_TYPE) }),
+      createElement('span', { html: statusChip(act.STATUS) }),
       createElement('div', { class: 'spacer' }),
     ),
   )
@@ -1281,7 +1279,7 @@ function buildCardInterface(container, data) {
         {
           class: 'btn primary',
           onclick: function () {
-            switchToEditMode(data)
+            editAct(data)
           },
         },
         '✎ Редактировать',
@@ -1293,7 +1291,7 @@ function buildCardInterface(container, data) {
         {
           class: 'btn danger',
           onclick: function () {
-            deleteDraftAct(act)
+            delDraft(act)
           },
         },
         '🗑 Удалить черновик',
@@ -1307,7 +1305,7 @@ function buildCardInterface(container, data) {
         {
           class: 'btn danger',
           onclick: function () {
-            annulSignedAct(act)
+            annulAct(act)
           },
         },
         '⊘ Аннулировать',
@@ -1381,7 +1379,7 @@ function buildCardInterface(container, data) {
     if (act.LINKED_START_ID) {
       appendRow(
         'Связан с актом начала',
-        '<a href="#" onclick="openActDetails(' +
+        '<a href="#" onclick="openAct(' +
           act.LINKED_START_ID +
           ');return false">' +
           escapeHtml(act.LINKED_START_NUMBER || '—') +
@@ -1507,7 +1505,7 @@ function buildCardInterface(container, data) {
       accept: 'image/*,.pdf,.doc,.docx,.xls,.xlsx',
     })
     hiddenFileInput.addEventListener('change', function () {
-      executeFilesUpload(act.ID, hiddenFileInput.files)
+      uploadFiles(act.ID, hiddenFileInput.files)
     })
     fileLabelBtn.appendChild(hiddenFileInput)
     filesHead.appendChild(fileLabelBtn)
@@ -1582,7 +1580,7 @@ function buildCardInterface(container, data) {
           {
             class: 'delx',
             onclick: function () {
-              deleteAttachedFile(file.ID, act.ID)
+              delFile(file.ID, act.ID)
             },
           },
           '×',
@@ -1637,7 +1635,7 @@ function buildCardInterface(container, data) {
   container.appendChild(mainGrid)
 }
 
-function switchToEditMode(data) {
+function editAct(data) {
   var act = data.act
   currentDraft = {
     id: act.ID,
@@ -1647,8 +1645,8 @@ function switchToEditMode(data) {
     station: act.STATION,
     reason: act.REASON,
     circumstances: act.CIRCUMSTANCES || '',
-    startAt: convertToInputDateTime(act.START_AT),
-    endAt: convertToInputDateTime(act.END_AT),
+    startAt: toInputDate(act.START_AT),
+    endAt: toInputDate(act.END_AT),
     linkedStartId: act.LINKED_START_ID || '',
     linkedStartNumber: act.LINKED_START_NUMBER || '',
     wagons: data.wagons.map(function (w) {
@@ -1670,18 +1668,18 @@ function switchToEditMode(data) {
   }
   AppState.page = 'new'
   AppState.selectedId = null
-  renderApp()
+  draw()
 }
 
-function deleteDraftAct(act) {
-  openConfirmModal(
+function delDraft(act) {
+  confirmBox(
     'Удаление черновика',
     'Удалить черновик ' + act.ACT_NUMBER + '? Действие необратимо.',
     function () {
-      callApi('gu23_del_act', { id: act.ID }).done(function (response) {
+      api('gu23_del_act', { id: act.ID }).done(function (response) {
         if (response && response.ok) {
           showToast('Черновик удалён', 'ok')
-          navigateTo('archive')
+          goTo('archive')
         } else {
           showToast((response && response.msg) || 'Ошибка удаления', 'err')
         }
@@ -1690,17 +1688,17 @@ function deleteDraftAct(act) {
   )
 }
 
-function annulSignedAct(act) {
-  openPromptModal(
+function annulAct(act) {
+  promptBox(
     'Аннулирование акта',
     'Подписанный/действующий акт нельзя удалить. Укажите причину аннулирования:',
     function (reason) {
       if (!reason) return
-      callApi('gu23_annul_act', { id: act.ID, reason: reason }).done(
+      api('gu23_annul_act', { id: act.ID, reason: reason }).done(
         function (response) {
           if (response && response.ok) {
             showToast('Акт аннулирован', 'ok')
-            openActDetails(act.ID)
+            openAct(act.ID)
           } else {
             showToast((response && response.msg) || 'Ошибка', 'err')
           }
@@ -1710,7 +1708,7 @@ function annulSignedAct(act) {
   )
 }
 
-function executeFilesUpload(actId, files) {
+function uploadFiles(actId, files) {
   if (!files || !files.length) return
   var formData = new FormData()
   formData.append('ajax_action', 'gu23_upload_file')
@@ -1730,16 +1728,16 @@ function executeFilesUpload(actId, files) {
   }).done(function (response) {
     if (response && response.ok) showToast('Файлы загружены', 'ok')
     else showToast('Часть файлов не загружена', 'err')
-    openActDetails(actId)
+    openAct(actId)
   })
 }
 
-function deleteAttachedFile(fileId, actId) {
-  openConfirmModal('Удаление файла', 'Удалить приложение?', function () {
-    callApi('gu23_del_file', { file_id: fileId }).done(function (response) {
+function delFile(fileId, actId) {
+  confirmBox('Удаление файла', 'Удалить приложение?', function () {
+    api('gu23_del_file', { file_id: fileId }).done(function (response) {
       if (response && response.ok) {
         showToast('Файл удалён', 'ok')
-        openActDetails(actId)
+        openAct(actId)
       } else {
         showToast((response && response.msg) || 'Ошибка', 'err')
       }
@@ -1747,8 +1745,8 @@ function deleteAttachedFile(fileId, actId) {
   })
 }
 
-/* ============================ Поиск по вагону ============================ */
-function renderWagonSearchView(container) {
+// поиск по вагону
+function showWagonSearch(container) {
   container.appendChild(
     createElement(
       'div',
@@ -1785,32 +1783,32 @@ function renderWagonSearchView(container) {
       showToast('Введите номер вагона', 'err')
       return
     }
-    callApi('gu23_get_by_wagon', { wagon: wagonNum }).done(function (list) {
+    api('gu23_get_by_wagon', { wagon: wagonNum }).done(function (list) {
       resultsBox.innerHTML = ''
       var cardElement = createElement('div', { class: 'card' })
-      cardElement.appendChild(buildActsTable(list || []))
+      cardElement.appendChild(makeActsTable(list || []))
       resultsBox.appendChild(cardElement)
     })
   }
 }
 
-/* ============================ Модальные окна и Тосты ============================ */
-function openConfirmModal(title, message, onConfirmCallback) {
+// окошки и уведомления
+function confirmBox(title, message, onConfirmCallback) {
   var bodyNode = createElement('div', {}, createElement('p', {}, message))
-  openModalWindow(title, bodyNode, [
-    { label: 'Отмена', className: 'btn ghost', callback: closeModalWindow },
+  openModal(title, bodyNode, [
+    { label: 'Отмена', className: 'btn ghost', callback: closeModal },
     {
       label: 'Подтвердить',
       className: 'btn primary',
       callback: function () {
-        closeModalWindow()
+        closeModal()
         onConfirmCallback()
       },
     },
   ])
 }
 
-function openPromptModal(title, message, onConfirmCallback) {
+function promptBox(title, message, onConfirmCallback) {
   var textarea = createElement('textarea', {
     class: 'inp',
     style: 'min-height:80px',
@@ -1822,21 +1820,21 @@ function openPromptModal(title, message, onConfirmCallback) {
     textarea,
   )
 
-  openModalWindow(title, bodyNode, [
-    { label: 'Отмена', className: 'btn ghost', callback: closeModalWindow },
+  openModal(title, bodyNode, [
+    { label: 'Отмена', className: 'btn ghost', callback: closeModal },
     {
       label: 'OK',
       className: 'btn primary',
       callback: function () {
         var value = textarea.value.trim()
-        closeModalWindow()
+        closeModal()
         onConfirmCallback(value)
       },
     },
   ])
 }
 
-function openModalWindow(title, bodyNode, buttonsConfig) {
+function openModal(title, bodyNode, buttonsConfig) {
   var footer = createElement('div', { class: 'mfoot' })
   buttonsConfig.forEach(function (btn) {
     footer.appendChild(
@@ -1855,7 +1853,7 @@ function openModalWindow(title, bodyNode, buttonsConfig) {
       'div',
       { class: 'mhead' },
       createElement('h3', {}, title),
-      createElement('button', { class: 'x', onclick: closeModalWindow }, '×'),
+      createElement('button', { class: 'x', onclick: closeModal }, '×'),
     ),
     createElement('div', { class: 'mbody' }, bodyNode),
     footer,
@@ -1866,7 +1864,7 @@ function openModalWindow(title, bodyNode, buttonsConfig) {
     {
       class: 'scrim',
       onclick: function (e) {
-        if (e.target === backdrop) closeModalWindow()
+        if (e.target === backdrop) closeModal()
       },
     },
     modalContainer,
@@ -1874,7 +1872,7 @@ function openModalWindow(title, bodyNode, buttonsConfig) {
   $$('#modalRoot').appendChild(backdrop)
 }
 
-function closeModalWindow() {
+function closeModal() {
   $$('#modalRoot').innerHTML = ''
 }
 
@@ -1891,8 +1889,8 @@ function showToast(message, kind) {
   }, 3200)
 }
 
-/* ---------- Конструкторы элементов ввода ---------- */
-function createFormField(label, inputNode, isRequired) {
+// поля формы
+function formField(label, inputNode, isRequired) {
   var mark = isRequired ? ' <span class="req">*</span>' : ''
   return createElement(
     'div',
@@ -1902,7 +1900,7 @@ function createFormField(label, inputNode, isRequired) {
   )
 }
 
-function createSelectInput(optionsList, selectedValue, onChangeCallback) {
+function selectInput(optionsList, selectedValue, onChangeCallback) {
   var select = createElement('select', {
     class: 'inp',
     onchange: function (e) {
@@ -1921,7 +1919,7 @@ function createSelectInput(optionsList, selectedValue, onChangeCallback) {
   return select
 }
 
-function createDateTimeInput(currentValue, onChangeCallback) {
+function dateInput(currentValue, onChangeCallback) {
   return createElement('input', {
     class: 'inp',
     type: 'datetime-local',
@@ -1932,7 +1930,7 @@ function createDateTimeInput(currentValue, onChangeCallback) {
   })
 }
 
-function createTextArea(currentValue, onChangeCallback) {
+function textArea(currentValue, onChangeCallback) {
   return createElement(
     'textarea',
     {
