@@ -39,5 +39,6 @@ return [
     'gu23_annul_act'       => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_upload_file'     => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_del_file'        => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_search_station'  => ['gu23/GuActRepository.php', 'GuActRepository'],
 
 ];

@@ -174,8 +174,10 @@ $(document).ready(function () {
     var body = jqXHR.responseText || ''
     var msg = ''
     try { msg = JSON.parse(body).msg || '' } catch (ignore) {}
-    console.error('AJAX error', jqXHR.status, detail, body.substring(0, 500))
-    showToast('Ошибка сервера [' + jqXHR.status + ']' + (msg ? ': ' + msg : (detail ? ': ' + detail : '')), 'err')
+    var action = ''
+    try { action = new URLSearchParams(settings.data).get('ajax_action') || '' } catch (ignore) {}
+    console.error('AJAX error [' + action + ']', jqXHR.status, detail, body.substring(0, 500))
+    showToast('Ошибка сервера [' + (action || jqXHR.status) + ']' + (msg ? ': ' + msg : (detail ? ': ' + detail : '')), 'err')
   })
 
   api('gu23_get_refs').done(function (response) {
