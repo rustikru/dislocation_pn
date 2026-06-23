@@ -4,7 +4,7 @@
  *
  * Репозиторий модуля "ГУ-23 · Акты общей формы".
  * Вся работа с БД — только через конвейерные функции / процедуры
- * пакета xx_dislocation (gu23_*). PHP лишь маршалит данные.
+ * пакета xx_disl_gu23_pkg (gu23_*). PHP лишь маршалит данные.
  *
  * Подключается из data.php через router.php:
  *   'gu23_*' => ['gu23/GuActRepository.php', 'GuActRepository']
@@ -27,17 +27,39 @@ class GuActRepository
     public function handle(string $action, array $post): void
     {
         switch ($action) {
-            case 'gu23_get_refs':        $this->getRefs();        break;
-            case 'gu23_get_acts':        $this->getActs();        break;
-            case 'gu23_get_act':         $this->getActCard();     break;
-            case 'gu23_get_open_starts': $this->getOpenStarts();  break;
-            case 'gu23_get_by_wagon':    $this->getByWagon();     break;
-            case 'gu23_get_wagon_info':  $this->getWagonInfo();   break;
-            case 'gu23_save_act':        $this->saveAct();        break;
-            case 'gu23_del_act':         $this->delAct();         break;
-            case 'gu23_annul_act':       $this->annulAct();       break;
-            case 'gu23_upload_file':     $this->uploadFile();     break;
-            case 'gu23_del_file':        $this->delFile();        break;
+            case 'gu23_get_refs':
+                $this->getRefs();
+                break;
+            case 'gu23_get_acts':
+                $this->getActs();
+                break;
+            case 'gu23_get_act':
+                $this->getActCard();
+                break;
+            case 'gu23_get_open_starts':
+                $this->getOpenStarts();
+                break;
+            case 'gu23_get_by_wagon':
+                $this->getByWagon();
+                break;
+            case 'gu23_get_wagon_info':
+                $this->getWagonInfo();
+                break;
+            case 'gu23_save_act':
+                $this->saveAct();
+                break;
+            case 'gu23_del_act':
+                $this->delAct();
+                break;
+            case 'gu23_annul_act':
+                $this->annulAct();
+                break;
+            case 'gu23_upload_file':
+                $this->uploadFile();
+                break;
+            case 'gu23_del_file':
+                $this->delFile();
+                break;
             default:
                 http_response_code(400);
                 echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -95,12 +117,12 @@ class GuActRepository
     private function getRefs(): void
     {
         echo json_encode([
-            'cexes'       => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_cex())'),
-            'reasons'     => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_reason(null))'),
-            'stations'    => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_station())'),
-            'owners'      => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_owner())'),
-            'kinds'       => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_wagon_kind())'),
-            'signers'     => $this->pipe('select * from table(xx_dislocation.gu23_get_ref_signer())'),
+            'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
+            'reasons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'stations' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station())'),
+            'owners' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
+            'kinds' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'),
+            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer())'),
         ]);
     }
 
@@ -109,13 +131,13 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function getActs(): void
     {
-        $q      = filter_input(INPUT_POST, 'q')      ?: null;
-        $type   = filter_input(INPUT_POST, 'type')   ?: null;
+        $q = filter_input(INPUT_POST, 'q') ?: null;
+        $type = filter_input(INPUT_POST, 'type') ?: null;
         $status = filter_input(INPUT_POST, 'status') ?: null;
-        $cex    = filter_input(INPUT_POST, 'cex')    ?: null;
+        $cex = filter_input(INPUT_POST, 'cex') ?: null;
 
         $rows = $this->pipe(
-            'select * from table(xx_dislocation.gu23_get_acts(:b1,:b2,:b3,:b4))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4))',
             [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $cex]
         );
         echo json_encode($rows);
@@ -124,28 +146,28 @@ class GuActRepository
     private function getActCard(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
-        $act = $this->pipe('select * from table(xx_dislocation.gu23_get_act(:b1))', [':b1' => $id]);
+        $act = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $id]);
         if (!$act) {
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
         echo json_encode([
-            'ok'         => true,
-            'act'        => $act[0],
-            'wagons'     => $this->pipe('select * from table(xx_dislocation.gu23_get_rows(:b1))',    [':b1' => $id]),
-            'files'      => $this->pipe('select * from table(xx_dislocation.gu23_get_files(:b1))',   [':b1' => $id]),
-            'signers'    => $this->pipe('select * from table(xx_dislocation.gu23_get_signers(:b1))', [':b1' => $id]),
-            'history'    => $this->pipe('select * from table(xx_dislocation.gu23_get_hist(:b1))',    [':b1' => $id]),
+            'ok' => true,
+            'act' => $act[0],
+            'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
+            'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
+            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
+            'history' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
         ]);
     }
 
     private function getOpenStarts(): void
     {
-        $acts = $this->pipe('select * from table(xx_dislocation.gu23_get_open_starts())');
-        // подтянем вагоны для каждого открытого акта начала (нужно для выбора в акте окончания)
+        $acts = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_open_starts())');
+        // подтянем ТОЛЬКО ещё открытые вагоны (для выбора в акте окончания)
         foreach ($acts as &$a) {
             $a['WAGONS'] = $this->pipe(
-                'select * from table(xx_dislocation.gu23_get_rows(:b1))',
+                'select * from table(xx_disl_gu23_pkg.gu23_get_open_rows(:b1))',
                 [':b1' => $a['ID']]
             );
         }
@@ -156,7 +178,7 @@ class GuActRepository
     {
         $wagon = trim((string) filter_input(INPUT_POST, 'wagon'));
         echo json_encode($this->pipe(
-            'select * from table(xx_dislocation.gu23_get_by_wagon(:b1))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_by_wagon(:b1))',
             [':b1' => $wagon]
         ));
     }
@@ -167,12 +189,14 @@ class GuActRepository
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
-        $station    = filter_input(INPUT_POST, 'station') ?: null;
+        $station = filter_input(INPUT_POST, 'station') ?: null;
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
 
-        $st = oci_parse($this->conn,
-            'select * from table(xx_dislocation.gu23_get_wagon_info(:b1,:b2))');
+        $st = oci_parse(
+            $this->conn,
+            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2))'
+        );
         $lob = $this->bindClob($st, ':b1', $clob);
         oci_bind_by_name($st, ':b2', $station);
         oci_execute($st);
@@ -189,31 +213,33 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function saveAct(): void
     {
-        $userId  = $this->auth->getUserId();
-        $wagons  = json_decode((string) filter_input(INPUT_POST, 'wagons'),  true) ?: [];
+        $userId = $this->auth->getUserId();
+        $wagons = json_decode((string) filter_input(INPUT_POST, 'wagons'), true) ?: [];
         $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
 
-        $wagonClob  = $this->packRows($wagons,  ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
+        $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
         $signerClob = $this->packRows($signers, ['fio', 'post', 'org']);
 
-        $st = oci_parse($this->conn,
-            'begin :res := xx_dislocation.gu23_save_act(
+        $st = oci_parse(
+            $this->conn,
+            'begin :res := xx_disl_gu23_pkg.gu23_save_act(
                 :user_id, :id, :type, :status, :cex, :station, :reason,
-                :circ, :start_at, :end_at, :linked, :wagons, :signers, :force); end;');
+                :circ, :start_at, :end_at, :linked, :wagons, :signers, :force); end;'
+        );
 
         $res = '';
-        $id          = (int) filter_input(INPUT_POST, 'id');
-        $type        = filter_input(INPUT_POST, 'type');
-        $status      = filter_input(INPUT_POST, 'status');
-        $cex         = filter_input(INPUT_POST, 'cex');
-        $station     = filter_input(INPUT_POST, 'station');
-        $reason      = filter_input(INPUT_POST, 'reason');
-        $circ        = filter_input(INPUT_POST, 'circumstances');
-        $startAt     = filter_input(INPUT_POST, 'start_at') ?: null;
-        $endAt       = filter_input(INPUT_POST, 'end_at')   ?: null;
-        $linkedRaw   = filter_input(INPUT_POST, 'linked_start_id');
-        $linked      = ($linkedRaw === null || $linkedRaw === '') ? null : (int) $linkedRaw;
-        $force       = filter_input(INPUT_POST, 'force') === 'Y' ? 'Y' : 'N';
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $type = filter_input(INPUT_POST, 'type');
+        $status = filter_input(INPUT_POST, 'status');
+        $cex = filter_input(INPUT_POST, 'cex');
+        $station = filter_input(INPUT_POST, 'station');
+        $reason = filter_input(INPUT_POST, 'reason');
+        $circ = filter_input(INPUT_POST, 'circumstances');
+        $startAt = filter_input(INPUT_POST, 'start_at') ?: null;
+        $endAt = filter_input(INPUT_POST, 'end_at') ?: null;
+        $linkedRaw = filter_input(INPUT_POST, 'linked_start_id');
+        $linked = ($linkedRaw === null || $linkedRaw === '') ? null : (int) $linkedRaw;
+        $force = filter_input(INPUT_POST, 'force') === 'Y' ? 'Y' : 'N';
 
         oci_bind_by_name($st, ':res', $res, 4000);
         oci_bind_by_name($st, ':user_id', $userId);
@@ -241,8 +267,10 @@ class GuActRepository
     private function delAct(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
-        $st = oci_parse($this->conn,
-            'begin :res := xx_dislocation.gu23_del_act(:id, :uid); end;');
+        $st = oci_parse(
+            $this->conn,
+            'begin :res := xx_disl_gu23_pkg.gu23_del_act(:id, :uid); end;'
+        );
         $res = '';
         $uid = $this->auth->getUserId();
         oci_bind_by_name($st, ':res', $res, 4000);
@@ -254,10 +282,12 @@ class GuActRepository
 
     private function annulAct(): void
     {
-        $id     = (int) filter_input(INPUT_POST, 'id');
+        $id = (int) filter_input(INPUT_POST, 'id');
         $reason = filter_input(INPUT_POST, 'reason');
-        $st = oci_parse($this->conn,
-            'begin :res := xx_dislocation.gu23_annul_act(:id, :uid, :reason); end;');
+        $st = oci_parse(
+            $this->conn,
+            'begin :res := xx_disl_gu23_pkg.gu23_annul_act(:id, :uid, :reason); end;'
+        );
         $res = '';
         $uid = $this->auth->getUserId();
         oci_bind_by_name($st, ':res', $res, 4000);
@@ -273,30 +303,39 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function uploadFile(): void
     {
-        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
 
-        // физически храним в одном месте; имя на диске = ID записи
-        $baseDir = __DIR__ . '/request_data/' . $actId . '/';
+        // [Исправление] Сначала определяем тип акта для формирования корректного пути
+        $actType = 'other'; // значение по умолчанию
+        $stType = oci_parse($this->conn, 'select act_type from xx_disl_gu23_act where id = :b1');
+        oci_bind_by_name($stType, ':b1', $actId);
+        oci_execute($stType);
+        if ($rType = oci_fetch_array($stType, OCI_ASSOC)) {
+            $actType = strtolower($rType['ACT_TYPE']);
+        }
+
+        // Физически храним в папке в разрезе типа акта
+        $baseDir = __DIR__ . '/request_data/' . $actType . '/' . $actId . '/';
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
 
-        $saved  = [];
+        $saved = [];
         $errors = [];
         foreach ($_FILES as $file) {
             if (($file['error'] ?? 1) !== UPLOAD_ERR_OK) {
                 $errors[] = $file['name'] ?? 'файл';
                 continue;
             }
-            // получим ID будущей записи
-            $stId = oci_parse($this->conn, 'begin :id := xx_dislocation.gu23_new_file_id; end;');
+
+            $stId = oci_parse($this->conn, 'begin :id := xx_disl_gu23_pkg.gu23_new_file_id; end;');
             $fileId = 0;
             oci_bind_by_name($stId, ':id', $fileId, 32);
             oci_execute($stId);
 
             $orig = $file['name'];
-            $ext  = pathinfo($orig, PATHINFO_EXTENSION);
+            $ext = pathinfo($orig, PATHINFO_EXTENSION);
             $mime = $file['type'] ?? '';
             $disk = $baseDir . $fileId . ($ext ? '.' . $ext : '');
 
@@ -305,8 +344,10 @@ class GuActRepository
                 continue;
             }
 
-            $st = oci_parse($this->conn,
-                'begin :res := xx_dislocation.gu23_add_file(:act,:fid,:name,:ext,:mime,:path,:uid); end;');
+            $st = oci_parse(
+                $this->conn,
+                'begin :res := xx_disl_gu23_pkg.gu23_add_file(:act,:fid,:name,:ext,:mime,:path,:uid); end;'
+            );
             $res = '';
             oci_bind_by_name($st, ':res', $res, 4000);
             oci_bind_by_name($st, ':act', $actId);
@@ -333,16 +374,20 @@ class GuActRepository
         $fileId = (int) filter_input(INPUT_POST, 'file_id');
         // удалим физический файл
         $path = '';
-        $stP = oci_parse($this->conn,
-            'select real_path from xx_disl_gu23_file where id = :b1');
+        $stP = oci_parse(
+            $this->conn,
+            'select real_path from xx_disl_gu23_file where id = :b1'
+        );
         oci_bind_by_name($stP, ':b1', $fileId);
         oci_execute($stP);
         if ($row = oci_fetch_array($stP, OCI_ASSOC + OCI_RETURN_NULLS)) {
             $path = $row['REAL_PATH'];
         }
 
-        $st = oci_parse($this->conn,
-            'begin :res := xx_dislocation.gu23_del_file(:fid, :uid); end;');
+        $st = oci_parse(
+            $this->conn,
+            'begin :res := xx_disl_gu23_pkg.gu23_del_file(:fid, :uid); end;'
+        );
         $res = '';
         $uid = $this->auth->getUserId();
         oci_bind_by_name($st, ':res', $res, 4000);
@@ -362,7 +407,7 @@ class GuActRepository
     private function emitResult(string $res): void
     {
         $parts = explode(self::US, $res);
-        $head  = $parts[0] ?? '';
+        $head = $parts[0] ?? '';
         if ($head === 'OK') {
             echo json_encode(['ok' => true, 'id' => (int) ($parts[1] ?? 0), 'number' => $parts[2] ?? '']);
         } elseif (strpos($head, 'done') === 0) {

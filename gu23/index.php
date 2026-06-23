@@ -22,29 +22,31 @@ if ($auth->isAuth()) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ГУ-23 · Акты общей формы</title>
+
+    <!-- ОБЩЕСАЙТОВОЕ МЕНЮ (CSS). На боевом раскомментировать вместе с блоком меню ниже.
+         Локально отключено: get_main_menu() ходит в пакет xx_dislocation, которого тут нет.
+    <link rel="stylesheet" href="../css/site_layout.css" type="text/css">
+    <link rel="stylesheet" href="../css/context_menu.css" type="text/css">
+    -->
     <link rel="stylesheet" href="gu23.css" type="text/css">
 
     <!-- jQuery 3.7.1 (+migrate) — подключается только на этой странице -->
     <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
     <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script>
+    <!-- общие хелперы сайта: init_date_time_input, add_day_to_date_trunc и т.п. -->
+    <script src="../js/general_function.js" type="text/javascript"></script>
     <script src="gu23.js?ver=1" type="text/javascript"></script>
 </head>
 <body>
+    <header>
+        <?php
+            // ОБЩЕСАЙТОВОЕ МЕНЮ. На боевом — убрать "//" ниже (нужен пакет
+            // xx_dislocation с функцией get_main_menu). Локально отключено.
+            // include('../modules/site/main-top.php');
+        ?>
+    </header>
     <div class="app">
-        <div class="topbar">
-            <div class="brand">
-                <div class="mark">23</div>
-                <div>ГУ-23 · Акты общей формы<small>Учёт простоя вагонов</small></div>
-            </div>
-            <div class="spacer"></div>
-            <div class="station-chip"><i></i> Станция операции: Углеуральская</div>
-            <div class="rolebox">
-                <span class="u" id="userline"><?php echo htmlspecialchars($auth->getFullName() ?? ''); ?></span>
-            </div>
-        </div>
-
         <nav class="side" id="nav"></nav>
-
         <main class="main"><div class="view" id="view"></div></main>
     </div>
 
