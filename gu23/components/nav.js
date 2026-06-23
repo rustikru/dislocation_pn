@@ -1,4 +1,4 @@
-import { applicationState } from '../state.js'
+import { applicationState, setActiveDraft } from '../state.js'
 import { navigateTo } from '../app.js'
 
 export function drawNav() {
@@ -21,7 +21,10 @@ export function drawNav() {
       </button>
     `)
 
-    $button.on('click', () => navigateTo(item.page))
+    $button.on('click', () => {
+      if (item.page === 'new') setActiveDraft(null)
+      navigateTo(item.page)
+    })
     $nav.append($button)
   })
 
