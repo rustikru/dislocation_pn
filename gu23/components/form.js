@@ -593,9 +593,11 @@ function showSignersFields() {
     let inputHtml = ''
     if (isManual) {
       inputHtml = `
-        <input class="inp signer-fio" data-slot="${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}" style="margin-bottom:6px">
-        <input class="inp signer-post" data-slot="${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}" style="margin-bottom:6px">
-        <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px">
+          <input class="inp signer-fio" data-slot="${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
+          <input class="inp signer-post" data-slot="${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
+          <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
+        </div>
       `
     } else {
       const optionsHtml = signersList
