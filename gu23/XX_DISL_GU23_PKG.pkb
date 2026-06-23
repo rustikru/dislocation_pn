@@ -6,6 +6,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
     -- ----------------------------------------------------------------
     -- вспомогательные
     -- ----------------------------------------------------------------
+   procedure log_new (
+      p_function_name in varchar2,
+      p_text          in varchar2
+   ) is
+      pragma autonomous_transaction;
+   begin
+      insert into xx_disl_log_new (
+         function_name,
+         text
+      ) values ( p_function_name,
+                 p_text );
+      commit;
+   end;
+
    function g_user_name (
       p_user_id in number
    ) return varchar2 is
@@ -702,84 +716,143 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    end;
 
     -- ----------------------------------------------------------------
-    -- дислокация (заглушка через select из dual)
-    -- заменить тело на реальный запрос к источнику данных Дислокации.
-    -- p_waybill_no — поисковый контекст; не хранится в акте.
+    -- 
+    -- Данные из дислокации (внешняя ил по накладные из этрана)
+    -- p_waybill_no — по накладной
+    -- p_wagons - список вагонов(перечисление)
+    -- p_dest_station - станция назначения
     -- ----------------------------------------------------------------
    function gu23_get_wagon_info (
-      p_wagons     in clob,
-      p_waybill_no in varchar2 default null
+      p_wagons       in clob,
+      p_waybill_no   in varchar2 default null,
+      p_dest_station in varchar2 default null
    ) return xx_disl_gu23_wagon_tab
       pipelined
    is
-      v_len  pls_integer := nvl(
+      l_function varchar2(150) := 'gu23_get_wagon_info';
+      v_len      pls_integer := nvl(
          dbms_lob.getlength(p_wagons),
          0
       );
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_no   varchar2(32);
-      l_row  xx_disl_gu23_wagon_row;
+      v_from     pls_integer := 1;
+      v_to       pls_integer;
+      v_no       varchar2(32);
+      l_row      xx_disl_gu23_wagon_row;
+    
+    -- Вынесем тяжелый подзапрос в CTE (WITH) для читаемости и производительности
+      cursor c_dislocation (
+         v_w_no         varchar2,
+         v_waybill_no   varchar2,
+         v_dest_station varchar2
+      ) is
+      with max_dislocation as (
+         select max(report_dt) as max_dt,
+                type_reference
+           from xx_dislocation_rjd
+          group by type_reference
+      )
+      select ei.wagon_no,
+             ei.cargo_name,
+             ei.wagon_type_code,
+             ei.owner,
+             ei.depart_station,
+             ei.dest_station
+        from xx_dislocation_rjd ei
+        join max_dislocation md
+      on ei.report_dt = md.max_dt
+         and ei.type_reference = md.type_reference
+       where ( v_w_no is null
+          or ei.wagon_no = v_w_no )
+         and ( v_dest_station is null
+          or upper(ei.dest_station) like '%'
+                                         || upper(v_dest_station)
+                                         || '%' )
+         and ( v_waybill_no is null
+          or ei.waybill_no like v_waybill_no );
+
    begin
-      if v_len = 0 then
-         return;
-      end if;
-      while v_from <= v_len loop
-         v_to := instr(
+    -- Очищаем строку перед использованием
+      l_row.weight := null; 
+      --log_new(l_function,'p_waybill_no='||p_waybill_no);
+      --log_new(l_function,'p_dest_station='||p_dest_station);
+      --log_new(l_function,'v_len='||v_len);
+    ---------------------------------------------------------------------
+    -- Список вагонов ПЕРЕДАН (парсим CLOB)
+    ---------------------------------------------------------------------
+      if
+         v_len > 0
+         and instr(
             p_wagons,
             c_rs,
             v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_no := trim(dbms_lob.substr(
-            p_wagons,
-            v_to - v_from,
-            v_from
-         ));
-         v_from := v_to + 1;
-         if v_no is null then
-            continue;
-         end if;
+         ) > 0
+      then
+         while v_from <= v_len loop
+            v_to := instr(
+               p_wagons,
+               c_rs,
+               v_from
+            );
+            if v_to = 0 then
+               v_to := v_len + 1;
+            end if;
+            v_no := trim(dbms_lob.substr(
+               p_wagons,
+               v_to - v_from,
+               v_from
+            ));
+            v_from := v_to + 1;
+            if v_no is null then
+               continue;
+            end if;
+            -- log_new(l_function,'v_no='||v_no);
+            -- Инициализируем дефолтные значения для текущего вагона
+            l_row.wagon_no := v_no;
+            l_row.found := 0;
+            l_row.owner := null;
+            l_row.kind := null;
+            l_row.st_from := null;
+            l_row.st_to := null;
+            l_row.cargo := null;
 
-            -- Инициализируем строку ответа текущим номером вагона
-         l_row.wagon_no := v_no;
-         l_row.found := 0;
-         for d in (
-            select ei.cargo_name,
-                   ei.wagon_type_code,
-                   ei.owner,
-                   ei.depart_station,
-                   ei.dest_station
-              from xx_dislocation_rjd ei
-             where ( ei.report_dt,
-                     ei.type_reference ) in (
-               select max(report_dt),
-                      type_reference
-                 from xx_dislocation_rjd
-                group by type_reference
-            )
-               and ei.wagon_no = v_no
-               and ( p_waybill_no is null
-                or ei.waybill_no = p_waybill_no )
+            -- Ищем данные по конкретному вагону
+            for d in c_dislocation(
+               v_no,
+               p_waybill_no,
+               p_dest_station
+            ) loop
+               l_row.owner := d.owner;
+               l_row.kind := d.wagon_type_code;
+               l_row.st_from := d.depart_station;
+               l_row.st_to := d.dest_station;
+               l_row.cargo := d.cargo_name;
+               l_row.found := 1;
+            end loop;
+
+            pipe row ( l_row );
+         end loop;
+
+    ---------------------------------------------------------------------
+    -- Список вагонов ПУСТОЙ (ищем только по станции/накладной)
+    ---------------------------------------------------------------------
+      elsif p_dest_station is not null
+      or p_waybill_no is not null then
+        --log_new(l_function,'Список вагонов ПУСТОЙ (ищем только по станции/накладной)');
+         for d in c_dislocation(
+            null,
+            p_waybill_no,
+            p_dest_station
          ) loop
+            l_row.wagon_no := d.wagon_no;
             l_row.owner := d.owner;
             l_row.kind := d.wagon_type_code;
             l_row.st_from := d.depart_station;
             l_row.st_to := d.dest_station;
             l_row.cargo := d.cargo_name;
             l_row.found := 1;
+            pipe row ( l_row );
          end loop;
-
-         pipe row ( l_row );
-         l_row.owner := null;
-         l_row.kind := null;
-         l_row.st_from := null;
-         l_row.st_to := null;
-         l_row.cargo := null;
-         l_row.weight := null;
-      end loop;
+      end if;
 
       return;
    end;

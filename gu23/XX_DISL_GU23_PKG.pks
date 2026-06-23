@@ -258,8 +258,9 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
     -- ---- Интеграция Oracle BI / получить данные по вагонам из дислокации ----
     -- p_waybill_no передаётся как поисковый контекст к Дислокации
    function gu23_get_wagon_info (
-      p_wagons     in clob,
-      p_waybill_no in varchar2 default null
+      p_wagons       in clob,
+      p_waybill_no   in varchar2 default null,
+      p_dest_station in varchar2 default null
    ) return xx_disl_gu23_wagon_tab
       pipelined;
 

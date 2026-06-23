@@ -167,9 +167,9 @@ function showFormFields() {
 
   $body.append(`
     <div class="cols">
-      ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`)}
+      ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
       
-      ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`)}
+      ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`, true)}
       
     </div>
   `)
@@ -388,37 +388,48 @@ function loadWagonsDataFromDislocation() {
     ? inputNums
     : activeDraft.wagons.map((w) => w.n)
 
-  if (!finalNums.length) return showToast('Введите номера вагонов', 'err')
-
+  //if (!finalNums.length) return showToast('Введите номера вагонов', 'err')
+  console.log('waybill_no=' + activeDraft.waybillNumber)
+  console.log('dest_station=' + activeDraft.stationToName)
   sendApiRequest('gu23_get_wagon_info', {
     wagons: JSON.stringify(finalNums),
     waybill_no: activeDraft.waybillNumber || '',
+    dest_station: activeDraft.stationToName || '',
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
 
     records.forEach((row) => {
-      let wagon = activeDraft.wagons.find((x) => x.n === row.WAGON_NO)
-      if (!wagon) {
-        wagon = {
-          n: row.WAGON_NO,
-          owner: '',
-          kind: '',
-          from: '',
-          to: '',
-          cargo: '',
-          weight: '',
-        }
-        activeDraft.wagons.push(wagon)
-      }
+      // Только добавляем когда нашли данные из БД
       if (String(row.FOUND) === '1') {
+        foundCount++
+
+        // Ищем, есть ли уже этот вагон в черновике
+        let wagon = activeDraft.wagons.find(
+          (x) => String(x.n) === String(row.WAGON_NO),
+        )
+
+        // Если вагона в черновике нет, создаем его
+        if (!wagon) {
+          wagon = {
+            n: String(row.WAGON_NO),
+            owner: '',
+            kind: '',
+            from: '',
+            to: '',
+            cargo: '',
+            weight: '',
+          }
+          activeDraft.wagons.push(wagon)
+        }
+
+        // Обновляем/заполняем свойства данными из БД
         wagon.owner = row.OWNER
         wagon.kind = row.KIND
         wagon.from = row.ST_FROM
         wagon.to = row.ST_TO
         wagon.cargo = row.CARGO
         wagon.weight = row.WEIGHT
-        foundCount++
       }
     })
 

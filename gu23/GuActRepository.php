@@ -197,21 +197,23 @@ class GuActRepository
     }
 
     /* ----------------------------------------------------------------- */
-    /* Oracle BI / Дислокация (подтягивание данных по вагонам)            */
+    /* Грузим данные из внешней дислокации в таблицу                     */
     /* ----------------------------------------------------------------- */
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: null;
+        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: '%';
+        $destStation = filter_input(INPUT_POST, 'dest_station') ?: '%';
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
 
         $st = oci_parse(
             $this->conn,
-            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2))'
+            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2,:b3))'
         );
         $lob = $this->bindClob($st, ':b1', $clob);
         oci_bind_by_name($st, ':b2', $waybillNo);
+        oci_bind_by_name($st, ':b3', $destStation);
         oci_execute($st);
         $rows = [];
         while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
