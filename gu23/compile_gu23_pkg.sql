@@ -219,33 +219,24 @@ create or replace package body xx_disl_gu23_pkg as
    function g_next_number (
       p_cex in varchar2
    ) return varchar2 is
-      v_yr     number := to_number ( to_char(
+      v_yr  number := to_number ( to_char(
          sysdate,
          'YYYY'
       ) );
-      v_cnt    number;
-      v_cex_id number;
+      v_cnt number;
    begin
-      -- id цеха из справочника по коду (счётчик ссылается на ref_cex.id)
-      select id
-        into v_cex_id
-        from xx_disl_gu23_ref_cex
-       where code = p_cex;
-
       update xx_disl_gu23_counter
          set
          cnt = cnt + 1
-       where cex_id = v_cex_id
+       where cex_code = p_cex
          and yr = v_yr returning cnt into v_cnt;
       if sql%rowcount = 0 then
          v_cnt := 1;
          insert into xx_disl_gu23_counter (
-            id,
-            cex_id,
+            cex_code,
             yr,
             cnt
-         ) values ( xx_disl_gu23_counter_seq.nextval,
-                    v_cex_id,
+         ) values ( p_cex,
                     v_yr,
                     v_cnt );
       end if;

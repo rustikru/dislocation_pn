@@ -3,11 +3,6 @@
  * GuActRepository.php
  *
  * Репозиторий модуля "ГУ-23 · Акты общей формы".
- * Вся работа с БД — только через конвейерные функции / процедуры
- * пакета xx_disl_gu23_pkg (gu23_*). PHP лишь маршалит данные.
- *
- * Подключается из data.php через router.php:
- *   'gu23_*' => ['gu23/GuActRepository.php', 'GuActRepository']
  */
 class GuActRepository
 {

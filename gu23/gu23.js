@@ -21,7 +21,7 @@ function createElement(tagName, attrs) {
     ;[].concat(child).forEach(function (node) {
       if (node == null) return
       element.appendChild(
-        node.nodeType ? node : document.createTextNode(String(node)),
+        node.nodeType ? node : document.createTextNode(String(node))
       )
     })
   }
@@ -181,7 +181,7 @@ $(document).ready(function () {
 function drawNav() {
   var items = [
     { page: 'new', icon: '＋', label: 'Создать акт' },
-    { page: 'archive', icon: '', label: 'Архив актов' },
+    { page: 'archive', icon: '', label: 'Архив актов' }
   ]
   var nav = $$('#nav')
   nav.innerHTML = ''
@@ -196,19 +196,18 @@ function drawNav() {
         class: 'navbtn' + (active ? ' active' : ''),
         onclick: function () {
           goTo(item.page)
-        },
+        }
       },
       createElement('span', { class: 'ic' }, item.icon),
-      createElement('span', {}, item.label),
+      createElement('span', {}, item.label)
     )
     nav.appendChild(button)
   })
 
   nav.appendChild(
     createElement('div', {
-      class: 'foot',
-      html: '',
-    }),
+      class: 'foot'
+    })
   )
 }
 
@@ -600,7 +599,7 @@ function showForm(container) {
           draw()
         },
       },
-      '＋ Добавить вагоны',
+      ' Добавить вагоны',
     ),
   )
 
@@ -862,9 +861,9 @@ function durPreview() {
   var endMs = toMs(draft.endAt)
 
   if (endMs < startMs)
-    return '⚠ Дата окончания меньше даты начала — сохранение будет заблокировано.'
+    return 'Дата окончания меньше даты начала — сохранение будет заблокировано.'
   if (endMs === startMs)
-    return '⚠ Длительность простоя составляет 0 часов (даты совпадают).'
+    return 'Длительность простоя составляет 0 часов (даты совпадают).'
 
   var duration = calcDuration(startMs, endMs)
   return (
@@ -969,7 +968,7 @@ function loadWagonInfo(rawText) {
         found +
         ' вагонов.' +
         (draft.station !== 'Углеуральская'
-          ? ' <br>⚠ Внимание: данные подтягиваются только если станция операции — Углеуральская.'
+          ? ' <br> Внимание: данные подтягиваются только если станция операции — Углеуральская.'
           : ''),
     }
 
@@ -1080,7 +1079,7 @@ function makeSigners() {
       {
         style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px',
       },
-      'Подписанты (требуется ' + need + ')',
+      'Подписанты',
     ),
   )
 

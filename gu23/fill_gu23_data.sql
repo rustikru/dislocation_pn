@@ -20,9 +20,6 @@ VALUES (1, 'dev', 'Локальный разработчик');
 
 -- цеха
 INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ЖДЦ', 'Железнодорожный цех');
-INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ВЧД', 'Вагонное депо');
-INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПТО', 'Пункт техн. обслуживания');
-INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПРР', 'Погрузо-разгрузочный район');
 
 -- причины
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Простой под выгрузкой');
@@ -39,13 +36,6 @@ INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_s
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации собственнику');
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации экспедитору');
 
--- станции
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Углеуральская');
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Чусовская');
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Пермь-Сортировочная');
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Гороблагодатская');
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Кизел');
-INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Березники');
 
 -- собственники
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ОАО «РЖД»');

@@ -19,7 +19,7 @@ BEGIN
     SELECT 'DROP SEQUENCE '||s FROM (
       SELECT column_value s FROM TABLE(sys.odcivarchar2list(
         'XX_DISL_GU23_HIST_SEQ','XX_DISL_GU23_SIGNER_SEQ','XX_DISL_GU23_FILE_SEQ',
-        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_COUNTER_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
+        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
         'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
         'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
     )
@@ -85,15 +85,11 @@ CREATE TABLE xx_disl_gu23_ref_signer (
 CREATE SEQUENCE xx_disl_gu23_ref_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
 CREATE TABLE xx_disl_gu23_counter (
-    id        NUMBER PRIMARY KEY,
-    cex_id    NUMBER NOT NULL,
-    yr        NUMBER NOT NULL,
+    cex_code  VARCHAR2(32),
+    yr        NUMBER,
     cnt       NUMBER DEFAULT 0,
-    CONSTRAINT xx_disl_gu23_counter_uk UNIQUE (cex_id, yr),
-    CONSTRAINT xx_disl_gu23_counter_fk FOREIGN KEY (cex_id)
-        REFERENCES xx_disl_gu23_ref_cex (id) ON DELETE CASCADE
+    CONSTRAINT xx_disl_gu23_counter_pk PRIMARY KEY (cex_code, yr)
 );
-CREATE SEQUENCE xx_disl_gu23_counter_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
 CREATE TABLE xx_disl_gu23_act (
     id                  NUMBER PRIMARY KEY,
@@ -295,131 +291,3 @@ CREATE OR REPLACE TYPE xx_disl_gu23_wagon_obj AS OBJECT (
 /
 CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj;
 /
-
--- =====================================================================
---  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ
--- =====================================================================
-
--- пользователи (локальный аналог справочника пользователей)
-COMMENT ON TABLE  xx_disl_gu23_users            IS 'Пользователи модуля ГУ-23 (id, логин, ФИО)';
-COMMENT ON COLUMN xx_disl_gu23_users.user_id    IS 'ID пользователя (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_users.login      IS 'Логин';
-COMMENT ON COLUMN xx_disl_gu23_users.full_name  IS 'ФИО';
-
--- справочник: цеха
-COMMENT ON TABLE  xx_disl_gu23_ref_cex          IS 'Справочник цехов';
-COMMENT ON COLUMN xx_disl_gu23_ref_cex.id       IS 'ID цеха (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_cex.code     IS 'Код цеха (входит в номер акта, напр. ЖДЦ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_cex.name     IS 'Наименование цеха';
-COMMENT ON COLUMN xx_disl_gu23_ref_cex.active   IS 'Признак активности: Y/N';
-
--- справочник: причины
-COMMENT ON TABLE  xx_disl_gu23_ref_reason          IS 'Справочник причин составления акта';
-COMMENT ON COLUMN xx_disl_gu23_ref_reason.id       IS 'ID причины (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_reason.name     IS 'Текст причины';
-COMMENT ON COLUMN xx_disl_gu23_ref_reason.act_kind IS 'Для какого типа акта: start/end/other/any';
-COMMENT ON COLUMN xx_disl_gu23_ref_reason.active   IS 'Признак активности: Y/N';
-
--- справочник: станции
-COMMENT ON TABLE  xx_disl_gu23_ref_station        IS 'Справочник станций';
-COMMENT ON COLUMN xx_disl_gu23_ref_station.id     IS 'ID станции (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_station.name   IS 'Наименование станции';
-COMMENT ON COLUMN xx_disl_gu23_ref_station.active IS 'Признак активности: Y/N';
-
--- справочник: собственники вагонов
-COMMENT ON TABLE  xx_disl_gu23_ref_owner        IS 'Справочник собственников вагонов';
-COMMENT ON COLUMN xx_disl_gu23_ref_owner.id     IS 'ID собственника (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_owner.name   IS 'Наименование собственника';
-COMMENT ON COLUMN xx_disl_gu23_ref_owner.active IS 'Признак активности: Y/N';
-
--- справочник: род вагона
-COMMENT ON TABLE  xx_disl_gu23_ref_wagon_kind        IS 'Справочник родов вагонов';
-COMMENT ON COLUMN xx_disl_gu23_ref_wagon_kind.id     IS 'ID рода вагона (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_wagon_kind.name   IS 'Наименование рода вагона';
-COMMENT ON COLUMN xx_disl_gu23_ref_wagon_kind.active IS 'Признак активности: Y/N';
-
--- справочник: подписанты
-COMMENT ON TABLE  xx_disl_gu23_ref_signer        IS 'Справочник возможных подписантов акта';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.id     IS 'ID подписанта (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.fio    IS 'ФИО подписанта';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.post   IS 'Должность';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.org    IS 'Организация';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.unit   IS 'Подразделение';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.stype  IS 'Тип подписанта (работник предприятия / станции ОАО РЖД)';
-COMMENT ON COLUMN xx_disl_gu23_ref_signer.active IS 'Признак активности: Y/N';
-
--- счётчик нумерации актов (по цеху и году)
-COMMENT ON TABLE  xx_disl_gu23_counter        IS 'Счётчик номеров актов: своё значение на каждый цех и год';
-COMMENT ON COLUMN xx_disl_gu23_counter.id     IS 'ID строки счётчика (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_counter.cex_id IS 'ID цеха -> xx_disl_gu23_ref_cex.id';
-COMMENT ON COLUMN xx_disl_gu23_counter.yr     IS 'Год нумерации';
-COMMENT ON COLUMN xx_disl_gu23_counter.cnt    IS 'Текущий (последний выданный) номер за цех/год';
-
--- акты (шапка)
-COMMENT ON TABLE  xx_disl_gu23_act                 IS 'Акты общей формы ГУ-23 (шапка)';
-COMMENT ON COLUMN xx_disl_gu23_act.id              IS 'ID акта (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_act.act_number      IS 'Номер акта (ГУ23-ЦЕХ-ГОД-NNNNNN)';
-COMMENT ON COLUMN xx_disl_gu23_act.act_type        IS 'Тип акта: start (начало) / end (окончание) / other (прочий)';
-COMMENT ON COLUMN xx_disl_gu23_act.status          IS 'Статус: draft / active / closed / annulled';
-COMMENT ON COLUMN xx_disl_gu23_act.cex_code        IS 'Код цеха составления (из справочника цехов)';
-COMMENT ON COLUMN xx_disl_gu23_act.station         IS 'Станция составления';
-COMMENT ON COLUMN xx_disl_gu23_act.reason          IS 'Причина составления';
-COMMENT ON COLUMN xx_disl_gu23_act.circumstances   IS 'Обстоятельства, вызвавшие составление акта';
-COMMENT ON COLUMN xx_disl_gu23_act.start_at        IS 'Дата и время начала простоя';
-COMMENT ON COLUMN xx_disl_gu23_act.end_at          IS 'Дата и время окончания простоя';
-COMMENT ON COLUMN xx_disl_gu23_act.dur_days        IS 'Длительность простоя: полных дней';
-COMMENT ON COLUMN xx_disl_gu23_act.dur_hours       IS 'Длительность простоя: остаток часов';
-COMMENT ON COLUMN xx_disl_gu23_act.dur_total_h     IS 'Длительность простоя: всего часов';
-COMMENT ON COLUMN xx_disl_gu23_act.cal_days        IS 'Календарных дней (для претензий)';
-COMMENT ON COLUMN xx_disl_gu23_act.linked_start_id IS 'Связанный акт начала (для окончания) -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_act.annul_reason    IS 'Причина аннулирования';
-COMMENT ON COLUMN xx_disl_gu23_act.created_at      IS 'Дата создания';
-COMMENT ON COLUMN xx_disl_gu23_act.created_by      IS 'Кто создал -> xx_disl_gu23_users.user_id';
-COMMENT ON COLUMN xx_disl_gu23_act.modified_at     IS 'Дата последнего изменения';
-COMMENT ON COLUMN xx_disl_gu23_act.modified_by     IS 'Кто изменил -> xx_disl_gu23_users.user_id';
-
--- строки актов (вагоны)
-COMMENT ON TABLE  xx_disl_gu23_act_row          IS 'Вагоны акта (строки)';
-COMMENT ON COLUMN xx_disl_gu23_act_row.id       IS 'ID строки (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_act_row.act_id   IS 'Акт -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_act_row.wagon_no IS 'Номер вагона';
-COMMENT ON COLUMN xx_disl_gu23_act_row.owner    IS 'Собственник';
-COMMENT ON COLUMN xx_disl_gu23_act_row.kind     IS 'Род вагона';
-COMMENT ON COLUMN xx_disl_gu23_act_row.st_from  IS 'Станция отправления';
-COMMENT ON COLUMN xx_disl_gu23_act_row.st_to    IS 'Станция назначения';
-COMMENT ON COLUMN xx_disl_gu23_act_row.cargo    IS 'Груз';
-COMMENT ON COLUMN xx_disl_gu23_act_row.weight   IS 'Вес';
-
--- приложения (файлы)
-COMMENT ON TABLE  xx_disl_gu23_file            IS 'Приложения к акту (файлы/фото)';
-COMMENT ON COLUMN xx_disl_gu23_file.id         IS 'ID файла (первичный ключ); имя на диске = id';
-COMMENT ON COLUMN xx_disl_gu23_file.act_id     IS 'Акт -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_file.file_name  IS 'Оригинальное имя файла';
-COMMENT ON COLUMN xx_disl_gu23_file.file_ext   IS 'Расширение';
-COMMENT ON COLUMN xx_disl_gu23_file.mime_type  IS 'MIME-тип';
-COMMENT ON COLUMN xx_disl_gu23_file.real_path  IS 'Физический путь к файлу на диске';
-COMMENT ON COLUMN xx_disl_gu23_file.created_at IS 'Дата загрузки';
-COMMENT ON COLUMN xx_disl_gu23_file.created_by IS 'Кто загрузил -> xx_disl_gu23_users.user_id';
-
--- подписанты акта (хранение, без процесса подписания)
-COMMENT ON TABLE  xx_disl_gu23_signer        IS 'Подписанты конкретного акта';
-COMMENT ON COLUMN xx_disl_gu23_signer.id     IS 'ID строки (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_signer.act_id IS 'Акт -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_signer.fio    IS 'ФИО подписанта';
-COMMENT ON COLUMN xx_disl_gu23_signer.post   IS 'Должность';
-COMMENT ON COLUMN xx_disl_gu23_signer.org    IS 'Организация';
-COMMENT ON COLUMN xx_disl_gu23_signer.ord_no IS 'Порядковый номер подписанта в акте';
-
--- история изменений
-COMMENT ON TABLE  xx_disl_gu23_hist        IS 'История изменений акта';
-COMMENT ON COLUMN xx_disl_gu23_hist.id     IS 'ID записи (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_hist.act_id IS 'Акт -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_hist.ts     IS 'Дата и время события';
-COMMENT ON COLUMN xx_disl_gu23_hist.usr    IS 'Кто выполнил -> xx_disl_gu23_users.user_id';
-COMMENT ON COLUMN xx_disl_gu23_hist.txt    IS 'Текст события';
-
--- представление акта (шапка + вычисляемые поля)
-COMMENT ON TABLE  xx_disl_gu23_act_v                     IS 'Акты + вычисляемые поля (номер связанного акта, кол-во вагонов/файлов)';
-COMMENT ON COLUMN xx_disl_gu23_act_v.linked_start_number IS 'Номер связанного акта начала';
-COMMENT ON COLUMN xx_disl_gu23_act_v.wagon_cnt           IS 'Кол-во вагонов в акте';
-COMMENT ON COLUMN xx_disl_gu23_act_v.file_cnt            IS 'Кол-во приложений в акте';
