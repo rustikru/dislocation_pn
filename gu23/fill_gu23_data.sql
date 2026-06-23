@@ -10,6 +10,7 @@ DELETE FROM xx_disl_gu23_ref_signer;
 DELETE FROM xx_disl_gu23_ref_wagon_kind;
 DELETE FROM xx_disl_gu23_ref_owner;
 DELETE FROM xx_disl_gu23_ref_station;
+DELETE FROM xx_disl_gu23_ref_cargo;
 DELETE FROM xx_disl_gu23_ref_reason;
 DELETE FROM xx_disl_gu23_ref_cex;
 
@@ -64,6 +65,16 @@ INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wago
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Хоппер');
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Думпкар');
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Окатышевоз');
+
+-- грузы
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Уголь каменный');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Кокс');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Удобрения минеральные');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Дизельное топливо');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Нефть и нефтепродукты');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Щебень');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Металл прокатный');
+INSERT INTO xx_disl_gu23_ref_cargo (id, name) VALUES (xx_disl_gu23_ref_cargo_seq.NEXTVAL, 'Лес и лесоматериалы');
 
 -- подписанты
 INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)

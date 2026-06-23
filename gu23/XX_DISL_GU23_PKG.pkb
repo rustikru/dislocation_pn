@@ -1,237 +1,5 @@
--- compile_gu23_pkg.sql — ТОЛЬКО перекомпиляция пакета xx_disl_gu23_pkg.
--- БЕЗОПАСНО: таблицы и данные (в т.ч. справочники) НЕ трогаются.
--- Запускать как скрипт под нужной схемой (локально — XX_ETW).
-
-create or replace package xx_disl_gu23_pkg
-as
-    /******************************************************************************
-    NAME:  xx_etw.xx_disl_gu23_pkg
-    PURPOSE:   Акты: составление актов (форма ГУ-23)
-    REVISIONS:
-    Ver        Date        Author           Description
-    ---------  ----------  ---------------  ------------------------------------
-    1.0        23.06.2026  BekmansurovRR    1. Created this package.
- ******************************************************************************/
-
-    /* ************* Begin Типы ************************* */
-
-    TYPE xx_disl_gu23_ref_row IS RECORD (
-        code  VARCHAR2(512),
-        name  VARCHAR2(512)
-    );
-    TYPE xx_disl_gu23_ref_tab IS TABLE OF xx_disl_gu23_ref_row;
-
-
-    TYPE xx_disl_gu23_signer_row IS RECORD (
-        id      NUMBER,
-        fio     VARCHAR2(256),
-        post    VARCHAR2(256),
-        org     VARCHAR2(256),
-        unit    VARCHAR2(256),
-        stype   VARCHAR2(128),
-        ord_no  NUMBER
-    );
-    TYPE xx_disl_gu23_signer_tab IS TABLE OF xx_disl_gu23_signer_row;
-
-
-    TYPE xx_disl_gu23_act_row IS RECORD (
-        id                   NUMBER,
-        act_number           VARCHAR2(64),
-        act_type             VARCHAR2(16),
-        status               VARCHAR2(16),
-        cex                  VARCHAR2(32),
-        station              VARCHAR2(128),
-        reason               VARCHAR2(512),
-        circumstances        VARCHAR2(4000),
-        start_at             VARCHAR2(20),
-        end_at               VARCHAR2(20),
-        dur_days             NUMBER,
-        dur_hours            NUMBER,
-        dur_total_h          NUMBER,
-        cal_days             NUMBER,
-        linked_start_id      NUMBER,
-        linked_start_number  VARCHAR2(64),
-        wagon_cnt            NUMBER,
-        file_cnt             NUMBER,
-        annul_reason         VARCHAR2(1000),
-        created_at           VARCHAR2(20),
-        created_by           VARCHAR2(256),
-        modified_at          VARCHAR2(20)
-    );
-    TYPE xx_disl_gu23_act_tab IS TABLE OF xx_disl_gu23_act_row;
-
-
-    TYPE xx_disl_gu23_row IS RECORD (
-        id        NUMBER,
-        act_id    NUMBER,
-        wagon_no  VARCHAR2(16),
-        owner     VARCHAR2(128),
-        kind      VARCHAR2(128),
-        st_from   VARCHAR2(128),
-        st_to     VARCHAR2(128),
-        cargo     VARCHAR2(256),
-        weight    VARCHAR2(32)
-    );
-    TYPE xx_disl_gu23_row_tab IS TABLE OF xx_disl_gu23_row;
-
-
-    TYPE xx_disl_gu23_file_row IS RECORD (
-        id          NUMBER,
-        act_id      NUMBER,
-        file_name   VARCHAR2(512),
-        file_ext    VARCHAR2(32),
-        mime_type   VARCHAR2(128),
-        real_path   VARCHAR2(1024),
-        created_at  VARCHAR2(20),
-        created_by  VARCHAR2(256)
-    );
-    TYPE xx_disl_gu23_file_tab IS TABLE OF xx_disl_gu23_file_row;
-
-
-    TYPE xx_disl_gu23_hist_row IS RECORD (
-        id      NUMBER,
-        act_id  NUMBER,
-        ts      VARCHAR2(20),
-        usr     VARCHAR2(256),
-        txt     VARCHAR2(1000)
-    );
-    TYPE xx_disl_gu23_hist_tab IS TABLE OF xx_disl_gu23_hist_row;
-
-
-    TYPE xx_disl_gu23_wagon_row IS RECORD (
-        wagon_no  VARCHAR2(16),
-        owner     VARCHAR2(128),
-        kind      VARCHAR2(128),
-        st_from   VARCHAR2(128),
-        st_to     VARCHAR2(128),
-        cargo     VARCHAR2(256),
-        weight    VARCHAR2(32),
-        found     NUMBER
-    );
-    TYPE xx_disl_gu23_wagon_tab IS TABLE OF xx_disl_gu23_wagon_row;
-
-    /* ************* end Типы ************************* */
-
-    -- ---- Справочники
-    function gu23_get_ref_cex
-        return xx_disl_gu23_ref_tab
-        pipelined;
-
-    function gu23_get_ref_reason (p_kind in varchar2 default null)
-        return xx_disl_gu23_ref_tab
-        pipelined;
-
-    function gu23_get_ref_station
-        return xx_disl_gu23_ref_tab
-        pipelined;
-
-    function gu23_get_ref_owner
-        return xx_disl_gu23_ref_tab
-        pipelined;
-
-    function gu23_get_ref_wagon_kind
-        return xx_disl_gu23_ref_tab
-        pipelined;
-
-    function gu23_get_ref_signer
-        return xx_disl_gu23_signer_tab
-        pipelined;
-
-    -- ---- Акты ----
-    function gu23_get_acts (p_q        in varchar2 default null,
-                            p_type     in varchar2 default null,
-                            p_status   in varchar2 default null,
-                            p_cex      in varchar2 default null)
-        return xx_disl_gu23_act_tab
-        pipelined;
-
-    function gu23_get_act (p_id in number)
-        return xx_disl_gu23_act_tab
-        pipelined;
-
-    function gu23_get_rows (p_act_id in number)
-        return xx_disl_gu23_row_tab
-        pipelined;
-
-    function gu23_get_files (p_act_id in number)
-        return xx_disl_gu23_file_tab
-        pipelined;
-
-    function gu23_get_signers (p_act_id in number)
-        return xx_disl_gu23_signer_tab
-        pipelined;
-
-    function gu23_get_hist (p_act_id in number)
-        return xx_disl_gu23_hist_tab
-        pipelined;
-
-    -- открытые акты начала простоя (без связи с актами окончания)
-    function gu23_get_open_starts
-        return xx_disl_gu23_act_tab
-        pipelined;
-
-    -- ещё открытые (не закрытые действующим окончанием) вагоны акта начала
-    function gu23_get_open_rows (p_start_id in number)
-        return xx_disl_gu23_row_tab
-        pipelined;
-
-    -- все акты по номеру вагона (поиск по вагону)
-    function gu23_get_by_wagon (p_wagon in varchar2)
-        return xx_disl_gu23_act_tab
-        pipelined;
-
-    -- ---- Интеграция Oracle BI / получить данные по вагонам из дислокации ----
-    function gu23_get_wagon_info (p_wagons    in clob,
-                                  p_station   in varchar2 default null)
-        return xx_disl_gu23_wagon_tab
-        pipelined;
-
-    -- ---- Запись ----
-    -- получить id для нового файла
-    function gu23_new_file_id
-        return number;
-
-    function gu23_add_file (p_act_id    in number,
-                            p_file_id   in number,
-                            p_name      in varchar2,
-                            p_ext       in varchar2,
-                            p_mime      in varchar2,
-                            p_path      in varchar2,
-                            p_user_id   in number)
-        return varchar2;
-
-    function gu23_del_file (p_file_id in number, p_user_id in number)
-        return varchar2;
-
-    -- сохранение акта (создание/правка черновика) вместе со строками и подписантами.
-    -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
-    function gu23_save_act (p_user_id           in number,
-                            p_id                in number,   -- 0/NULL = новый
-                            p_type              in varchar2, -- start / end / other
-                            p_status            in varchar2, -- draft / active
-                            p_cex               in varchar2,
-                            p_station           in varchar2,
-                            p_reason            in varchar2,
-                            p_circumstances     in varchar2,
-                            p_start_at          in varchar2, -- 'YYYY-MM-DD HH24:MI' или NULL
-                            p_end_at            in varchar2,
-                            p_linked_start_id   in number,
-                            p_wagons            in clob, -- записи CHR(30); поля CHR(31): no,owner,kind,from,to,cargo,weight
-                            p_signers           in clob, -- записи CHR(30); поля CHR(31): fio,post,org
-                            p_force             in varchar2 default 'N' -- 'Y' = разрешить дубль открытого простоя
-                                                                       )
-        return varchar2;
-
-    function gu23_del_act (p_id in number, p_user_id in number)
-        return varchar2;
-
-    function gu23_annul_act (p_id        in number,
-                             p_user_id   in number,
-                             p_reason    in varchar2)
-        return varchar2;
-end xx_disl_gu23_pkg;
-/
-/
+-- XX_DISL_GU23_PKG.pkb — Тело пакета xx_disl_gu23_pkg.
+-- Ставится после спецификации (XX_DISL_GU23_PKG.pks).
 
 create or replace package body xx_disl_gu23_pkg
 as
@@ -360,6 +128,10 @@ as
         o.status              := a.status;
         o.cex                 := a.cex_code;
         o.station             := a.station;
+        o.st_from             := a.st_from;
+        o.st_to               := a.st_to;
+        o.waybill_no          := a.waybill_no;
+        o.cargo_ref           := a.cargo_ref;
         o.reason              := a.reason;
         o.circumstances       := a.circumstances;
         o.start_at            := TO_CHAR (a.start_at, c_dtf);
@@ -395,7 +167,6 @@ as
         loop
             l_row.code := r.code;
             l_row.name := r.name;
-
             pipe row (l_row);
         end loop;
 
@@ -423,7 +194,9 @@ as
         return;
     end;
 
-    function gu23_get_ref_station
+    -- ---- три отдельных справочника станций по назначению ----
+
+    function gu23_get_ref_station_compile   -- ст. составления
         return xx_disl_gu23_ref_tab
         pipelined
     is
@@ -440,6 +213,53 @@ as
         end loop;
 
         return;
+    end;
+
+    function gu23_get_ref_st_from           -- ст. отправления
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select name
+                      from xx_disl_gu23_ref_station
+                     where active = 'Y'
+                  order by name)
+        loop
+            l_row.code := r.name;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_get_ref_st_to             -- ст. назначения
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select name
+                      from xx_disl_gu23_ref_station
+                     where active = 'Y'
+                  order by name)
+        loop
+            l_row.code := r.name;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- обратная совместимость
+    function gu23_get_ref_station
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+    begin
+        return gu23_get_ref_station_compile();
     end;
 
     function gu23_get_ref_owner
@@ -480,18 +300,85 @@ as
         return;
     end;
 
+    function gu23_get_ref_cargo
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select name
+                      from xx_disl_gu23_ref_cargo
+                     where active = 'Y'
+                  order by name)
+        loop
+            l_row.code := r.name;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- ---- два отдельных справочника подписантов по типу ----
+
+    function gu23_get_ref_signer_own        -- работники предприятия
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for r in (  select id, fio, POST, org, unit, stype
+                      from xx_disl_gu23_ref_signer
+                     where     active = 'Y'
+                           and stype = 'Работник предприятия'
+                  order by fio)
+        loop
+            l_row.id     := r.id;
+            l_row.fio    := r.fio;
+            l_row.post   := r.POST;
+            l_row.org    := r.org;
+            l_row.unit   := r.unit;
+            l_row.stype  := r.stype;
+            l_row.ord_no := null;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_get_ref_signer_rzd        -- работники станции ОАО «РЖД»
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for r in (  select id, fio, POST, org, unit, stype
+                      from xx_disl_gu23_ref_signer
+                     where     active = 'Y'
+                           and stype = 'Работник станции ОАО «РЖД»'
+                  order by fio)
+        loop
+            l_row.id     := r.id;
+            l_row.fio    := r.fio;
+            l_row.post   := r.POST;
+            l_row.org    := r.org;
+            l_row.unit   := r.unit;
+            l_row.stype  := r.stype;
+            l_row.ord_no := null;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- обратная совместимость (все подписанты без фильтра)
     function gu23_get_ref_signer
         return xx_disl_gu23_signer_tab
         pipelined
     is
         l_row   xx_disl_gu23_signer_row;
     begin
-        for r in (  select id,
-                           fio,
-                           POST,
-                           org,
-                           unit,
-                           stype
+        for r in (  select id, fio, POST, org, unit, stype
                       from xx_disl_gu23_ref_signer
                      where active = 'Y'
                   order by fio)
@@ -543,8 +430,12 @@ as
             l_row.act_number          := a.act_number;
             l_row.act_type            := a.act_type;
             l_row.status              := a.status;
-            l_row.cex                 := a.CEX_CODE;
+            l_row.cex                 := a.cex_code;
             l_row.station             := a.station;
+            l_row.st_from             := a.st_from;
+            l_row.st_to               := a.st_to;
+            l_row.waybill_no          := a.waybill_no;
+            l_row.cargo_ref           := a.cargo_ref;
             l_row.reason              := a.reason;
             l_row.circumstances       := a.circumstances;
             l_row.start_at            := TO_CHAR (a.start_at, c_dtf);
@@ -581,8 +472,12 @@ as
             l_row.act_number          := a.act_number;
             l_row.act_type            := a.act_type;
             l_row.status              := a.status;
-            l_row.cex                 := a.CEX_CODE;
+            l_row.cex                 := a.cex_code;
             l_row.station             := a.station;
+            l_row.st_from             := a.st_from;
+            l_row.st_to               := a.st_to;
+            l_row.waybill_no          := a.waybill_no;
+            l_row.cargo_ref           := a.cargo_ref;
             l_row.reason              := a.reason;
             l_row.circumstances       := a.circumstances;
             l_row.start_at            := TO_CHAR (a.start_at, c_dtf);
@@ -625,7 +520,6 @@ as
             l_row.st_to    := r.st_to;
             l_row.cargo    := r.cargo;
             l_row.weight   := r.weight;
-
             pipe row (l_row);
         end loop;
 
@@ -651,7 +545,6 @@ as
             l_row.real_path  := f.real_path;
             l_row.created_at := TO_CHAR (f.created_at, c_dtf);
             l_row.created_by := g_user_name (f.created_by);
-
             pipe row (l_row);
         end loop;
 
@@ -779,10 +672,13 @@ as
 
     -- ----------------------------------------------------------------
     -- дислокация (заглушка через select из dual)
-    -- заменить тело на реальный запрос к источнику
+    -- заменить тело на реальный запрос к источнику данных
+    -- p_waybill_no и p_cargo_ref используются как контекст запроса
     -- ----------------------------------------------------------------
-    function gu23_get_wagon_info (p_wagons    in clob,
-                                  p_station   in varchar2 default null)
+    function gu23_get_wagon_info (p_wagons      in clob,
+                                  p_station     in varchar2 default null,
+                                  p_waybill_no  in varchar2 default null,
+                                  p_cargo_ref   in varchar2 default null)
         return xx_disl_gu23_wagon_tab
         pipelined
     is
@@ -817,7 +713,7 @@ as
                 continue;
             end if;
 
-            -- заглушка: Имитация: вагон с последней цифрой 0 считается «не найденным».
+            -- заглушка: вагон с последней цифрой 0 считается «не найденным».
             v_last := TO_NUMBER (SUBSTR (v_no, -1));
             v_d2 := TO_NUMBER (SUBSTR (v_no, -2));
 
@@ -854,12 +750,14 @@ as
                                    else 'Чусовская'
                                end                as st_from,
                                'Углеуральская'    as st_to,
-                               case MOD (v_d2, 4)
-                                   when 0 then 'Уголь каменный'
-                                   when 1 then 'Удобрения минеральные'
-                                   when 2 then 'Кокс'
-                                   else 'Дизельное топливо'
-                               end                as cargo,
+                               -- если p_cargo_ref передан — используем его, иначе заглушка
+                               NVL (p_cargo_ref,
+                                    case MOD (v_d2, 4)
+                                        when 0 then 'Уголь каменный'
+                                        when 1 then 'Удобрения минеральные'
+                                        when 2 then 'Кокс'
+                                        else 'Дизельное топливо'
+                                    end)          as cargo,
                                   TO_CHAR (60 + MOD (v_d2, 12))
                                || ','
                                || TO_CHAR (v_last)
@@ -876,7 +774,6 @@ as
                     pipe row (l_row);
                 end loop;
             end if;
-        -- заглушка: конец
         end loop;
 
         return;
@@ -985,6 +882,10 @@ as
                             p_status            in varchar2,
                             p_cex               in varchar2,
                             p_station           in varchar2,
+                            p_st_from           in varchar2,
+                            p_st_to             in varchar2,
+                            p_waybill_no        in varchar2,
+                            p_cargo_ref         in varchar2,
                             p_reason            in varchar2,
                             p_circumstances     in varchar2,
                             p_start_at          in varchar2,
@@ -1022,9 +923,9 @@ as
         vs_org         varchar2 (256);
         v_dupnum       varchar2 (64);
         v_has_start    number;
-        v_tot          number;                  -- всего вагонов в акте начала
-        v_closed       number;     -- закрыто вагонов действующими окончаниями
-        v_cur_status   varchar2 (16); -- текущий статус акта при редактировании
+        v_tot          number;
+        v_closed       number;
+        v_cur_status   varchar2 (16);
     begin
         -- проверяем тип акта и обязательные поля
         if p_type not in ('start', 'end', 'other')
@@ -1117,6 +1018,10 @@ as
                                           status,
                                           cex_code,
                                           station,
+                                          st_from,
+                                          st_to,
+                                          waybill_no,
+                                          cargo_ref,
                                           reason,
                                           circumstances,
                                           start_at,
@@ -1136,6 +1041,10 @@ as
                          p_status,
                          p_cex,
                          p_station,
+                         p_st_from,
+                         p_st_to,
+                         p_waybill_no,
+                         p_cargo_ref,
                          p_reason,
                          p_circumstances,
                          v_start,
@@ -1150,8 +1059,7 @@ as
                          SYSDATE,
                          p_user_id);
         else
-            -- защита: редактировать можно ТОЛЬКО черновик. Действующий/закрытый/
-            -- аннулированный акт не изменяется (его можно только аннулировать).
+            -- защита: редактировать можно ТОЛЬКО черновик.
             begin
                 select act_number, status
                   into v_number, v_cur_status
@@ -1182,6 +1090,10 @@ as
                    status = p_status,
                    cex_code = p_cex,
                    station = p_station,
+                   st_from = p_st_from,
+                   st_to = p_st_to,
+                   waybill_no = p_waybill_no,
+                   cargo_ref = p_cargo_ref,
                    reason = p_reason,
                    circumstances = p_circumstances,
                    start_at = v_start,
@@ -1203,7 +1115,7 @@ as
                   where act_id = v_id;
         end if;
 
-        -- разбираем вагоны: тянем данные и проверяем
+        -- разбираем вагоны
         v_len := NVL (DBMS_LOB.getlength (p_wagons), 0);
         v_from := 1;
 
@@ -1227,46 +1139,33 @@ as
                 continue;
             end if;
 
-            -- данные загружаются строго автоматически на бэкенде
             if p_type in ('start', 'other')
             then
-                -- для нового простоя берём данные из функции дислокации
+                -- для нового простоя/прочего берём данные из дислокации
                 begin
-                    select owner,
-                           kind,
-                           st_from,
-                           st_to,
-                           cargo,
-                           weight
-                      into vw_owner,
-                           vw_kind,
-                           vw_from,
-                           vw_to,
-                           vw_cargo,
-                           vw_weight
+                    select owner, kind, st_from, st_to, cargo, weight
+                      into vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight
                       from table (
                                xx_disl_gu23_pkg.gu23_get_wagon_info (
                                    vw_no,
-                                   p_station))
+                                   p_station,
+                                   p_waybill_no,
+                                   p_cargo_ref))
                      where ROWNUM = 1;
                 exception
                     when others
                     then
-                        -- если вагон не найден в BI, оставляем характеристики пустыми
-                        vw_owner := null;
-                        vw_kind := null;
-                        vw_from := null;
-                        vw_to := null;
-                        vw_cargo := null;
-                        vw_weight := null;
+                        vw_owner := null; vw_kind := null;
+                        vw_from  := null; vw_to   := null;
+                        vw_cargo := null; vw_weight := null;
                 end;
             else
                 -- для окончания берём данные из акта начала (как прислал клиент)
-                vw_owner := g_field (v_rec, 2);
-                vw_kind := g_field (v_rec, 3);
-                vw_from := g_field (v_rec, 4);
-                vw_to := g_field (v_rec, 5);
-                vw_cargo := g_field (v_rec, 6);
+                vw_owner  := g_field (v_rec, 2);
+                vw_kind   := g_field (v_rec, 3);
+                vw_from   := g_field (v_rec, 4);
+                vw_to     := g_field (v_rec, 5);
+                vw_cargo  := g_field (v_rec, 6);
                 vw_weight := g_field (v_rec, 7);
             end if;
 
@@ -1304,10 +1203,8 @@ as
             end if;
 
             -- проверка (окончание): вагон должен быть из выбранного акта начала
-            -- и быть ещё открытым (не закрыт другим действующим актом окончания).
             if p_type = 'end' and p_status = 'active'
             then
-                -- (а) принадлежность выбранному акту начала
                 select COUNT (*)
                   into v_has_start
                   from xx_disl_gu23_act_row r
@@ -1323,7 +1220,6 @@ as
                            || ' не относится к выбранному акту начала';
                 end if;
 
-                -- (б) вагон ещё не закрыт другим действующим окончанием
                 select COUNT (*)
                   into v_has_start
                   from xx_disl_gu23_act e, xx_disl_gu23_act_row er
@@ -1345,7 +1241,6 @@ as
                 end if;
             end if;
 
-            -- сохраняем проверенную строку вагона
             insert into xx_disl_gu23_act_row (id,
                                               act_id,
                                               wagon_no,
@@ -1368,7 +1263,7 @@ as
             v_wcnt := v_wcnt + 1;
         end loop;
 
-        -- вагоны обязательны только при отправке (active); в черновике можно без них
+        -- вагоны обязательны только при отправке (active)
         if v_wcnt = 0 and p_status = 'active'
         then
             rollback;
@@ -1390,9 +1285,9 @@ as
 
             v_rec := DBMS_LOB.SUBSTR (p_signers, v_to - v_from, v_from);
             v_from := v_to + 1;
-            vs_fio := g_field (v_rec, 1);
+            vs_fio  := g_field (v_rec, 1);
             vs_post := g_field (v_rec, 2);
-            vs_org := g_field (v_rec, 3);
+            vs_org  := g_field (v_rec, 3);
 
             if TRIM (vs_fio) is null
             then
@@ -1416,7 +1311,6 @@ as
         end loop;
 
         -- закрытие циклов акта начала: частичное/полное.
-        -- акт начала переводится в «Закрыт» ТОЛЬКО когда закрыты ВСЕ его вагоны.
         if     p_type = 'end'
            and p_status = 'active'
            and p_linked_start_id is not null
@@ -1442,69 +1336,48 @@ as
                        modified_by = p_user_id
                  where id = p_linked_start_id and status = 'active';
 
-                insert into xx_disl_gu23_hist (id,
-                                               act_id,
-                                               ts,
-                                               usr,
-                                               txt)
-                         values (
-                                    xx_disl_gu23_hist_seq.NEXTVAL,
-                                    p_linked_start_id,
-                                    SYSDATE,
-                                    p_user_id,
-                                       'Цикл простоя полностью закрыт актом окончания '
-                                    || v_number);
+                insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+                         values (xx_disl_gu23_hist_seq.NEXTVAL,
+                                 p_linked_start_id,
+                                 SYSDATE,
+                                 p_user_id,
+                                    'Цикл простоя полностью закрыт актом окончания '
+                                 || v_number);
             else
-                insert into xx_disl_gu23_hist (id,
-                                               act_id,
-                                               ts,
-                                               usr,
-                                               txt)
-                         values (
-                                    xx_disl_gu23_hist_seq.NEXTVAL,
-                                    p_linked_start_id,
-                                    SYSDATE,
-                                    p_user_id,
-                                       'Частично закрыто актом окончания '
-                                    || v_number
-                                    || ' ('
-                                    || v_closed
-                                    || ' из '
-                                    || v_tot
-                                    || ')');
+                insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+                         values (xx_disl_gu23_hist_seq.NEXTVAL,
+                                 p_linked_start_id,
+                                 SYSDATE,
+                                 p_user_id,
+                                    'Частично закрыто актом окончания '
+                                 || v_number
+                                 || ' ('
+                                 || v_closed
+                                 || ' из '
+                                 || v_tot
+                                 || ')');
             end if;
         end if;
 
         -- логирование операции в историю изменений
-        insert into xx_disl_gu23_hist (id,
-                                       act_id,
-                                       ts,
-                                       usr,
-                                       txt)
-                 values (
-                            xx_disl_gu23_hist_seq.NEXTVAL,
-                            v_id,
-                            SYSDATE,
-                            p_user_id,
-                            case
-                                when v_isnew = true
-                                then
-                                    case
-                                        when p_status = 'draft'
-                                        then
-                                            'Акт создан (черновик)'
-                                        else
-                                            'Акт создан и заведён'
-                                    end
-                                else
-                                    case
-                                        when p_status = 'draft'
-                                        then
-                                            'Черновик изменён'
-                                        else
-                                            'Акт изменён / заведён'
-                                    end
-                            end);
+        insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+                 values (xx_disl_gu23_hist_seq.NEXTVAL,
+                         v_id,
+                         SYSDATE,
+                         p_user_id,
+                         case
+                             when v_isnew = true
+                             then
+                                 case
+                                     when p_status = 'draft' then 'Акт создан (черновик)'
+                                     else 'Акт создан и заведён'
+                                 end
+                             else
+                                 case
+                                     when p_status = 'draft' then 'Черновик изменён'
+                                     else 'Акт изменён / заведён'
+                                 end
+                         end);
 
         commit;
         return 'OK' || c_us || v_id || c_us || v_number;
@@ -1577,11 +1450,7 @@ as
              where id = v_linked and status = 'closed';
         end if;
 
-        insert into xx_disl_gu23_hist (id,
-                                       act_id,
-                                       ts,
-                                       usr,
-                                       txt)
+        insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
              values (xx_disl_gu23_hist_seq.NEXTVAL,
                      p_id,
                      SYSDATE,
