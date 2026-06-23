@@ -1,50 +1,10 @@
 -- install_gu23_all.sql — ТОЛЬКО обычные объекты ГУ-23
 -- (drop + таблицы, последовательности, представление).
-<<<<<<< HEAD
--- Пакет ставится отдельно:   compile_gu23_pkg.sql
-=======
 -- Пакет ставится отдельно:   XX_DISL_GU23_PKG.pks (спецификация) + XX_DISL_GU23_PKG.pkb (тело)
->>>>>>> claude/upbeat-archimedes-coto9e
 -- Справочники/данные:         fill_gu23_data.sql
 -- Запускать как скрипт под нужной схемой (локально — XX_ETW).
 
 -- ---- безопасный сброс старых объектов (ошибки игнорируются) ----
-<<<<<<< HEAD
-BEGIN
-  FOR x IN (
-    SELECT 'DROP TABLE '||t||' CASCADE CONSTRAINTS PURGE' ddl FROM (
-      SELECT column_value t FROM TABLE(sys.odcivarchar2list(
-        'XX_DISL_GU23_HIST','XX_DISL_GU23_SIGNER','XX_DISL_GU23_FILE',
-        'XX_DISL_GU23_ACT_ROW','XX_DISL_GU23_ACT','XX_DISL_GU23_COUNTER',
-        'XX_DISL_GU23_REF_SIGNER','XX_DISL_GU23_REF_WAGON_KIND','XX_DISL_GU23_REF_OWNER',
-        'XX_DISL_GU23_REF_STATION','XX_DISL_GU23_REF_REASON','XX_DISL_GU23_REF_CEX',
-        'XX_DISL_GU23_USERS'))
-    )
-    UNION ALL
-    SELECT 'DROP SEQUENCE '||s FROM (
-      SELECT column_value s FROM TABLE(sys.odcivarchar2list(
-        'XX_DISL_GU23_HIST_SEQ','XX_DISL_GU23_SIGNER_SEQ','XX_DISL_GU23_FILE_SEQ',
-        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_COUNTER_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
-        'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
-        'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
-    )
-    UNION ALL
-    -- удаляем устаревшие SQL-объектные типы (заменены на RECORD внутри пакета)
-    SELECT 'DROP TYPE '||tp||' FORCE' FROM (
-      SELECT column_value tp FROM TABLE(sys.odcivarchar2list(
-        'XX_DISL_GU23_WAGON_TAB','XX_DISL_GU23_WAGON_OBJ',
-        'XX_DISL_GU23_HIST_TAB','XX_DISL_GU23_HIST_OBJ',
-        'XX_DISL_GU23_FILE_TAB','XX_DISL_GU23_FILE_OBJ',
-        'XX_DISL_GU23_ROW_TAB','XX_DISL_GU23_ROW_OBJ',
-        'XX_DISL_GU23_ACT_TAB','XX_DISL_GU23_ACT_OBJ',
-        'XX_DISL_GU23_SIGNER_TAB','XX_DISL_GU23_SIGNER_OBJ',
-        'XX_DISL_GU23_REF_TAB','XX_DISL_GU23_REF_OBJ'))
-    )
-  ) LOOP
-    BEGIN EXECUTE IMMEDIATE x.ddl; EXCEPTION WHEN OTHERS THEN NULL; END;
-  END LOOP;
-END;
-=======
 begin
    for x in (
       select 'DROP TABLE '
@@ -59,9 +19,13 @@ begin
             'XX_DISL_GU23_ACT_ROW',
             'XX_DISL_GU23_ACT',
             'XX_DISL_GU23_COUNTER',
+            'XX_DISL_GU23_REF_SIGNER',
+            'XX_DISL_GU23_REF_WAGON_KIND',
+            'XX_DISL_GU23_REF_OWNER',
             'XX_DISL_GU23_REF_STATION',
             'XX_DISL_GU23_REF_REASON',
-            'XX_DISL_GU23_REF_CEX'
+            'XX_DISL_GU23_REF_CEX',
+            'XX_DISL_GU23_USERS'
          ) )
       )
       union all
@@ -75,8 +39,34 @@ begin
             'XX_DISL_GU23_ACT_ROW_SEQ',
             'XX_DISL_GU23_ACT_SEQ',
             'XX_DISL_GU23_COUNTER_SEQ',
+            'XX_DISL_GU23_REF_SIGNER_SEQ',
+            'XX_DISL_GU23_REF_WAGON_KIND_SEQ',
+            'XX_DISL_GU23_REF_OWNER_SEQ',
+            'XX_DISL_GU23_REF_STATION_SEQ',
             'XX_DISL_GU23_REF_REASON_SEQ',
-            'XX_DISL_GU23_REF_CEX_SEQ'
+            'XX_DISL_GU23_REF_CEX_SEQ',
+            'XX_DISL_GU23_USERS_SEQ'
+         ) )
+      )
+      union all
+      select 'DROP TYPE ' || tp || ' FORCE'
+        from (
+         select column_value tp
+           from table ( sys.odcivarchar2list(
+            'XX_DISL_GU23_WAGON_TAB',
+            'XX_DISL_GU23_WAGON_OBJ',
+            'XX_DISL_GU23_HIST_TAB',
+            'XX_DISL_GU23_HIST_OBJ',
+            'XX_DISL_GU23_FILE_TAB',
+            'XX_DISL_GU23_FILE_OBJ',
+            'XX_DISL_GU23_ROW_TAB',
+            'XX_DISL_GU23_ROW_OBJ',
+            'XX_DISL_GU23_ACT_TAB',
+            'XX_DISL_GU23_ACT_OBJ',
+            'XX_DISL_GU23_SIGNER_TAB',
+            'XX_DISL_GU23_SIGNER_OBJ',
+            'XX_DISL_GU23_REF_TAB',
+            'XX_DISL_GU23_REF_OBJ'
          ) )
       )
    ) loop
@@ -88,7 +78,6 @@ begin
       end;
    end loop;
 end;
->>>>>>> claude/upbeat-archimedes-coto9e
 /
 
 create table xx_disl_gu23_ref_cex (
@@ -226,18 +215,6 @@ create index xx_disl_gu23_hist_act_i on
 
 -- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
 -- здесь один раз. Пакет читает акты только через это представление.
-<<<<<<< HEAD
-CREATE OR REPLACE VIEW xx_disl_gu23_act_v AS
-SELECT a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
-       a.reason, a.circumstances, a.start_at, a.end_at,
-       a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
-       a.linked_start_id,
-       (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_start_number,
-       (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
-       (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt,
-       a.annul_reason, a.created_at, a.created_by, a.modified_at, a.modified_by
-  FROM xx_disl_gu23_act a;
-=======
 create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    "ID",
    "ACT_NUMBER",
@@ -323,7 +300,6 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    on ssf.st_code = a.st_from_id
      left join xx_etw_station_bi_v sst
    on sst.st_code = a.st_to_id;
->>>>>>> claude/upbeat-archimedes-coto9e
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ

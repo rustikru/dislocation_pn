@@ -13,8 +13,6 @@ export function navigateTo(pageName, selectedId = null) {
   // Сохраняем выбранный ID в DOM-атрибуте контейнера для простоты доступа
   $('#view').data('selected-id', selectedId)
 
-  if (pageName === 'new') setActiveDraft(null)
-
   showApplication()
 }
 
