@@ -1,9 +1,9 @@
 // Глобальные справочники, которые загружаются при старте приложения
 export const references = {
-  departmentsList: [], // Вместо cexes
-  reasonsList: [], // Вместо reasons
-  stationsList: [], // Вместо stations
-  stationsFromList: [], // Вместо stations_from
+  departmentsList: [], //  cexes
+  reasonsList: [], //  reasons
+  stationsList: [], //  stations
+  stationsFromList: [], //  stations_from
   ownersList: [],
   wagonKindsList: [],
   cargosList: [],
