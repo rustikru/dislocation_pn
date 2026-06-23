@@ -136,11 +136,6 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_get_ref_station return xx_disl_gu23_ref_tab
       pipelined;
 
-   function gu23_get_ref_owner return xx_disl_gu23_ref_tab
-      pipelined;
-
-   function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
-      pipelined;
 
    function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
       pipelined;

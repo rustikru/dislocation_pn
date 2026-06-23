@@ -19,14 +19,9 @@ begin
             'XX_DISL_GU23_ACT_ROW',
             'XX_DISL_GU23_ACT',
             'XX_DISL_GU23_COUNTER',
-            'XX_DISL_GU23_REF_SIGNER',
-            'XX_DISL_GU23_REF_WAGON_KIND',
-            'XX_DISL_GU23_REF_CARGO',
-            'XX_DISL_GU23_REF_OWNER',
             'XX_DISL_GU23_REF_STATION',
             'XX_DISL_GU23_REF_REASON',
-            'XX_DISL_GU23_REF_CEX',
-            'XX_DISL_GU23_USERS'
+            'XX_DISL_GU23_REF_CEX'
          ) )
       )
       union all
@@ -40,38 +35,8 @@ begin
             'XX_DISL_GU23_ACT_ROW_SEQ',
             'XX_DISL_GU23_ACT_SEQ',
             'XX_DISL_GU23_COUNTER_SEQ',
-            'XX_DISL_GU23_REF_SIGNER_SEQ',
-            'XX_DISL_GU23_REF_WAGON_KIND_SEQ',
-            'XX_DISL_GU23_REF_CARGO_SEQ',
-            'XX_DISL_GU23_REF_OWNER_SEQ',
-            'XX_DISL_GU23_REF_STATION_SEQ',
             'XX_DISL_GU23_REF_REASON_SEQ',
-            'XX_DISL_GU23_REF_CEX_SEQ',
-            'XX_DISL_GU23_USERS_SEQ'
-         ) )
-      )
-      union all
-    -- удаляем устаревшие SQL-объектные типы (заменены на RECORD внутри пакета)
-      select 'DROP TYPE '
-             || tp
-             || ' FORCE'
-        from (
-         select column_value tp
-           from table ( sys.odcivarchar2list(
-            'XX_DISL_GU23_WAGON_TAB',
-            'XX_DISL_GU23_WAGON_OBJ',
-            'XX_DISL_GU23_HIST_TAB',
-            'XX_DISL_GU23_HIST_OBJ',
-            'XX_DISL_GU23_FILE_TAB',
-            'XX_DISL_GU23_FILE_OBJ',
-            'XX_DISL_GU23_ROW_TAB',
-            'XX_DISL_GU23_ROW_OBJ',
-            'XX_DISL_GU23_ACT_TAB',
-            'XX_DISL_GU23_ACT_OBJ',
-            'XX_DISL_GU23_SIGNER_TAB',
-            'XX_DISL_GU23_SIGNER_OBJ',
-            'XX_DISL_GU23_REF_TAB',
-            'XX_DISL_GU23_REF_OBJ'
+            'XX_DISL_GU23_REF_CEX_SEQ'
          ) )
       )
    ) loop
@@ -84,13 +49,6 @@ begin
    end loop;
 end;
 /
-
-create table xx_disl_gu23_users (
-   user_id   number primary key,
-   login     varchar2(64) not null,
-   full_name varchar2(256) not null
-);
-create sequence xx_disl_gu23_users_seq start with 100 increment by 1 nocache;
 
 create table xx_disl_gu23_ref_cex (
    id     number primary key,
@@ -108,19 +66,6 @@ create table xx_disl_gu23_ref_reason (
 );
 create sequence xx_disl_gu23_ref_reason_seq start with 1 increment by 1 nocache;
 
-create table xx_disl_gu23_ref_station (
-   id     number primary key,
-   name   varchar2(128) not null,
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_station_seq start with 1 increment by 1 nocache;
-
-create table xx_disl_gu23_ref_owner (
-   id     number primary key,
-   name   varchar2(128) not null,
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_owner_seq start with 1 increment by 1 nocache;
 
 create table xx_disl_gu23_ref_wagon_kind (
    id     number primary key,
@@ -128,24 +73,6 @@ create table xx_disl_gu23_ref_wagon_kind (
    active char(1) default 'Y'
 );
 create sequence xx_disl_gu23_ref_wagon_kind_seq start with 1 increment by 1 nocache;
-
-create table xx_disl_gu23_ref_cargo (
-   id     number primary key,
-   name   varchar2(256) not null,
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_cargo_seq start with 1 increment by 1 nocache;
-
-create table xx_disl_gu23_ref_signer (
-   id     number primary key,
-   fio    varchar2(256) not null,
-   post   varchar2(256),
-   org    varchar2(256),
-   unit   varchar2(256),
-   stype  varchar2(128),                 -- тип подписанта
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_signer_seq start with 1 increment by 1 nocache;
 
 create table xx_disl_gu23_counter (
    id     number primary key,
@@ -346,45 +273,6 @@ comment on column xx_disl_gu23_ref_reason.act_kind is
 comment on column xx_disl_gu23_ref_reason.active is
    'Признак активности: Y/N';
 
--- справочник: станции
-comment on table xx_disl_gu23_ref_station is
-   'Справочник станций';
-comment on column xx_disl_gu23_ref_station.id is
-   'ID станции (первичный ключ)';
-comment on column xx_disl_gu23_ref_station.name is
-   'Наименование станции';
-comment on column xx_disl_gu23_ref_station.active is
-   'Признак активности: Y/N';
-
--- справочник: собственники вагонов
-comment on table xx_disl_gu23_ref_owner is
-   'Справочник собственников вагонов';
-comment on column xx_disl_gu23_ref_owner.id is
-   'ID собственника (первичный ключ)';
-comment on column xx_disl_gu23_ref_owner.name is
-   'Наименование собственника';
-comment on column xx_disl_gu23_ref_owner.active is
-   'Признак активности: Y/N';
-
--- справочник: род вагона
-comment on table xx_disl_gu23_ref_wagon_kind is
-   'Справочник родов вагонов';
-comment on column xx_disl_gu23_ref_wagon_kind.id is
-   'ID рода вагона (первичный ключ)';
-comment on column xx_disl_gu23_ref_wagon_kind.name is
-   'Наименование рода вагона';
-comment on column xx_disl_gu23_ref_wagon_kind.active is
-   'Признак активности: Y/N';
-
--- справочник: грузы
-comment on table xx_disl_gu23_ref_cargo is
-   'Справочник грузов';
-comment on column xx_disl_gu23_ref_cargo.id is
-   'ID груза (первичный ключ)';
-comment on column xx_disl_gu23_ref_cargo.name is
-   'Наименование груза';
-comment on column xx_disl_gu23_ref_cargo.active is
-   'Признак активности: Y/N';
 
 -- справочник: подписанты
 comment on table xx_disl_gu23_ref_signer is

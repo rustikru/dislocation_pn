@@ -1,3 +1,4 @@
+/* Formatted on 23.06.2026 16:29:57 (QP5 v5.417) */
 create or replace package body xx_etw.xx_disl_gu23_pkg as
    c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us  constant char(1) := chr(31);                -- разделитель полей
@@ -247,13 +248,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select station_id,
+         select short_name,
                 name
            from xx_disl_stations
-          where short_name = 'Угл'
+                  -- where short_name = 'Вод'
           order by name
       ) loop
-         l_row.id := r.station_id;
+         l_row.code := r.short_name;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
@@ -261,19 +262,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- ст. отправления — любая станция сети
+    -- ст. отправления
    function gu23_get_ref_st_from return xx_disl_gu23_ref_tab
       pipelined
    is
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select station_id,
-                name
-           from xx_disl_stations
+         select st_code as st_code,
+                st_name as name
+           from xx_etw.xx_etw_station_bi_v
+          where st_name like 'УГЛЕУ%'
           order by name
       ) loop
-         l_row.id := r.station_id;
+         l_row.code := r.st_code;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
@@ -281,19 +283,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- ст. назначения — любая станция сети
+    -- ст. назначения —
    function gu23_get_ref_st_to return xx_disl_gu23_ref_tab
       pipelined
    is
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select station_id,
-                name
-           from xx_disl_stations
+         select st_code as st_code,
+                st_name as name
+           from xx_etw.xx_etw_station_bi_v
           order by name
       ) loop
-         l_row.id := r.station_id;
+         l_row.code := r.st_code;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
@@ -311,48 +313,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select station_id,
                 name
            from xx_disl_stations
-          where short_name = 'Угл'
+                  --where short_name = 'Угл'
           order by name
       ) loop
          l_row.id := r.station_id;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-   function gu23_get_ref_owner return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select name
-           from xx_disl_gu23_ref_owner
-          where active = 'Y'
-          order by name
-      ) loop
-         l_row.code := r.name;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-   function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select name
-           from xx_disl_gu23_ref_wagon_kind
-          where active = 'Y'
-          order by name
-      ) loop
-         l_row.code := r.name;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
@@ -366,13 +330,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select id,
-                name
-           from xx_disl_gu23_ref_cargo
-          where active = 'Y'
-          order by name
+         select fr_code_etsng as code,
+                fr_name as name
+           from etw_nsi_freight
+          where trunc(sysdate) between recdatebegin and recdateend
+            and ( fr_name like upper('%Метанол%')
+             or fr_name like upper('%Карбамид%')
+             or fr_name like upper('%Меламин%') )
       ) loop
-         l_row.id := r.id;
          l_row.code := r.name;
          l_row.name := r.name;
          pipe row ( l_row );
@@ -829,17 +794,22 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_from pls_integer := 1;
       v_to   pls_integer;
       v_no   varchar2(32);
-      v_last pls_integer;
-      v_d2   pls_integer;
       l_row  xx_disl_gu23_wagon_row;
    begin
-        -- данные подтягиваются только если станция операции — Углеуральская
+        -- Входной контроль: если станция передана и это не Углеуральская — сразу выходим
       if
          p_station is not null
-         and p_station <> 'Углеуральская'
+         and upper(p_station) <> upper('Углеуральская')
       then
          return;
       end if;
+
+        -- Если строка с вагонами пуста, тоже выходим
+      if v_len = 0 then
+         return;
+      end if;
+
+        -- Разбор CLOB по разделителю c_rs (CHR(30))
       while v_from <= v_len loop
          v_to := instr(
             p_wagons,
@@ -859,108 +829,61 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             continue;
          end if;
 
-            -- заглушка: Имитация: вагон с последней цифрой 0 считается «не найденным».
-         v_last := to_number ( substr(
-            v_no,
-            -1
-         ) );
-         v_d2 := to_number ( substr(
-            v_no,
-            -2
-         ) );
+            -- Инициализируем строку ответа текущим номером вагона
          l_row.wagon_no := v_no;
-         if v_last = 0 then
-            l_row.owner := null;
-            l_row.kind := null;
-            l_row.st_from := null;
-            l_row.st_to := null;
-            l_row.cargo := null;
-            l_row.weight := null;
-            l_row.found := 0;
-            pipe row ( l_row );
-         else
-            for d in (
-               select case mod(
-                  v_d2,
-                  5
-               )
-                  when 0 then
-                     'ПГК'
-                  when 1 then
-                     'ФГК'
-                  when 2 then
-                     'СУЭК'
-                  when 3 then
-                     'Уралкалий'
-                  else
-                     'НефтеТрансСервис'
-                      end as owner,
-                      case mod(
-                         v_d2,
-                         4
-                      )
-                         when 0 then
-                            'Полувагон'
-                         when 1 then
-                            'Цистерна'
-                         when 2 then
-                            'Хоппер'
-                         else
-                            'Крытый'
-                      end as kind,
-                      case mod(
-                         v_d2,
-                         3
-                      )
-                         when 0 then
-                            'Кизел'
-                         when 1 then
-                            'Березники'
-                         else
-                            'Чусовская'
-                      end as st_from,
-                      'Углеуральская' as st_to,
-                      case mod(
-                         v_d2,
-                         4
-                      )
-                         when 0 then
-                            'Уголь каменный'
-                         when 1 then
-                            'Удобрения минеральные'
-                         when 2 then
-                            'Кокс'
-                         else
-                            'Дизельное топливо'
-                      end as cargo,
-                      to_char(60 + mod(
-                         v_d2,
-                         12
-                      ))
-                      || ','
-                      || to_char(v_last)
-                      || ' т' as weight
-                 from dual
-            ) loop
-               l_row.owner := d.owner;
-               l_row.kind := d.kind;
-               l_row.st_from := d.st_from;
-               l_row.st_to := d.st_to;
-                    -- если груз задан в контексте запроса (из формы) — берём его
-               l_row.cargo := nvl(
-                  p_cargo_ref,
-                  d.cargo
-               );
-               l_row.weight := d.weight;
-               l_row.found := 1;
-               pipe row ( l_row );
-            end loop;
-         end if;
-        -- заглушка: конец
+         l_row.found := 0;                      -- По умолчанию — не найден
+
+            -- Запрос данных по конкретному распарсенному вагону v_no
+         for d in (
+            select ei.cargo_name,
+                   ei.wagon_type_code,
+                   ei.owner,
+                   ei.depart_station,
+                   ei.dest_station
+                           --ei.CARGO_NAME as weight
+              from xx_dislocation_rjd ei
+             where ( ei.report_dt,
+                     ei.type_reference ) in (
+               select max(report_dt),
+                      type_reference
+                 from xx_dislocation_rjd
+                group by type_reference
+            )
+               and ei.wagon_no = v_no -- Ищем строго текущий вагон из цикла
+               and upper(ei.depart_station) like '%УГЛЕУРА%'
+               and upper(ei.dest_station) like '%ПОТОЧИН%'
+               and ( p_waybill_no is null
+                or ei.waybill_no = p_waybill_no ) -- Фильтр по накладной, если передана
+         ) loop
+            l_row.owner := d.owner;
+            l_row.kind := d.wagon_type_code;
+            l_row.st_from := d.depart_station;
+            l_row.st_to := d.dest_station;
+                --l_row.weight := d.weight;
+            l_row.found := 1;
+
+                -- Если груз передан в форму (p_cargo_ref), берем его, иначе из базы
+            l_row.cargo := nvl(
+               p_cargo_ref,
+               d.cargo_name
+            );
+         end loop;
+
+            -- Отдаем строку (даже если данные в RJD не нашлись, вернется сам номер вагона и found = 0)
+         pipe row ( l_row );
+
+            -- Сбрасываем поля для следующего вагона в цикле
+         l_row.owner := null;
+         l_row.kind := null;
+         l_row.st_from := null;
+         l_row.st_to := null;
+         l_row.cargo := null;
+         l_row.weight := null;
       end loop;
 
       return;
    end;
+
 
     -- ----------------------------------------------------------------
     -- файлы

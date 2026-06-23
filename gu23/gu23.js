@@ -422,7 +422,7 @@ function newDraft(type) {
     type: type,
     status: 'draft',
     cex: (refs.cexes[0] || {}).CODE || '',
-    station: 'Углеуральская',
+    station: '',
     stFrom: '',
     stTo: '',
     waybillNo: '',
@@ -1028,8 +1028,8 @@ function loadWagonInfo(rawText) {
         ' вагонов, найдено ' +
         found +
         ' вагонов.' +
-        (draft.station !== 'Углеуральская'
-          ? ' <br> Внимание: данные подтягиваются только если станция операции — Углеуральская.'
+        (draft.stFrom.toUpperCase() !== 'УГЛЕУРАЛЬСКАЯ'
+          ? ' <br> Внимание: данные подтягиваются только если станция отправления — Углеуральская. Выбрана станция: '+draft.stFrom
           : '')
     }
 
@@ -1057,7 +1057,7 @@ function makeWagonsTable() {
   var isEndType = draft.type === 'end'
 
   table.innerHTML =
-    '<thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес</th>' +
+    '<thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th>' +
     (isEndType ? '<th>Простой</th>' : '') +
     '<th></th></tr></thead>'
 
@@ -1065,7 +1065,7 @@ function makeWagonsTable() {
   draft.wagons.forEach(function (wagon, idx) {
     var tr = createElement('tr')
     tr.appendChild(createElement('td', { class: 'wn' }, wagon.n))
-    ;['owner', 'kind', 'from', 'to', 'cargo', 'weight'].forEach(
+    ;['owner', 'kind', 'from', 'to', 'cargo'].forEach(
       function (fieldKey) {
         var td = createElement('td')
         td.appendChild(
@@ -1125,7 +1125,7 @@ function makeWagonsTable() {
       { class: 'hint', style: 'margin-top:6px' },
       'Вагонов в акте: ' +
         draft.wagons.length +
-        '. В печатной форме строк будет столько же.'
+        '.'
     )
   )
 }
@@ -1517,7 +1517,7 @@ function buildCard(container, data) {
       '<td>' +
       escapeHtml(w.CARGO || '—') +
       '</td><td class="num">' +
-      escapeHtml(w.WEIGHT || '—') +
+      // escapeHtml(w.WEIGHT || '—') +
       '</td>'
     wagonsTbody.appendChild(tr)
   })
@@ -1748,8 +1748,8 @@ function editAct(data) {
         kind: w.KIND,
         from: w.ST_FROM,
         to: w.ST_TO,
-        cargo: w.CARGO,
-        weight: w.WEIGHT
+        cargo: w.CARGO
+        // weight: w.WEIGHT
       }
     }),
     signers: data.signers.map(function (s) {
