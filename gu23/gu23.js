@@ -104,13 +104,13 @@ function hoursText(duration) {
 }
 
 // справочники
-var ACT_TYPES = {
+var actTypes = {
   start: { label: 'Начало простоя', className: 'typ-start' },
   end: { label: 'Окончание простоя', className: 'typ-end' },
   other: { label: 'Прочий акт', className: 'typ-other' },
 }
 
-var ACT_STATUSES = {
+var actStatuses = {
   draft: { label: 'Черновик', className: 'st-draft' },
   active: { label: 'Действующий', className: 'st-signed' },
   closed: { label: 'Закрыт', className: 'st-closed' },
@@ -118,21 +118,21 @@ var ACT_STATUSES = {
 }
 
 function statusChip(status) {
-  var config = ACT_STATUSES[status] || { label: status, className: 'st-draft' }
+  var config = actStatuses[status] || { label: status, className: 'st-draft' }
   return (
     '<span class="chip ' + config.className + '">' + config.label + '</span>'
   )
 }
 
 function typeChip(type) {
-  var config = ACT_TYPES[type] || { label: type, className: 'typ-other' }
+  var config = actTypes[type] || { label: type, className: 'typ-other' }
   return (
     '<span class="typchip ' + config.className + '">' + config.label + '</span>'
   )
 }
 
 // что сейчас на экране
-var REFERENCES = {
+var refs = {
   cexes: [],
   reasons: [],
   stations: [],
@@ -141,8 +141,8 @@ var REFERENCES = {
   signers: [],
 }
 
-var AppState = { page: 'archive', selectedId: null }
-var currentDraft = null
+var state = { page: 'archive', selectedId: null }
+var draft = null
 
 function parseWagons(rawText) {
   var seen = {},
@@ -172,28 +172,28 @@ $(document).ready(function () {
   })
 
   api('gu23_get_refs').done(function (response) {
-    REFERENCES = response || REFERENCES
+    refs = response || refs
     draw()
   })
 })
 
 // меню слева
 function drawNav() {
-  var menuItems = [
+  var items = [
     { page: 'new', icon: '＋', label: 'Создать акт' },
     { page: 'archive', icon: '', label: 'Архив актов' },
   ]
-  var navContainer = $$('#nav')
-  navContainer.innerHTML = ''
+  var nav = $$('#nav')
+  nav.innerHTML = ''
 
-  menuItems.forEach(function (item) {
-    var isActive =
-      AppState.page === item.page ||
-      (item.page === 'archive' && AppState.page === 'card')
+  items.forEach(function (item) {
+    var active =
+      state.page === item.page ||
+      (item.page === 'archive' && state.page === 'card')
     var button = createElement(
       'button',
       {
-        class: 'navbtn' + (isActive ? ' active' : ''),
+        class: 'navbtn' + (active ? ' active' : ''),
         onclick: function () {
           goTo(item.page)
         },
@@ -201,10 +201,10 @@ function drawNav() {
       createElement('span', { class: 'ic' }, item.icon),
       createElement('span', {}, item.label),
     )
-    navContainer.appendChild(button)
+    nav.appendChild(button)
   })
 
-  navContainer.appendChild(
+  nav.appendChild(
     createElement('div', {
       class: 'foot',
       html: '',
@@ -213,23 +213,23 @@ function drawNav() {
 }
 
 function goTo(page) {
-  AppState.page = page
-  AppState.selectedId = null
-  if (page === 'new') currentDraft = null
+  state.page = page
+  state.selectedId = null
+  if (page === 'new') draft = null
   draw()
 }
 
 function openAct(id) {
-  AppState.selectedId = id
-  AppState.page = 'card'
+  state.selectedId = id
+  state.page = 'card'
   draw()
 }
 
 // показать нужную страницу
 function draw() {
   drawNav()
-  var viewContainer = $$('#view')
-  viewContainer.innerHTML = ''
+  var view = $$('#view')
+  view.innerHTML = ''
 
   var views = {
     archive: showArchive,
@@ -238,8 +238,8 @@ function draw() {
     wsearch: showWagonSearch,
   }
 
-  var renderFunc = views[AppState.page] || showArchive
-  renderFunc(viewContainer)
+  var renderFunc = views[state.page] || showArchive
+  renderFunc(view)
 }
 
 function namesOf(arr) {
@@ -249,7 +249,7 @@ function namesOf(arr) {
 }
 
 function cexCodes() {
-  return (REFERENCES.cexes || []).map(function (item) {
+  return (refs.cexes || []).map(function (item) {
     return item.CODE
   })
 }
@@ -267,13 +267,13 @@ function showArchive(container) {
   )
 
   var filterState = { q: '', type: '', status: '', cex: '' }
-  var tableBox = createElement('div', { class: 'card' })
+  var box = createElement('div', { class: 'card' })
 
   function loadData() {
     api('gu23_get_acts', filterState).done(function (list) {
-      tableBox.innerHTML = ''
-      tableBox.appendChild(makeActsTable(list || []))
-      tableBox.appendChild(
+      box.innerHTML = ''
+      box.appendChild(makeActsTable(list || []))
+      box.appendChild(
         createElement(
           'div',
           {
@@ -334,15 +334,15 @@ function showArchive(container) {
   )
 
   container.appendChild(filtersRow)
-  container.appendChild(tableBox)
+  container.appendChild(box)
   loadData()
 }
 
-function makeFilter(values, labels, onChangeCallback) {
+function makeFilter(values, labels, onChange) {
   var select = createElement('select', {
     class: 'inp',
     onchange: function (e) {
-      onChangeCallback(e.target.value)
+      onChange(e.target.value)
     },
   })
   values.forEach(function (val, idx) {
@@ -416,7 +416,7 @@ function newDraft(type) {
     id: 0,
     type: type,
     status: 'draft',
-    cex: (REFERENCES.cexes[0] || {}).CODE || '',
+    cex: (refs.cexes[0] || {}).CODE || '',
     station: 'Углеуральская',
     reason: '',
     circumstances: '',
@@ -432,7 +432,7 @@ function newDraft(type) {
 }
 
 function showForm(container) {
-  if (!currentDraft) currentDraft = newDraft('start')
+  if (!draft) draft = newDraft('start')
 
   container.appendChild(
     createElement(
@@ -441,14 +441,14 @@ function showForm(container) {
       createElement(
         'h1',
         {},
-        currentDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23',
+        draft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23',
       ),
       createElement('p', {}, ''),
       createElement('div', { class: 'spacer' }),
     ),
   )
 
-  var segmentControl = createElement('div', {
+  var seg = createElement('div', {
     class: 'seg',
     style: 'margin-bottom:18px',
   })
@@ -457,13 +457,13 @@ function showForm(container) {
     ['end', 'Окончание простоя'],
     ['other', 'Прочий акт'],
   ].forEach(function (item) {
-    segmentControl.appendChild(
+    seg.appendChild(
       createElement(
         'button',
         {
-          class: currentDraft.type === item[0] ? 'on' : '',
+          class: draft.type === item[0] ? 'on' : '',
           onclick: function () {
-            currentDraft = newDraft(item[0])
+            draft = newDraft(item[0])
             draw()
           },
         },
@@ -471,20 +471,20 @@ function showForm(container) {
       ),
     )
   })
-  if (!currentDraft.id) container.appendChild(segmentControl)
+  if (!draft.id) container.appendChild(seg)
 
   var cardElement = createElement('div', { class: 'card' })
   var cardBody = createElement('div', { class: 'cardpad' })
   cardElement.appendChild(cardBody)
 
-  if (currentDraft.type === 'end') addEndPicker(cardBody)
+  if (draft.type === 'end') addEndPicker(cardBody)
 
   var colRow1 = createElement('div', { class: 'cols' })
   colRow1.appendChild(
     formField(
       'Цех составления',
-      selectInput(cexCodes(), currentDraft.cex, function (val) {
-        currentDraft.cex = val
+      selectInput(cexCodes(), draft.cex, function (val) {
+        draft.cex = val
       }),
       true,
     ),
@@ -493,10 +493,10 @@ function showForm(container) {
     formField(
       'Станция',
       selectInput(
-        namesOf(REFERENCES.stations),
-        currentDraft.station,
+        namesOf(refs.stations),
+        draft.station,
         function (val) {
-          currentDraft.station = val
+          draft.station = val
         },
       ),
       true,
@@ -509,33 +509,33 @@ function showForm(container) {
     formField(
       'Причина составления',
       selectInput(
-        [''].concat(namesOf(REFERENCES.reasons)),
-        currentDraft.reason,
+        [''].concat(namesOf(refs.reasons)),
+        draft.reason,
         function (val) {
-          currentDraft.reason = val
+          draft.reason = val
         },
       ),
       true,
     ),
   )
 
-  if (currentDraft.type === 'start') {
+  if (draft.type === 'start') {
     colRow2.appendChild(
       formField(
         'Дата и время начала простоя',
-        dateInput(currentDraft.startAt, function (val) {
-          currentDraft.startAt = val
+        dateInput(draft.startAt, function (val) {
+          draft.startAt = val
         }),
         true,
       ),
     )
   }
-  if (currentDraft.type === 'end') {
+  if (draft.type === 'end') {
     colRow2.appendChild(
       formField(
         'Дата и время окончания простоя',
-        dateInput(currentDraft.endAt, function (val) {
-          currentDraft.endAt = val
+        dateInput(draft.endAt, function (val) {
+          draft.endAt = val
           draw()
         }),
         true,
@@ -544,13 +544,13 @@ function showForm(container) {
   }
   cardBody.appendChild(colRow2)
 
-  if (currentDraft.type === 'end' && currentDraft.startAt) {
-    var isInvalidDate =
-      currentDraft.endAt &&
-      toMs(currentDraft.endAt) < toMs(currentDraft.startAt)
+  if (draft.type === 'end' && draft.startAt) {
+    var badDate =
+      draft.endAt &&
+      toMs(draft.endAt) < toMs(draft.startAt)
     cardBody.appendChild(
       createElement('div', {
-        class: 'banner ' + (isInvalidDate ? 'err' : 'info'),
+        class: 'banner ' + (badDate ? 'err' : 'info'),
         html: durPreview(),
       }),
     )
@@ -559,8 +559,8 @@ function showForm(container) {
   cardBody.appendChild(
     formField(
       'Обстоятельства, вызвавшие составление акта',
-      textArea(currentDraft.circumstances, function (val) {
-        currentDraft.circumstances = val
+      textArea(draft.circumstances, function (val) {
+        draft.circumstances = val
       }),
       true,
     ),
@@ -577,26 +577,26 @@ function showForm(container) {
     ),
   )
 
-  var wagonsTextArea = createElement('textarea', {
+  var wagonsInput = createElement('textarea', {
     class: 'inp',
     style: 'min-height:56px',
     placeholder:
       'Введите номера вагонов: через запятую, пробел, построчно или вставьте из Excel…',
   })
-  cardBody.appendChild(wagonsTextArea)
+  cardBody.appendChild(wagonsInput)
 
-  var actionButtonsRow = createElement('div', {
+  var actions = createElement('div', {
     style: 'display:flex;gap:9px;flex-wrap:wrap;margin:10px 0',
   })
 
-  actionButtonsRow.appendChild(
+  actions.appendChild(
     createElement(
       'button',
       {
         class: 'btn sm',
         onclick: function () {
-          addWagons(wagonsTextArea.value)
-          wagonsTextArea.value = ''
+          addWagons(wagonsInput.value)
+          wagonsInput.value = ''
           draw()
         },
       },
@@ -604,44 +604,44 @@ function showForm(container) {
     ),
   )
 
-  if (currentDraft.type !== 'other') {
-    actionButtonsRow.appendChild(
+  if (draft.type !== 'other') {
+    actions.appendChild(
       createElement(
         'button',
         {
           class: 'btn sm primary',
           onclick: function () {
-            loadWagonInfo(wagonsTextArea.value)
+            loadWagonInfo(wagonsInput.value)
           },
         },
         'Запросить данные из Дислокации',
       ),
     )
   }
-  if (currentDraft.type === 'end') {
-    actionButtonsRow.appendChild(
+  if (draft.type === 'end') {
+    actions.appendChild(
       createElement(
         'button',
         {
           class: 'btn sm',
           onclick: function () {
-            findOpenByWagons(wagonsTextArea.value)
-            wagonsTextArea.value = ''
+            findOpenByWagons(wagonsInput.value)
+            wagonsInput.value = ''
           },
         },
         'Найти открытый простой',
       ),
     )
   }
-  cardBody.appendChild(actionButtonsRow)
+  cardBody.appendChild(actions)
 
-  if (currentDraft._summary) {
+  if (draft._summary) {
     var summaryClass =
-      currentDraft._summary.found < currentDraft._summary.req ? 'warn' : 'ok'
+      draft._summary.found < draft._summary.req ? 'warn' : 'ok'
     cardBody.appendChild(
       createElement('div', {
         class: 'banner ' + summaryClass,
-        html: currentDraft._summary.text,
+        html: draft._summary.text,
       }),
     )
   }
@@ -663,7 +663,7 @@ function showForm(container) {
       {
         class: 'btn ghost',
         onclick: function () {
-          currentDraft = null
+          draft = null
           goTo('archive')
         },
       },
@@ -703,8 +703,8 @@ function toMs(localStr) {
   return new Date(localStr).getTime()
 }
 
-function addEndPicker(bodyContainer) {
-  bodyContainer.appendChild(
+function addEndPicker(box) {
+  box.appendChild(
     createElement('div', {
       class: 'banner info',
       html: 'Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.',
@@ -730,11 +730,11 @@ function addEndPicker(bodyContainer) {
   )
   row.appendChild(select)
   row.appendChild(createElement('div', { class: 'hint' }))
-  bodyContainer.appendChild(row)
+  box.appendChild(row)
 
-  if (currentDraft._openStarts == null) {
+  if (draft._openStarts == null) {
     api('gu23_get_open_starts').done(function (list) {
-      currentDraft._openStarts = list || []
+      draft._openStarts = list || []
       fillEndList(select)
     })
   } else {
@@ -742,8 +742,8 @@ function addEndPicker(bodyContainer) {
   }
 }
 
-function fillEndList(selectElement) {
-  ;(currentDraft._openStarts || []).forEach(function (act) {
+function fillEndList(sel) {
+  ;(draft._openStarts || []).forEach(function (act) {
     var wagonNumbers = (act.WAGONS || [])
       .map(function (w) {
         return w.WAGON_NO
@@ -754,29 +754,29 @@ function fillEndList(selectElement) {
       { value: act.ID },
       act.ACT_NUMBER + ' · ' + wagonNumbers + ' · ' + act.REASON,
     )
-    if (String(currentDraft.linkedStartId) === String(act.ID))
+    if (String(draft.linkedStartId) === String(act.ID))
       option.selected = true
-    selectElement.appendChild(option)
+    sel.appendChild(option)
   })
 }
 
 function pickStart(id) {
-  var selectedAct = (currentDraft._openStarts || []).filter(function (item) {
+  var selectedAct = (draft._openStarts || []).filter(function (item) {
     return String(item.ID) === String(id)
   })[0]
 
   if (!selectedAct) {
-    currentDraft.linkedStartId = ''
+    draft.linkedStartId = ''
     return
   }
 
-  currentDraft.linkedStartId = selectedAct.ID
-  currentDraft.linkedStartNumber = selectedAct.ACT_NUMBER
-  currentDraft.startAt = toInputDate(selectedAct.START_AT)
-  currentDraft.cex = selectedAct.CEX
-  currentDraft.station = selectedAct.STATION
-  currentDraft.reason = selectedAct.REASON
-  currentDraft.wagons = (selectedAct.WAGONS || []).map(function (w) {
+  draft.linkedStartId = selectedAct.ID
+  draft.linkedStartNumber = selectedAct.ACT_NUMBER
+  draft.startAt = toInputDate(selectedAct.START_AT)
+  draft.cex = selectedAct.CEX
+  draft.station = selectedAct.STATION
+  draft.reason = selectedAct.REASON
+  draft.wagons = (selectedAct.WAGONS || []).map(function (w) {
     return {
       n: w.WAGON_NO,
       owner: w.OWNER,
@@ -788,9 +788,9 @@ function pickStart(id) {
     }
   })
 
-  currentDraft._summary = {
-    req: currentDraft.wagons.length,
-    found: currentDraft.wagons.length,
+  draft._summary = {
+    req: draft.wagons.length,
+    found: draft.wagons.length,
     text:
       'Подтянуты данные из акта начала ' +
       selectedAct.ACT_NUMBER +
@@ -801,32 +801,32 @@ function pickStart(id) {
 }
 
 function findOpenByWagons(rawText) {
-  var wagonNums = parseWagons(rawText)
-  if (!wagonNums.length) {
+  var nums = parseWagons(rawText)
+  if (!nums.length) {
     showToast('Введите номер вагона', 'err')
     return
   }
 
   function executeSearch() {
-    var matchAct = null
-    ;(currentDraft._openStarts || []).forEach(function (act) {
+    var hit = null
+    ;(draft._openStarts || []).forEach(function (act) {
       ;(act.WAGONS || []).forEach(function (w) {
-        if (wagonNums.indexOf(w.WAGON_NO) >= 0 && !matchAct) matchAct = act
+        if (nums.indexOf(w.WAGON_NO) >= 0 && !hit) hit = act
       })
     })
 
-    if (matchAct) {
-      pickStart(matchAct.ID)
-      showToast('Найден открытый акт ' + matchAct.ACT_NUMBER, 'ok')
+    if (hit) {
+      pickStart(hit.ID)
+      showToast('Найден открытый акт ' + hit.ACT_NUMBER, 'ok')
       draw()
     } else {
       showToast('Открытый простой по этим вагонам не найден', 'err')
     }
   }
 
-  if (currentDraft._openStarts == null) {
+  if (draft._openStarts == null) {
     api('gu23_get_open_starts').done(function (list) {
-      currentDraft._openStarts = list || []
+      draft._openStarts = list || []
       executeSearch()
     })
   } else {
@@ -835,11 +835,11 @@ function findOpenByWagons(rawText) {
 }
 
 function durPreview() {
-  if (!currentDraft.startAt || !currentDraft.endAt) {
+  if (!draft.startAt || !draft.endAt) {
     return 'Длительность простоя будет рассчитана автоматически по дате начала и окончания.'
   }
-  var startMs = toMs(currentDraft.startAt)
-  var endMs = toMs(currentDraft.endAt)
+  var startMs = toMs(draft.startAt)
+  var endMs = toMs(draft.endAt)
 
   if (endMs < startMs)
     return '⚠ Дата окончания меньше даты начала — сохранение будет заблокировано.'
@@ -859,15 +859,15 @@ function durPreview() {
 }
 
 function addWagons(rawText) {
-  var parsedNums = parseWagons(rawText)
-  var addedCount = 0
+  var nums = parseWagons(rawText)
+  var added = 0
 
-  parsedNums.forEach(function (num) {
-    var isDuplicate = currentDraft.wagons.some(function (w) {
+  nums.forEach(function (num) {
+    var isDuplicate = draft.wagons.some(function (w) {
       return w.n === num
     })
     if (!isDuplicate) {
-      currentDraft.wagons.push({
+      draft.wagons.push({
         n: num,
         owner: '',
         kind: '',
@@ -876,44 +876,44 @@ function addWagons(rawText) {
         cargo: '',
         weight: '',
       })
-      addedCount++
+      added++
     }
   })
 
-  currentDraft._summary = {
-    req: parsedNums.length,
-    found: addedCount,
+  draft._summary = {
+    req: nums.length,
+    found: added,
     text:
       'Распознано ' +
-      parsedNums.length +
+      nums.length +
       ' вагон(ов), добавлено новых: ' +
-      addedCount +
+      added +
       '. Дубли и пустые строки исключены.',
   }
 }
 
 function loadWagonInfo(rawText) {
   var inputNums = parseWagons(rawText)
-  var targetWagons = inputNums.length
+  var nums = inputNums.length
     ? inputNums
-    : currentDraft.wagons.map(function (w) {
+    : draft.wagons.map(function (w) {
         return w.n
       })
 
-  if (!targetWagons.length) {
+  if (!nums.length) {
     showToast('Введите номера вагонов', 'err')
     return
   }
 
   api('gu23_get_wagon_info', {
-    wagons: JSON.stringify(targetWagons),
-    station: currentDraft.station,
+    wagons: JSON.stringify(nums),
+    station: draft.station,
   }).done(function (rows) {
     rows = rows || []
-    var foundCount = 0
+    var found = 0
 
     rows.forEach(function (row) {
-      var wagon = currentDraft.wagons.filter(function (x) {
+      var wagon = draft.wagons.filter(function (x) {
         return x.n === row.WAGON_NO
       })[0]
       if (!wagon) {
@@ -926,7 +926,7 @@ function loadWagonInfo(rawText) {
           cargo: '',
           weight: '',
         }
-        currentDraft.wagons.push(wagon)
+        draft.wagons.push(wagon)
       }
       if (String(row.FOUND) === '1') {
         wagon.owner = row.OWNER
@@ -935,34 +935,34 @@ function loadWagonInfo(rawText) {
         wagon.to = row.ST_TO
         wagon.cargo = row.CARGO
         wagon.weight = row.WEIGHT
-        foundCount++
+        found++
       }
     })
 
-    currentDraft._summary = {
-      req: targetWagons.length,
-      found: foundCount,
+    draft._summary = {
+      req: nums.length,
+      found: found,
       text:
         'Запрошено ' +
-        targetWagons.length +
+        nums.length +
         ' вагонов, найдено ' +
-        foundCount +
+        found +
         ' вагонов.' +
-        (currentDraft.station !== 'Углеуральская'
+        (draft.station !== 'Углеуральская'
           ? ' <br>⚠ Внимание: данные подтягиваются только если станция операции — Углеуральская.'
           : ''),
     }
 
     showToast(
-      'Получено ' + foundCount + ' из ' + targetWagons.length,
-      foundCount ? 'ok' : 'err',
+      'Получено ' + found + ' из ' + nums.length,
+      found ? 'ok' : 'err',
     )
     draw()
   })
 }
 
 function makeWagonsTable() {
-  if (!currentDraft.wagons.length) {
+  if (!draft.wagons.length) {
     return createElement(
       'div',
       { class: 'banner info' },
@@ -970,11 +970,11 @@ function makeWagonsTable() {
     )
   }
 
-  var scrollWrapper = createElement('div', {
+  var wrap = createElement('div', {
     style: 'overflow:auto;border:1px solid var(--line);border-radius:7px',
   })
   var table = createElement('table', { class: 'wtbl' })
-  var isEndType = currentDraft.type === 'end'
+  var isEndType = draft.type === 'end'
 
   table.innerHTML =
     '<thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес</th>' +
@@ -982,7 +982,7 @@ function makeWagonsTable() {
     '<th></th></tr></thead>'
 
   var tbody = createElement('tbody')
-  currentDraft.wagons.forEach(function (wagon, idx) {
+  draft.wagons.forEach(function (wagon, idx) {
     var tr = createElement('tr')
     tr.appendChild(createElement('td', { class: 'wn' }, wagon.n))
     ;['owner', 'kind', 'from', 'to', 'cargo', 'weight'].forEach(
@@ -1003,14 +1003,14 @@ function makeWagonsTable() {
     )
 
     if (isEndType) {
-      var calculatedDur = '—'
-      if (currentDraft.startAt && currentDraft.endAt) {
-        var startMs = toMs(currentDraft.startAt)
-        var endMs = toMs(currentDraft.endAt)
+      var dur = '—'
+      if (draft.startAt && draft.endAt) {
+        var startMs = toMs(draft.startAt)
+        var endMs = toMs(draft.endAt)
         if (endMs >= startMs)
-          calculatedDur = durText(calcDuration(startMs, endMs))
+          dur = durText(calcDuration(startMs, endMs))
       }
-      tr.appendChild(createElement('td', { class: 'dur' }, calculatedDur))
+      tr.appendChild(createElement('td', { class: 'dur' }, dur))
     }
 
     tr.appendChild(
@@ -1022,7 +1022,7 @@ function makeWagonsTable() {
           {
             class: 'delx',
             onclick: function () {
-              currentDraft.wagons.splice(idx, 1)
+              draft.wagons.splice(idx, 1)
               draw()
             },
           },
@@ -1034,24 +1034,24 @@ function makeWagonsTable() {
   })
 
   table.appendChild(tbody)
-  scrollWrapper.appendChild(table)
+  wrap.appendChild(table)
 
   return createElement(
     'div',
     {},
-    scrollWrapper,
+    wrap,
     createElement(
       'div',
       { class: 'hint', style: 'margin-top:6px' },
       'Вагонов в акте: ' +
-        currentDraft.wagons.length +
+        draft.wagons.length +
         '. В печатной форме строк будет столько же.',
     ),
   )
 }
 
 function makeSigners() {
-  var requiredSignersCount = currentDraft.type === 'other' ? 2 : 3
+  var need = draft.type === 'other' ? 2 : 3
   var container = createElement('div', {})
 
   container.appendChild(
@@ -1060,21 +1060,21 @@ function makeSigners() {
       {
         style: 'font-size:13px;font-weight:600;display:block;margin-bottom:8px',
       },
-      'Подписанты (требуется ' + requiredSignersCount + ')',
+      'Подписанты (требуется ' + need + ')',
     ),
   )
 
-  var availableSigners = REFERENCES.signers || []
+  var signers = refs.signers || []
 
-  for (var i = 0; i < requiredSignersCount; i++) {
-    ;(function (currentIndex) {
-      var activeSigner = currentDraft.signers[currentIndex]
+  for (var i = 0; i < need; i++) {
+    ;(function (idx) {
+      var activeSigner = draft.signers[idx]
       var helpText =
-        currentDraft.type === 'other'
-          ? currentIndex === 0
+        draft.type === 'other'
+          ? idx === 0
             ? 'Представитель предприятия'
             : 'Второй подписант'
-          : currentIndex < 2
+          : idx < 2
             ? 'Работник предприятия'
             : 'Работник станции ОАО «РЖД»'
 
@@ -1083,7 +1083,7 @@ function makeSigners() {
         createElement('label', {
           html:
             'Подписант ' +
-            (currentIndex + 1) +
+            (idx + 1) +
             ' <span class="muted" style="font-weight:400">· ' +
             helpText +
             '</span>',
@@ -1093,17 +1093,17 @@ function makeSigners() {
       var select = createElement('select', {
         class: 'inp',
         onchange: function (e) {
-          var match = availableSigners.filter(function (x) {
+          var match = signers.filter(function (x) {
             return String(x.ID) === e.target.value
           })[0]
-          currentDraft.signers[currentIndex] = match
+          draft.signers[idx] = match
             ? { id: match.ID, fio: match.FIO, post: match.POST, org: match.ORG }
             : null
         },
       })
 
       select.appendChild(createElement('option', { value: '' }, '— выберите —'))
-      availableSigners.forEach(function (signer) {
+      signers.forEach(function (signer) {
         var option = createElement(
           'option',
           { value: signer.ID },
@@ -1122,39 +1122,39 @@ function makeSigners() {
 }
 
 function checkForm(checkSigners) {
-  var errorMessages = []
-  if (!currentDraft.cex) errorMessages.push('Не указан цех')
-  if (!currentDraft.reason) errorMessages.push('Не указана причина составления')
-  if (!String(currentDraft.circumstances).trim())
-    errorMessages.push('Не заполнены обстоятельства')
-  if (!currentDraft.wagons.length)
-    errorMessages.push('Не добавлен ни один вагон')
-  if (currentDraft.type === 'start' && !currentDraft.startAt)
-    errorMessages.push('Не указана дата начала простоя')
+  var errors = []
+  if (!draft.cex) errors.push('Не указан цех')
+  if (!draft.reason) errors.push('Не указана причина составления')
+  if (!String(draft.circumstances).trim())
+    errors.push('Не заполнены обстоятельства')
+  if (!draft.wagons.length)
+    errors.push('Не добавлен ни один вагон')
+  if (draft.type === 'start' && !draft.startAt)
+    errors.push('Не указана дата начала простоя')
 
-  if (currentDraft.type === 'end') {
-    if (!currentDraft.linkedStartId)
-      errorMessages.push('Не выбран открытый акт начала простоя')
-    if (!currentDraft.endAt)
-      errorMessages.push('Не указана дата окончания простоя')
+  if (draft.type === 'end') {
+    if (!draft.linkedStartId)
+      errors.push('Не выбран открытый акт начала простоя')
+    if (!draft.endAt)
+      errors.push('Не указана дата окончания простоя')
     if (
-      currentDraft.startAt &&
-      currentDraft.endAt &&
-      toMs(currentDraft.endAt) < toMs(currentDraft.startAt)
+      draft.startAt &&
+      draft.endAt &&
+      toMs(draft.endAt) < toMs(draft.startAt)
     ) {
-      errorMessages.push('Дата окончания меньше даты начала')
+      errors.push('Дата окончания меньше даты начала')
     }
   }
 
   if (checkSigners) {
-    var requiredCount = currentDraft.type === 'other' ? 2 : 3
-    var filledCount = currentDraft.signers.filter(Boolean).length
-    if (filledCount < requiredCount)
-      errorMessages.push(
-        'Указано подписантов ' + filledCount + ' из ' + requiredCount,
+    var need = draft.type === 'other' ? 2 : 3
+    var filled = draft.signers.filter(Boolean).length
+    if (filled < need)
+      errors.push(
+        'Указано подписантов ' + filled + ' из ' + need,
       )
   }
-  return errorMessages
+  return errors
 }
 
 function saveAct(status, skipWarning) {
@@ -1170,20 +1170,20 @@ function saveAct(status, skipWarning) {
   }
 
   var payload = {
-    id: currentDraft.id || 0,
-    type: currentDraft.type,
+    id: draft.id || 0,
+    type: draft.type,
     status: status,
-    cex: currentDraft.cex,
-    station: currentDraft.station,
-    reason: currentDraft.reason,
-    circumstances: currentDraft.circumstances,
-    start_at: currentDraft.startAt
-      ? currentDraft.startAt.replace('T', ' ')
+    cex: draft.cex,
+    station: draft.station,
+    reason: draft.reason,
+    circumstances: draft.circumstances,
+    start_at: draft.startAt
+      ? draft.startAt.replace('T', ' ')
       : '',
-    end_at: currentDraft.endAt ? currentDraft.endAt.replace('T', ' ') : '',
-    linked_start_id: currentDraft.linkedStartId || '',
-    wagons: JSON.stringify(currentDraft.wagons),
-    signers: JSON.stringify(currentDraft.signers.filter(Boolean)),
+    end_at: draft.endAt ? draft.endAt.replace('T', ' ') : '',
+    linked_start_id: draft.linkedStartId || '',
+    wagons: JSON.stringify(draft.wagons),
+    signers: JSON.stringify(draft.signers.filter(Boolean)),
     force: skipWarning ? 'Y' : 'N',
   }
 
@@ -1196,7 +1196,7 @@ function saveAct(status, skipWarning) {
           (response.number ? ', № ' + response.number : ''),
         'ok',
       )
-      currentDraft = null
+      draft = null
       openAct(response.id)
     } else {
       var serverMsg = (response && response.msg) || 'Ошибка сохранения'
@@ -1217,7 +1217,7 @@ function saveAct(status, skipWarning) {
 
 // карточка акта
 function showCard(container) {
-  api('gu23_get_act', { id: AppState.selectedId }).done(function (data) {
+  api('gu23_get_act', { id: state.selectedId }).done(function (data) {
     container.innerHTML = ''
     if (!data || !data.ok) {
       container.appendChild(
@@ -1256,10 +1256,10 @@ function buildCard(container, data) {
     ),
   )
 
-  var actionsToolbar = createElement('div', {
+  var toolbar = createElement('div', {
     style: 'display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px',
   })
-  actionsToolbar.appendChild(
+  toolbar.appendChild(
     createElement(
       'button',
       {
@@ -1273,7 +1273,7 @@ function buildCard(container, data) {
   )
 
   if (act.STATUS === 'draft') {
-    actionsToolbar.appendChild(
+    toolbar.appendChild(
       createElement(
         'button',
         {
@@ -1285,7 +1285,7 @@ function buildCard(container, data) {
         '✎ Редактировать',
       ),
     )
-    actionsToolbar.appendChild(
+    toolbar.appendChild(
       createElement(
         'button',
         {
@@ -1299,7 +1299,7 @@ function buildCard(container, data) {
     )
   }
   if (act.STATUS === 'active' || act.STATUS === 'closed') {
-    actionsToolbar.appendChild(
+    toolbar.appendChild(
       createElement(
         'button',
         {
@@ -1312,7 +1312,7 @@ function buildCard(container, data) {
       ),
     )
   }
-  container.appendChild(actionsToolbar)
+  container.appendChild(toolbar)
 
   if (act.STATUS === 'annulled' && act.ANNUL_REASON) {
     container.appendChild(
@@ -1323,12 +1323,12 @@ function buildCard(container, data) {
     )
   }
 
-  var mainGrid = createElement('div', {
+  var grid = createElement('div', {
     style:
       'display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start',
   })
 
-  var leftColumn = createElement('div', {})
+  var left = createElement('div', {})
   var detailsCard = createElement('div', { class: 'card' })
   detailsCard.appendChild(
     createElement(
@@ -1338,16 +1338,16 @@ function buildCard(container, data) {
     ),
   )
 
-  var definitionList = createElement('dl', {
+  var dl = createElement('dl', {
     class: 'kv',
     style: 'padding:16px 18px',
   })
   function appendRow(label, htmlContent) {
-    definitionList.appendChild(createElement('dt', {}, label))
-    definitionList.appendChild(createElement('dd', { html: htmlContent }))
+    dl.appendChild(createElement('dt', {}, label))
+    dl.appendChild(createElement('dd', { html: htmlContent }))
   }
 
-  appendRow('Тип акта', ACT_TYPES[act.ACT_TYPE].label)
+  appendRow('Тип акта', actTypes[act.ACT_TYPE].label)
   appendRow('Цех составления', escapeHtml(act.CEX))
   appendRow('Станция', escapeHtml(act.STATION))
   appendRow('Причина', escapeHtml(act.REASON))
@@ -1390,8 +1390,8 @@ function buildCard(container, data) {
   appendRow('Обстоятельства', escapeHtml(act.CIRCUMSTANCES))
   appendRow('Создал', escapeHtml(act.CREATED_BY))
 
-  detailsCard.appendChild(definitionList)
-  leftColumn.appendChild(detailsCard)
+  detailsCard.appendChild(dl)
+  left.appendChild(detailsCard)
 
   var wagonsCard = createElement('div', {
     class: 'card',
@@ -1437,10 +1437,10 @@ function buildCard(container, data) {
   wagonsCard.appendChild(
     createElement('div', { style: 'overflow:auto' }, wagonsTable),
   )
-  leftColumn.appendChild(wagonsCard)
-  mainGrid.appendChild(leftColumn)
+  left.appendChild(wagonsCard)
+  grid.appendChild(left)
 
-  var rightColumn = createElement('div', {})
+  var right = createElement('div', {})
   var signersCard = createElement('div', { class: 'card' })
   signersCard.appendChild(
     createElement(
@@ -1479,7 +1479,7 @@ function buildCard(container, data) {
     )
   })
   signersCard.appendChild(signersBox)
-  rightColumn.appendChild(signersCard)
+  right.appendChild(signersCard)
 
   var filesCard = createElement('div', {
     class: 'card',
@@ -1497,18 +1497,18 @@ function buildCard(container, data) {
   )
 
   if (act.STATUS !== 'annulled') {
-    var fileLabelBtn = createElement('label', { class: 'btn sm' }, '＋ Файл')
-    var hiddenFileInput = createElement('input', {
+    var fileBtn = createElement('label', { class: 'btn sm' }, '＋ Файл')
+    var fileInput = createElement('input', {
       type: 'file',
       multiple: true,
       style: 'display:none',
       accept: 'image/*,.pdf,.doc,.docx,.xls,.xlsx',
     })
-    hiddenFileInput.addEventListener('change', function () {
-      uploadFiles(act.ID, hiddenFileInput.files)
+    fileInput.addEventListener('change', function () {
+      uploadFiles(act.ID, fileInput.files)
     })
-    fileLabelBtn.appendChild(hiddenFileInput)
-    filesHead.appendChild(fileLabelBtn)
+    fileBtn.appendChild(fileInput)
+    filesHead.appendChild(fileBtn)
   }
   filesCard.appendChild(filesHead)
 
@@ -1590,7 +1590,7 @@ function buildCard(container, data) {
     filesBox.appendChild(fileRow)
   })
   filesCard.appendChild(filesBox)
-  rightColumn.appendChild(filesCard)
+  right.appendChild(filesCard)
 
   var historyCard = createElement('div', {
     class: 'card',
@@ -1604,7 +1604,7 @@ function buildCard(container, data) {
     ),
   )
 
-  var scrollHistoryWrapper = createElement('div', { class: 'hist-container' })
+  var histWrap = createElement('div', { class: 'hist-container' })
   var historyUl = createElement('ul', {
     class: 'hist',
     style: 'padding:0 18px',
@@ -1627,17 +1627,17 @@ function buildCard(container, data) {
     )
   })
 
-  scrollHistoryWrapper.appendChild(historyUl)
-  historyCard.appendChild(scrollHistoryWrapper)
-  rightColumn.appendChild(historyCard)
+  histWrap.appendChild(historyUl)
+  historyCard.appendChild(histWrap)
+  right.appendChild(historyCard)
 
-  mainGrid.appendChild(rightColumn)
-  container.appendChild(mainGrid)
+  grid.appendChild(right)
+  container.appendChild(grid)
 }
 
 function editAct(data) {
   var act = data.act
-  currentDraft = {
+  draft = {
     id: act.ID,
     type: act.ACT_TYPE,
     status: 'draft',
@@ -1666,8 +1666,8 @@ function editAct(data) {
     _summary: null,
     _openStarts: null,
   }
-  AppState.page = 'new'
-  AppState.selectedId = null
+  state.page = 'new'
+  state.selectedId = null
   draw()
 }
 
@@ -1793,7 +1793,7 @@ function showWagonSearch(container) {
 }
 
 // окошки и уведомления
-function confirmBox(title, message, onConfirmCallback) {
+function confirmBox(title, message, onConfirm) {
   var bodyNode = createElement('div', {}, createElement('p', {}, message))
   openModal(title, bodyNode, [
     { label: 'Отмена', className: 'btn ghost', callback: closeModal },
@@ -1802,13 +1802,13 @@ function confirmBox(title, message, onConfirmCallback) {
       className: 'btn primary',
       callback: function () {
         closeModal()
-        onConfirmCallback()
+        onConfirm()
       },
     },
   ])
 }
 
-function promptBox(title, message, onConfirmCallback) {
+function promptBox(title, message, onConfirm) {
   var textarea = createElement('textarea', {
     class: 'inp',
     style: 'min-height:80px',
@@ -1828,15 +1828,15 @@ function promptBox(title, message, onConfirmCallback) {
       callback: function () {
         var value = textarea.value.trim()
         closeModal()
-        onConfirmCallback(value)
+        onConfirm(value)
       },
     },
   ])
 }
 
-function openModal(title, bodyNode, buttonsConfig) {
+function openModal(title, bodyNode, buttons) {
   var footer = createElement('div', { class: 'mfoot' })
-  buttonsConfig.forEach(function (btn) {
+  buttons.forEach(function (btn) {
     footer.appendChild(
       createElement(
         'button',
@@ -1846,7 +1846,7 @@ function openModal(title, bodyNode, buttonsConfig) {
     )
   })
 
-  var modalContainer = createElement(
+  var modalBox = createElement(
     'div',
     { class: 'modal' },
     createElement(
@@ -1867,7 +1867,7 @@ function openModal(title, bodyNode, buttonsConfig) {
         if (e.target === backdrop) closeModal()
       },
     },
-    modalContainer,
+    modalBox,
   )
   $$('#modalRoot').appendChild(backdrop)
 }
@@ -1900,11 +1900,11 @@ function formField(label, inputNode, isRequired) {
   )
 }
 
-function selectInput(optionsList, selectedValue, onChangeCallback) {
+function selectInput(optionsList, selectedValue, onChange) {
   var select = createElement('select', {
     class: 'inp',
     onchange: function (e) {
-      onChangeCallback(e.target.value)
+      onChange(e.target.value)
     },
   })
   optionsList.forEach(function (optValue) {
@@ -1919,24 +1919,24 @@ function selectInput(optionsList, selectedValue, onChangeCallback) {
   return select
 }
 
-function dateInput(currentValue, onChangeCallback) {
+function dateInput(currentValue, onChange) {
   return createElement('input', {
     class: 'inp',
     type: 'datetime-local',
     value: currentValue || '',
     onchange: function (e) {
-      onChangeCallback(e.target.value)
+      onChange(e.target.value)
     },
   })
 }
 
-function textArea(currentValue, onChangeCallback) {
+function textArea(currentValue, onChange) {
   return createElement(
     'textarea',
     {
       class: 'inp',
       onchange: function (e) {
-        onChangeCallback(e.target.value)
+        onChange(e.target.value)
       },
     },
     currentValue || '',
