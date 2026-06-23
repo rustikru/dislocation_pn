@@ -386,6 +386,17 @@ function showWagonActions() {
     $btn.on('click', () => findOpenStayByWagons())
     $actions.append($btn)
   }
+
+  if (activeDraft.wagons.length) {
+    const $btnClear = $('<button class="btn sm">Очистить таблицу</button>')
+    $btnClear.on('click', () => {
+      activeDraft.wagons = []
+      activeDraft._summary = null
+      showWagonActions()
+      showWagonsTable()
+    })
+    $actions.append($btnClear)
+  }
 }
 
 function loadWagonsDataFromDislocation() {
