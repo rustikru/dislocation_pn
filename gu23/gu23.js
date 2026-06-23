@@ -44,6 +44,17 @@ function api(action, data) {
   })
 }
 
+// тихий запрос (без глобального индикатора загрузки — не затемняет экран)
+function apiQuiet(action, data) {
+  return $.ajax({
+    url: '/data.php',
+    type: 'POST',
+    dataType: 'json',
+    global: false,
+    data: $.extend({ ajax_action: action }, data || {})
+  })
+}
+
 // даты
 function parseDateTime(str) {
   if (!str) return null
@@ -172,8 +183,14 @@ $(document).ready(function () {
   $(document).ajaxStop(function () {
     $('.loadImg').hide()
   })
-  $(document).ajaxError(function () {
-    showToast('Ошибка связи с сервером', 'err')
+  $(document).ajaxError(function (ev, xhr, settings) {
+    var action = (settings.data || '').replace(/.*ajax_action=([^&]*).*/, '$1') || '?'
+    var detail = ''
+    try { detail = JSON.parse(xhr.responseText).msg || '' } catch (e) {}
+    showToast(
+      '⚠ Ошибка ' + xhr.status + ' (' + action + ')' + (detail ? ': ' + detail : ''),
+      'err'
+    )
   })
 
   api('gu23_get_refs').done(function (response) {
@@ -532,13 +549,9 @@ function showForm(container) {
   colRow2.appendChild(
     formField(
       'Ст. назначения',
-      selectInput(
-        [''].concat(namesOf(refs.stationsTo)),
-        draft.stTo,
-        function (val) {
-          draft.stTo = val
-        }
-      ),
+      stationAutocomplete(draft.stTo, function (val) {
+        draft.stTo = val
+      }),
       false
     )
   )
@@ -1176,6 +1189,8 @@ function makeSigners() {
         })
       )
 
+      var signerStype = isOtherType ? 'МТФ' : (idx < 2 ? 'МТФ' : 'РЖД')
+
       var select = createElement('select', {
         class: 'inp',
         onchange: function (e) {
@@ -1183,7 +1198,14 @@ function makeSigners() {
             return String(x.ID) === e.target.value
           })[0]
           draft.signers[idx] = match
-            ? { id: match.ID, fio: match.FIO, post: match.POST, org: match.ORG }
+            ? {
+                signer_ref_id: match.ID,
+                user_id: null,
+                stype: signerStype,
+                fio: match.FIO,
+                post: match.POST,
+                org: match.ORG
+              }
             : null
         }
       })
@@ -1195,7 +1217,7 @@ function makeSigners() {
           { value: signer.ID },
           signer.FIO + ' · ' + (signer.POST || '') + ' · ' + (signer.ORG || '')
         )
-        if (activeSigner && String(activeSigner.id) === String(signer.ID))
+        if (activeSigner && String(activeSigner.signer_ref_id) === String(signer.ID))
           option.selected = true
         select.appendChild(option)
       })
@@ -1753,7 +1775,14 @@ function editAct(data) {
       }
     }),
     signers: data.signers.map(function (s) {
-      return { id: null, fio: s.FIO, post: s.POST, org: s.ORG }
+      return {
+        signer_ref_id: s.SIGNER_REF_ID || null,
+        user_id: s.USER_ID || null,
+        stype: s.STYPE || null,
+        fio: s.FIO,
+        post: s.POST,
+        org: s.ORG
+      }
     }),
     _summary: null,
     _openStarts: null
@@ -2043,4 +2072,60 @@ function textArea(currentValue, onChange) {
     },
     currentValue || ''
   )
+}
+
+// автодополнение станции с живым поиском (без глобального индикатора загрузки)
+function stationAutocomplete(currentValue, onSelect) {
+  var wrap = createElement('div', { style: 'position:relative' })
+  var input = createElement('input', {
+    class: 'inp',
+    value: currentValue || '',
+    placeholder: 'Начните вводить название…'
+  })
+  var dropdown = createElement('div', {
+    style: 'display:none;position:absolute;z-index:200;width:100%;' +
+           'background:var(--bg);border:1px solid var(--line);border-top:none;' +
+           'max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.15)'
+  })
+
+  var timer = null
+  input.addEventListener('input', function () {
+    var q = input.value.trim()
+    clearTimeout(timer)
+    if (q.length < 2) { dropdown.style.display = 'none'; return }
+    timer = setTimeout(function () {
+      apiQuiet('gu23_search_station', { q: q }).done(function (list) {
+        dropdown.innerHTML = ''
+        if (!list || !list.length) { dropdown.style.display = 'none'; return }
+        list.forEach(function (item) {
+          var opt = createElement('div', {
+            style: 'padding:6px 10px;cursor:pointer'
+          }, item.NAME)
+          opt.addEventListener('mousedown', function (e) {
+            e.preventDefault()
+            input.value = item.NAME
+            onSelect(item.NAME)
+            dropdown.style.display = 'none'
+          })
+          opt.addEventListener('mouseenter', function () {
+            opt.style.background = 'var(--hover)'
+          })
+          opt.addEventListener('mouseleave', function () {
+            opt.style.background = ''
+          })
+          dropdown.appendChild(opt)
+        })
+        dropdown.style.display = 'block'
+      })
+    }, 200)
+  })
+
+  input.addEventListener('blur', function () {
+    setTimeout(function () { dropdown.style.display = 'none' }, 150)
+    onSelect(input.value.trim())
+  })
+
+  wrap.appendChild(input)
+  wrap.appendChild(dropdown)
+  return wrap
 }

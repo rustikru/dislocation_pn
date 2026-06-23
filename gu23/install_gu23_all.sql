@@ -177,12 +177,15 @@ CREATE SEQUENCE xx_disl_gu23_file_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_file_act_i ON xx_disl_gu23_file (act_id);
 
 CREATE TABLE xx_disl_gu23_signer (
-    id      NUMBER PRIMARY KEY,
-    act_id  NUMBER NOT NULL,
-    fio     VARCHAR2(256),
-    post    VARCHAR2(256),
-    org     VARCHAR2(256),
-    ord_no  NUMBER,
+    id            NUMBER PRIMARY KEY,
+    act_id        NUMBER NOT NULL,
+    signer_ref_id NUMBER,                -- ref ID из справочника подписантов
+    user_id       NUMBER,                -- ID пользователя -> xx_disl_users.user_id (только для МТФ)
+    stype         VARCHAR2(8),           -- тип стороны: МТФ / РЖД
+    fio           VARCHAR2(256),
+    post          VARCHAR2(256),
+    org           VARCHAR2(256),
+    ord_no        NUMBER,
     CONSTRAINT xx_disl_gu23_signer_fk FOREIGN KEY (act_id)
         REFERENCES xx_disl_gu23_act (id) ON DELETE CASCADE
 );
@@ -331,13 +334,16 @@ COMMENT ON COLUMN xx_disl_gu23_file.created_at IS 'Дата загрузки';
 COMMENT ON COLUMN xx_disl_gu23_file.created_by IS 'Кто загрузил -> xx_disl_gu23_users.user_id';
 
 -- подписанты акта (хранение, без процесса подписания)
-COMMENT ON TABLE  xx_disl_gu23_signer        IS 'Подписанты конкретного акта';
-COMMENT ON COLUMN xx_disl_gu23_signer.id     IS 'ID строки (первичный ключ)';
-COMMENT ON COLUMN xx_disl_gu23_signer.act_id IS 'Акт -> xx_disl_gu23_act.id';
-COMMENT ON COLUMN xx_disl_gu23_signer.fio    IS 'ФИО подписанта';
-COMMENT ON COLUMN xx_disl_gu23_signer.post   IS 'Должность';
-COMMENT ON COLUMN xx_disl_gu23_signer.org    IS 'Организация';
-COMMENT ON COLUMN xx_disl_gu23_signer.ord_no IS 'Порядковый номер подписанта в акте';
+COMMENT ON TABLE  xx_disl_gu23_signer                IS 'Подписанты конкретного акта';
+COMMENT ON COLUMN xx_disl_gu23_signer.id             IS 'ID строки (первичный ключ)';
+COMMENT ON COLUMN xx_disl_gu23_signer.act_id         IS 'Акт -> xx_disl_gu23_act.id';
+COMMENT ON COLUMN xx_disl_gu23_signer.signer_ref_id  IS 'Ссылка на справочник подписантов -> xx_disl_gu23_ref_signer.id';
+COMMENT ON COLUMN xx_disl_gu23_signer.user_id        IS 'ID пользователя -> xx_disl_users.user_id (только для МТФ)';
+COMMENT ON COLUMN xx_disl_gu23_signer.stype          IS 'Тип стороны: МТФ / РЖД';
+COMMENT ON COLUMN xx_disl_gu23_signer.fio            IS 'ФИО подписанта';
+COMMENT ON COLUMN xx_disl_gu23_signer.post           IS 'Должность';
+COMMENT ON COLUMN xx_disl_gu23_signer.org            IS 'Организация';
+COMMENT ON COLUMN xx_disl_gu23_signer.ord_no         IS 'Порядковый номер подписанта в акте';
 
 -- история изменений
 COMMENT ON TABLE  xx_disl_gu23_hist        IS 'История изменений акта';

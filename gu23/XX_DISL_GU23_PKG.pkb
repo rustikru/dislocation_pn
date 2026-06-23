@@ -562,13 +562,15 @@ as
                      where act_id = p_act_id
                   order by ord_no, id)
         loop
-            l_row.id     := s.id;
-            l_row.fio    := s.fio;
-            l_row.post   := s.POST;
-            l_row.org    := s.org;
-            l_row.unit   := null;
-            l_row.stype  := null;
-            l_row.ord_no := s.ord_no;
+            l_row.id            := s.id;
+            l_row.signer_ref_id := s.signer_ref_id;
+            l_row.user_id       := s.user_id;
+            l_row.fio           := s.fio;
+            l_row.post          := s.POST;
+            l_row.org           := s.org;
+            l_row.unit          := null;
+            l_row.stype         := s.stype;
+            l_row.ord_no        := s.ord_no;
             pipe row (l_row);
         end loop;
 
@@ -918,6 +920,9 @@ as
         vw_to          varchar2 (128);
         vw_cargo       varchar2 (256);
         vw_weight      varchar2 (32);
+        vs_ref_id      number;
+        vs_user_id     number;
+        vs_stype       varchar2 (8);
         vs_fio         varchar2 (256);
         vs_post        varchar2 (256);
         vs_org         varchar2 (256);
@@ -1283,11 +1288,14 @@ as
                 v_to := v_len + 1;
             end if;
 
-            v_rec := DBMS_LOB.SUBSTR (p_signers, v_to - v_from, v_from);
-            v_from := v_to + 1;
-            vs_fio  := g_field (v_rec, 1);
-            vs_post := g_field (v_rec, 2);
-            vs_org  := g_field (v_rec, 3);
+            v_rec      := DBMS_LOB.SUBSTR (p_signers, v_to - v_from, v_from);
+            v_from     := v_to + 1;
+            vs_ref_id  := TO_NUMBER (NULLIF (TRIM (g_field (v_rec, 1)), ''));
+            vs_user_id := TO_NUMBER (NULLIF (TRIM (g_field (v_rec, 2)), ''));
+            vs_stype   := TRIM (g_field (v_rec, 3));
+            vs_fio     := g_field (v_rec, 4);
+            vs_post    := g_field (v_rec, 5);
+            vs_org     := g_field (v_rec, 6);
 
             if TRIM (vs_fio) is null
             then
@@ -1298,12 +1306,18 @@ as
 
             insert into xx_disl_gu23_signer (id,
                                              act_id,
+                                             signer_ref_id,
+                                             user_id,
+                                             stype,
                                              fio,
                                              POST,
                                              org,
                                              ord_no)
                  values (xx_disl_gu23_signer_seq.NEXTVAL,
                          v_id,
+                         vs_ref_id,
+                         vs_user_id,
+                         vs_stype,
                          vs_fio,
                          vs_post,
                          vs_org,
@@ -1418,6 +1432,36 @@ as
         then
             rollback;
             return 'ERR' || c_us || SQLERRM;
+    end;
+
+    -- ----------------------------------------------------------------
+    -- живой поиск станций (для автодополнения в форме акта)
+    -- ----------------------------------------------------------------
+    function gu23_search_station (p_q in varchar2)
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        if p_q is null or TRIM (p_q) is null
+        then
+            return;
+        end if;
+
+        for r in (  select name
+                      from (  select st_name as name
+                                from xx_etw.xx_etw_station_bi_v
+                               where INSTR (UPPER (st_name),
+                                            UPPER (TRIM (p_q))) > 0
+                            order by st_name)
+                     where ROWNUM <= 30)
+        loop
+            l_row.code := r.name;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
+
+        return;
     end;
 
     function gu23_annul_act (p_id        in number,

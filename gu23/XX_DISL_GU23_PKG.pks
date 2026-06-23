@@ -25,13 +25,15 @@ as
 
 
     TYPE xx_disl_gu23_signer_row IS RECORD (
-        id      NUMBER,
-        fio     VARCHAR2(256),
-        post    VARCHAR2(256),
-        org     VARCHAR2(256),
-        unit    VARCHAR2(256),
-        stype   VARCHAR2(128),
-        ord_no  NUMBER
+        id            NUMBER,
+        signer_ref_id NUMBER,
+        user_id       NUMBER,
+        fio           VARCHAR2(256),
+        post          VARCHAR2(256),
+        org           VARCHAR2(256),
+        unit          VARCHAR2(256),
+        stype         VARCHAR2(128),
+        ord_no        NUMBER
     );
     TYPE xx_disl_gu23_signer_tab IS TABLE OF xx_disl_gu23_signer_row;
 
@@ -124,6 +126,11 @@ as
         pipelined;
 
     function gu23_get_ref_reason (p_kind in varchar2 default null)
+        return xx_disl_gu23_ref_tab
+        pipelined;
+
+    -- ---- Поиск станций (живой поиск для автодополнения)
+    function gu23_search_station (p_q in varchar2)
         return xx_disl_gu23_ref_tab
         pipelined;
 
@@ -259,7 +266,7 @@ as
                             p_end_at            in varchar2,
                             p_linked_start_id   in number,
                             p_wagons            in clob,       -- записи CHR(30); поля CHR(31): no,owner,kind,from,to,cargo,weight
-                            p_signers           in clob,       -- записи CHR(30); поля CHR(31): fio,post,org
+                            p_signers           in clob,       -- записи CHR(30); поля CHR(31): ref_id,user_id,stype,fio,post,org
                             p_force             in varchar2 default 'N'  -- 'Y' = разрешить дубль открытого простоя
                                                                         )
         return varchar2;
