@@ -761,14 +761,17 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         join max_dislocation md
       on ei.report_dt = md.max_dt
          and ei.type_reference = md.type_reference
-       where ( v_w_no is null
-          or ei.wagon_no = v_w_no )
-         and ( v_dest_station is null
-          or upper(ei.dest_station) like '%'
+       where ei.wagon_no = nvl(
+            v_w_no,
+            ei.wagon_no
+         )
+         and upper(ei.dest_station) like '%'
                                          || upper(v_dest_station)
-                                         || '%' )
-         and ( v_waybill_no is null
-          or ei.waybill_no like v_waybill_no );
+                                         || '%'
+         and ei.waybill_no = nvl(
+         v_waybill_no,
+         ei.waybill_no
+      );
 
    begin
     -- Очищаем строку перед использованием
@@ -779,13 +782,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
     ---------------------------------------------------------------------
     -- Список вагонов ПЕРЕДАН (парсим CLOB)
     ---------------------------------------------------------------------
+        /*log_new(l_function,'p_waybill_no='||p_waybill_no);
+        log_new(l_function,'p_dest_station='||p_dest_station);
+        log_new(l_function,'p_wagons='||p_wagons);
+        log_new(l_function,'v_len='||v_len);
+        log_new(l_function,'length(p_wagons)'||length(p_wagons));
+        */
       if
          v_len > 0
-         and instr(
-            p_wagons,
-            c_rs,
-            v_from
-         ) > 0
+         and length(p_wagons) > 1
       then
          while v_from <= v_len loop
             v_to := instr(
@@ -814,7 +819,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.st_from := null;
             l_row.st_to := null;
             l_row.cargo := null;
-
+            log_new(
+               l_function,
+               'p_waybill_no=' || p_waybill_no
+            );
+            log_new(
+               l_function,
+               'p_dest_station=' || p_dest_station
+            );
+            log_new(
+               l_function,
+               'v_no=' || v_no
+            );
             -- Ищем данные по конкретному вагону
             for d in c_dislocation(
                v_no,

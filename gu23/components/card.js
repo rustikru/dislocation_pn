@@ -153,7 +153,7 @@ function showWagonsBlock(wagons) {
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Вагоны (${wagons.length})</b></div>
       <div style="overflow:auto">
         <table class="tbl">
-          <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес</th></tr></thead>
+          <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
