@@ -31,7 +31,7 @@ export function showTypeChip(type) {
 export function showFormField(label, inputHtml, isRequired = false) {
   return `
     <div class="frow">
-      <label>${escapeHtml(label)} ${isRequired ? '<span class="req">*</span>' : ''}</label>
+      <label>${label} ${isRequired ? '<span class="req">*</span>' : ''}</label>
       ${inputHtml}
     </div>
   `
