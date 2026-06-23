@@ -55,6 +55,9 @@ class GuActRepository
             case 'gu23_del_file':
                 $this->delFile();
                 break;
+            case 'gu23_search_station':
+                $this->searchStation();
+                break;
             default:
                 http_response_code(400);
                 echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -112,17 +115,14 @@ class GuActRepository
     private function getRefs(): void
     {
         echo json_encode([
-            'cexes'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
-            'reasons'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
-            'stations'    => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
-            'stationsFrom'=> $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
-            'stationsTo'  => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_to())'),
-            // 'owners'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
-            /* 'kinds'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'), */
-            'cargos'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
-            'signers'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer())'),
-            'signersOwn'  => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own())'),
-            'signersRzd'  => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
+            'cexes'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
+            'reasons'    => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'stations'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
+            'owners'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
+            'kinds'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'),
+            'cargos'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
+            'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own())'),
+            'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
         ]);
     }
 
@@ -189,20 +189,16 @@ class GuActRepository
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
-        $station   = filter_input(INPUT_POST, 'station')    ?: null;
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: null;
-        $cargoRef  = filter_input(INPUT_POST, 'cargo_ref')  ?: null;
+        $waybillNo  = filter_input(INPUT_POST, 'waybill_no') ?: null;
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
 
         $st = oci_parse(
             $this->conn,
-            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2,:b3,:b4))'
+            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2))'
         );
         $lob = $this->bindClob($st, ':b1', $clob);
-        oci_bind_by_name($st, ':b2', $station);
-        oci_bind_by_name($st, ':b3', $waybillNo);
-        oci_bind_by_name($st, ':b4', $cargoRef);
+        oci_bind_by_name($st, ':b2', $waybillNo);
         oci_execute($st);
         $rows = [];
         while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
@@ -212,35 +208,38 @@ class GuActRepository
         echo json_encode($rows);
     }
 
+    private function searchStation(): void
+    {
+        $q = (string) filter_input(INPUT_POST, 'q');
+        if (mb_strlen(trim($q)) < 3) {
+            echo json_encode([]);
+            return;
+        }
+        echo json_encode($this->pipe(
+            'select * from table(xx_disl_gu23_pkg.gu23_search_station(:b1))',
+            [':b1' => $q]
+        ));
+    }
+
     /* ----------------------------------------------------------------- */
     /* акты — запись                                                      */
     /* ----------------------------------------------------------------- */
     private function saveAct(): void
     {
-        $userId = $this->auth->getUserId();
-        $wagons = json_decode((string) filter_input(INPUT_POST, 'wagons'), true) ?: [];
-        $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
+        $userId    = $this->auth->getUserId();
+        $wagons    = json_decode((string) filter_input(INPUT_POST, 'wagons'),  true) ?: [];
+        $signers   = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
 
-        $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
-        $signerClob = $this->packRows($signers, ['fio', 'post', 'org']);
+        $wagonClob  = $this->packRows($wagons,  ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
+        $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org']); // field 1 = ref_id
 
-        $st = oci_parse(
-            $this->conn,
-            'begin :res := xx_disl_gu23_pkg.gu23_save_act(
-                :user_id, :id, :type, :status, :cex, :station,
-                :st_from, :st_to, :waybill_no, :cargo_ref,
-                :reason, :circ, :start_at, :end_at, :linked,
-                :wagons, :signers, :force); end;'
-        );
-
-        $res = '';
         $id        = (int) filter_input(INPUT_POST, 'id');
         $type      = filter_input(INPUT_POST, 'type');
         $status    = filter_input(INPUT_POST, 'status');
-        $cex       = filter_input(INPUT_POST, 'cex');
-        $station   = filter_input(INPUT_POST, 'station');
-        $stFrom    = filter_input(INPUT_POST, 'st_from')    ?: null;
-        $stTo      = filter_input(INPUT_POST, 'st_to')      ?: null;
+        $cex       = filter_input(INPUT_POST, 'cex');           // CODE цеха
+        $station   = filter_input(INPUT_POST, 'station')    ?: null; // station_id as string
+        $stFrom    = filter_input(INPUT_POST, 'st_from')    ?: null; // st_from_id as string
+        $stTo      = filter_input(INPUT_POST, 'st_to')      ?: null; // st_to_id as string
         $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: null;
         $cargoRef  = filter_input(INPUT_POST, 'cargo_ref')  ?: null;
         $reason    = filter_input(INPUT_POST, 'reason');
@@ -251,6 +250,32 @@ class GuActRepository
         $linked    = ($linkedRaw === null || $linkedRaw === '') ? null : (int) $linkedRaw;
         $force     = filter_input(INPUT_POST, 'force') === 'Y' ? 'Y' : 'N';
 
+        $sql = 'declare
+  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_save_act;
+begin
+  v_d.p_user_id         := :user_id;
+  v_d.p_id              := :id;
+  v_d.p_type            := :type;
+  v_d.p_status          := :status;
+  v_d.p_cex             := :cex;
+  v_d.p_station         := :station;
+  v_d.p_st_from         := :st_from;
+  v_d.p_st_to           := :st_to;
+  v_d.p_waybill_no      := :waybill_no;
+  v_d.p_cargo_ref       := :cargo_ref;
+  v_d.p_reason          := :reason;
+  v_d.p_circumstances   := :circ;
+  v_d.p_start_at        := :start_at;
+  v_d.p_end_at          := :end_at;
+  v_d.p_linked_start_id := :linked;
+  v_d.p_wagons          := :wagons;
+  v_d.p_signers         := :signers;
+  v_d.p_force           := :force;
+  :res := xx_etw.xx_disl_gu23_pkg.gu23_save_act(v_d);
+end;';
+
+        $st  = oci_parse($this->conn, $sql);
+        $res = '';
         oci_bind_by_name($st, ':res',        $res, 4000);
         oci_bind_by_name($st, ':user_id',    $userId);
         oci_bind_by_name($st, ':id',         $id);
@@ -270,7 +295,6 @@ class GuActRepository
         $lob1 = $this->bindClob($st, ':wagons',  $wagonClob);
         $lob2 = $this->bindClob($st, ':signers', $signerClob);
         oci_bind_by_name($st, ':force',      $force);
-
         oci_execute($st);
         $lob1->free();
         $lob2->free();
@@ -280,15 +304,19 @@ class GuActRepository
 
     private function delAct(): void
     {
-        $id = (int) filter_input(INPUT_POST, 'id');
-        $st = oci_parse(
-            $this->conn,
-            'begin :res := xx_disl_gu23_pkg.gu23_del_act(:id, :uid); end;'
-        );
-        $res = '';
+        $id  = (int) filter_input(INPUT_POST, 'id');
         $uid = $this->auth->getUserId();
+        $sql = 'declare
+  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_act;
+begin
+  v_d.p_id      := :id;
+  v_d.p_user_id := :uid;
+  :res := xx_etw.xx_disl_gu23_pkg.gu23_del_act(v_d);
+end;';
+        $st  = oci_parse($this->conn, $sql);
+        $res = '';
         oci_bind_by_name($st, ':res', $res, 4000);
-        oci_bind_by_name($st, ':id', $id);
+        oci_bind_by_name($st, ':id',  $id);
         oci_bind_by_name($st, ':uid', $uid);
         oci_execute($st);
         $this->emitResult($res);
@@ -296,17 +324,22 @@ class GuActRepository
 
     private function annulAct(): void
     {
-        $id = (int) filter_input(INPUT_POST, 'id');
+        $id     = (int) filter_input(INPUT_POST, 'id');
         $reason = filter_input(INPUT_POST, 'reason');
-        $st = oci_parse(
-            $this->conn,
-            'begin :res := xx_disl_gu23_pkg.gu23_annul_act(:id, :uid, :reason); end;'
-        );
+        $uid    = $this->auth->getUserId();
+        $sql = 'declare
+  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_annul_act;
+begin
+  v_d.p_id      := :id;
+  v_d.p_user_id := :uid;
+  v_d.p_reason  := :reason;
+  :res := xx_etw.xx_disl_gu23_pkg.gu23_annul_act(v_d);
+end;';
+        $st  = oci_parse($this->conn, $sql);
         $res = '';
-        $uid = $this->auth->getUserId();
-        oci_bind_by_name($st, ':res', $res, 4000);
-        oci_bind_by_name($st, ':id', $id);
-        oci_bind_by_name($st, ':uid', $uid);
+        oci_bind_by_name($st, ':res',    $res, 4000);
+        oci_bind_by_name($st, ':id',     $id);
+        oci_bind_by_name($st, ':uid',    $uid);
         oci_bind_by_name($st, ':reason', $reason);
         oci_execute($st);
         $this->emitResult($res);
@@ -358,19 +391,28 @@ class GuActRepository
                 continue;
             }
 
-            $st = oci_parse(
-                $this->conn,
-                'begin :res := xx_disl_gu23_pkg.gu23_add_file(:act,:fid,:name,:ext,:mime,:path,:uid); end;'
-            );
+            $addSql = 'declare
+  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_add_file;
+begin
+  v_d.p_act_id  := :act;
+  v_d.p_file_id := :fid;
+  v_d.p_name    := :name;
+  v_d.p_ext     := :ext;
+  v_d.p_mime    := :mime;
+  v_d.p_path    := :path;
+  v_d.p_user_id := :uid;
+  :res := xx_etw.xx_disl_gu23_pkg.gu23_add_file(v_d);
+end;';
+            $st  = oci_parse($this->conn, $addSql);
             $res = '';
-            oci_bind_by_name($st, ':res', $res, 4000);
-            oci_bind_by_name($st, ':act', $actId);
-            oci_bind_by_name($st, ':fid', $fileId);
+            oci_bind_by_name($st, ':res',  $res, 4000);
+            oci_bind_by_name($st, ':act',  $actId);
+            oci_bind_by_name($st, ':fid',  $fileId);
             oci_bind_by_name($st, ':name', $orig);
-            oci_bind_by_name($st, ':ext', $ext);
+            oci_bind_by_name($st, ':ext',  $ext);
             oci_bind_by_name($st, ':mime', $mime);
             oci_bind_by_name($st, ':path', $disk);
-            oci_bind_by_name($st, ':uid', $userId);
+            oci_bind_by_name($st, ':uid',  $userId);
             oci_execute($st);
 
             if (strpos($res, 'done') === 0) {
@@ -398,12 +440,16 @@ class GuActRepository
             $path = $row['REAL_PATH'];
         }
 
-        $st = oci_parse(
-            $this->conn,
-            'begin :res := xx_disl_gu23_pkg.gu23_del_file(:fid, :uid); end;'
-        );
+        $uid    = $this->auth->getUserId();
+        $delSql = 'declare
+  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_file;
+begin
+  v_d.p_file_id := :fid;
+  v_d.p_user_id := :uid;
+  :res := xx_etw.xx_disl_gu23_pkg.gu23_del_file(v_d);
+end;';
+        $st  = oci_parse($this->conn, $delSql);
         $res = '';
-        $uid = $this->auth->getUserId();
         oci_bind_by_name($st, ':res', $res, 4000);
         oci_bind_by_name($st, ':fid', $fileId);
         oci_bind_by_name($st, ':uid', $uid);

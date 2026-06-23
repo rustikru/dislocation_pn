@@ -92,12 +92,11 @@ create table xx_disl_gu23_act (
    act_number      varchar2(64),
    act_type        varchar2(16) not null,    -- start / end / other
    status          varchar2(16) not null,    -- draft / active / closed / annulled
-   cex_code        varchar2(32),
-   station         varchar2(128),             -- ст. составления
-   st_from         varchar2(128),             -- ст. отправления
-   st_to           varchar2(128),             -- ст. назначения
-   waybill_no      varchar2(64),              -- № накладной
-   cargo_ref       varchar2(256),             -- груз
+   cex_id          number,                   -- ID цеха -> xx_disl_gu23_ref_cex.id
+   station_id      number,                   -- ID ст. составления -> xx_disl_stations
+   st_from_id      number,                   -- ID ст. отправления -> xx_disl_stations
+   st_to_id        number,                   -- ID ст. назначения -> xx_disl_stations
+   cargo_ref       varchar2(256),            -- груз (из справочника)
    reason          varchar2(512),
    circumstances   varchar2(4000),
    start_at        date,
@@ -159,12 +158,13 @@ create index xx_disl_gu23_file_act_i on
    );
 
 create table xx_disl_gu23_signer (
-   id     number primary key,
-   act_id number not null,
-   fio    varchar2(256),
-   post   varchar2(256),
-   org    varchar2(256),
-   ord_no number,
+   id            number primary key,
+   act_id        number not null,
+   signer_ref_id number,                -- ref ID из справочника подписантов (для предвыбора при правке)
+   fio           varchar2(256),
+   post          varchar2(256),
+   org           varchar2(256),
+   ord_no        number,
    constraint xx_disl_gu23_signer_fk foreign key ( act_id )
       references xx_disl_gu23_act ( id )
          on delete cascade
@@ -198,11 +198,15 @@ create or replace view xx_disl_gu23_act_v as
           a.act_number,
           a.act_type,
           a.status,
-          a.cex_code,
-          a.station,
-          a.st_from,
-          a.st_to,
-          a.waybill_no,
+          a.cex_id,
+          rc.code                     as cex_code,
+          rc.name                     as cex_name,
+          a.station_id,
+          ss.name                     as station,
+          a.st_from_id,
+          ssf.name                    as st_from,
+          a.st_to_id,
+          sst.name                    as st_to,
           a.cargo_ref,
           a.reason,
           a.circumstances,
@@ -214,9 +218,9 @@ create or replace view xx_disl_gu23_act_v as
           a.cal_days,
           a.linked_start_id,
           (
-             select s.act_number
-               from xx_disl_gu23_act s
-              where s.id = a.linked_start_id
+             select la.act_number
+               from xx_disl_gu23_act la
+              where la.id = a.linked_start_id
           ) as linked_start_number,
           (
              select count(*)
@@ -233,7 +237,11 @@ create or replace view xx_disl_gu23_act_v as
           a.created_by,
           a.modified_at,
           a.modified_by
-     from xx_disl_gu23_act a;
+     from xx_disl_gu23_act a
+     left join xx_disl_gu23_ref_cex rc  on rc.id           = a.cex_id
+     left join xx_disl_stations      ss  on ss.station_id   = a.station_id
+     left join xx_disl_stations      ssf on ssf.station_id  = a.st_from_id
+     left join xx_disl_stations      sst on sst.station_id  = a.st_to_id;
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ
@@ -315,16 +323,14 @@ comment on column xx_disl_gu23_act.act_type is
    'Тип акта: start (начало) / end (окончание) / other (прочий)';
 comment on column xx_disl_gu23_act.status is
    'Статус: draft / active / closed / annulled';
-comment on column xx_disl_gu23_act.cex_code is
-   'Код цеха составления (из справочника цехов)';
-comment on column xx_disl_gu23_act.station is
-   'Станция составления';
-comment on column xx_disl_gu23_act.st_from is
-   'Станция отправления';
-comment on column xx_disl_gu23_act.st_to is
-   'Станция назначения';
-comment on column xx_disl_gu23_act.waybill_no is
-   'Номер накладной';
+comment on column xx_disl_gu23_act.cex_id is
+   'ID цеха -> xx_disl_gu23_ref_cex.id';
+comment on column xx_disl_gu23_act.station_id is
+   'ID станции составления -> xx_disl_stations.station_id';
+comment on column xx_disl_gu23_act.st_from_id is
+   'ID станции отправления -> xx_disl_stations.station_id';
+comment on column xx_disl_gu23_act.st_to_id is
+   'ID станции назначения -> xx_disl_stations.station_id';
 comment on column xx_disl_gu23_act.cargo_ref is
    'Груз (из справочника грузов)';
 comment on column xx_disl_gu23_act.reason is
@@ -405,6 +411,8 @@ comment on column xx_disl_gu23_signer.id is
    'ID строки (первичный ключ)';
 comment on column xx_disl_gu23_signer.act_id is
    'Акт -> xx_disl_gu23_act.id';
+comment on column xx_disl_gu23_signer.signer_ref_id is
+   'ID подписанта из справочника (для предвыбора при редактировании)';
 comment on column xx_disl_gu23_signer.fio is
    'ФИО подписанта';
 comment on column xx_disl_gu23_signer.post is

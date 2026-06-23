@@ -136,12 +136,9 @@ var refs = {
   cexes: [],
   reasons: [],
   stations: [],
-  stationsFrom: [],
-  stationsTo: [],
   owners: [],
   kinds: [],
   cargos: [],
-  signers: [],
   signersOwn: [],
   signersRzd: []
 }
@@ -329,7 +326,7 @@ function showArchive(container) {
   )
   filtersRow.appendChild(
     makeFilter(
-      [''].concat(cexCodes()),
+      [''].concat((refs.cexes || []).map(function (c) { return String(c.ID) })),
       ['Все цеха'].concat(cexCodes()),
       function (val) {
         filterState.cex = val
@@ -422,9 +419,11 @@ function newDraft(type) {
     type: type,
     status: 'draft',
     cex: (refs.cexes[0] || {}).CODE || '',
-    station: '',
-    stFrom: '',
-    stTo: '',
+    stationId: String((refs.stations[0] || {}).ID || ''),
+    stFromId: '',
+    stFromName: '',
+    stToId: '',
+    stToName: '',
     waybillNo: '',
     cargoRef: '',
     reason: '',
@@ -488,7 +487,49 @@ function showForm(container) {
 
   if (draft.type === 'end') addEndPicker(cardBody)
 
-  // строка 1: цех + ст. составления
+  // строка 1: дата начала/окончания (самое первое поле)
+  if (draft.type === 'start' || draft.type === 'end') {
+    var colRow0 = createElement('div', { class: 'cols' })
+    if (draft.type === 'start') {
+      colRow0.appendChild(
+        formField(
+          'Дата и время начала простоя',
+          dateInput(draft.startAt, function (val) {
+            draft.startAt = val
+          }),
+          true
+        )
+      )
+    }
+    if (draft.type === 'end') {
+      colRow0.appendChild(
+        formField(
+          'Дата и время окончания простоя',
+          dateInput(draft.endAt, function (val) {
+            draft.endAt = val
+            if (val) draw()
+          }),
+          true
+        )
+      )
+    }
+    colRow0.appendChild(createElement('div', {}))
+    cardBody.appendChild(colRow0)
+  }
+
+  if (draft.type === 'end' && draft.startAt) {
+    var badDate =
+      draft.endAt &&
+      toMs(draft.endAt) < toMs(draft.startAt)
+    cardBody.appendChild(
+      createElement('div', {
+        class: 'banner ' + (badDate ? 'err' : 'info'),
+        html: durPreview()
+      })
+    )
+  }
+
+  // строка 2: цех + ст. составления
   var colRow1 = createElement('div', { class: 'cols' })
   colRow1.appendChild(
     formField(
@@ -502,49 +543,39 @@ function showForm(container) {
   colRow1.appendChild(
     formField(
       'Ст. составления',
-      selectInput(
-        namesOf(refs.stations),
-        draft.station,
-        function (val) {
-          draft.station = val
-        }
-      ),
+      stationSelect(refs.stations, draft.stationId, function (val) {
+        draft.stationId = val
+      }),
       true
     )
   )
   cardBody.appendChild(colRow1)
 
-  // строка 2: ст. отправления + ст. назначения
+  // строка 3: ст. отправления + ст. назначения (autocomplete)
   var colRow2 = createElement('div', { class: 'cols' })
   colRow2.appendChild(
     formField(
       'Ст. отправления',
-      selectInput(
-        [''].concat(namesOf(refs.stationsFrom)),
-        draft.stFrom,
-        function (val) {
-          draft.stFrom = val
-        }
-      ),
+      stationAutocomplete(draft.stFromId, draft.stFromName, function (id, name) {
+        draft.stFromId = id
+        draft.stFromName = name
+      }),
       false
     )
   )
   colRow2.appendChild(
     formField(
       'Ст. назначения',
-      selectInput(
-        [''].concat(namesOf(refs.stationsTo)),
-        draft.stTo,
-        function (val) {
-          draft.stTo = val
-        }
-      ),
+      stationAutocomplete(draft.stToId, draft.stToName, function (id, name) {
+        draft.stToId = id
+        draft.stToName = name
+      }),
       false
     )
   )
   cardBody.appendChild(colRow2)
 
-  // строка 3: № накладной + груз
+  // строка 4: № накладной + груз
   var colRow3 = createElement('div', { class: 'cols' })
   colRow3.appendChild(
     formField(
@@ -574,9 +605,8 @@ function showForm(container) {
   )
   cardBody.appendChild(colRow3)
 
-  // строка 4: причина + дата
-  var colRow4 = createElement('div', { class: 'cols' })
-  colRow4.appendChild(
+  // строка 5: причина (полная ширина)
+  cardBody.appendChild(
     formField(
       'Причина составления',
       selectInput(
@@ -589,43 +619,6 @@ function showForm(container) {
       true
     )
   )
-
-  if (draft.type === 'start') {
-    colRow4.appendChild(
-      formField(
-        'Дата и время начала простоя',
-        dateInput(draft.startAt, function (val) {
-          draft.startAt = val
-        }),
-        true
-      )
-    )
-  }
-  if (draft.type === 'end') {
-    colRow4.appendChild(
-      formField(
-        'Дата и время окончания простоя',
-        dateInput(draft.endAt, function (val) {
-          draft.endAt = val
-          if (val) draw()
-        }),
-        true
-      )
-    )
-  }
-  cardBody.appendChild(colRow4)
-
-  if (draft.type === 'end' && draft.startAt) {
-    var badDate =
-      draft.endAt &&
-      toMs(draft.endAt) < toMs(draft.startAt)
-    cardBody.appendChild(
-      createElement('div', {
-        class: 'banner ' + (badDate ? 'err' : 'info'),
-        html: durPreview()
-      })
-    )
-  }
 
   cardBody.appendChild(
     formField(
@@ -832,9 +825,11 @@ function pickStart(id) {
   draft.linkedStartNumber = selectedAct.ACT_NUMBER
   draft.startAt = toInputDate(selectedAct.START_AT)
   draft.cex = selectedAct.CEX
-  draft.station = selectedAct.STATION
-  draft.stFrom = selectedAct.ST_FROM || ''
-  draft.stTo = selectedAct.ST_TO || ''
+  draft.stationId = String(selectedAct.STATION_ID || '')
+  draft.stFromId = String(selectedAct.ST_FROM_ID || '')
+  draft.stFromName = selectedAct.ST_FROM || ''
+  draft.stToId = String(selectedAct.ST_TO_ID || '')
+  draft.stToName = selectedAct.ST_TO || ''
   draft.reason = selectedAct.REASON
   draft.wagons = (selectedAct.WAGONS || []).map(function (w) {
     return {
@@ -985,9 +980,7 @@ function loadWagonInfo(rawText) {
 
   api('gu23_get_wagon_info', {
     wagons: JSON.stringify(nums),
-    station: draft.station,
-    waybill_no: draft.waybillNo || '',
-    cargo_ref: draft.cargoRef || ''
+    waybill_no: draft.waybillNo || ''
   }).done(function (rows) {
     rows = rows || []
     var found = 0
@@ -1022,15 +1015,7 @@ function loadWagonInfo(rawText) {
     draft._summary = {
       req: nums.length,
       found: found,
-      text:
-        'Запрошено ' +
-        nums.length +
-        ' вагонов, найдено ' +
-        found +
-        ' вагонов.' +
-        (draft.stFrom.toUpperCase() !== 'УГЛЕУРАЛЬСКАЯ'
-          ? ' <br> Внимание: данные подтягиваются только если станция отправления — Углеуральская. Выбрана станция: '+draft.stFrom
-          : '')
+      text: 'Запрошено ' + nums.length + ' вагонов, найдено ' + found + ' вагонов.'
     }
 
     showToast(
@@ -1213,8 +1198,16 @@ function checkForm(checkSigners) {
   if (!draft.reason) errors.push('Не указана причина составления')
   if (!String(draft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')
-  if (!draft.wagons.length)
-    errors.push('Не добавлен ни один вагон')
+
+  // хотя бы одно из: вагоны, груз, накладная
+  if (!draft.wagons.length && !draft.cargoRef && !draft.waybillNo)
+    errors.push('Добавьте вагоны или укажите груз / номер накладной')
+
+  // все станции обязательны при отправке
+  if (!draft.stationId) errors.push('Не указана ст. составления')
+  if (!draft.stFromId) errors.push('Не указана ст. отправления')
+  if (!draft.stToId) errors.push('Не указана ст. назначения')
+
   if (draft.type === 'start' && !draft.startAt)
     errors.push('Не указана дата начала простоя')
 
@@ -1244,8 +1237,7 @@ function checkForm(checkSigners) {
 }
 
 function saveAct(status, skipWarning) {
-  // черновик сохраняется как есть, без обязательных полей; проверяем только при отправке
-  var errors = status === 'active' ? checkForm(true) : []
+  var errors = status === 'active' ? checkForm(true) : (draft.cex ? [] : ['Не указан цех'])
   if (errors.length) {
     showToast(errors[0], 'err')
     return
@@ -1255,10 +1247,10 @@ function saveAct(status, skipWarning) {
     id: draft.id || 0,
     type: draft.type,
     status: status,
-    cex: draft.cex,
-    station: draft.station,
-    st_from: draft.stFrom || '',
-    st_to: draft.stTo || '',
+    cex: draft.cex,                      // CODE цеха
+    station: draft.stationId || '',      // station_id as string
+    st_from: draft.stFromId || '',       // st_from_id as string
+    st_to: draft.stToId || '',           // st_to_id as string
     waybill_no: draft.waybillNo || '',
     cargo_ref: draft.cargoRef || '',
     reason: draft.reason,
@@ -1436,7 +1428,6 @@ function buildCard(container, data) {
   appendRow('Ст. составления', escapeHtml(act.STATION))
   if (act.ST_FROM) appendRow('Ст. отправления', escapeHtml(act.ST_FROM))
   if (act.ST_TO) appendRow('Ст. назначения', escapeHtml(act.ST_TO))
-  if (act.WAYBILL_NO) appendRow('№ накладной', escapeHtml(act.WAYBILL_NO))
   if (act.CARGO_REF) appendRow('Груз', escapeHtml(act.CARGO_REF))
   appendRow('Причина', escapeHtml(act.REASON))
   appendRow('Дата составления', formatDateTime(act.CREATED_AT))
@@ -1729,11 +1720,13 @@ function editAct(data) {
     id: act.ID,
     type: act.ACT_TYPE,
     status: 'draft',
-    cex: act.CEX,
-    station: act.STATION,
-    stFrom: act.ST_FROM || '',
-    stTo: act.ST_TO || '',
-    waybillNo: act.WAYBILL_NO || '',
+    cex: act.CEX,                              // CODE цеха
+    stationId: String(act.STATION_ID || ''),
+    stFromId: String(act.ST_FROM_ID || ''),
+    stFromName: act.ST_FROM || '',
+    stToId: String(act.ST_TO_ID || ''),
+    stToName: act.ST_TO || '',
+    waybillNo: '',                             // не хранится, очищаем
     cargoRef: act.CARGO_REF || '',
     reason: act.REASON,
     circumstances: act.CIRCUMSTANCES || '',
@@ -1753,7 +1746,7 @@ function editAct(data) {
       }
     }),
     signers: data.signers.map(function (s) {
-      return { id: null, fio: s.FIO, post: s.POST, org: s.ORG }
+      return { id: s.SIGNER_REF_ID || null, fio: s.FIO, post: s.POST, org: s.ORG }
     }),
     _summary: null,
     _openStarts: null
@@ -2009,6 +2002,92 @@ function selectInput(optionsList, selectedValue, onChange) {
     select.appendChild(option)
   })
   return select
+}
+
+// select из справочника {ID, NAME} — значение = ID
+function stationSelect(options, selectedId, onChange) {
+  var select = createElement('select', {
+    class: 'inp',
+    onchange: function (e) {
+      onChange(e.target.value)
+    }
+  })
+  select.appendChild(createElement('option', { value: '' }, '— выберите —'))
+  ;(options || []).forEach(function (opt) {
+    var option = createElement('option', { value: String(opt.ID) }, opt.NAME)
+    if (String(opt.ID) === String(selectedId)) option.selected = true
+    select.appendChild(option)
+  })
+  return select
+}
+
+// autocomplete-поле для поиска станции по 3+ символам (debounce 300ms)
+function stationAutocomplete(currentId, currentName, onChange) {
+  var wrapper = createElement('div', {
+    style: 'position:relative'
+  })
+  var inp = createElement('input', {
+    class: 'inp',
+    placeholder: 'Введите название станции (мин. 3 символа)…',
+    value: currentName || ''
+  })
+  var dropdown = createElement('div', {
+    style:
+      'display:none;position:absolute;z-index:99;background:var(--surface);' +
+      'border:1px solid var(--line);border-radius:6px;width:100%;' +
+      'max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)'
+  })
+  wrapper.appendChild(inp)
+  wrapper.appendChild(dropdown)
+
+  var timer = null
+
+  inp.addEventListener('input', function () {
+    var q = inp.value.trim()
+    clearTimeout(timer)
+    if (q.length < 3) {
+      dropdown.style.display = 'none'
+      dropdown.innerHTML = ''
+      if (!q) onChange('', '')
+      return
+    }
+    timer = setTimeout(function () {
+      api('gu23_search_station', { q: q }).done(function (rows) {
+        dropdown.innerHTML = ''
+        rows = rows || []
+        if (!rows.length) {
+          dropdown.style.display = 'none'
+          return
+        }
+        rows.forEach(function (row) {
+          var item = createElement('div', {
+            style: 'padding:8px 12px;cursor:pointer;font-size:13px',
+            onclick: function () {
+              inp.value = row.NAME
+              onChange(String(row.ID), row.NAME)
+              dropdown.style.display = 'none'
+            }
+          }, row.NAME)
+          item.addEventListener('mouseenter', function () {
+            item.style.background = 'var(--surface2)'
+          })
+          item.addEventListener('mouseleave', function () {
+            item.style.background = ''
+          })
+          dropdown.appendChild(item)
+        })
+        dropdown.style.display = 'block'
+      })
+    }, 300)
+  })
+
+  inp.addEventListener('blur', function () {
+    setTimeout(function () {
+      dropdown.style.display = 'none'
+    }, 200)
+  })
+
+  return wrapper
 }
 
 // поле даты как в остальных модулях: короткий ввод (ддммгг ччмм) -> dd.mm.yyyy HH:MM.
