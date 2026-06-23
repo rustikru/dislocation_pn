@@ -14,7 +14,7 @@ import {
   calculateDuration,
   parseWagonsFromText,
 } from '../utils.js'
-import { renderFormField, showToast, showConfirmBox } from './ui.js'
+import { showFormField, showToast, showConfirmBox } from './ui.js'
 
 export function showForm(container) {
   if (!activeDraft) createNewDraft('start')
@@ -31,12 +31,12 @@ export function showForm(container) {
     </div>
   `)
 
-  renderTypeSwitcher()
-  renderFormFields()
-  renderFormButtons()
+  showTypeSwitcher()
+  showFormFields()
+  showFormButtons()
 }
 
-function renderTypeSwitcher() {
+function showTypeSwitcher() {
   if (activeDraft.id) return // При редактировании тип менять нельзя
 
   const types = [
@@ -62,7 +62,7 @@ function renderTypeSwitcher() {
     })
 }
 
-function renderFormFields() {
+function showFormFields() {
   const $body = $('#form-body')
 
   // Особенность для акта Окончания простоя
@@ -82,13 +82,13 @@ function renderFormFields() {
   // Строка Даты
   let dateRowHtml = ''
   if (activeDraft.type === 'start') {
-    dateRowHtml = renderFormField(
+    dateRowHtml = showFormField(
       'Дата и время начала простоя',
       `<input class="inp datetime-inp" id="inp-startAt" placeholder="ддммгг ччмм" value="${activeDraft.startAt}">`,
       true,
     )
   } else if (activeDraft.type === 'end') {
-    dateRowHtml = renderFormField(
+    dateRowHtml = showFormField(
       'Дата и время окончания простоя',
       `<input class="inp datetime-inp" id="inp-endAt" placeholder="ддммгг ччмм" value="${activeDraft.endAt}">`,
       true,
@@ -108,12 +108,12 @@ function renderFormFields() {
     })
     $('#inp-endAt').on('blur', function () {
       activeDraft.endAt = validateAndGetDate($(this))
-      renderDurationBanner()
+      showDurationBanner()
     })
   }
 
   $body.append('<div id="duration-banner-place"></div>')
-  renderDurationBanner()
+  showDurationBanner()
 
   // Строка Цех + Станции
   const deptsHtml = references.departmentsList
@@ -137,9 +137,9 @@ function renderFormFields() {
 
   $body.append(`
     <div class="cols">
-      ${renderFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
-      ${renderFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
-      ${renderFormField('Ст. отправления', `<select class="inp" id="sel-stationFrom">${stationsFromHtml}</select>`, true)}
+      ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
+      ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
+      ${showFormField('Ст. отправления', `<select class="inp" id="sel-stationFrom">${stationsFromHtml}</select>`, true)}
     </div>
   `)
 
@@ -165,9 +165,9 @@ function renderFormFields() {
 
   $body.append(`
     <div class="cols">
-      ${renderFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`)}
-      ${renderFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}
-      ${renderFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`)}
+      ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`)}
+      ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}
+      ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`)}
     </div>
   `)
 
@@ -189,8 +189,8 @@ function renderFormFields() {
     .join('')
 
   $body.append(`
-    ${renderFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
-    ${renderFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
+    ${showFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
+    ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
   `)
 
   $('#sel-reason').on('change', function () {
@@ -210,8 +210,8 @@ function renderFormFields() {
     <div id="wagons-table-place"></div>
   `)
 
-  renderWagonActions()
-  renderWagonsTable()
+  showWagonActions()
+  showWagonsTable()
 }
 
 function validateAndGetDate($inp) {
@@ -222,7 +222,7 @@ function validateAndGetDate($inp) {
   return isValid ? value : ''
 }
 
-function renderDurationBanner() {
+function showDurationBanner() {
   const $place = $('#duration-banner-place')
   if (activeDraft.type !== 'end') return $place.empty()
 
@@ -359,7 +359,7 @@ function initStationAutocomplete() {
   $inp.on('blur', () => setTimeout(() => $dropdown.hide(), 200))
 }
 
-function renderWagonActions() {
+function showWagonActions() {
   const $actions = $('#wagon-actions').empty()
 
   if (activeDraft.type === 'start' || activeDraft.type === 'other') {
@@ -467,7 +467,7 @@ function findOpenStayByWagons() {
   }
 }
 
-function renderWagonsTable() {
+function showWagonsTable() {
   const $place = $('#wagons-table-place').empty()
   const $summaryPlace = $('#wagon-summary-place').empty()
 
@@ -533,13 +533,13 @@ function renderWagonsTable() {
     .find('.delx')
     .on('click', function () {
       activeDraft.wagons.splice($(this).data('idx'), 1)
-      renderWagonsTable()
+      showWagonsTable()
     })
 
-  renderSignersFields()
+  showSignersFields()
 }
 
-function renderSignersFields() {
+function showSignersFields() {
   const $container = $('#signers-container')
     .empty()
     .append(
@@ -573,7 +573,7 @@ function renderSignersFields() {
       )
       .join('')
 
-    const fieldHtml = renderFormField(
+    const fieldHtml = showFormField(
       `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${helpText}</span>`,
       `
       <select class="inp signer-select" data-slot="${i}">
@@ -608,7 +608,7 @@ function renderSignersFields() {
   })
 }
 
-function renderFormButtons() {
+function showFormButtons() {
   $('#form-footer').html(`
     <button class="btn ghost" id="btn-cancel">Отмена</button>
     <button class="btn" id="btn-saveDraft">Сохранить черновик</button>

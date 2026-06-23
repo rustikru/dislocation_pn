@@ -15,11 +15,11 @@ export function navigateTo(pageName, selectedId = null) {
 
   if (pageName === 'new') setActiveDraft(null)
 
-  renderApplication()
+  showApplication()
 }
 
 // Главная функция отрисовки интерфейса
-export function renderApplication() {
+export function showApplication() {
   drawNav()
 
   const container = $('#view')[0]
@@ -32,9 +32,8 @@ export function renderApplication() {
     wsearch: showWagonSearch,
   }
 
-  const renderCurrentScreen =
-    screens[applicationState.currentPage] || showArchive
-  renderCurrentScreen(container)
+  const showCurrentScreen = screens[applicationState.currentPage] || showArchive
+  showCurrentScreen(container)
 }
 
 // Точка старта приложения при загрузке страницы
@@ -52,6 +51,6 @@ $(document).ready(() => {
     references.signersRzdList = response?.signersRzd || []
 
     // Отрисовываем приложение
-    renderApplication()
+    showApplication()
   })
 })

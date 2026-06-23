@@ -1,7 +1,7 @@
 import { sendApiRequest } from '../api.js'
 import { navigateTo } from '../app.js'
 import { parseWagonsFromText, escapeHtml, formatDate } from '../utils.js'
-import { renderStatusChip, renderTypeChip } from './ui.js'
+import { showStatusChip, showTypeChip } from './ui.js'
 
 export function showWagonSearch(container) {
   $(container).html(`
@@ -37,12 +37,12 @@ export function showWagonSearch(container) {
               (act) => `
           <tr class="wagon-act-row" data-id="${act.ID}">
             <td class="num">${escapeHtml(act.ACT_NUMBER)}</td>
-            <td>${renderTypeChip(act.ACT_TYPE)}</td>
+            <td>${showTypeChip(act.ACT_TYPE)}</td>
             <td>${escapeHtml(act.CEX)}</td>
             <td class="muted text-ellipsis" style="max-width:230px">${escapeHtml(act.REASON)}</td>
             <td class="num">${act.WAGON_CNT || 0}</td>
             <td class="muted">${formatDate(act.CREATED_AT)}</td>
-            <td>${renderStatusChip(act.STATUS)}</td>
+            <td>${showStatusChip(act.STATUS)}</td>
           </tr>
         `,
             )

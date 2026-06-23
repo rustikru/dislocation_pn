@@ -14,7 +14,7 @@ const actStatusesConfig = {
   annulled: { label: 'Аннулирован', className: 'st-annulled' },
 }
 
-export function renderStatusChip(status) {
+export function showStatusChip(status) {
   const config = actStatusesConfig[status] || {
     label: status,
     className: 'st-draft',
@@ -22,13 +22,13 @@ export function renderStatusChip(status) {
   return `<span class="chip ${config.className}">${config.label}</span>`
 }
 
-export function renderTypeChip(type) {
+export function showTypeChip(type) {
   const config = actTypesConfig[type] || { label: type, className: 'typ-other' }
   return `<span class="typchip ${config.className}">${config.label}</span>`
 }
 
 // Шаблон поля формы
-export function renderFormField(label, inputHtml, isRequired = false) {
+export function showFormField(label, inputHtml, isRequired = false) {
   return `
     <div class="frow">
       <label>${escapeHtml(label)} ${isRequired ? '<span class="req">*</span>' : ''}</label>

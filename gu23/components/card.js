@@ -2,8 +2,8 @@ import { sendApiRequest } from '../api.js'
 import { navigateTo } from '../app.js'
 import { escapeHtml, formatDateTime, formatToInputDate } from '../utils.js'
 import {
-  renderStatusChip,
-  renderTypeChip,
+  showStatusChip,
+  showTypeChip,
   showToast,
   showConfirmBox,
   showPromptBox,
@@ -30,8 +30,8 @@ function buildCardView(container, data) {
     <div class="phead">
       <button class="btn sm ghost" id="btn-back-to-archive">← Архив</button>
       <h1 style="font-family:var(--mono);font-size:18px">${act.ACT_NUMBER}</h1>
-      <span>${renderTypeChip(act.ACT_TYPE)}</span>
-      <span>${renderStatusChip(act.STATUS)}</span>
+      <span>${showTypeChip(act.ACT_TYPE)}</span>
+      <span>${showStatusChip(act.STATUS)}</span>
       <div class="spacer"></div>
     </div>
     <div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">
@@ -46,15 +46,15 @@ function buildCardView(container, data) {
 
   $('#btn-back-to-archive').on('click', () => navigateTo('archive'))
 
-  renderToolbarButtons(act, data)
-  renderDetailsBlock(act)
-  renderWagonsBlock(data.wagons)
-  renderSignersBlock(data.signers)
-  renderAttachmentsBlock(act, data.files)
-  renderHistoryBlock(data.history)
+  showToolbarButtons(act, data)
+  showDetailsBlock(act)
+  showWagonsBlock(data.wagons)
+  showSignersBlock(data.signers)
+  showAttachmentsBlock(act, data.files)
+  showHistoryBlock(data.history)
 }
 
-function renderToolbarButtons(act, data) {
+function showToolbarButtons(act, data) {
   const $toolbar = $('#card-toolbar')
 
   if (act.STATUS === 'draft') {
@@ -80,7 +80,7 @@ function renderToolbarButtons(act, data) {
   }
 }
 
-function renderDetailsBlock(act) {
+function showDetailsBlock(act) {
   const rows = [
     { l: 'Тип акта', v: act.ACT_TYPE },
     { l: 'Цех составления', v: act.CEX },
@@ -130,7 +130,7 @@ function renderDetailsBlock(act) {
     })
 }
 
-function renderWagonsBlock(wagons) {
+function showWagonsBlock(wagons) {
   const rowsHtml = wagons
     .map(
       (w) => `
@@ -160,7 +160,7 @@ function renderWagonsBlock(wagons) {
   `)
 }
 
-function renderSignersBlock(signers) {
+function showSignersBlock(signers) {
   const listHtml = signers.length
     ? signers
         .map(
@@ -185,7 +185,7 @@ function renderSignersBlock(signers) {
   `)
 }
 
-function renderAttachmentsBlock(act, files) {
+function showAttachmentsBlock(act, files) {
   const isAnnulled = act.STATUS === 'annulled'
 
   const headHtml = `
@@ -235,7 +235,7 @@ function renderAttachmentsBlock(act, files) {
   })
 }
 
-function renderHistoryBlock(history) {
+function showHistoryBlock(history) {
   const itemsHtml = history
     .map(
       (log) => `

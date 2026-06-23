@@ -2,7 +2,7 @@ import { sendApiRequest } from '../api.js'
 import { references } from '../state.js'
 import { navigateTo } from '../app.js'
 import { escapeHtml, formatDate } from '../utils.js'
-import { renderStatusChip, renderTypeChip } from './ui.js'
+import { showStatusChip, showTypeChip } from './ui.js'
 
 export function showArchive(container) {
   $(container).html(`
@@ -74,12 +74,12 @@ export function showArchive(container) {
             (act) => `
           <tr class="clickable-row" data-id="${act.ID}">
             <td class="num">${escapeHtml(act.ACT_NUMBER)}</td>
-            <td>${renderTypeChip(act.ACT_TYPE)}</td>
+            <td>${showTypeChip(act.ACT_TYPE)}</td>
             <td>${escapeHtml(act.CEX)}</td>
             <td class="muted text-ellipsis" style="max-width:230px" title="${escapeHtml(act.REASON)}">${escapeHtml(act.REASON)}</td>
             <td class="num">${act.WAGON_CNT || 0}</td>
             <td class="muted">${formatDate(act.CREATED_AT)}</td>
-            <td>${renderStatusChip(act.STATUS)}</td>
+            <td>${showStatusChip(act.STATUS)}</td>
           </tr>
         `,
           )

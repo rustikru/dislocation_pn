@@ -263,8 +263,8 @@ function draw() {
     wsearch: showWagonSearch,
   }
 
-  var renderFunc = views[state.page] || showArchive
-  renderFunc(view)
+  var showFunc = views[state.page] || showArchive
+  showFunc(view)
 }
 
 function namesOf(arr) {
