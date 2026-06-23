@@ -54,3 +54,23 @@ insert into xx_disl_gu23_ref_reason (
            'Неудовлетворительное состояние вагона' );
 
 commit;
+
+
+insert into xx_disl_gu23_ref_signer (
+   id,
+   fio,
+   post,
+   org,
+   unit,
+   stype,
+   active
+) values ( xx_disl_gu23_ref_signer_seq.nextval,
+           'Иванов Иван Иванович',              -- fio
+           'Приемосдатчик груза и багажа',      -- post
+           'ОАО «РЖД»',                         -- org
+           'Станция Наливная',                  -- unit
+           'Работник станции ОАО «РЖД»',        -- stype
+           'Y'                                  -- active
+            );
+
+commit;
