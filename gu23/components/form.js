@@ -210,6 +210,7 @@ function showFormFields() {
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0" id="wagon-actions"></div>
     <div id="wagon-summary-place"></div>
     <div id="wagons-table-place"></div>
+    <div id="signers-container"></div>
   `)
 
   showWagonActions()
@@ -485,6 +486,7 @@ function showWagonsTable() {
     $place.html(
       '<div class="banner info">Вагоны не добавлены. Введите номера выше и нажмите «Заполнить данные из Дислокации».</div>',
     )
+    showSignersFields()
     return
   }
 
@@ -526,8 +528,6 @@ function showWagonsTable() {
       </table>
     </div>
     <div class="hint" style="margin-top:6px">Вагонов в акте: ${activeDraft.wagons.length}.</div>
-    <div style="height:14px"></div>
-    <div id="signers-container"></div>
   `
 
   $place
