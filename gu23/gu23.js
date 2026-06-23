@@ -169,8 +169,11 @@ $(document).ready(function () {
   $(document).ajaxStop(function () {
     $('.loadImg').hide()
   })
-  $(document).ajaxError(function () {
-    showToast('Ошибка связи с сервером', 'err')
+  $(document).ajaxError(function (event, jqXHR, settings, thrownError) {
+    var detail = thrownError || jqXHR.statusText || ''
+    var body = jqXHR.responseText ? jqXHR.responseText.substring(0, 300) : ''
+    console.error('AJAX error', jqXHR.status, detail, body)
+    showToast('Ошибка связи с сервером [' + jqXHR.status + ']' + (detail ? ': ' + detail : ''), 'err')
   })
 
   api('gu23_get_refs').done(function (response) {
