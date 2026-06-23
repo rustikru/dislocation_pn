@@ -25,6 +25,7 @@ export function showCard(container) {
 
 function buildCardView(container, data) {
   const act = data.act
+  //console.log(act)
 
   $(container).html(`
     <div class="phead">
@@ -35,7 +36,7 @@ function buildCardView(container, data) {
       <div class="spacer"></div>
     </div>
     <div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="btn" onclick="window.print()">⎙ Печать</button>
+      <button class="btn" onclick="window.print()">Печать</button>
     </div>
     <div id="annulled-banner-place"></div>
     <div class="grid-layout" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
@@ -58,8 +59,8 @@ function showToolbarButtons(act, data) {
   const $toolbar = $('#card-toolbar')
 
   if (act.STATUS === 'draft') {
-    const $editBtn = $('<button class="btn primary">✎ Редактировать</button>')
-    const $delBtn = $('<button class="btn danger">🗑 Удалить черновик</button>')
+    const $editBtn = $('<button class="btn primary">Редактировать</button>')
+    const $delBtn = $('<button class="btn danger">Удалить черновик</button>')
 
     $editBtn.on('click', () => editDraftAct(data))
     $delBtn.on('click', () => deleteDraftAct(act))
@@ -82,7 +83,7 @@ function showToolbarButtons(act, data) {
 
 function showDetailsBlock(act) {
   const rows = [
-    { l: 'Тип акта', v: act.ACT_TYPE },
+    // { l: 'Тип акта', v: act.ACT_TYPE },
     { l: 'Цех составления', v: act.CEX },
     { l: 'Ст. составления', v: act.STATION },
     { l: 'Ст. отправления', v: act.ST_FROM },

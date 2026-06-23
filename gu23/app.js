@@ -36,7 +36,6 @@ export function showApplication() {
   showCurrentScreen(container)
 }
 
-// Точка старта приложения при загрузке страницы
 $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
     // Наполняем глобальные справочники данными от сервера
