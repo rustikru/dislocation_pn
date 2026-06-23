@@ -34,7 +34,7 @@ export function createNewDraft(actType) {
     stationId: String((references.stationsList[0] || {}).CODE || ''),
     stationFromId: String((references.stationsFromList[0] || {}).CODE || ''),
     stationFromName: '',
-    stationToId: '',
+    stationToId: String(references.ST_TO_ID || ''),
     stationToName: '',
     waybillNumber: '',
     cargoReference: '',

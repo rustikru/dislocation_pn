@@ -19,6 +19,8 @@ import { showFormField, showToast, showConfirmBox } from './ui.js'
 export function showForm(container) {
   if (!activeDraft) createNewDraft('start')
 
+  //console.log('stationToName:', activeDraft.stationToName)
+
   $(container).html(`
     <div class="phead">
       <h1>${activeDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23'}</h1>
@@ -679,7 +681,7 @@ function saveActToServer(status, skipWarning = false) {
     status: status,
     cex: activeDraft.departmentCode,
     station: activeDraft.stationId || '',
-    st_from: activeDraft.stFromId || '',
+    st_from: activeDraft.stationFromId || '',
     st_to: activeDraft.stationToId || '',
     waybill_no: activeDraft.waybillNumber || '',
     cargo_ref: activeDraft.cargoReference || '',

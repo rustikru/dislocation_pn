@@ -260,6 +260,8 @@ function showHistoryBlock(history) {
 
 function editDraftAct(data) {
   const act = data.act
+  //console.log('ST_TO => :', act.ST_TO)
+  //console.log('ST_TO_ID =>:', act.ST_TO_ID)
   setActiveDraft({
     id: act.ID,
     type: act.ACT_TYPE,
