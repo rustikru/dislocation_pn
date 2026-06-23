@@ -1,5 +1,5 @@
 -- install_gu23_all.sql — ТОЛЬКО обычные объекты ГУ-23
--- (drop + таблицы, последовательности, представление, объектные типы).
+-- (drop + таблицы, последовательности, представление).
 -- Пакет ставится отдельно:   compile_gu23_pkg.sql
 -- Справочники/данные:         fill_gu23_data.sql
 -- Запускать как скрипт под нужной схемой (локально — XX_ETW).
@@ -22,6 +22,18 @@ BEGIN
         'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_COUNTER_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
         'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
         'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
+    )
+    UNION ALL
+    -- удаляем устаревшие SQL-объектные типы (заменены на RECORD внутри пакета)
+    SELECT 'DROP TYPE '||tp||' FORCE' FROM (
+      SELECT column_value tp FROM TABLE(sys.odcivarchar2list(
+        'XX_DISL_GU23_WAGON_TAB','XX_DISL_GU23_WAGON_OBJ',
+        'XX_DISL_GU23_HIST_TAB','XX_DISL_GU23_HIST_OBJ',
+        'XX_DISL_GU23_FILE_TAB','XX_DISL_GU23_FILE_OBJ',
+        'XX_DISL_GU23_ROW_TAB','XX_DISL_GU23_ROW_OBJ',
+        'XX_DISL_GU23_ACT_TAB','XX_DISL_GU23_ACT_OBJ',
+        'XX_DISL_GU23_SIGNER_TAB','XX_DISL_GU23_SIGNER_OBJ',
+        'XX_DISL_GU23_REF_TAB','XX_DISL_GU23_REF_OBJ'))
     )
   ) LOOP
     BEGIN EXECUTE IMMEDIATE x.ddl; EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -188,113 +200,6 @@ SELECT a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
        (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt,
        a.annul_reason, a.created_at, a.created_by, a.modified_at, a.modified_by
   FROM xx_disl_gu23_act a;
-
--- =====================================================================
---  ОБЪЕКТНЫЕ ТИПЫ ДЛЯ КОНВЕЙЕРНЫХ ФУНКЦИЙ
--- =====================================================================
-
-CREATE OR REPLACE TYPE xx_disl_gu23_ref_obj AS OBJECT (
-    code  VARCHAR2(512),
-    name  VARCHAR2(512)
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_ref_tab AS TABLE OF xx_disl_gu23_ref_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_signer_obj AS OBJECT (
-    id      NUMBER,
-    fio     VARCHAR2(256),
-    post    VARCHAR2(256),
-    org     VARCHAR2(256),
-    unit    VARCHAR2(256),
-    stype   VARCHAR2(128),
-    ord_no  NUMBER
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_signer_tab AS TABLE OF xx_disl_gu23_signer_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_act_obj AS OBJECT (
-    id                   NUMBER,
-    act_number           VARCHAR2(64),
-    act_type             VARCHAR2(16),
-    status               VARCHAR2(16),
-    cex                  VARCHAR2(32),
-    station              VARCHAR2(128),
-    reason               VARCHAR2(512),
-    circumstances        VARCHAR2(4000),
-    start_at             VARCHAR2(20),
-    end_at               VARCHAR2(20),
-    dur_days             NUMBER,
-    dur_hours            NUMBER,
-    dur_total_h          NUMBER,
-    cal_days             NUMBER,
-    linked_start_id      NUMBER,
-    linked_start_number  VARCHAR2(64),
-    wagon_cnt            NUMBER,
-    file_cnt             NUMBER,
-    annul_reason         VARCHAR2(1000),
-    created_at           VARCHAR2(20),
-    created_by           VARCHAR2(256),
-    modified_at          VARCHAR2(20)
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_act_tab AS TABLE OF xx_disl_gu23_act_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_row_obj AS OBJECT (
-    id        NUMBER,
-    act_id    NUMBER,
-    wagon_no  VARCHAR2(16),
-    owner     VARCHAR2(128),
-    kind      VARCHAR2(128),
-    st_from   VARCHAR2(128),
-    st_to     VARCHAR2(128),
-    cargo     VARCHAR2(256),
-    weight    VARCHAR2(32)
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_row_tab AS TABLE OF xx_disl_gu23_row_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_file_obj AS OBJECT (
-    id          NUMBER,
-    act_id      NUMBER,
-    file_name   VARCHAR2(512),
-    file_ext    VARCHAR2(32),
-    mime_type   VARCHAR2(128),
-    real_path   VARCHAR2(1024),
-    created_at  VARCHAR2(20),
-    created_by  VARCHAR2(256)
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_file_tab AS TABLE OF xx_disl_gu23_file_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_hist_obj AS OBJECT (
-    id      NUMBER,
-    act_id  NUMBER,
-    ts      VARCHAR2(20),
-    usr     VARCHAR2(256),
-    txt     VARCHAR2(1000)
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_hist_tab AS TABLE OF xx_disl_gu23_hist_obj;
-/
-
-CREATE OR REPLACE TYPE xx_disl_gu23_wagon_obj AS OBJECT (
-    wagon_no  VARCHAR2(16),
-    owner     VARCHAR2(128),
-    kind      VARCHAR2(128),
-    st_from   VARCHAR2(128),
-    st_to     VARCHAR2(128),
-    cargo     VARCHAR2(256),
-    weight    VARCHAR2(32),
-    found     NUMBER
-);
-/
-CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj;
-/
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ

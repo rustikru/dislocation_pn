@@ -9,6 +9,97 @@ create or replace package xx_disl_gu23_pkg as
 -- пакета xx_disl_gu23_pkg (не затирая остальные ~300 функций).
 -- разделители коллекций из PHP без JSON (11g): записи CHR(30), поля CHR(31).
 
+    -- ---- типы (RECORD внутри пакета; SQL-объектные типы не нужны) ----
+
+    TYPE xx_disl_gu23_ref_row IS RECORD (
+        code  VARCHAR2(512),
+        name  VARCHAR2(512)
+    );
+    TYPE xx_disl_gu23_ref_tab IS TABLE OF xx_disl_gu23_ref_row;
+
+    TYPE xx_disl_gu23_signer_row IS RECORD (
+        id      NUMBER,
+        fio     VARCHAR2(256),
+        post    VARCHAR2(256),
+        org     VARCHAR2(256),
+        unit    VARCHAR2(256),
+        stype   VARCHAR2(128),
+        ord_no  NUMBER
+    );
+    TYPE xx_disl_gu23_signer_tab IS TABLE OF xx_disl_gu23_signer_row;
+
+    TYPE xx_disl_gu23_act_row IS RECORD (
+        id                   NUMBER,
+        act_number           VARCHAR2(64),
+        act_type             VARCHAR2(16),
+        status               VARCHAR2(16),
+        cex                  VARCHAR2(32),
+        station              VARCHAR2(128),
+        reason               VARCHAR2(512),
+        circumstances        VARCHAR2(4000),
+        start_at             VARCHAR2(20),
+        end_at               VARCHAR2(20),
+        dur_days             NUMBER,
+        dur_hours            NUMBER,
+        dur_total_h          NUMBER,
+        cal_days             NUMBER,
+        linked_start_id      NUMBER,
+        linked_start_number  VARCHAR2(64),
+        wagon_cnt            NUMBER,
+        file_cnt             NUMBER,
+        annul_reason         VARCHAR2(1000),
+        created_at           VARCHAR2(20),
+        created_by           VARCHAR2(256),
+        modified_at          VARCHAR2(20)
+    );
+    TYPE xx_disl_gu23_act_tab IS TABLE OF xx_disl_gu23_act_row;
+
+    TYPE xx_disl_gu23_row IS RECORD (
+        id        NUMBER,
+        act_id    NUMBER,
+        wagon_no  VARCHAR2(16),
+        owner     VARCHAR2(128),
+        kind      VARCHAR2(128),
+        st_from   VARCHAR2(128),
+        st_to     VARCHAR2(128),
+        cargo     VARCHAR2(256),
+        weight    VARCHAR2(32)
+    );
+    TYPE xx_disl_gu23_row_tab IS TABLE OF xx_disl_gu23_row;
+
+    TYPE xx_disl_gu23_file_row IS RECORD (
+        id          NUMBER,
+        act_id      NUMBER,
+        file_name   VARCHAR2(512),
+        file_ext    VARCHAR2(32),
+        mime_type   VARCHAR2(128),
+        real_path   VARCHAR2(1024),
+        created_at  VARCHAR2(20),
+        created_by  VARCHAR2(256)
+    );
+    TYPE xx_disl_gu23_file_tab IS TABLE OF xx_disl_gu23_file_row;
+
+    TYPE xx_disl_gu23_hist_row IS RECORD (
+        id      NUMBER,
+        act_id  NUMBER,
+        ts      VARCHAR2(20),
+        usr     VARCHAR2(256),
+        txt     VARCHAR2(1000)
+    );
+    TYPE xx_disl_gu23_hist_tab IS TABLE OF xx_disl_gu23_hist_row;
+
+    TYPE xx_disl_gu23_wagon_row IS RECORD (
+        wagon_no  VARCHAR2(16),
+        owner     VARCHAR2(128),
+        kind      VARCHAR2(128),
+        st_from   VARCHAR2(128),
+        st_to     VARCHAR2(128),
+        cargo     VARCHAR2(256),
+        weight    VARCHAR2(32),
+        found     NUMBER
+    );
+    TYPE xx_disl_gu23_wagon_tab IS TABLE OF xx_disl_gu23_wagon_row;
+
     -- ---- справочники (select из таблиц ref_*, легко заменить источник) ----
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined;
@@ -261,69 +352,34 @@ create or replace package body xx_disl_gu23_pkg as
       );
    end;
 
-    -- превращаем строку акта в объект
-   function g_act_obj (
+    -- превращаем строку представления акта в RECORD
+   function g_act_row (
       a in xx_disl_gu23_act_v%rowtype
-   ) return xx_disl_gu23_act_obj is
-      o xx_disl_gu23_act_obj := xx_disl_gu23_act_obj(
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null,
-         null
-      );
+   ) return xx_disl_gu23_act_row is
+      o xx_disl_gu23_act_row;
    begin
-      o.id := a.id;
-      o.act_number := a.act_number;
-      o.act_type := a.act_type;
-      o.status := a.status;
-      o.cex := a.cex_code;
-      o.station := a.station;
-      o.reason := a.reason;
-      o.circumstances := a.circumstances;
-      o.start_at := to_char(
-         a.start_at,
-         c_dtf
-      );
-      o.end_at := to_char(
-         a.end_at,
-         c_dtf
-      );
-      o.dur_days := a.dur_days;
-      o.dur_hours := a.dur_hours;
-      o.dur_total_h := a.dur_total_h;
-      o.cal_days := a.cal_days;
-      o.linked_start_id := a.linked_start_id;
+      o.id                  := a.id;
+      o.act_number          := a.act_number;
+      o.act_type            := a.act_type;
+      o.status              := a.status;
+      o.cex                 := a.cex_code;
+      o.station             := a.station;
+      o.reason              := a.reason;
+      o.circumstances       := a.circumstances;
+      o.start_at            := to_char(a.start_at, c_dtf);
+      o.end_at              := to_char(a.end_at, c_dtf);
+      o.dur_days            := a.dur_days;
+      o.dur_hours           := a.dur_hours;
+      o.dur_total_h         := a.dur_total_h;
+      o.cal_days            := a.cal_days;
+      o.linked_start_id     := a.linked_start_id;
       o.linked_start_number := a.linked_start_number;
-      o.wagon_cnt := a.wagon_cnt;
-      o.file_cnt := a.file_cnt;
-      o.annul_reason := a.annul_reason;
-      o.created_at := to_char(
-         a.created_at,
-         c_dtf
-      );
-      o.created_by := g_user_name(a.created_by);
-      o.modified_at := to_char(
-         a.modified_at,
-         c_dtf
-      );
+      o.wagon_cnt           := a.wagon_cnt;
+      o.file_cnt            := a.file_cnt;
+      o.annul_reason        := a.annul_reason;
+      o.created_at          := to_char(a.created_at, c_dtf);
+      o.created_by          := g_user_name(a.created_by);
+      o.modified_at         := to_char(a.modified_at, c_dtf);
       return o;
    end;
 
@@ -333,6 +389,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined
    is
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select code,
@@ -341,10 +398,9 @@ create or replace package body xx_disl_gu23_pkg as
           where active = 'Y'
           order by name
       ) loop
-         pipe row ( xx_disl_gu23_ref_obj(
-            r.code,
-            r.name
-         ) );
+         l_row.code := r.code;
+         l_row.name := r.name;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -354,6 +410,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined
    is
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select name
@@ -364,10 +421,9 @@ create or replace package body xx_disl_gu23_pkg as
                               p_kind ) )
           order by name
       ) loop
-         pipe row ( xx_disl_gu23_ref_obj(
-            r.name,
-            r.name
-         ) );
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -375,6 +431,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_get_ref_station return xx_disl_gu23_ref_tab
       pipelined
    is
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select name
@@ -382,10 +439,9 @@ create or replace package body xx_disl_gu23_pkg as
           where active = 'Y'
           order by name
       ) loop
-         pipe row ( xx_disl_gu23_ref_obj(
-            r.name,
-            r.name
-         ) );
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -393,6 +449,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_get_ref_owner return xx_disl_gu23_ref_tab
       pipelined
    is
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select name
@@ -400,10 +457,9 @@ create or replace package body xx_disl_gu23_pkg as
           where active = 'Y'
           order by name
       ) loop
-         pipe row ( xx_disl_gu23_ref_obj(
-            r.name,
-            r.name
-         ) );
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -411,6 +467,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
       pipelined
    is
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select name
@@ -418,10 +475,9 @@ create or replace package body xx_disl_gu23_pkg as
           where active = 'Y'
           order by name
       ) loop
-         pipe row ( xx_disl_gu23_ref_obj(
-            r.name,
-            r.name
-         ) );
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -429,6 +485,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_get_ref_signer return xx_disl_gu23_signer_tab
       pipelined
    is
+      l_row xx_disl_gu23_signer_row;
    begin
       for r in (
          select id,
@@ -441,15 +498,14 @@ create or replace package body xx_disl_gu23_pkg as
           where active = 'Y'
           order by fio
       ) loop
-         pipe row ( xx_disl_gu23_signer_obj(
-            r.id,
-            r.fio,
-            r.post,
-            r.org,
-            r.unit,
-            r.stype,
-            null
-         ) );
+         l_row.id     := r.id;
+         l_row.fio    := r.fio;
+         l_row.post   := r.post;
+         l_row.org    := r.org;
+         l_row.unit   := r.unit;
+         l_row.stype  := r.stype;
+         l_row.ord_no := null;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -494,7 +550,7 @@ create or replace package body xx_disl_gu23_pkg as
           order by a.created_at desc,
                    a.id desc
       ) loop
-         pipe row ( g_act_obj(a) );
+         pipe row ( g_act_row(a) );
       end loop;
       return;
    end;
@@ -510,7 +566,7 @@ create or replace package body xx_disl_gu23_pkg as
            from xx_disl_gu23_act_v a
           where a.id = p_id
       ) loop
-         pipe row ( g_act_obj(a) );
+         pipe row ( g_act_row(a) );
       end loop;
       return;
    end;
@@ -520,6 +576,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_row_tab
       pipelined
    is
+      l_row xx_disl_gu23_row;
    begin
       for r in (
          select *
@@ -527,17 +584,16 @@ create or replace package body xx_disl_gu23_pkg as
           where act_id = p_act_id
           order by id
       ) loop
-         pipe row ( xx_disl_gu23_row_obj(
-            r.id,
-            r.act_id,
-            r.wagon_no,
-            r.owner,
-            r.kind,
-            r.st_from,
-            r.st_to,
-            r.cargo,
-            r.weight
-         ) );
+         l_row.id       := r.id;
+         l_row.act_id   := r.act_id;
+         l_row.wagon_no := r.wagon_no;
+         l_row.owner    := r.owner;
+         l_row.kind     := r.kind;
+         l_row.st_from  := r.st_from;
+         l_row.st_to    := r.st_to;
+         l_row.cargo    := r.cargo;
+         l_row.weight   := r.weight;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -547,6 +603,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_file_tab
       pipelined
    is
+      l_row xx_disl_gu23_file_row;
    begin
       for f in (
          select *
@@ -554,19 +611,15 @@ create or replace package body xx_disl_gu23_pkg as
           where act_id = p_act_id
           order by id
       ) loop
-         pipe row ( xx_disl_gu23_file_obj(
-            f.id,
-            f.act_id,
-            f.file_name,
-            f.file_ext,
-            f.mime_type,
-            f.real_path,
-            to_char(
-               f.created_at,
-               c_dtf
-            ),
-            g_user_name(f.created_by)
-         ) );
+         l_row.id         := f.id;
+         l_row.act_id     := f.act_id;
+         l_row.file_name  := f.file_name;
+         l_row.file_ext   := f.file_ext;
+         l_row.mime_type  := f.mime_type;
+         l_row.real_path  := f.real_path;
+         l_row.created_at := to_char(f.created_at, c_dtf);
+         l_row.created_by := g_user_name(f.created_by);
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -576,6 +629,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_signer_tab
       pipelined
    is
+      l_row xx_disl_gu23_signer_row;
    begin
       for s in (
          select *
@@ -584,15 +638,14 @@ create or replace package body xx_disl_gu23_pkg as
           order by ord_no,
                    id
       ) loop
-         pipe row ( xx_disl_gu23_signer_obj(
-            s.id,
-            s.fio,
-            s.post,
-            s.org,
-            null,
-            null,
-            s.ord_no
-         ) );
+         l_row.id     := s.id;
+         l_row.fio    := s.fio;
+         l_row.post   := s.post;
+         l_row.org    := s.org;
+         l_row.unit   := null;
+         l_row.stype  := null;
+         l_row.ord_no := s.ord_no;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -602,6 +655,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_hist_tab
       pipelined
    is
+      l_row xx_disl_gu23_hist_row;
    begin
       for h in (
          select *
@@ -610,16 +664,12 @@ create or replace package body xx_disl_gu23_pkg as
           order by ts desc,
                    id desc
       ) loop
-         pipe row ( xx_disl_gu23_hist_obj(
-            h.id,
-            h.act_id,
-            to_char(
-               h.ts,
-               c_dtf
-            ),
-            g_user_name(h.usr),
-            h.txt
-         ) );
+         l_row.id     := h.id;
+         l_row.act_id := h.act_id;
+         l_row.ts     := to_char(h.ts, c_dtf);
+         l_row.usr    := g_user_name(h.usr);
+         l_row.txt    := h.txt;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -635,7 +685,7 @@ create or replace package body xx_disl_gu23_pkg as
             and a.status = 'active'
           order by a.start_at
       ) loop
-         pipe row ( g_act_obj(a) );
+         pipe row ( g_act_row(a) );
       end loop;
       return;
    end;
@@ -646,6 +696,7 @@ create or replace package body xx_disl_gu23_pkg as
    ) return xx_disl_gu23_row_tab
       pipelined
    is
+      l_row xx_disl_gu23_row;
    begin
       for r in (
          select *
@@ -663,8 +714,16 @@ create or replace package body xx_disl_gu23_pkg as
             )
           order by sr.id
       ) loop
-         pipe row ( xx_disl_gu23_row_obj(r.id, r.act_id, r.wagon_no, r.owner,
-                                         r.kind, r.st_from, r.st_to, r.cargo, r.weight) );
+         l_row.id       := r.id;
+         l_row.act_id   := r.act_id;
+         l_row.wagon_no := r.wagon_no;
+         l_row.owner    := r.owner;
+         l_row.kind     := r.kind;
+         l_row.st_from  := r.st_from;
+         l_row.st_to    := r.st_to;
+         l_row.cargo    := r.cargo;
+         l_row.weight   := r.weight;
+         pipe row (l_row);
       end loop;
       return;
    end;
@@ -687,7 +746,7 @@ create or replace package body xx_disl_gu23_pkg as
           order by a.created_at desc,
                    a.id desc
       ) loop
-         pipe row ( g_act_obj(a) );
+         pipe row ( g_act_row(a) );
       end loop;
       return;
    end;
@@ -711,6 +770,7 @@ create or replace package body xx_disl_gu23_pkg as
       v_no   varchar2(32);
       v_last pls_integer;
       v_d2   pls_integer;
+      l_row  xx_disl_gu23_wagon_row;
    begin
         -- данные подтягиваются только если станция операции — Углеуральская
       if
@@ -740,99 +800,61 @@ create or replace package body xx_disl_gu23_pkg as
 
             -- заглушка: начало (заменить на реальный select)
             -- Имитация: вагон с последней цифрой 0 считается «не найденным».
-         v_last := to_number ( substr(
-            v_no,
-            -1
-         ) );
-         v_d2 := to_number ( substr(
-            v_no,
-            -2
-         ) );
+         v_last := to_number ( substr(v_no, -1) );
+         v_d2   := to_number ( substr(v_no, -2) );
+
+         l_row.wagon_no := v_no;
+
          if v_last = 0 then
-            pipe row ( xx_disl_gu23_wagon_obj(
-               v_no,
-               null,
-               null,
-               null,
-               null,
-               null,
-               null,
-               0
-            ) );
+            l_row.owner    := null;
+            l_row.kind     := null;
+            l_row.st_from  := null;
+            l_row.st_to    := null;
+            l_row.cargo    := null;
+            l_row.weight   := null;
+            l_row.found    := 0;
+            pipe row (l_row);
          else
             for d in (
-               select case mod(
-                  v_d2,
-                  5
-               )
-                  when 0 then
-                     'ПГК'
-                  when 1 then
-                     'ФГК'
-                  when 2 then
-                     'СУЭК'
-                  when 3 then
-                     'Уралкалий'
-                  else
-                     'НефтеТрансСервис'
+               select case mod(v_d2, 5)
+                         when 0 then 'ПГК'
+                         when 1 then 'ФГК'
+                         when 2 then 'СУЭК'
+                         when 3 then 'Уралкалий'
+                         else        'НефтеТрансСервис'
                       end as owner,
-                      case mod(
-                         v_d2,
-                         4
-                      )
-                         when 0 then
-                            'Полувагон'
-                         when 1 then
-                            'Цистерна'
-                         when 2 then
-                            'Хоппер'
-                         else
-                            'Крытый'
+                      case mod(v_d2, 4)
+                         when 0 then 'Полувагон'
+                         when 1 then 'Цистерна'
+                         when 2 then 'Хоппер'
+                         else        'Крытый'
                       end as kind,
-                      case mod(
-                         v_d2,
-                         3
-                      )
-                         when 0 then
-                            'Кизел'
-                         when 1 then
-                            'Березники'
-                         else
-                            'Чусовская'
+                      case mod(v_d2, 3)
+                         when 0 then 'Кизел'
+                         when 1 then 'Березники'
+                         else        'Чусовская'
                       end as st_from,
                       'Углеуральская' as st_to,
-                      case mod(
-                         v_d2,
-                         4
-                      )
-                         when 0 then
-                            'Уголь каменный'
-                         when 1 then
-                            'Удобрения минеральные'
-                         when 2 then
-                            'Кокс'
-                         else
-                            'Дизельное топливо'
+                      case mod(v_d2, 4)
+                         when 0 then 'Уголь каменный'
+                         when 1 then 'Удобрения минеральные'
+                         when 2 then 'Кокс'
+                         else        'Дизельное топливо'
                       end as cargo,
-                      to_char(60 + mod(
-                         v_d2,
-                         12
-                      ))
+                      to_char(60 + mod(v_d2, 12))
                       || ','
                       || to_char(v_last)
                       || ' т' as weight
                  from dual
             ) loop
-               pipe row ( xx_disl_gu23_wagon_obj(
-                  v_no,
-                  d.owner,
-                  d.kind,
-                  d.st_from,
-                  d.st_to,
-                  d.cargo,
-                  d.weight,
-                  1
-               ) );
+               l_row.owner   := d.owner;
+               l_row.kind    := d.kind;
+               l_row.st_from := d.st_from;
+               l_row.st_to   := d.st_to;
+               l_row.cargo   := d.cargo;
+               l_row.weight  := d.weight;
+               l_row.found   := 1;
+               pipe row (l_row);
             end loop;
          end if;
             -- заглушка: конец
@@ -1017,7 +1039,7 @@ create or replace package body xx_disl_gu23_pkg as
                 || c_us
                 || 'Не указана дата начала простоя';
       end if;
-      
+
       -- Проверки дат и связей для акта "Окончание простоя" (только при отправке)
       if p_type = 'end' and p_status = 'active' then
          if p_linked_start_id is null then
@@ -1030,7 +1052,7 @@ create or replace package body xx_disl_gu23_pkg as
                    || c_us
                    || 'Не указана дата окончания простоя';
          end if;
-         
+
          -- Если дата начала не передана с фронтенда, безопасно извлекаем её из БД
          if v_start is null then
             begin
@@ -1043,7 +1065,7 @@ create or replace package body xx_disl_gu23_pkg as
                   null;
             end;
          end if;
-         
+
          -- Контроль ошибок: дата окончания не должна быть меньше даты начала
          if
             v_start is not null
@@ -1053,7 +1075,7 @@ create or replace package body xx_disl_gu23_pkg as
                    || c_us
                    || 'Дата окончания не может быть меньше даты начала';
          end if;
-         
+
          -- Контроль ошибок: дата окончания не должна быть больше текущей (в будущем)
          if v_end > sysdate then
             return 'ERR'
@@ -1162,7 +1184,7 @@ create or replace package body xx_disl_gu23_pkg as
                 modified_at = sysdate,
                 modified_by = p_user_id
           where id = v_id;
-          
+
          -- Очищаем старые строки вагонов и подписантов для перезаписи
          delete from xx_disl_gu23_act_row
           where act_id = v_id;
