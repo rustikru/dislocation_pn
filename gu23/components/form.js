@@ -384,63 +384,43 @@ function showWagonActions() {
 function loadWagonsDataFromDislocation() {
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
-  const finalNums = inputNums.length
-    ? inputNums
-    : activeDraft.wagons.map((w) => w.n)
 
-  //if (!finalNums.length) return showToast('Введите номера вагонов', 'err')
-  //console.log('waybill_no=' + activeDraft.waybillNumber)
-  //console.log('dest_station=' + activeDraft.stationToName)
+  if (!inputNums.length) return showToast('Введите номера вагонов', 'err')
+
+  // Синхронизируем поле накладной из DOM до перерисовки
+  activeDraft.waybillNumber = $('#inp-waybill').val() || ''
+
   sendApiRequest('gu23_get_wagon_info', {
-    wagons: JSON.stringify(finalNums),
-    waybill_no: activeDraft.waybillNumber || '',
+    wagons: JSON.stringify(inputNums),
+    waybill_no: activeDraft.waybillNumber,
     dest_station: activeDraft.stationToName || '',
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
     activeDraft.wagons = []
     records.forEach((row) => {
-      // Только добавляем когда нашли данные из БД
       if (String(row.FOUND) === '1') {
         foundCount++
-
-        // Ищем, есть ли уже этот вагон в черновике
-        let wagon = activeDraft.wagons.find(
-          (x) => String(x.n) === String(row.WAGON_NO),
-        )
-
-        // Если вагона в черновике нет, создаем его
-        if (!wagon) {
-          wagon = {
-            n: String(row.WAGON_NO),
-            owner: '',
-            kind: '',
-            from: '',
-            to: '',
-            cargo: '',
-            weight: '',
-          }
-          activeDraft.wagons.push(wagon)
-        }
-
-        // Обновляем/заполняем свойства данными из БД
-        wagon.owner = row.OWNER
-        wagon.kind = row.KIND
-        wagon.from = row.ST_FROM
-        wagon.to = row.ST_TO
-        wagon.cargo = row.CARGO
-        wagon.weight = row.WEIGHT
+        activeDraft.wagons.push({
+          n: String(row.WAGON_NO),
+          owner: row.OWNER,
+          kind: row.KIND,
+          from: row.ST_FROM,
+          to: row.ST_TO,
+          cargo: row.CARGO,
+          weight: row.WEIGHT,
+        })
       }
     })
 
     activeDraft._summary = {
-      req: finalNums.length,
+      req: inputNums.length,
       found: foundCount,
-      text: `Запрошено ${finalNums.length} вагонов, найдено ${foundCount}.`,
+      text: `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}.`,
     }
 
     showToast(
-      `Получено ${foundCount} из ${finalNums.length}`,
+      `Получено ${foundCount} из ${inputNums.length}`,
       foundCount ? 'ok' : 'err',
     )
     $('#txt-wagons').val('')
