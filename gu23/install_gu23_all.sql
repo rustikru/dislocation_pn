@@ -19,7 +19,7 @@ BEGIN
     SELECT 'DROP SEQUENCE '||s FROM (
       SELECT column_value s FROM TABLE(sys.odcivarchar2list(
         'XX_DISL_GU23_HIST_SEQ','XX_DISL_GU23_SIGNER_SEQ','XX_DISL_GU23_FILE_SEQ',
-        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
+        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_COUNTER_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
         'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
         'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
     )
@@ -85,11 +85,15 @@ CREATE TABLE xx_disl_gu23_ref_signer (
 CREATE SEQUENCE xx_disl_gu23_ref_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
 CREATE TABLE xx_disl_gu23_counter (
-    cex_code  VARCHAR2(32),
-    yr        NUMBER,
+    id        NUMBER PRIMARY KEY,
+    cex_id    NUMBER NOT NULL,
+    yr        NUMBER NOT NULL,
     cnt       NUMBER DEFAULT 0,
-    CONSTRAINT xx_disl_gu23_counter_pk PRIMARY KEY (cex_code, yr)
+    CONSTRAINT xx_disl_gu23_counter_uk UNIQUE (cex_id, yr),
+    CONSTRAINT xx_disl_gu23_counter_fk FOREIGN KEY (cex_id)
+        REFERENCES xx_disl_gu23_ref_cex (id) ON DELETE CASCADE
 );
+CREATE SEQUENCE xx_disl_gu23_counter_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
 CREATE TABLE xx_disl_gu23_act (
     id                  NUMBER PRIMARY KEY,
