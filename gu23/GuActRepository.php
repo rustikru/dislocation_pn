@@ -118,8 +118,8 @@ class GuActRepository
             'cexes'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
             'reasons'    => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
             'stations'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
-            'owners'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
-            'kinds'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'),
+            /* 'owners'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
+            'kinds'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'), */
             'cargos'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
             'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own())'),
             'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
