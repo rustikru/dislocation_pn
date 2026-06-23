@@ -175,7 +175,7 @@ function showFormFields() {
   `)
 
   initStationAutocomplete()
-  $('#inp-waybill').on('change', function () {
+  $('#inp-waybill').on('input', function () {
     activeDraft.waybillNumber = this.value
   })
   $('#sel-cargo').on('change', function () {
@@ -389,8 +389,8 @@ function loadWagonsDataFromDislocation() {
     : activeDraft.wagons.map((w) => w.n)
 
   //if (!finalNums.length) return showToast('Введите номера вагонов', 'err')
-  console.log('waybill_no=' + activeDraft.waybillNumber)
-  console.log('dest_station=' + activeDraft.stationToName)
+  //console.log('waybill_no=' + activeDraft.waybillNumber)
+  //console.log('dest_station=' + activeDraft.stationToName)
   sendApiRequest('gu23_get_wagon_info', {
     wagons: JSON.stringify(finalNums),
     waybill_no: activeDraft.waybillNumber || '',
