@@ -604,7 +604,7 @@ function showForm(container) {
     ),
   )
 
-  if (draft.type !== 'other') {
+  if (draft.type === 'start') {
     actions.appendChild(
       createElement(
         'button',
@@ -810,19 +810,37 @@ function findOpenByWagons(rawText) {
   }
 
   function executeSearch() {
-    var hit = null
-    ;(draft._openStarts || []).forEach(function (act) {
-      ;(act.WAGONS || []).forEach(function (w) {
-        if (nums.indexOf(w.WAGON_NO) >= 0 && !hit) hit = act
+    // для каждого введённого вагона ищем открытый акт начала, которому он принадлежит
+    var foundActs = {} // id акта -> объект акта (уникальные)
+    nums.forEach(function (num) {
+      ;(draft._openStarts || []).forEach(function (act) {
+        ;(act.WAGONS || []).forEach(function (w) {
+          if (w.WAGON_NO === num) foundActs[act.ID] = act
+        })
       })
     })
 
-    if (hit) {
-      pickStart(hit.ID)
-      showToast('Найден открытый акт ' + hit.ACT_NUMBER, 'ok')
-      draw()
-    } else {
+    var ids = Object.keys(foundActs)
+    if (ids.length === 0) {
       showToast('Открытый простой по этим вагонам не найден', 'err')
+    } else if (ids.length > 1) {
+      // вагоны принадлежат разным открытым актам — закрыть их одним актом нельзя
+      var numbers = ids
+        .map(function (id) {
+          return foundActs[id].ACT_NUMBER
+        })
+        .join(', ')
+      showToast(
+        'Введённые вагоны относятся к разным актам начала (' +
+          numbers +
+          '). Выберите вагоны одного акта.',
+        'err',
+      )
+    } else {
+      var act = foundActs[ids[0]]
+      pickStart(act.ID)
+      showToast('Найден открытый акт ' + act.ACT_NUMBER, 'ok')
+      draw()
     }
   }
 
