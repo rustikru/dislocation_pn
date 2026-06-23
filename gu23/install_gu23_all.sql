@@ -1,61 +1,34 @@
--- =====================================================================
---  install_gu23.sql  —  ГУ-23 · Акты общей формы
---  Локальный (standalone) инсталл-скрипт для модуля gu23.
---
---  ЧТО ДЕЛАЕТ:
---    1. Создаёт таблицы xx_disl_gu23_* и sequences (по одному на таблицу).
---    2. Создаёт объектные типы для конвейерных функций.
---    3. Создаёт пакет xx_dislocation в ЛОКАЛЬНОЙ мини-версии — только
---       функции gu23_*. Они зависят ТОЛЬКО от таблиц xx_disl_gu23_*,
---       поэтому компилируются на пустой базе (без всех таблиц прода).
---    4. Засевает справочники, dev-пользователя и демо-вагоны для
---       имитации Oracle BI / Дислокации.
---
---  ВАЖНО (прод): на проде функции gu23_* нужно ВРЕЗАТЬ в настоящий
---  пакет xx_dislocation (он уже существует и содержит ~300 функций).
---  Здесь они оформлены отдельно только ради локального запуска.
---
---  ЗАПУСК:
---    sqlplus xx_etw/xx_etw@127.0.0.1:1521/FREEPDB1 @install_gu23.sql
--- =====================================================================
+-- install_gu23_all.sql — ТОЛЬКО обычные объекты ГУ-23
+-- (drop + таблицы, последовательности, представление, объектные типы).
+-- Пакет ставится отдельно:   compile_gu23_pkg.sql
+-- Справочники/данные:         fill_gu23_data.sql
+-- Запускать как скрипт под нужной схемой (локально — XX_ETW).
 
-SET DEFINE OFF
-WHENEVER SQLERROR CONTINUE
+-- ---- безопасный сброс старых объектов (ошибки игнорируются) ----
+BEGIN
+  FOR x IN (
+    SELECT 'DROP TABLE '||t||' CASCADE CONSTRAINTS PURGE' ddl FROM (
+      SELECT column_value t FROM TABLE(sys.odcivarchar2list(
+        'XX_DISL_GU23_HIST','XX_DISL_GU23_SIGNER','XX_DISL_GU23_FILE',
+        'XX_DISL_GU23_ACT_ROW','XX_DISL_GU23_ACT','XX_DISL_GU23_COUNTER',
+        'XX_DISL_GU23_REF_SIGNER','XX_DISL_GU23_REF_WAGON_KIND','XX_DISL_GU23_REF_OWNER',
+        'XX_DISL_GU23_REF_STATION','XX_DISL_GU23_REF_REASON','XX_DISL_GU23_REF_CEX',
+        'XX_DISL_GU23_USERS'))
+    )
+    UNION ALL
+    SELECT 'DROP SEQUENCE '||s FROM (
+      SELECT column_value s FROM TABLE(sys.odcivarchar2list(
+        'XX_DISL_GU23_HIST_SEQ','XX_DISL_GU23_SIGNER_SEQ','XX_DISL_GU23_FILE_SEQ',
+        'XX_DISL_GU23_ACT_ROW_SEQ','XX_DISL_GU23_ACT_SEQ','XX_DISL_GU23_REF_SIGNER_SEQ',
+        'XX_DISL_GU23_REF_WAGON_KIND_SEQ','XX_DISL_GU23_REF_OWNER_SEQ','XX_DISL_GU23_REF_STATION_SEQ',
+        'XX_DISL_GU23_REF_REASON_SEQ','XX_DISL_GU23_REF_CEX_SEQ','XX_DISL_GU23_USERS_SEQ'))
+    )
+  ) LOOP
+    BEGIN EXECUTE IMMEDIATE x.ddl; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END LOOP;
+END;
+/
 
-PROMPT === Удаление старых объектов (ошибки при первом запуске — норма) ===
-DROP TABLE xx_disl_gu23_hist            CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_signer          CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_file            CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_act_row         CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_act             CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_counter         CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_signer      CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_wagon_kind  CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_owner       CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_station     CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_reason      CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_ref_cex         CASCADE CONSTRAINTS PURGE;
-DROP TABLE xx_disl_gu23_users           CASCADE CONSTRAINTS PURGE;
-
-DROP SEQUENCE xx_disl_gu23_hist_seq;
-DROP SEQUENCE xx_disl_gu23_signer_seq;
-DROP SEQUENCE xx_disl_gu23_file_seq;
-DROP SEQUENCE xx_disl_gu23_act_row_seq;
-DROP SEQUENCE xx_disl_gu23_act_seq;
-DROP SEQUENCE xx_disl_gu23_ref_signer_seq;
-DROP SEQUENCE xx_disl_gu23_ref_wagon_kind_seq;
-DROP SEQUENCE xx_disl_gu23_ref_owner_seq;
-DROP SEQUENCE xx_disl_gu23_ref_station_seq;
-DROP SEQUENCE xx_disl_gu23_ref_reason_seq;
-DROP SEQUENCE xx_disl_gu23_ref_cex_seq;
-DROP SEQUENCE xx_disl_gu23_users_seq;
-
--- =====================================================================
---  ТАБЛИЦЫ + SEQUENCES
--- =====================================================================
-WHENEVER SQLERROR EXIT FAILURE
-
-PROMPT === Таблица пользователей (локальный аналог справочника пользователей) ===
 CREATE TABLE xx_disl_gu23_users (
     user_id    NUMBER        PRIMARY KEY,
     login      VARCHAR2(64)  NOT NULL,
@@ -63,7 +36,6 @@ CREATE TABLE xx_disl_gu23_users (
 );
 CREATE SEQUENCE xx_disl_gu23_users_seq START WITH 100 INCREMENT BY 1 NOCACHE;
 
-PROMPT === Справочники ===
 CREATE TABLE xx_disl_gu23_ref_cex (
     id      NUMBER PRIMARY KEY,
     code    VARCHAR2(32)  NOT NULL,
@@ -112,7 +84,6 @@ CREATE TABLE xx_disl_gu23_ref_signer (
 );
 CREATE SEQUENCE xx_disl_gu23_ref_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
-PROMPT === Нумерация актов (ГУ23-ЦЕХ-ГОД-000001) ===
 CREATE TABLE xx_disl_gu23_counter (
     cex_code  VARCHAR2(32),
     yr        NUMBER,
@@ -120,7 +91,6 @@ CREATE TABLE xx_disl_gu23_counter (
     CONSTRAINT xx_disl_gu23_counter_pk PRIMARY KEY (cex_code, yr)
 );
 
-PROMPT === Акты (шапка) ===
 CREATE TABLE xx_disl_gu23_act (
     id                  NUMBER PRIMARY KEY,
     act_number          VARCHAR2(64),
@@ -145,7 +115,6 @@ CREATE TABLE xx_disl_gu23_act (
 );
 CREATE SEQUENCE xx_disl_gu23_act_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 
-PROMPT === Строки актов (вагоны) ===
 CREATE TABLE xx_disl_gu23_act_row (
     id        NUMBER PRIMARY KEY,
     act_id    NUMBER NOT NULL,
@@ -163,7 +132,6 @@ CREATE SEQUENCE xx_disl_gu23_act_row_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_row_act_i  ON xx_disl_gu23_act_row (act_id);
 CREATE INDEX xx_disl_gu23_row_wgn_i  ON xx_disl_gu23_act_row (wagon_no);
 
-PROMPT === Приложения (файлы) ===
 CREATE TABLE xx_disl_gu23_file (
     id          NUMBER PRIMARY KEY,
     act_id      NUMBER NOT NULL,
@@ -179,7 +147,6 @@ CREATE TABLE xx_disl_gu23_file (
 CREATE SEQUENCE xx_disl_gu23_file_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_file_act_i ON xx_disl_gu23_file (act_id);
 
-PROMPT === Подписанты акта (хранение, без процесса подписания) ===
 CREATE TABLE xx_disl_gu23_signer (
     id      NUMBER PRIMARY KEY,
     act_id  NUMBER NOT NULL,
@@ -193,7 +160,6 @@ CREATE TABLE xx_disl_gu23_signer (
 CREATE SEQUENCE xx_disl_gu23_signer_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_signer_act_i ON xx_disl_gu23_signer (act_id);
 
-PROMPT === История изменений ===
 CREATE TABLE xx_disl_gu23_hist (
     id      NUMBER PRIMARY KEY,
     act_id  NUMBER NOT NULL,
@@ -206,10 +172,22 @@ CREATE TABLE xx_disl_gu23_hist (
 CREATE SEQUENCE xx_disl_gu23_hist_seq START WITH 1 INCREMENT BY 1 NOCACHE;
 CREATE INDEX xx_disl_gu23_hist_act_i ON xx_disl_gu23_hist (act_id);
 
+-- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
+-- здесь один раз. Пакет читает акты только через это представление.
+CREATE OR REPLACE VIEW xx_disl_gu23_act_v AS
+SELECT a.id, a.act_number, a.act_type, a.status, a.cex_code, a.station,
+       a.reason, a.circumstances, a.start_at, a.end_at,
+       a.dur_days, a.dur_hours, a.dur_total_h, a.cal_days,
+       a.linked_start_id,
+       (SELECT s.act_number FROM xx_disl_gu23_act s WHERE s.id = a.linked_start_id) AS linked_start_number,
+       (SELECT COUNT(*) FROM xx_disl_gu23_act_row r WHERE r.act_id = a.id)           AS wagon_cnt,
+       (SELECT COUNT(*) FROM xx_disl_gu23_file  f WHERE f.act_id = a.id)             AS file_cnt,
+       a.annul_reason, a.created_at, a.created_by, a.modified_at, a.modified_by
+  FROM xx_disl_gu23_act a;
+
 -- =====================================================================
 --  ОБЪЕКТНЫЕ ТИПЫ ДЛЯ КОНВЕЙЕРНЫХ ФУНКЦИЙ
 -- =====================================================================
-PROMPT === Объектные типы ===
 
 CREATE OR REPLACE TYPE xx_disl_gu23_ref_obj AS OBJECT (
     code  VARCHAR2(512),
@@ -313,12 +291,3 @@ CREATE OR REPLACE TYPE xx_disl_gu23_wagon_obj AS OBJECT (
 /
 CREATE OR REPLACE TYPE xx_disl_gu23_wagon_tab AS TABLE OF xx_disl_gu23_wagon_obj;
 /
-
-PROMPT === Установка пакета ===
-@@xx_dislocation_gu23.pks
-@@xx_dislocation_gu23.pkb
-
-PROMPT === Засев справочников и демо-данных ===
-@@seed_gu23.sql
-
-PROMPT === Готово ===

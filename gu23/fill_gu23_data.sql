@@ -1,21 +1,30 @@
--- =====================================================================
---  seed_gu23.sql  —  демо-наполнение справочников и dev-пользователя
---  (значения из прототипа; редактируются прямо в таблицах ref_*)
--- =====================================================================
+-- fill_gu23_data.sql — заполнение справочников ГУ-23.
+-- БЕЗОПАСНО: таблицы не дропаются; акты/строки/файлы/история НЕ трогаются.
+-- Идемпотентно: справочники очищаются и заливаются заново (без дублей).
+-- Запускать как скрипт под нужной схемой (локально — XX_ETW),
+-- после того как таблицы уже созданы (install_gu23_all.sql / install_gu23.sql).
 SET DEFINE OFF
 
--- --- dev-пользователь (его user_id должен совпадать с db_config.local.php) ---
+-- очистка справочников перед повторным наполнением (FK на акты нет — безопасно)
+DELETE FROM xx_disl_gu23_ref_signer;
+DELETE FROM xx_disl_gu23_ref_wagon_kind;
+DELETE FROM xx_disl_gu23_ref_owner;
+DELETE FROM xx_disl_gu23_ref_station;
+DELETE FROM xx_disl_gu23_ref_reason;
+DELETE FROM xx_disl_gu23_ref_cex;
+
+-- dev-пользователь (его user_id должен совпадать с db_config.local.php)
 DELETE FROM xx_disl_gu23_users WHERE user_id = 1;
 INSERT INTO xx_disl_gu23_users (user_id, login, full_name)
 VALUES (1, 'dev', 'Локальный разработчик');
 
--- --- цеха ---
+-- цеха
 INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ЖДЦ', 'Железнодорожный цех');
 INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ВЧД', 'Вагонное депо');
 INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПТО', 'Пункт техн. обслуживания');
 INSERT INTO xx_disl_gu23_ref_cex (id, code, name) VALUES (xx_disl_gu23_ref_cex_seq.NEXTVAL, 'ПРР', 'Погрузо-разгрузочный район');
 
--- --- причины ---
+-- причины
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Простой под выгрузкой');
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Простой под погрузкой');
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Неприём вагонов станцией');
@@ -30,7 +39,7 @@ INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_s
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации собственнику');
 INSERT INTO xx_disl_gu23_ref_reason (id, name) VALUES (xx_disl_gu23_ref_reason_seq.NEXTVAL, 'Предоставление информации экспедитору');
 
--- --- станции ---
+-- станции
 INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Углеуральская');
 INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Чусовская');
 INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Пермь-Сортировочная');
@@ -38,7 +47,7 @@ INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station
 INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Кизел');
 INSERT INTO xx_disl_gu23_ref_station (id, name) VALUES (xx_disl_gu23_ref_station_seq.NEXTVAL, 'Березники');
 
--- --- собственники ---
+-- собственники
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ОАО «РЖД»');
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ПГК');
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'ФГК');
@@ -47,7 +56,7 @@ INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'Собственный парк');
 INSERT INTO xx_disl_gu23_ref_owner (id, name) VALUES (xx_disl_gu23_ref_owner_seq.NEXTVAL, 'Уралкалий');
 
--- --- род вагона ---
+-- род вагона
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Полувагон');
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Цистерна');
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Крытый');
@@ -56,7 +65,7 @@ INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wago
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Думпкар');
 INSERT INTO xx_disl_gu23_ref_wagon_kind (id, name) VALUES (xx_disl_gu23_ref_wagon_kind_seq.NEXTVAL, 'Окатышевоз');
 
--- --- подписанты ---
+-- подписанты
 INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
 VALUES (xx_disl_gu23_ref_signer_seq.NEXTVAL, 'Смирнов А.В.', 'Начальник смены', 'Предприятие', 'ЖДЦ', 'Работник предприятия');
 INSERT INTO xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype)
