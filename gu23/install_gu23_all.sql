@@ -85,9 +85,9 @@ create table xx_disl_gu23_act (
    act_type        varchar2(16) not null,    -- start / end / other
    status          varchar2(16) not null,    -- draft / active / closed / annulled
    cex_id          number,                   -- ID цеха -> xx_disl_gu23_ref_cex.id
-   station_id      number,                   -- ID ст. составления -> xx_disl_stations
-   st_from_id      number,                   -- ID ст. отправления -> xx_disl_stations
-   st_to_id        number,                   -- ID ст. назначения -> xx_disl_stations
+   station_id      varchar2(50),                   -- ID ст. составления -> xx_disl_stations (STATION_ID)
+   st_from_id      varchar2(50),                   -- code ст. отправления -> xx_etw_station_bi_v (code)
+   st_to_id        varchar2(50),                   -- code ст. назначения -> xx_etw_station_bi_v (code)
    cargo_ref       varchar2(256),            -- груз (из справочника)
    reason          varchar2(512),
    circumstances   varchar2(4000),
