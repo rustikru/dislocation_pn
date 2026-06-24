@@ -304,7 +304,7 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
      left join xx_disl_gu23_ref_cex rc
    on rc.id = a.cex_id
      left join xx_disl_gu23_act a_start
-   on a.id = a_start.linked_start_id
+   on a.linked_start_id = a_start.id
      left join xx_disl_stations ss
    on to_char(ss.station_id) = a.station_id
      left join xx_etw_station_bi_v ssf
