@@ -124,7 +124,7 @@ create or replace package body xx_disl_gu23_pkg as
       p_cex_id in number
    ) return varchar2 is
       v_yr       number := to_number ( to_char(
-         sysdate,
+         current_date,
          'YYYY'
       ) );
       v_cnt      number;
@@ -921,7 +921,7 @@ create or replace package body xx_disl_gu23_pkg as
                  p_data.p_ext,
                  p_data.p_mime,
                  p_data.p_path,
-                 sysdate,
+                 current_date,
                  p_data.p_user_id );
 
       insert into xx_disl_gu23_hist (
@@ -932,7 +932,7 @@ create or replace package body xx_disl_gu23_pkg as
          txt
       ) values ( xx_disl_gu23_hist_seq.nextval,
                  p_data.p_act_id,
-                 sysdate,
+                 current_date,
                  p_data.p_user_id,
                  'Прикреплён файл: ' || p_data.p_name );
 
@@ -971,7 +971,7 @@ create or replace package body xx_disl_gu23_pkg as
          txt
       ) values ( xx_disl_gu23_hist_seq.nextval,
                  v_act,
-                 sysdate,
+                 current_date,
                  p_data.p_user_id,
                  'Удалён файл: ' || v_name );
 
@@ -1205,9 +1205,9 @@ create or replace package body xx_disl_gu23_pkg as
                     v_th,
                     v_cd,
                     p_data.p_linked_start_id,
-                    sysdate,
+                    current_date,
                     p_data.p_user_id,
-                    sysdate,
+                    current_date,
                     p_data.p_user_id );
       else
             -- редактировать можно ТОЛЬКО черновик
@@ -1255,7 +1255,7 @@ create or replace package body xx_disl_gu23_pkg as
                 dur_total_h = v_th,
                 cal_days = v_cd,
                 linked_start_id = p_data.p_linked_start_id,
-                modified_at = sysdate,
+                modified_at = current_date,
                 modified_by = p_data.p_user_id
           where id = v_id;
 
@@ -1550,7 +1550,7 @@ create or replace package body xx_disl_gu23_pkg as
          if v_closed >= v_tot then
             update xx_disl_gu23_act
                set status = 'closed',
-                   modified_at = sysdate,
+                   modified_at = current_date,
                    modified_by = p_data.p_user_id
              where id = p_data.p_linked_start_id
                and status = 'active';
@@ -1563,7 +1563,7 @@ create or replace package body xx_disl_gu23_pkg as
                txt
             ) values ( xx_disl_gu23_hist_seq.nextval,
                        p_data.p_linked_start_id,
-                       sysdate,
+                       current_date,
                        p_data.p_user_id,
                        'Цикл простоя полностью закрыт актом окончания ' || v_number );
          else
@@ -1575,7 +1575,7 @@ create or replace package body xx_disl_gu23_pkg as
                txt
             ) values ( xx_disl_gu23_hist_seq.nextval,
                        p_data.p_linked_start_id,
-                       sysdate,
+                       current_date,
                        p_data.p_user_id,
                        'Частично закрыто актом окончания '
                        || v_number
@@ -1589,7 +1589,7 @@ create or replace package body xx_disl_gu23_pkg as
 
       l_row.id := xx_disl_gu23_hist_seq.nextval;
       l_row.act_id := v_id;
-      l_row.ts := sysdate;
+      l_row.ts := current_date;
       l_row.usr := p_data.p_user_id;
       l_row.txt :=
          case
@@ -1684,7 +1684,7 @@ create or replace package body xx_disl_gu23_pkg as
       update xx_disl_gu23_act
          set status = 'annulled',
              annul_reason = p_data.p_reason,
-             modified_at = sysdate,
+             modified_at = current_date,
              modified_by = p_data.p_user_id
        where id = p_data.p_id;
 
@@ -1695,7 +1695,7 @@ create or replace package body xx_disl_gu23_pkg as
       then
          update xx_disl_gu23_act
             set status = 'active',
-                modified_at = sysdate,
+                modified_at = current_date,
                 modified_by = p_data.p_user_id
           where id = v_linked
             and status = 'closed';
@@ -1709,7 +1709,7 @@ create or replace package body xx_disl_gu23_pkg as
          txt
       ) values ( xx_disl_gu23_hist_seq.nextval,
                  p_data.p_id,
-                 sysdate,
+                 current_date,
                  p_data.p_user_id,
                  'Акт аннулирован: ' || p_data.p_reason );
 
