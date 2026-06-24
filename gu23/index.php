@@ -32,7 +32,7 @@ if ($auth->isAuth()) {
             <script src="../js/general_function.js" type="text/javascript"></script>
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
             <script type="module" src="app.js"></script>
-            <script nomodule>document.body.innerHTML='<p style="padding:40px">Браузер устарел. Используйте Firefox 60+, Chrome 61+ или Edge 16+.</p>'</script>
+            <script nomodule>document.addEventListener('DOMContentLoaded',function(){document.body.innerHTML='<p style="padding:40px">Браузер устарел. Используйте Firefox 60+, Chrome 61+ или Edge 16+.</p>'})</script>
         </head>
 
         <body>
