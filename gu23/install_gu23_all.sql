@@ -1,10 +1,3 @@
--- install_gu23_all.sql — ТОЛЬКО обычные объекты ГУ-23
--- (drop + таблицы, последовательности, представление).
--- Пакет ставится отдельно:   XX_DISL_GU23_PKG.pks (спецификация) + XX_DISL_GU23_PKG.pkb (тело)
--- Справочники/данные:         fill_gu23_data.sql
--- Запускать как скрипт под нужной схемой (локально — XX_ETW).
-
--- ---- безопасный сброс старых объектов (ошибки игнорируются) ----
 begin
    for x in (
       select 'DROP TABLE '
@@ -162,6 +155,16 @@ create index xx_disl_gu23_row_wgn_i on
       wagon_no
    );
 
+create table xx_etw.xx_disl_gu23_ref_signer (
+   id     number,
+   fio    varchar2(256 byte) not null,
+   post   varchar2(256 byte),
+   org    varchar2(256 byte),
+   unit   varchar2(256 byte),
+   stype  varchar2(128 byte),
+   active char(1 byte) default 'Y'
+);
+
 create table xx_disl_gu23_file (
    id         number primary key,
    act_id     number not null,
@@ -217,7 +220,7 @@ create index xx_disl_gu23_hist_act_i on
 
 -- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
 -- здесь один раз. Пакет читает акты только через это представление.
-create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
+create or replace view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    "ID",
    "ACT_NUMBER",
    "ACT_TYPE",
@@ -345,24 +348,39 @@ comment on column xx_disl_gu23_ref_reason.act_kind is
 comment on column xx_disl_gu23_ref_reason.active is
    'Признак активности: Y/N';
 
-
--- справочник: подписанты
 comment on table xx_disl_gu23_ref_signer is
    'Справочник возможных подписантов акта';
+
 comment on column xx_disl_gu23_ref_signer.id is
    'ID подписанта (первичный ключ)';
+
 comment on column xx_disl_gu23_ref_signer.fio is
    'ФИО подписанта';
+
 comment on column xx_disl_gu23_ref_signer.post is
    'Должность';
+
 comment on column xx_disl_gu23_ref_signer.org is
    'Организация';
+
 comment on column xx_disl_gu23_ref_signer.unit is
    'Подразделение';
+
 comment on column xx_disl_gu23_ref_signer.stype is
    'Тип подписанта (работник предприятия / станции ОАО РЖД)';
+
 comment on column xx_disl_gu23_ref_signer.active is
    'Признак активности: Y/N';
+
+
+alter table xx_disl_gu23_ref_signer add (
+   primary key ( id )
+         using index tablespace users pctfree 10 initrans 2 maxtrans 255
+            storage ( initial 64K next 1M minextents 1 maxextents unlimited pctincrease 0 freelists 1 freelist groups 1 buffer_pool
+            default )
+         enable
+      validate
+);
 
 -- счётчик нумерации актов (по цеху и году)
 comment on table xx_disl_gu23_counter is

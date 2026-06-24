@@ -13,7 +13,7 @@ create or replace package body xx_disl_gu23_pkg as
     1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
                                               waybill_no, cargo_ref; раздельные
                                               справочники станций и подписантов;
-                                              справочник грузов.
+                                              справочник грузов. 
  ******************************************************************************/
    procedure log_new (
       p_function_name in varchar2,
@@ -22,8 +22,8 @@ create or replace package body xx_disl_gu23_pkg as
       pragma autonomous_transaction;
    begin
       insert into xx_disl_log_new (
-         function_name,
-         text
+         log_function,
+         descr
       ) values ( p_function_name,
                  p_text );
       commit;
