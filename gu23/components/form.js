@@ -200,7 +200,7 @@ function showFormFields() {
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
   $('#sel-reason').on('change', function () {
-    activeDraft.reason = this.value
+    activeDraft.reasonId = this.value
   })
   $('#txt-circumstances').on('change', function () {
     activeDraft.circumstances = this.value
@@ -304,7 +304,7 @@ function applySelectedStartAct(id) {
   activeDraft.stationToId = String(selectedAct.ST_TO_ID || '')
   activeDraft.stationToName = selectedAct.ST_TO || ''
   activeDraft.reasonName = selectedAct.REASON_NAME
-  activeDraft.reasonID = selectedAct.REASON_ID
+  activeDraft.reasonId = selectedAct.REASON_ID
   activeDraft.wagons = (selectedAct.WAGONS || []).map((w) => ({
     n: w.WAGON_NO,
     owner: w.OWNER,
