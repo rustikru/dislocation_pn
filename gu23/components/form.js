@@ -574,7 +574,7 @@ function showWagonsTable() {
     .join('')
 
   const tableHtml = `
-    <div style="overflow:auto;border:1px solid var(--line);border-radius:7px">
+    <div style="overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:7px">
       <table class="wtbl">
         <thead>
           <tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th>${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
