@@ -91,7 +91,7 @@ function showDetailsBlock(act) {
     { l: 'Ст. отправления', v: act.ST_FROM },
     { l: 'Ст. назначения', v: act.ST_TO },
     { l: 'Груз', v: act.CARGO_REF },
-    { l: 'Причина', v: act.REASON },
+    { l: 'Причина', v: act.REASON_NAME },
     { l: 'Дата составления', v: formatDateTime(act.CREATED_AT) },
   ]
 
@@ -276,7 +276,8 @@ function editDraftAct(data) {
     stationToName: act.ST_TO || '',
     waybillNumber: '',
     cargoReference: act.CARGO_REF || '',
-    reason: act.REASON,
+    reasonId: String(act.REASON_ID || ''),
+    reasonName: act.REASON_NAME,
     circumstances: act.CIRCUMSTANCES || '',
     startAt: formatToInputDate(act.START_AT),
     endAt: formatToInputDate(act.END_AT),

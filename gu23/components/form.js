@@ -183,13 +183,16 @@ function showFormFields() {
   })
 
   // Причина и обстоятельства
-  const reasonsHtml = ['']
-    .concat(references.reasonsList.map((r) => r.NAME || r.CODE))
-    .map(
-      (r) =>
-        `<option value="${r}" ${activeDraft.reason === r ? 'selected' : ''}>${r || '— выберите —'}</option>`,
-    )
-    .join('')
+  const reasonsHtml = [
+    //  добавляем пустой вариант
+    `<option value="" ${!activeDraft.reasonId ? 'selected' : ''}>— выберите —</option>`,
+
+    ...references.reasonsList.map((r) => {
+      const label = r.NAME || r.CODE
+      const isSelected = activeDraft.reasonId === r.CODE ? 'selected' : ''
+      return `<option value="${r.CODE}" ${isSelected}>${label}</option>`
+    }),
+  ].join('')
 
   $body.append(`
     ${showFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
@@ -266,7 +269,7 @@ function loadOpenStartsList() {
       const wagonNumbers = (act.WAGONS || []).map((w) => w.WAGON_NO).join(', ')
       const isSelected = String(activeDraft.linkedStartId) === String(act.ID)
       $select.append(
-        `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} · ${wagonNumbers} · ${act.REASON}</option>`,
+        `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} · ${wagonNumbers} · ${act.REASON_NAME}</option>`,
       )
     })
 
@@ -300,7 +303,8 @@ function applySelectedStartAct(id) {
   activeDraft.stationFromName = selectedAct.ST_FROM || ''
   activeDraft.stationToId = String(selectedAct.ST_TO_ID || '')
   activeDraft.stationToName = selectedAct.ST_TO || ''
-  activeDraft.reason = selectedAct.REASON
+  activeDraft.reasonName = selectedAct.REASON_NAME
+  activeDraft.reasonID = selectedAct.REASON_ID
   activeDraft.wagons = (selectedAct.WAGONS || []).map((w) => ({
     n: w.WAGON_NO,
     owner: w.OWNER,
@@ -651,16 +655,30 @@ function showSignersFields() {
           : references.signersRzdList
     const matched = pool.find((x) => String(x.ID) === value)
     activeDraft.signers[slot] = matched
-      ? { id: matched.ID, fio: matched.FIO, post: matched.POST, org: matched.ORG, manual: false }
+      ? {
+          id: matched.ID,
+          fio: matched.FIO,
+          post: matched.POST,
+          org: matched.ORG,
+          manual: false,
+        }
       : null
   })
 
   $('.signer-fio, .signer-post, .signer-org').on('input', function () {
     const slot = $(this).data('slot')
     if (!activeDraft.signers[slot])
-      activeDraft.signers[slot] = { id: null, fio: '', post: '', org: '', manual: true }
-    if ($(this).hasClass('signer-fio')) activeDraft.signers[slot].fio = this.value
-    else if ($(this).hasClass('signer-post')) activeDraft.signers[slot].post = this.value
+      activeDraft.signers[slot] = {
+        id: null,
+        fio: '',
+        post: '',
+        org: '',
+        manual: true,
+      }
+    if ($(this).hasClass('signer-fio'))
+      activeDraft.signers[slot].fio = this.value
+    else if ($(this).hasClass('signer-post'))
+      activeDraft.signers[slot].post = this.value
     else activeDraft.signers[slot].org = this.value
   })
 }
@@ -683,7 +701,7 @@ function showFormButtons() {
 function validateForm(checkSigners) {
   const errors = []
   if (!activeDraft.departmentCode) errors.push('Не указан цех')
-  if (!activeDraft.reason) errors.push('Не указана причина составления')
+  if (!activeDraft.reasonId) errors.push('Не указана причина составления')
   if (!String(activeDraft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')
   if (
