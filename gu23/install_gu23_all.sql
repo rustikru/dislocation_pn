@@ -49,7 +49,9 @@ begin
          ) )
       )
       union all
-      select 'DROP TYPE ' || tp || ' FORCE'
+      select 'DROP TYPE '
+             || tp
+             || ' FORCE'
         from (
          select column_value tp
            from table ( sys.odcivarchar2list(
@@ -230,7 +232,8 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    "ST_TO_ID",
    "ST_TO",
    "CARGO_REF",
-   "REASON",
+   "REASON_ID",
+   "REASON_NAME",
    "CIRCUMSTANCES",
    "START_AT",
    "END_AT",
@@ -262,7 +265,8 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
           a.st_to_id,
           sst.st_name as st_to,
           a.cargo_ref,
-          a.reason,
+          a.reason as reason_id,
+          grr.name as reason_name,
           a.circumstances,
           a.start_at,
           a.end_at,
@@ -299,7 +303,9 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
      left join xx_etw_station_bi_v ssf
    on ssf.st_code = a.st_from_id
      left join xx_etw_station_bi_v sst
-   on sst.st_code = a.st_to_id;
+   on sst.st_code = a.st_to_id
+     left join xx_disl_gu23_ref_reason grr
+   on a.reason = to_char(grr.id);
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ

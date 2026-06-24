@@ -1,4 +1,4 @@
-create or replace package xx_etw.xx_disl_gu23_pkg as
+create or replace package xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
     PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -47,7 +47,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          st_to_id            varchar2(150),           -- ID ст. назначения
          st_to               varchar2(128),    -- ст. назначения (название)
          cargo_ref           varchar2(256),    -- груз
-         reason              varchar2(512),
+         reason_id           varchar2(512),
+         reason_name         varchar2(1000),
          circumstances       varchar2(4000),
          start_at            varchar2(20),
          end_at              varchar2(20),
