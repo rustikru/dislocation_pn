@@ -368,7 +368,9 @@ function initStationAutocomplete() {
         if (!stations.length) return $dropdown.hide()
 
         stations.forEach((row) => {
-          const $item = $(`<div class="ac-item" data-code="${escapeHtml(String(row.CODE))}" data-name="${escapeHtml(row.NAME)}">${escapeHtml(row.NAME)}</div>`)
+          const $item = $(
+            `<div class="ac-item" data-code="${escapeHtml(String(row.CODE))}" data-name="${escapeHtml(row.NAME)}">${escapeHtml(row.NAME)}</div>`,
+          )
           $item.on('mousedown', function (e) {
             e.preventDefault()
             selectItem($(this))
@@ -401,7 +403,12 @@ function initStationAutocomplete() {
     }
   })
 
-  $inp.on('blur', () => setTimeout(() => { $dropdown.hide(); activeIdx = -1 }, 200))
+  $inp.on('blur', () =>
+    setTimeout(() => {
+      $dropdown.hide()
+      activeIdx = -1
+    }, 200),
+  )
 }
 
 function showWagonActions() {
@@ -450,8 +457,9 @@ function loadWagonsDataFromDislocation() {
     return showToast('Введите номера вагонов или номер накладной!', 'err')
   sendApiRequest('gu23_get_wagon_info', {
     wagons: JSON.stringify(inputNums),
-    waybill_no: activeDraft.waybillNumber,
+    waybill_no: activeDraft.waybillNumber || '',
     dest_station: activeDraft.stationToName || '',
+    cardo_name: activeDraft.cargoReference || '',
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
