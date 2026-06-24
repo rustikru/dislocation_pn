@@ -229,7 +229,7 @@ a {
   padding: 22px 26px 60px;
 }
 .view {
- /*  max-width: 1180px; */
+  /*  max-width: 1180px; */
   margin: 0 auto;
 }
 .phead {
@@ -842,7 +842,6 @@ textarea.inp {
   padding-left: 32px;
 }
 .searchbox::before {
-  content: '⌕';
   position: absolute;
   left: 10px;
   top: 8px;

@@ -7,6 +7,8 @@ import {
   showToast,
   showConfirmBox,
   showPromptBox,
+  showTypeName,
+  showStatusName,
 } from './ui.js'
 import { setActiveDraft } from '../state.js'
 
@@ -30,9 +32,7 @@ function buildCardView(container, data) {
   $(container).html(`
     <div class="phead">
       <button class="btn sm ghost" id="btn-back-to-archive">Назад</button>
-      <h1 style="font-family:var(--mono);font-size:18px">${act.ACT_NUMBER}</h1>
-      <span>${showTypeChip(act.ACT_TYPE)}</span>
-      <span>${showStatusChip(act.STATUS)}</span>
+      <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
       <div class="spacer"></div>
     </div>
     <div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px"></div>
@@ -67,7 +67,7 @@ function showToolbarButtons(act, data) {
   }
 
   if (act.STATUS === 'active' || act.STATUS === 'closed') {
-    const $annulBtn = $('<button class="btn danger">⊘ Аннулировать</button>')
+    const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
     $toolbar.append($annulBtn)
   }
@@ -81,7 +81,11 @@ function showToolbarButtons(act, data) {
 
 function showDetailsBlock(act) {
   const rows = [
-    // { l: 'Тип акта', v: act.ACT_TYPE },
+    { l: '№ Акта', v: act.ACT_NUMBER },
+    { l: 'Тип акта', v: showTypeName(act.ACT_TYPE) },
+    { l: 'Статус акта', v: showStatusName(act.STATUS) },
+    { l: ' ', v: ' ' },
+    { l: ' ', v: ' ' },
     { l: 'Цех составления', v: act.CEX },
     { l: 'Ст. составления', v: act.STATION },
     { l: 'Ст. отправления', v: act.ST_FROM },
@@ -165,7 +169,7 @@ function showSignersBlock(signers) {
         .map(
           (s) => `
     <div class="signrow">
-      <div class="av">${(s.FIO || '?').slice(0, 1)}</div>
+     
       <div style="flex:1">
         <div><b>${escapeHtml(s.FIO)}</b></div>
         <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>

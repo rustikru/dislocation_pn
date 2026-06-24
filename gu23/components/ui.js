@@ -21,6 +21,20 @@ export function showStatusChip(status) {
   }
   return `<span class="chip ${config.className}">${config.label}</span>`
 }
+/* Название типа акта */
+export function showTypeName(type) {
+  const config = actTypesConfig[type] || { label: type, className: 'typ-other' }
+  return config.label
+}
+
+/* Название статуса акта */
+export function showStatusName(status) {
+  const config = actStatusesConfig[status] || {
+    label: status,
+    className: 'st-draft',
+  }
+  return config.label
+}
 
 export function showTypeChip(type) {
   const config = actTypesConfig[type] || { label: type, className: 'typ-other' }
