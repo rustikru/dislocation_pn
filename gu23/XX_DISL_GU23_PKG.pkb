@@ -375,13 +375,15 @@ create or replace package body xx_disl_gu23_pkg as
                 du.full_name as fio,
                 null as post,
                 dnt.name as org,
-                rc.code as unit,
+                null as unit,
+                --rc.code as unit,
                 'Работник предприятия' as stype
            from xx_disl_users du
-           join xx_disl_enterprise dnt on dnt.id = du.enterprise
-           left join xx_disl_gu23_ref_cex rc on rc.id = du.cex_id
+           join xx_disl_enterprise dnt
+         on dnt.id = du.enterprise
+           --left join xx_disl_gu23_ref_cex rc on rc.id = du.cex_id
           where du.open = 'Y'
-            and ( p_cex is null or rc.code = p_cex )
+            -- and ( p_cex is null or rc.code = p_cex )
           order by du.full_name
       ) loop
          l_row.id := r.id;

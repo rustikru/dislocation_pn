@@ -20,7 +20,7 @@ if (!$auth->isAuth()) {
     exit('Доступ запрещён');
 }
 
-$actId = (int)($_GET['id'] ?? 0);
+$actId = (int) ($_GET['id'] ?? 0);
 if ($actId <= 0) {
     http_response_code(400);
     exit('Не указан ID акта');
@@ -60,8 +60,8 @@ try {
         exit('Акт не найден');
     }
 
-    $act     = $actRows[0];
-    $wagons  = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',    [':b1' => $actId]);
+    $act = $actRows[0];
+    $wagons = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $actId]);
     $signers = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
 
     $generator = new GuActDocxReport();
