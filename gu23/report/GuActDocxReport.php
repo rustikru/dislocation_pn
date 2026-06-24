@@ -18,7 +18,7 @@ class GuActDocxReport
      */
     const TEMPLATES = [
         'start' => 'act23_general.docx',
-        'end'   => 'act23_general.docx',
+        'end' => 'act23_general.docx',
         'other' => 'act23_general.docx',
     ];
 
@@ -38,7 +38,7 @@ class GuActDocxReport
      */
     public function download(array $act, array $wagons, array $signers): void
     {
-        $actType     = strtolower($act['ACT_TYPE'] ?? 'other');
+        $actType = strtolower($act['ACT_TYPE'] ?? 'other');
         $templateName = self::TEMPLATES[$actType] ?? 'act23_general.docx';
         $templatePath = $this->templateDir . $templateName;
 
@@ -137,11 +137,11 @@ class GuActDocxReport
             $hasBr = str_contains($runXml, '<w:br');
 
             $parsed[] = [
-                'xml'    => $runXml,
+                'xml' => $runXml,
                 'offset' => $offset,
-                'rpr'    => $rpr,
-                'text'   => implode('', $texts),
-                'hasBr'  => $hasBr,
+                'rpr' => $rpr,
+                'text' => implode('', $texts),
+                'hasBr' => $hasBr,
             ];
         }
 
@@ -177,11 +177,11 @@ class GuActDocxReport
         // Собираем новый XML параграфа
         // Найдём, что стоит ДО первого рана и ПОСЛЕ последнего
         $firstOffset = $runs[0][1];
-        $lastRun     = end($runs);
-        $lastEnd     = $lastRun[1] + strlen($lastRun[0]);
+        $lastRun = end($runs);
+        $lastEnd = $lastRun[1] + strlen($lastRun[0]);
 
         $before = substr($para, 0, $firstOffset);
-        $after  = substr($para, $lastEnd);
+        $after = substr($para, $lastEnd);
 
         $newRuns = '';
         foreach ($groups as $g) {
@@ -210,31 +210,31 @@ class GuActDocxReport
     private function replacePlaceholders(string $xml, array $act, array $signers): string
     {
         $s = static function (array $arr, int $idx, string $key): string {
-            return (string)($arr[$idx][$key] ?? '');
+            return (string) ($arr[$idx][$key] ?? '');
         };
 
         $vars = [
-            '{{ACT_NUMBER}}'    => $act['ACT_NUMBER'] ?? '',
-            '{{CEX}}'           => $act['CEX'] ?? '',
-            '{{STATION}}'       => $act['STATION'] ?? '',
-            '{{ST_FROM}}'       => $act['ST_FROM'] ?? '',
-            '{{ST_TO}}'         => $act['ST_TO'] ?? '',
-            '{{REASON_NAME}}'   => $act['REASON_NAME'] ?? '',
-            '{{CARGO_REF}}'     => $act['CARGO_REF'] ?? '',
-            '{{START_AT}}'      => $this->fmtDate($act['START_AT'] ?? ''),
-            '{{END_AT}}'        => $this->fmtDate($act['END_AT'] ?? ''),
+            '{{ACT_NUMBER}}' => $act['ACT_NUMBER'] ?? '',
+            '{{CEX}}' => $act['CEX'] ?? '',
+            '{{STATION}}' => $act['STATION'] ?? '',
+            '{{ST_FROM}}' => $act['ST_FROM'] ?? '',
+            '{{ST_TO}}' => $act['ST_TO'] ?? '',
+            '{{REASON_NAME}}' => $act['REASON_NAME'] ?? '',
+            '{{CARGO_REF}}' => $act['CARGO_REF'] ?? '',
+            '{{START_AT}}' => $this->fmtDate($act['START_AT'] ?? ''),
+            '{{END_AT}}' => $this->fmtDate($act['END_AT'] ?? ''),
             '{{CIRCUMSTANCES}}' => $act['CIRCUMSTANCES'] ?? '',
-            '{{CREATED_AT}}'    => $this->fmtDate($act['CREATED_AT'] ?? ''),
+            '{{CREATED_AT}}' => $this->fmtDate($act['CREATED_AT'] ?? ''),
             '{{SIGNER_1_POST}}' => $s($signers, 0, 'POST'),
-            '{{SIGNER_1_FIO}}'  => $s($signers, 0, 'FIO'),
+            '{{SIGNER_1_FIO}}' => $s($signers, 0, 'FIO'),
             '{{SIGNER_2_POST}}' => $s($signers, 1, 'POST'),
-            '{{SIGNER_2_FIO}}'  => $s($signers, 1, 'FIO'),
+            '{{SIGNER_2_FIO}}' => $s($signers, 1, 'FIO'),
             '{{SIGNER_3_POST}}' => $s($signers, 2, 'POST'),
-            '{{SIGNER_3_FIO}}'  => $s($signers, 2, 'FIO'),
+            '{{SIGNER_3_FIO}}' => $s($signers, 2, 'FIO'),
         ];
 
         foreach ($vars as $placeholder => $value) {
-            $xml = $this->replaceInXml($xml, $placeholder, (string)$value);
+            $xml = $this->replaceInXml($xml, $placeholder, (string) $value);
         }
 
         return $xml;
@@ -252,7 +252,7 @@ class GuActDocxReport
 
         // Если значение содержит переносы строк, заменяем через w:br
         if (str_contains($value, "\n")) {
-            $lines   = explode("\n", $value);
+            $lines = explode("\n", $value);
             $escaped = array_map(
                 static fn(string $l): string => htmlspecialchars($l, ENT_XML1, 'UTF-8'),
                 $lines
@@ -281,7 +281,7 @@ class GuActDocxReport
         }
 
         $rowTemplate = $m[1];
-        $filledRows  = '';
+        $filledRows = '';
 
         if (empty($wagons)) {
             // Нет вагонов — пустая строка
@@ -298,19 +298,19 @@ class GuActDocxReport
     private function buildWagonRow(string $rowTemplate, int $idx, array $wagon): string
     {
         $map = [
-            '{{WAGON_IDX}}'    => (string)$idx,
-            '{{WAGON_NO}}'     => $wagon['WAGON_NO']  ?? '',
-            '{{WAGON_KIND}}'   => $wagon['KIND']       ?? '',
-            '{{WAGON_CARGO}}'  => $wagon['CARGO']      ?? '',
-            '{{WAGON_WEIGHT}}' => $wagon['WEIGHT']     ?? '',
-            '{{WAGON_OWNER}}'  => $wagon['OWNER']      ?? '',
-            '{{WAGON_ST_FROM}}' => $wagon['ST_FROM']   ?? '',
-            '{{WAGON_ST_TO}}'  => $wagon['ST_TO']      ?? '',
+            '{{WAGON_IDX}}' => (string) $idx,
+            '{{WAGON_NO}}' => $wagon['WAGON_NO'] ?? '',
+            '{{WAGON_KIND}}' => $wagon['KIND'] ?? '',
+            '{{WAGON_CARGO}}' => $wagon['CARGO'] ?? '',
+            '{{WAGON_WEIGHT}}' => $wagon['WEIGHT'] ?? '',
+            '{{WAGON_OWNER}}' => $wagon['OWNER'] ?? '',
+            '{{WAGON_ST_FROM}}' => $wagon['ST_FROM'] ?? '',
+            '{{WAGON_ST_TO}}' => $wagon['ST_TO'] ?? '',
         ];
 
         $row = $rowTemplate;
         foreach ($map as $ph => $val) {
-            $row = str_replace($ph, htmlspecialchars((string)$val, ENT_XML1, 'UTF-8'), $row);
+            $row = str_replace($ph, htmlspecialchars((string) $val, ENT_XML1, 'UTF-8'), $row);
         }
         return $row;
     }
@@ -329,8 +329,9 @@ class GuActDocxReport
 
     private function streamFile(string $path, array $act): void
     {
-        $raw      = $act['ACT_NUMBER'] ?? ($act['ID'] ?? 'act');
-        $filename = 'act_gu23_' . preg_replace('/[^\w\-]/', '_', $raw) . '.docx';
+        $raw = $act['ACT_NUMBER'] ?? ($act['ID'] ?? 'act');
+
+        $filename = 'act_gu23_' . preg_replace('/[^\w\-]/u', '_', $raw) . '.docx';
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
