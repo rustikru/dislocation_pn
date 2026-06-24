@@ -269,7 +269,7 @@ function loadOpenStartsList() {
       const wagonNumbers = (act.WAGONS || []).map((w) => w.WAGON_NO).join(', ')
       const isSelected = String(activeDraft.linkedStartId) === String(act.ID)
       $select.append(
-        `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} · ${wagonNumbers} · ${act.REASON_NAME}</option>`,
+        `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} от ${formatToInputDate(act.START_AT)}</option>`,
       )
     })
 
@@ -323,7 +323,9 @@ function applySelectedStartAct(id, filterNums = null) {
 
   if (filterNums) {
     const existingNums = new Set(activeDraft.wagons.map((w) => w.n))
-    newWagons.forEach((w) => { if (!existingNums.has(w.n)) activeDraft.wagons.push(w) })
+    newWagons.forEach((w) => {
+      if (!existingNums.has(w.n)) activeDraft.wagons.push(w)
+    })
   } else {
     activeDraft.wagons = newWagons
   }
@@ -443,7 +445,9 @@ function showWagonActions() {
   }
 
   if (activeDraft.type === 'end') {
-    const $btn = $('<button class="btn sm">Найти открытый простой</button>')
+    const $btn = $(
+      '<button class="btn sm">Найти вагон в открытом акте простоя</button>',
+    )
     $btn.on('click', () => findOpenStayByWagons())
     $actions.append($btn)
   }
