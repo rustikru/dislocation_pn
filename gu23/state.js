@@ -38,7 +38,7 @@ export function createNewDraft(actType) {
     stationToName: '',
     waybillNumber: '',
     cargoReference: '',
-    reason: '',
+    reasonId: '',
     circumstances: '',
     wagons: [],
     signers: [],
