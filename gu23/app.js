@@ -10,7 +10,7 @@ import { showWagonSearch } from './components/wagonSearch.js'
 export function navigateTo(pageName, selectedId = null) {
   applicationState.currentPage = pageName
 
-  // Сохраняем выбранный ID в DOM-атрибуте контейнера для простоты доступа
+  // Сохраняем выбранный ID
   $('#view').data('selected-id', selectedId)
 
   showApplication()
@@ -36,7 +36,7 @@ export function showApplication() {
 
 $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
-    // Наполняем глобальные справочники данными от сервера
+    // Наполняем глобальные справочники данными
     references.departmentsList = response?.cexes || []
     references.reasonsList = response?.reasons || []
     references.stationsList = response?.stations || []
@@ -47,7 +47,7 @@ $(document).ready(() => {
     references.signersOwnList = response?.signersOwn || []
     references.signersRzdList = response?.signersRzd || []
 
-    // Отрисовываем приложение
+    // Показываем страничку
     showApplication()
   })
 })
