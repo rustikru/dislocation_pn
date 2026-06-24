@@ -1,4 +1,3 @@
-/* Formatted on 24.06.2026 13:20:41 (QP5 v5.417) */
 create or replace package body xx_disl_gu23_pkg as
     /******************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
@@ -178,6 +177,7 @@ create or replace package body xx_disl_gu23_pkg as
       o xx_disl_gu23_act_row;
    begin
       o.id := a.id;
+      o.act_start_number := a.act_start_number;
       o.act_number := a.act_number;
       o.act_type := a.act_type;
       o.status := a.status;
@@ -447,6 +447,9 @@ create or replace package body xx_disl_gu23_pkg as
              or a.cex_id = to_number(p_cex) )
             and ( v_q is null
          or lower(a.act_number) like '%'
+                  || v_q
+                  || '%'
+         or lower(a.act_start_number) like '%'
                   || v_q
                   || '%'
          or lower(a.reason_name) like '%'

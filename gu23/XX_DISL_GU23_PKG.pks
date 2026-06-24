@@ -1,4 +1,3 @@
-/* Formatted on 24.06.2026 13:14:09 (QP5 v5.417) */
 create or replace package xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
@@ -37,6 +36,7 @@ create or replace package xx_disl_gu23_pkg as
    type xx_disl_gu23_act_row is record (
          id                  number,
          act_number          varchar2(64),
+         act_start_number    varchar2(64),
          act_type            varchar2(16),
          status              varchar2(16),
          cex_id              number,                              -- ID цеха
