@@ -54,15 +54,15 @@ function queryPipe($conn, string $sql, array $binds = []): array
 
 try {
     // Загружаем акт
-    $actRows = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $actId]);
+    $actRows = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $actId]);
     if (empty($actRows)) {
         http_response_code(404);
         exit('Акт не найден');
     }
 
-    $act = $actRows[0];
-    $wagons = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $actId]);
-    $signers = queryPipe($conn, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
+    $act     = $actRows[0];
+    $wagons  = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',    [':b1' => $actId]);
+    $signers = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
 
     $generator = new GuActDocxReport();
     $generator->download($act, $wagons, $signers);
