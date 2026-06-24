@@ -74,7 +74,11 @@ function showToolbarButtons(act, data) {
 
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
   if (act.STATUS !== 'draft') {
-    const $docxBtn = $('<a class="btn" target="_blank">Скачать акт (DOCX)</a>')
+    const $docxBtn = $(`
+        <a class="btn report-word" target="_blank" title="Скачать акт">
+            <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink: 0;">
+        </a>
+    `)
     $docxBtn.attr('href', 'report/report.php?id=' + act.ID)
     $toolbar.append($docxBtn)
   }

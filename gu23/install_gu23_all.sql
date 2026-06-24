@@ -220,9 +220,10 @@ create index xx_disl_gu23_hist_act_i on
 
 -- Все вычисляемые поля (номер связанного акта, кол-во вагонов/файлов) собраны
 -- здесь один раз. Пакет читает акты только через это представление.
-create or replace view "XX_ETW"."XX_DISL_GU23_ACT_V" (
+create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    "ID",
    "ACT_NUMBER",
+   "ACT_START_NUMBER",
    "ACT_TYPE",
    "STATUS",
    "CEX_ID",
@@ -256,6 +257,7 @@ create or replace view "XX_ETW"."XX_DISL_GU23_ACT_V" (
 ) as
    select a.id,
           a.act_number,
+          a_start.act_number as act_star_number,
           a.act_type,
           a.status,
           a.cex_id,
@@ -301,6 +303,8 @@ create or replace view "XX_ETW"."XX_DISL_GU23_ACT_V" (
      from xx_disl_gu23_act a
      left join xx_disl_gu23_ref_cex rc
    on rc.id = a.cex_id
+     left join xx_disl_gu23_act a_start
+   on a.id = a_start.linked_start_id
      left join xx_disl_stations ss
    on to_char(ss.station_id) = a.station_id
      left join xx_etw_station_bi_v ssf

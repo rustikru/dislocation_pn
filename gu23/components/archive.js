@@ -73,8 +73,8 @@ export function showArchive(container) {
           .map(
             (act) => `
           <tr class="clickable-row" data-id="${act.ID}">
-            <td class="num">${escapeHtml(act.ACT_START_NUMBER)}</td>
             <td class="num">${escapeHtml(act.ACT_NUMBER)}</td>
+            <td class="num">${escapeHtml(act.ACT_START_NUMBER)}</td>
             <td class="muted">${formatDateTime(act.START_AT)}</td>
             <td class="muted">${formatDateTime(act.END_AT)}</td>
             <td>${showTypeChip(act.ACT_TYPE)}</td>
@@ -94,8 +94,8 @@ export function showArchive(container) {
           <table class="tbl">
             <thead>
               <tr>
-                <th>Номер акта начала</th>
                 <th>Номер</th>
+                <th>Номер акта начала</th>
                 <th>Начало простоя</th>
                 <th>Окончание простоя</th>
                 <th>Тип</th>

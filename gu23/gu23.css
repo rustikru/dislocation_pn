@@ -319,6 +319,35 @@ a {
   font-size: 12px;
 }
 
+.btn.report-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+
+  background-color: #e0ebf9; /* Мягкий светло-голубой фон */
+  color: #2b579a;
+
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.btn.report-word:hover {
+  text-decoration: none;
+  background-color: #d0e1f7;
+  color: #1e3f70;
+}
+
+.btn.report-word:focus,
+.btn.report-word:active {
+  text-decoration: none;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
