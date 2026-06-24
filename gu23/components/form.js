@@ -271,6 +271,10 @@ function loadOpenStartsList() {
       $select.append(
         `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} от ${formatToInputDate(act.START_AT)}</option>`,
       )
+      if (isSelected && act.CARGO_REF) {
+        activeDraft.cargoReference = act.CARGO_REF
+        $('#sel-cargo').val(act.CARGO_REF)
+      }
     })
 
     $select.on('change', function () {
