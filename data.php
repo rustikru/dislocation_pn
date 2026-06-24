@@ -37,6 +37,9 @@ if (isset($routes[$action])) {
                 $e = oci_error();
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
+        $tz = oci_parse($conn, "ALTER SESSION SET TIME_ZONE = 'Asia/Yekaterinburg'");
+        oci_execute($tz);
+        oci_free_statement($tz);
         (new $class($conn, $auth))->handle($action, $_POST);
         oci_close($conn);
         exit;
