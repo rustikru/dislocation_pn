@@ -1,4 +1,18 @@
 /* ГУ-23 · стили модуля (из утверждённого прототипа) */
+
+/* Autocomplete dropdown */
+.ac-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover,
+.ac-item.ac-active {
+  background: var(--primary, #2563eb);
+  color: #fff;
+}
 /* Совместимость: вёрстка на Flexbox (без CSS Grid и flex-gap),
    чтобы корректно работать в т.ч. на Firefox 45-48. var() поддерживается с FF31. */
 :root {

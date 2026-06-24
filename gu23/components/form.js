@@ -328,10 +328,30 @@ function initStationAutocomplete() {
   const $inp = $('#auto-stationTo')
   const $dropdown = $('#auto-dropdown')
   let timer = null
+  let activeIdx = -1
+
+  function setActive(idx) {
+    const $items = $dropdown.find('.ac-item')
+    $items.removeClass('ac-active')
+    activeIdx = idx
+    if (idx >= 0 && idx < $items.length) {
+      const $active = $items.eq(idx).addClass('ac-active')
+      $active[0].scrollIntoView({ block: 'nearest' })
+    }
+  }
+
+  function selectItem($item) {
+    $inp.val($item.data('name'))
+    activeDraft.stationToId = $item.data('code')
+    activeDraft.stationToName = $item.data('name')
+    $dropdown.hide()
+    activeIdx = -1
+  }
 
   $inp.on('input', function () {
     const value = $(this).val().trim()
     clearTimeout(timer)
+    activeIdx = -1
     if (value.length < 3) {
       $dropdown.hide().empty()
       if (!value) {
@@ -348,14 +368,13 @@ function initStationAutocomplete() {
         if (!stations.length) return $dropdown.hide()
 
         stations.forEach((row) => {
-          const $item = $(
-            `<div style="padding:8px 12px;cursor:pointer;font-size:13px">${row.NAME}</div>`,
-          )
-          $item.on('click', () => {
-            $inp.val(row.NAME)
-            activeDraft.stationToId = String(row.CODE)
-            activeDraft.stationToName = row.NAME
-            $dropdown.hide()
+          const $item = $(`<div class="ac-item" data-code="${escapeHtml(String(row.CODE))}" data-name="${escapeHtml(row.NAME)}">${escapeHtml(row.NAME)}</div>`)
+          $item.on('mousedown', function (e) {
+            e.preventDefault()
+            selectItem($(this))
+          })
+          $item.on('mouseenter', function () {
+            setActive($(this).index())
           })
           $dropdown.append($item)
         })
@@ -364,7 +383,25 @@ function initStationAutocomplete() {
     }, 300)
   })
 
-  $inp.on('blur', () => setTimeout(() => $dropdown.hide(), 200))
+  $inp.on('keydown', function (e) {
+    if (!$dropdown.is(':visible')) return
+    const $items = $dropdown.find('.ac-item')
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActive(Math.min(activeIdx + 1, $items.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActive(Math.max(activeIdx - 1, 0))
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault()
+      selectItem($items.eq(activeIdx))
+    } else if (e.key === 'Escape') {
+      $dropdown.hide()
+      activeIdx = -1
+    }
+  })
+
+  $inp.on('blur', () => setTimeout(() => { $dropdown.hide(); activeIdx = -1 }, 200))
 }
 
 function showWagonActions() {
