@@ -37,15 +37,15 @@ export function showApplication() {
 $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
     // Наполняем глобальные справочники данными
-    references.departmentsList = response?.cexes || []
-    references.reasonsList = response?.reasons || []
-    references.stationsList = response?.stations || []
-    references.stationsFromList = response?.stations_from || []
-    references.ownersList = response?.owners || []
-    references.wagonKindsList = response?.kinds || []
-    references.cargosList = response?.cargos || []
-    references.signersOwnList = response?.signersOwn || []
-    references.signersRzdList = response?.signersRzd || []
+    references.departmentsList = (response && response.cexes) || []
+    references.reasonsList = (response && response.reasons) || []
+    references.stationsList = (response && response.stations) || []
+    references.stationsFromList = (response && response.stations_from) || []
+    references.ownersList = (response && response.owners) || []
+    references.wagonKindsList = (response && response.kinds) || []
+    references.cargosList = (response && response.cargos) || []
+    references.signersOwnList = (response && response.signersOwn) || []
+    references.signersRzdList = (response && response.signersRzd) || []
 
     // Показываем страничку
     showApplication()
