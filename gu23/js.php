@@ -16,10 +16,24 @@ $files = [
 ];
 
 foreach ($files as $file) {
-    $code = file_get_contents($file);
-    // Убираем import-строки (однострочные и многострочные)
-    $code = preg_replace('/^import\s*\{[\s\S]*?\}\s*from\s*[\'"][^\'"]+[\'"]\s*;?[ \t]*\n?/m', '', $code);
-    // Убираем ключевое слово export перед объявлениями
-    $code = preg_replace('/\bexport\s+(function|const|let|var|class)\b/', '$1', $code);
-    echo $code . "\n";
+    $lines = file($file, FILE_IGNORE_NEW_LINES);
+    $inImport = false;
+    foreach ($lines as $line) {
+        $trimmed = ltrim($line);
+        if ($inImport) {
+            if (strpos($line, '} from') !== false || strpos($line, "} from") !== false) {
+                $inImport = false;
+            }
+            continue;
+        }
+        if (strpos($trimmed, 'import ') === 0 || strpos($trimmed, 'import{') === 0) {
+            if (strpos($line, '} from') === false) {
+                $inImport = true;
+            }
+            continue;
+        }
+        $line = preg_replace('/\bexport\s+(function|const|let|var|class)\b/', '$1', $line);
+        echo $line . "\n";
+    }
+    echo "\n";
 }
