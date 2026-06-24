@@ -35,9 +35,7 @@ function buildCardView(container, data) {
       <span>${showStatusChip(act.STATUS)}</span>
       <div class="spacer"></div>
     </div>
-    <!--<div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="btn" onclick="window.print()">Печать</button>
-    </div> -->
+    <div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px"></div>
     <div id="annulled-banner-place"></div>
     <div class="grid-layout" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
       <div id="card-left-column"></div>
