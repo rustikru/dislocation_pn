@@ -991,6 +991,7 @@ create or replace package body xx_disl_gu23_pkg as
    function gu23_save_act (
       p_data in t_gu23_save_act
    ) return varchar2 is
+      l_function   varchar2(240) := 'gu23_save_act';
       l_row        xx_disl_gu23_hist%rowtype;
       v_id         number;
       v_number     varchar2(64);
@@ -1037,6 +1038,18 @@ create or replace package body xx_disl_gu23_pkg as
             else
                false
          end;
+      log_new(
+         l_function,
+         'p_data.p_type=' || p_data.p_type
+      );
+      log_new(
+         l_function,
+         'p_data.p_start_at=' || p_data.p_start_at
+      );
+      log_new(
+         l_function,
+         'p_data.p_end_at=' || p_data.p_end_at
+      );
       v_start := g_to_date(p_data.p_start_at);
       v_end := g_to_date(p_data.p_end_at);
 

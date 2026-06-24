@@ -305,6 +305,7 @@ function applySelectedStartAct(id, filterNums = null) {
   activeDraft.stationToName = selectedAct.ST_TO || ''
   activeDraft.reasonName = selectedAct.REASON_NAME
   activeDraft.reasonId = selectedAct.REASON_ID
+  activeDraft.cargoReference = selectedAct.CARGO_REF
 
   const allWagons = selectedAct.WAGONS || []
   const wagonsToLoad = filterNums
