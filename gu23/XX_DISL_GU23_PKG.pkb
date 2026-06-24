@@ -361,22 +361,27 @@ create or replace package body xx_disl_gu23_pkg as
    end;
 
     -- подписанты — работники предприятия
-   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab
+   function gu23_get_ref_signer_own (
+      p_cex in varchar2 default null
+   ) return xx_disl_gu23_signer_tab
       pipelined
    is
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
+         -- Примечание: поле unit возвращает код цеха из xx_disl_users.cex_id
+         -- (скорректируйте условие фильтра если имя колонки отличается)
          select du.id,
                 du.full_name as fio,
                 null as post,
                 dnt.name as org,
-                null as unit,
+                rc.code as unit,
                 'Работник предприятия' as stype
-           from xx_disl_users du,
-                xx_disl_enterprise dnt
+           from xx_disl_users du
+           join xx_disl_enterprise dnt on dnt.id = du.enterprise
+           left join xx_disl_gu23_ref_cex rc on rc.id = du.cex_id
           where du.open = 'Y'
-            and du.enterprise = dnt.id
+            and ( p_cex is null or rc.code = p_cex )
           order by du.full_name
       ) loop
          l_row.id := r.id;

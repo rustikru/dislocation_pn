@@ -187,8 +187,10 @@ create or replace package xx_disl_gu23_pkg as
       pipelined;
 
     -- Справочники подписантов
-    -- работники предприятия
-   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab
+    -- работники предприятия; p_cex — код цеха для фильтрации (null = все)
+   function gu23_get_ref_signer_own (
+      p_cex in varchar2 default null
+   ) return xx_disl_gu23_signer_tab
       pipelined;
 
     -- работники станции ОАО «РЖД»

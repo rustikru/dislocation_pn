@@ -147,7 +147,15 @@ function showFormFields() {
 
   // Привязка селектов к модели
   $('#sel-dept').on('change', function () {
+    const prev = activeDraft.departmentCode
     activeDraft.departmentCode = this.value
+    if (prev !== this.value) {
+      // Сбрасываем подписантов предприятия — они могут не входить в новый цех
+      activeDraft.signers = activeDraft.signers.map((s) =>
+        s && !s.manual ? null : s,
+      )
+      showSignersFields()
+    }
   })
   $('#sel-station').on('change', function () {
     activeDraft.stationId = this.value
@@ -635,16 +643,21 @@ function showSignersFields() {
     )
   const countNeeded = activeDraft.type === 'other' ? 2 : 3
 
+  const cex = activeDraft.departmentCode
+  const ownFiltered = (references.signersOwnList || []).filter(
+    (s) => !cex || !s.UNIT || s.UNIT === cex,
+  )
+
   for (let i = 0; i < countNeeded; i++) {
     let signersList = []
     let helpText = ''
 
     if (activeDraft.type === 'other') {
-      signersList = references.signersOwnList || []
+      signersList = ownFiltered
       helpText = i === 0 ? 'Представитель предприятия' : 'Второй подписант'
     } else {
       if (i < 2) {
-        signersList = references.signersOwnList || []
+        signersList = ownFiltered
         helpText = 'Работник предприятия'
       } else {
         signersList = references.signersRzdList || []
@@ -717,9 +730,9 @@ function showSignersFields() {
     const value = this.value
     const pool =
       activeDraft.type === 'other'
-        ? references.signersOwnList
+        ? ownFiltered
         : slot < 2
-          ? references.signersOwnList
+          ? ownFiltered
           : references.signersRzdList
     const matched = pool.find((x) => String(x.ID) === value)
     activeDraft.signers[slot] = matched
