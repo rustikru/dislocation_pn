@@ -6,7 +6,7 @@
  */
 class GuActRepository
 {
-    /** Разделители коллекций (синхронно с пакетом). */
+    /** Разделители . */
     const RS = "\x1E";   // CHR(30) — между записями
     const US = "\x1F";   // CHR(31) — между полями
 
@@ -204,16 +204,19 @@ class GuActRepository
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
         $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: '';
         $destStation = filter_input(INPUT_POST, 'dest_station') ?: '';
+        $cardoName = filter_input(INPUT_POST, 'cardo_name') ?: '';
+
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
 
         $st = oci_parse(
             $this->conn,
-            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2,:b3))'
+            'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2,:b3,:b4))'
         );
         $lob = $this->bindClob($st, ':b1', $clob);
         oci_bind_by_name($st, ':b2', $waybillNo);
         oci_bind_by_name($st, ':b3', $destStation);
+        oci_bind_by_name($st, ':b4', $cardoName);
         oci_execute($st);
         $rows = [];
         while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
@@ -266,28 +269,28 @@ class GuActRepository
         $force = filter_input(INPUT_POST, 'force') === 'Y' ? 'Y' : 'N';
 
         $sql = 'declare
-  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_save_act;
-begin
-  v_d.p_user_id         := :user_id;
-  v_d.p_id              := :id;
-  v_d.p_type            := :type;
-  v_d.p_status          := :status;
-  v_d.p_cex             := :cex;
-  v_d.p_station         := :station;
-  v_d.p_st_from         := :st_from;
-  v_d.p_st_to           := :st_to;
-  v_d.p_waybill_no      := :waybill_no;
-  v_d.p_cargo_ref       := :cargo_ref;
-  v_d.p_reason          := :reason;
-  v_d.p_circumstances   := :circ;
-  v_d.p_start_at        := :start_at;
-  v_d.p_end_at          := :end_at;
-  v_d.p_linked_start_id := :linked;
-  v_d.p_wagons          := :wagons;
-  v_d.p_signers         := :signers;
-  v_d.p_force           := :force;
-  :res := xx_etw.xx_disl_gu23_pkg.gu23_save_act(v_d);
-end;';
+                    v_d xx_etw.xx_disl_gu23_pkg.t_gu23_save_act;
+                begin
+                    v_d.p_user_id         := :user_id;
+                    v_d.p_id              := :id;
+                    v_d.p_type            := :type;
+                    v_d.p_status          := :status;
+                    v_d.p_cex             := :cex;
+                    v_d.p_station         := :station;
+                    v_d.p_st_from         := :st_from;
+                    v_d.p_st_to           := :st_to;
+                    v_d.p_waybill_no      := :waybill_no;
+                    v_d.p_cargo_ref       := :cargo_ref;
+                    v_d.p_reason          := :reason;
+                    v_d.p_circumstances   := :circ;
+                    v_d.p_start_at        := :start_at;
+                    v_d.p_end_at          := :end_at;
+                    v_d.p_linked_start_id := :linked;
+                    v_d.p_wagons          := :wagons;
+                    v_d.p_signers         := :signers;
+                    v_d.p_force           := :force;
+                    :res := xx_etw.xx_disl_gu23_pkg.gu23_save_act(v_d);
+                end;';
 
         $st = oci_parse($this->conn, $sql);
         $res = '';
@@ -322,12 +325,12 @@ end;';
         $id = (int) filter_input(INPUT_POST, 'id');
         $uid = $this->auth->getUserId();
         $sql = 'declare
-  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_act;
-begin
-  v_d.p_id      := :id;
-  v_d.p_user_id := :uid;
-  :res := xx_etw.xx_disl_gu23_pkg.gu23_del_act(v_d);
-end;';
+                    v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_act;
+                begin
+                    v_d.p_id      := :id;
+                    v_d.p_user_id := :uid;
+                    :res := xx_etw.xx_disl_gu23_pkg.gu23_del_act(v_d);
+                end;';
         $st = oci_parse($this->conn, $sql);
         $res = '';
         oci_bind_by_name($st, ':res', $res, 4000);
@@ -368,7 +371,7 @@ end;';
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
 
-        // [Исправление] Сначала определяем тип акта для формирования корректного пути
+        // Сначала определяем тип акта для формирования корректного пути
         $actType = 'other'; // значение по умолчанию
         $stType = oci_parse($this->conn, 'select act_type from xx_disl_gu23_act where id = :b1');
         oci_bind_by_name($stType, ':b1', $actId);
@@ -377,7 +380,7 @@ end;';
             $actType = strtolower($rType['ACT_TYPE']);
         }
 
-        // Физически храним в папке в разрезе типа акта
+        // Файлы хранятся в разрезе типа акта с ID записи из таблицы
         $baseDir = __DIR__ . '/request_data/' . $actType . '/' . $actId . '/';
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
@@ -407,17 +410,17 @@ end;';
             }
 
             $addSql = 'declare
-  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_add_file;
-begin
-  v_d.p_act_id  := :act;
-  v_d.p_file_id := :fid;
-  v_d.p_name    := :name;
-  v_d.p_ext     := :ext;
-  v_d.p_mime    := :mime;
-  v_d.p_path    := :path;
-  v_d.p_user_id := :uid;
-  :res := xx_etw.xx_disl_gu23_pkg.gu23_add_file(v_d);
-end;';
+                            v_d xx_etw.xx_disl_gu23_pkg.t_gu23_add_file;
+                        begin
+                            v_d.p_act_id  := :act;
+                            v_d.p_file_id := :fid;
+                            v_d.p_name    := :name;
+                            v_d.p_ext     := :ext;
+                            v_d.p_mime    := :mime;
+                            v_d.p_path    := :path;
+                            v_d.p_user_id := :uid;
+                            :res := xx_etw.xx_disl_gu23_pkg.gu23_add_file(v_d);
+                        end;';
             $st = oci_parse($this->conn, $addSql);
             $res = '';
             oci_bind_by_name($st, ':res', $res, 4000);
@@ -457,12 +460,12 @@ end;';
 
         $uid = $this->auth->getUserId();
         $delSql = 'declare
-  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_file;
-begin
-  v_d.p_file_id := :fid;
-  v_d.p_user_id := :uid;
-  :res := xx_etw.xx_disl_gu23_pkg.gu23_del_file(v_d);
-end;';
+                        v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_file;
+                    begin
+                        v_d.p_file_id := :fid;
+                        v_d.p_user_id := :uid;
+                        :res := xx_etw.xx_disl_gu23_pkg.gu23_del_file(v_d);
+                    end;';
         $st = oci_parse($this->conn, $delSql);
         $res = '';
         oci_bind_by_name($st, ':res', $res, 4000);

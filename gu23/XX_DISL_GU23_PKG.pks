@@ -23,7 +23,7 @@ create or replace package xx_disl_gu23_pkg as
       table of xx_disl_gu23_ref_row;
    type xx_disl_gu23_signer_row is record (
          id            number,
-         signer_ref_id number,   -- ref ID из справочника (для предвыбора)
+         signer_ref_id number,   -- ref ID из справочника 
          fio           varchar2(256),
          post          varchar2(256),
          org           varchar2(256),
@@ -114,17 +114,17 @@ create or replace package xx_disl_gu23_pkg as
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;
 
-    -- ---- Типы записей для параметров DML-функций ----
+    -- ---- Типы для параметров Сохранения акта ----
    type t_gu23_save_act is record (
          p_user_id         number,
          p_id              number,          -- 0/NULL = новый
          p_type            varchar2(16),    -- start / end / other
          p_status          varchar2(16),    -- draft / active
-         p_cex             varchar2(32),    -- код цеха (для g_next_number)
-         p_station         varchar2(128),   -- ID ст. составления как строка
-         p_st_from         varchar2(128),   -- ID ст. отправления как строка
-         p_st_to           varchar2(128),   -- ID ст. назначения как строка
-         p_waybill_no      varchar2(64),    -- № накладной (только для поиска Дислокации, не хранится)
+         p_cex             varchar2(32),    -- код цеха 
+         p_station         varchar2(128),   -- ID ст. составления 
+         p_st_from         varchar2(128),   -- ID ст. отправления 
+         p_st_to           varchar2(128),   -- ID ст. назначения 
+         p_waybill_no      varchar2(64),    -- № накладной (только для поиска Дислокации, не хранится на строках акта)
          p_cargo_ref       varchar2(256),
          p_reason          varchar2(512),
          p_circumstances   varchar2(4000),
@@ -171,7 +171,7 @@ create or replace package xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- ---- Справочники станций (три отдельные процедуры по назначению)
+    -- ---- Справочники станций
    function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab   -- ст. составления
       pipelined;
 
@@ -180,8 +180,7 @@ create or replace package xx_disl_gu23_pkg as
 
    function gu23_get_ref_st_to return xx_disl_gu23_ref_tab             -- ст. назначения
       pipelined;
-
-    -- старое имя оставлено для обратной совместимости
+    -- Не актуально(удалить)
    function gu23_get_ref_station return xx_disl_gu23_ref_tab
       pipelined;
 
@@ -196,7 +195,7 @@ create or replace package xx_disl_gu23_pkg as
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab     -- работники станции ОАО «РЖД»
       pipelined;
 
-    -- старое имя оставлено для обратной совместимости
+    -- Не актуально(удалить)
    function gu23_get_ref_signer return xx_disl_gu23_signer_tab
       pipelined;
 
@@ -256,12 +255,12 @@ create or replace package xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- ---- Интеграция Oracle BI / получить данные по вагонам из дислокации ----
-    -- p_waybill_no передаётся как поисковый контекст к Дислокации
+    -- получить данные по вагонам из дислокации ----
    function gu23_get_wagon_info (
       p_wagons       in clob,
       p_waybill_no   in varchar2 default null,
-      p_dest_station in varchar2 default null
+      p_dest_station in varchar2 default null,
+      p_cargo_name   in varchar2 default null
    ) return xx_disl_gu23_wagon_tab
       pipelined;
 
