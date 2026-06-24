@@ -193,12 +193,10 @@ export function showArchive(container) {
 
       $('#acts-table-container').html(tableHtml)
 
-      // Логика клика: переход в карточку или сворачивание
       $('#archive-tree-table tbody').on('click', 'tr', function (e) {
         const $tr = $(this)
         const rootNum = $tr.data('root-num')
 
-        // Если кликнули именно по первой ячейке (Номер) корневого акта — сворачиваем/разворачиваем дочерние строки
         if (rootNum && $(e.target).closest('td').is(':first-child')) {
           const $children = $('#archive-tree-table tbody').find(
             'tr[data-parent-num="' + rootNum + '"]',
@@ -210,7 +208,7 @@ export function showArchive(container) {
           }
         }
 
-        // В остальных случаях стандартно проваливаемся в карточку акта
+        // проваливаемся в карточку акта
         navigateTo('card', $tr.data('id'))
       })
     })
