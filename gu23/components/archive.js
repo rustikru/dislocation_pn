@@ -7,7 +7,7 @@ import { showStatusChip, showTypeChip } from './ui.js'
 export function showArchive(container) {
   $(container).html(
     '<div class="phead">' +
-      '<h1>Архив актов</h1>' +
+      '<h1>Реестр актов</h1>' +
       '<div class="spacer"></div>' +
       '</div>' +
       '<div class="filters" id="archive-filters">' +

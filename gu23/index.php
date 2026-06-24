@@ -32,7 +32,7 @@ if ($auth->isAuth()) {
             <script src="../js/general_function.js" type="text/javascript"></script>
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
             <script type="module" src="app.js"></script>
-            <script nomodule src="js.php?v=2"></script>
+            <script src="js.php?v=3" type="text/javascript"></script>
         </head>
 
         <body>

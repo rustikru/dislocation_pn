@@ -4,7 +4,7 @@ import { navigateTo } from '../app.js'
 export function drawNav() {
   const navigationItems = [
     { page: 'new', icon: '＋', label: 'Создать акт' },
-    { page: 'archive', icon: '', label: 'Архив актов' },
+    { page: 'archive', icon: '', label: 'Реестр актов' },
   ]
 
   const $nav = $('#nav').empty()
