@@ -311,7 +311,7 @@ function applySelectedStartAct(id, filterNums = null) {
     ? allWagons.filter((w) => filterNums.includes(w.WAGON_NO))
     : allWagons
 
-  activeDraft.wagons = wagonsToLoad.map((w) => ({
+  const newWagons = wagonsToLoad.map((w) => ({
     n: w.WAGON_NO,
     owner: w.OWNER,
     kind: w.KIND,
@@ -320,6 +320,13 @@ function applySelectedStartAct(id, filterNums = null) {
     cargo: w.CARGO,
     weight: w.WEIGHT,
   }))
+
+  if (filterNums) {
+    const existingNums = new Set(activeDraft.wagons.map((w) => w.n))
+    newWagons.forEach((w) => { if (!existingNums.has(w.n)) activeDraft.wagons.push(w) })
+  } else {
+    activeDraft.wagons = newWagons
+  }
 
   activeDraft._summary = {
     req: activeDraft.wagons.length,
