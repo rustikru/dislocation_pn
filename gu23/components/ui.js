@@ -53,7 +53,7 @@ export function showFormField(label, inputHtml, isRequired = false) {
 
 // Уведомления
 export function showToast(message, type) {
-  const icon = type === 'ok' ? '✓ ' : type === 'err' ? '⚠ ' : ''
+  const icon = type === 'ok' ? ' ' : type === 'err' ? ' ' : ''
   const toastHtml = `
     <div class="toast ${type || ''}">
       ${icon}${escapeHtml(message)}
