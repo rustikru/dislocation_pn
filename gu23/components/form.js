@@ -762,7 +762,7 @@ function saveActToServer(status, skipWarning = false) {
     st_to: activeDraft.stationToId || '',
     waybill_no: activeDraft.waybillNumber || '',
     cargo_ref: activeDraft.cargoReference || '',
-    reason: activeDraft.reason,
+    reason: activeDraft.reasonId,
     circumstances: activeDraft.circumstances,
     start_at: formatToDatabaseDate(activeDraft.startAt),
     end_at: formatToDatabaseDate(activeDraft.endAt),
