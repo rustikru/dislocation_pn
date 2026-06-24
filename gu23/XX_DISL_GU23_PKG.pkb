@@ -420,7 +420,7 @@ create or replace package body xx_disl_gu23_pkg as
                 stype
            from xx_disl_gu23_ref_signer
           where active = 'Y'
-            and stype = 'Работник станции ОАО «РЖД»'
+            and stype = 'Работник станции ОАО РЖД'
           order by fio
       ) loop
          l_row.id := r.id;
