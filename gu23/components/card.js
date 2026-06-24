@@ -72,6 +72,13 @@ function showToolbarButtons(act, data) {
     $toolbar.append($annulBtn)
   }
 
+  // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
+  if (act.STATUS !== 'draft') {
+    const $docxBtn = $('<a class="btn" target="_blank">Скачать акт (DOCX)</a>')
+    $docxBtn.attr('href', 'report/report.php?id=' + act.ID)
+    $toolbar.append($docxBtn)
+  }
+
   if (act.STATUS === 'annulled' && act.ANNUL_REASON) {
     $('#annulled-banner-place').html(`
       <div class="banner err"><b>Аннулирован.</b> Причина: ${escapeHtml(act.ANNUL_REASON)}</div>
