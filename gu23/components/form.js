@@ -285,7 +285,7 @@ function loadOpenStartsList() {
   }
 }
 
-function applySelectedStartAct(id) {
+function applySelectedStartAct(id, filterNums = null) {
   const selectedAct = (activeDraft._openStarts || []).find(
     (item) => String(item.ID) === String(id),
   )
@@ -305,7 +305,13 @@ function applySelectedStartAct(id) {
   activeDraft.stationToName = selectedAct.ST_TO || ''
   activeDraft.reasonName = selectedAct.REASON_NAME
   activeDraft.reasonId = selectedAct.REASON_ID
-  activeDraft.wagons = (selectedAct.WAGONS || []).map((w) => ({
+
+  const allWagons = selectedAct.WAGONS || []
+  const wagonsToLoad = filterNums
+    ? allWagons.filter((w) => filterNums.includes(w.WAGON_NO))
+    : allWagons
+
+  activeDraft.wagons = wagonsToLoad.map((w) => ({
     n: w.WAGON_NO,
     owner: w.OWNER,
     kind: w.KIND,
@@ -514,7 +520,7 @@ function findOpenStayByWagons() {
     } else if (ids.length > 1) {
       showToast('Введённые вагоны относятся к разным актам начала.', 'err')
     } else {
-      applySelectedStartAct(ids[0])
+      applySelectedStartAct(ids[0], nums)
       showToast(`Найден открытый акт ${foundActs[ids[0]].ACT_NUMBER}`, 'ok')
     }
   }
