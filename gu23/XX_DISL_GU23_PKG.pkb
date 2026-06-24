@@ -1,798 +1,1747 @@
-import { sendApiRequest } from '../api.js'
-import {
-  references,
-  activeDraft,
-  createNewDraft,
-  setActiveDraft,
-} from '../state.js'
-import { navigateTo } from '../app.js'
-import {
-  escapeHtml,
-  formatToInputDate,
-  formatToDatabaseDate,
-  parseTimeToMilliseconds,
-  calculateDuration,
-  parseWagonsFromText,
-} from '../utils.js'
-import { showFormField, showToast, showConfirmBox } from './ui.js'
-
-export function showForm(container) {
-  if (!activeDraft) createNewDraft('start')
-
-  //console.log('stationToName:', activeDraft.stationToName)
-
-  $(container).html(`
-    <div class="phead">
-      <h1>${activeDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23'}</h1>
-      <div class="spacer"></div>
-    </div>
-    <div class="seg" id="type-switcher" style="margin-bottom:18px"></div>
-    <div class="card" id="form-card">
-      <div class="cardpad" id="form-body"></div>
-      <div class="cardpad" id="form-footer" style="border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end"></div>
-    </div>
-  `)
-
-  showTypeSwitcher()
-  showFormFields()
-  showFormButtons()
-}
-
-function showTypeSwitcher() {
-  if (activeDraft.id) return // При редактировании тип менять нельзя
-
-  const types = [
-    { id: 'start', label: 'Начало простоя' },
-    { id: 'end', label: 'Окончание простоя' },
-    { id: 'other', label: 'Прочий акт' },
-  ]
-
-  const buttonsHtml = types
-    .map(
-      (t) => `
-    <button class="${activeDraft.type === t.id ? 'on' : ''}" data-type="${t.id}">${t.label}</button>
-  `,
-    )
-    .join('')
-
-  $('#type-switcher')
-    .html(buttonsHtml)
-    .find('button')
-    .on('click', function () {
-      createNewDraft($(this).data('type'))
-      showForm($('#view')[0])
-    })
-}
-
-function showFormFields() {
-  const $body = $('#form-body')
-
-  // Особенность для акта Окончания простоя
-  if (activeDraft.type === 'end') {
-    $body.append(`
-      <div class="banner info">Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.</div>
-      <div class="frow">
-        <label>Открытый акт начала простоя <span class="req">*</span></label>
-        <select class="inp" id="select-linked-start">
-          <option value="">— выберите открытый акт начала —</option>
-        </select>
-      </div>
-    `)
-    loadOpenStartsList()
-  }
-
-  // Строка Даты
-  let dateRowHtml = ''
-  if (activeDraft.type === 'start') {
-    dateRowHtml = showFormField(
-      'Дата и время начала простоя',
-      `<input class="inp datetime-inp" id="inp-startAt" placeholder="ддммгг ччмм" value="${activeDraft.startAt}">`,
-      true,
-    )
-  } else if (activeDraft.type === 'end') {
-    dateRowHtml = showFormField(
-      'Дата и время окончания простоя',
-      `<input class="inp datetime-inp" id="inp-endAt" placeholder="ддммгг ччмм" value="${activeDraft.endAt}">`,
-      true,
-    )
-  }
-
-  if (dateRowHtml) {
-    $body.append(`<div class="cols">${dateRowHtml}<div></div></div>`)
-    // Подключаем твою маску/обработку из внешних модулей
-    if (typeof init_date_time_input === 'function') {
-      init_date_time_input($('.datetime-inp'))
-    }
-
-    // Слушатели на дату
-    $('#inp-startAt').on('blur', function () {
-      activeDraft.startAt = validateAndGetDate($(this))
-    })
-    $('#inp-endAt').on('blur', function () {
-      activeDraft.endAt = validateAndGetDate($(this))
-      showDurationBanner()
-    })
-  }
-
-  $body.append('<div id="duration-banner-place"></div>')
-  showDurationBanner()
-
-  // Строка Цех + Станции
-  const deptsHtml = references.departmentsList
-    .map(
-      (d) =>
-        `<option value="${d.CODE}" ${activeDraft.departmentCode === d.CODE ? 'selected' : ''}>${d.CODE}</option>`,
-    )
-    .join('')
-  const stationsHtml = references.stationsList
-    .map(
-      (s) =>
-        `<option value="${s.CODE}" ${activeDraft.stationId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
-    )
-    .join('')
-  const stationsFromHtml = references.stationsFromList
-    .map(
-      (s) =>
-        `<option value="${s.CODE}" ${activeDraft.stationFromId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
-    )
-    .join('')
-
-  $body.append(`
-    <div class="cols">
-      ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
-      ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
-      ${showFormField('Ст. отправления', `<select class="inp" id="sel-stationFrom">${stationsFromHtml}</select>`, true)}
-    </div>
-  `)
-
-  // Привязка селектов к модели
-  $('#sel-dept').on('change', function () {
-    activeDraft.departmentCode = this.value
-  })
-  $('#sel-station').on('change', function () {
-    activeDraft.stationId = this.value
-  })
-  $('#sel-stationFrom').on('change', function () {
-    activeDraft.stationFromId = this.value
-  })
-
-  // Строка Назначение (Autocomplete) + Накладная + Груз
-  const cargosHtml = ['']
-    .concat(references.cargosList.map((c) => c.NAME || c.CODE))
-    .map(
-      (c) =>
-        `<option value="${c}" ${activeDraft.cargoReference === c ? 'selected' : ''}>${c || '— выберите —'}</option>`,
-    )
-    .join('')
-
-  $body.append(`
-    <div class="cols">
-      ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
-      
-      ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`, true)}
-      
-    </div>
-  `)
-
-  initStationAutocomplete()
-  $('#inp-waybill').on('input', function () {
-    activeDraft.waybillNumber = this.value
-  })
-  $('#sel-cargo').on('change', function () {
-    activeDraft.cargoReference = this.value
-  })
-
-  // Причина и обстоятельства
-  const reasonsHtml = [
-    //  добавляем пустой вариант
-    `<option value="" ${!activeDraft.reasonId ? 'selected' : ''}>— выберите —</option>`,
-
-    ...references.reasonsList.map((r) => {
-      const label = r.NAME || r.CODE
-      const isSelected = activeDraft.reasonId === r.CODE ? 'selected' : ''
-      return `<option value="${r.CODE}" ${isSelected}>${label}</option>`
-    }),
-  ].join('')
-
-  $body.append(`
-    ${showFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
-    ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
-    ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
-
-  $('#sel-reason').on('change', function () {
-    activeDraft.reason = this.value
-  })
-  $('#txt-circumstances').on('change', function () {
-    activeDraft.circumstances = this.value
-  })
-
-  // Вагоны
-  $body.append(`
-    <div style="height:6px"></div>
-    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Вагоны</label>
-    <textarea class="inp" id="txt-wagons" style="min-height:56px" placeholder="Введите номера вагонов: через запятую, пробел, построчно…"></textarea>
-    <div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0" id="wagon-actions"></div>
-    <div id="wagon-summary-place"></div>
-    <div id="wagons-table-place"></div>
-    <div id="signers-container"></div>
-  `)
-
-  showWagonActions()
-  showWagonsTable()
-}
-
-function validateAndGetDate($inp) {
-  const value = $inp.val()
-  const isValid =
-    /^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/.test(value) &&
-    !$inp.hasClass('red_bckg_color')
-  return isValid ? value : ''
-}
-
-function showDurationBanner() {
-  const $place = $('#duration-banner-place')
-  if (activeDraft.type !== 'end') return $place.empty()
-
-  if (!activeDraft.startAt || !activeDraft.endAt) {
-    $place.html(
-      '<div class="banner info">Длительность простоя будет рассчитана автоматически по дате начала и окончания.</div>',
-    )
-    return
-  }
-
-  const startMs = parseTimeToMilliseconds(activeDraft.startAt)
-  const endMs = parseTimeToMilliseconds(activeDraft.endAt)
-
-  if (endMs < startMs) {
-    $place.html(
-      '<div class="banner err">Дата окончания меньше даты начала — сохранение будет заблокировано.</div>',
-    )
-  } else if (endMs === startMs) {
-    $place.html(
-      '<div class="banner info">Длительность простоя составляет 0 часов (даты совпадают).</div>',
-    )
-  } else {
-    const duration = calculateDuration(startMs, endMs)
-    const durationText = `${duration.days} дн. ${duration.hours} ч.`
-    const totalHoursText = `${(Math.round(duration.totalHours * 10) / 10).toLocaleString('ru')} ч.`
-    $place.html(
-      `<div class="banner info">Расчёт простоя: <b>${durationText}</b>, всего ${totalHoursText} · для претензий: ${duration.calendarDays} кал. дн.</div>`,
-    )
-  }
-}
-
-function loadOpenStartsList() {
-  const proceedLoading = (list) => {
-    activeDraft._openStarts = list || []
-    const $select = $('#select-linked-start')
-    activeDraft._openStarts.forEach((act) => {
-      const wagonNumbers = (act.WAGONS || []).map((w) => w.WAGON_NO).join(', ')
-      const isSelected = String(activeDraft.linkedStartId) === String(act.ID)
-      $select.append(
-        `<option value="${act.ID}" ${isSelected ? 'selected' : ''}>${act.ACT_NUMBER} · ${wagonNumbers} · ${act.REASON_NAME}</option>`,
-      )
-    })
-
-    $select.on('change', function () {
-      applySelectedStartAct(this.value)
-    })
-  }
-
-  if (activeDraft._openStarts == null) {
-    sendApiRequest('gu23_get_open_starts').done(proceedLoading)
-  } else {
-    proceedLoading(activeDraft._openStarts)
-  }
-}
-
-function applySelectedStartAct(id) {
-  const selectedAct = (activeDraft._openStarts || []).find(
-    (item) => String(item.ID) === String(id),
-  )
-  if (!selectedAct) {
-    activeDraft.linkedStartId = ''
-    return
-  }
-
-  activeDraft.linkedStartId = selectedAct.ID
-  activeDraft.linkedStartNumber = selectedAct.ACT_NUMBER
-  activeDraft.startAt = formatToInputDate(selectedAct.START_AT)
-  activeDraft.departmentCode = selectedAct.CEX
-  activeDraft.stationId = String(selectedAct.STATION_ID || '')
-  activeDraft.stationFromId = String(selectedAct.ST_FROM_ID || '')
-  activeDraft.stationFromName = selectedAct.ST_FROM || ''
-  activeDraft.stationToId = String(selectedAct.ST_TO_ID || '')
-  activeDraft.stationToName = selectedAct.ST_TO || ''
-  activeDraft.reasonName = selectedAct.REASON_NAME
-  activeDraft.reasonID = selectedAct.REASON_ID
-  activeDraft.wagons = (selectedAct.WAGONS || []).map((w) => ({
-    n: w.WAGON_NO,
-    owner: w.OWNER,
-    kind: w.KIND,
-    from: w.ST_FROM,
-    to: w.ST_TO,
-    cargo: w.CARGO,
-    weight: w.WEIGHT,
-  }))
-
-  activeDraft._summary = {
-    req: activeDraft.wagons.length,
-    found: activeDraft.wagons.length,
-    text: `Подтянуты данные из акта начала ${selectedAct.ACT_NUMBER}.`,
-  }
-
-  showForm($('#view')[0])
-}
-
-function initStationAutocomplete() {
-  const $inp = $('#auto-stationTo')
-  const $dropdown = $('#auto-dropdown')
-  let timer = null
-
-  $inp.on('input', function () {
-    const value = $(this).val().trim()
-    clearTimeout(timer)
-    if (value.length < 3) {
-      $dropdown.hide().empty()
-      if (!value) {
-        activeDraft.stationToId = ''
-        activeDraft.stationToName = ''
-      }
-      return
-    }
-
-    timer = setTimeout(() => {
-      sendApiRequest('gu23_search_station', { q: value }).done((rows) => {
-        $dropdown.empty()
-        const stations = rows || []
-        if (!stations.length) return $dropdown.hide()
-
-        stations.forEach((row) => {
-          const $item = $(
-            `<div style="padding:8px 12px;cursor:pointer;font-size:13px">${row.NAME}</div>`,
-          )
-          $item.on('click', () => {
-            $inp.val(row.NAME)
-            activeDraft.stationToId = String(row.CODE)
-            activeDraft.stationToName = row.NAME
-            $dropdown.hide()
-          })
-          $dropdown.append($item)
-        })
-        $dropdown.show()
-      })
-    }, 300)
-  })
-
-  $inp.on('blur', () => setTimeout(() => $dropdown.hide(), 200))
-}
-
-function showWagonActions() {
-  const $actions = $('#wagon-actions').empty()
-
-  if (activeDraft.type === 'start' || activeDraft.type === 'other') {
-    const $btn = $(
-      '<button class="btn sm primary">Заполнить данные из Дислокации</button>',
-    )
-    $btn.on('click', () => loadWagonsDataFromDislocation())
-    $actions.append($btn)
-
-    const $btnClear = $(
-      '<button class="btn sm primary">Очистить таблицу</button>',
-    )
-    const $wtbl = $('#wtbl').empty()
-    $btnClear.on('click', () => ClearTableDislocation())
-    $wtbl.append($btnClear)
-  }
-
-  if (activeDraft.type === 'end') {
-    const $btn = $('<button class="btn sm">Найти открытый простой</button>')
-    $btn.on('click', () => findOpenStayByWagons())
-    $actions.append($btn)
-  }
-
-  if (activeDraft.wagons.length) {
-    const $btnClear = $('<button class="btn sm">Очистить таблицу</button>')
-    $btnClear.on('click', () => {
-      activeDraft.wagons = []
-      activeDraft._summary = null
-      showWagonActions()
-      showWagonsTable()
-    })
-    $actions.append($btnClear)
-  }
-}
-
-function loadWagonsDataFromDislocation() {
-  const rawText = $('#txt-wagons').val()
-  const inputNums = parseWagonsFromText(rawText)
-
-  // Синхронизируем поле накладной из DOM до перерисовки
-  activeDraft.waybillNumber = $('#inp-waybill').val() || ''
-  if (!inputNums.length && !activeDraft.waybillNumber)
-    return showToast('Введите номера вагонов или номер накладной!', 'err')
-  sendApiRequest('gu23_get_wagon_info', {
-    wagons: JSON.stringify(inputNums),
-    waybill_no: activeDraft.waybillNumber,
-    dest_station: activeDraft.stationToName || '',
-  }).done((rows) => {
-    const records = rows || []
-    let foundCount = 0
-    //activeDraft.wagons = []
-    records.forEach((row) => {
-      if (String(row.FOUND) === '1') {
-        foundCount++
-        activeDraft.wagons.push({
-          n: String(row.WAGON_NO),
-          owner: row.OWNER,
-          kind: row.KIND,
-          from: row.ST_FROM,
-          to: row.ST_TO,
-          cargo: row.CARGO,
-          weight: row.WEIGHT,
-        })
-      }
-    })
-
-    activeDraft._summary = {
-      req: inputNums.length,
-      found: foundCount,
-      text: `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}.`,
-    }
-
-    showToast(
-      `Получено ${foundCount} из ${inputNums.length}`,
-      foundCount ? 'ok' : 'err',
-    )
-    $('#txt-wagons').val('')
-    showForm($('#view')[0])
-  })
-}
-
-function findOpenStayByWagons() {
-  const rawText = $('#txt-wagons').val()
-  const nums = parseWagonsFromText(rawText)
-  if (!nums.length) return showToast('Введите номер вагона', 'err')
-
-  const runSearch = () => {
-    const foundActs = {}
-    nums.forEach((num) => {
-      ;(activeDraft._openStarts || []).forEach((act) => {
-        if ((act.WAGONS || []).some((w) => w.WAGON_NO === num))
-          foundActs[act.ID] = act
-      })
-    })
-
-    const ids = Object.keys(foundActs)
-    if (ids.length === 0) {
-      showToast('Открытый простой по этим вагонам не найден', 'err')
-    } else if (ids.length > 1) {
-      showToast('Введённые вагоны относятся к разным актам начала.', 'err')
-    } else {
-      applySelectedStartAct(ids[0])
-      showToast(`Найден открытый акт ${foundActs[ids[0]].ACT_NUMBER}`, 'ok')
-    }
-  }
-
-  if (activeDraft._openStarts == null) {
-    sendApiRequest('gu23_get_open_starts').done((list) => {
-      activeDraft._openStarts = list || []
-      runSearch()
-    })
-  } else {
-    runSearch()
-  }
-}
-
-function ClearTableDislocation() {
-  $('#wtbl').empty()
-}
-
-function showWagonsTable() {
-  const $place = $('#wagons-table-place').empty()
-  const $summaryPlace = $('#wagon-summary-place').empty()
-
-  if (activeDraft._summary) {
-    const summaryClass =
-      activeDraft._summary.found < activeDraft._summary.req ? 'warn' : 'ok'
-    $summaryPlace.html(
-      `<div class="banner ${summaryClass}">${activeDraft._summary.text}</div>`,
-    )
-  }
-
-  if (!activeDraft.wagons.length) {
-    $place.html(
-      '<div class="banner info">Вагоны не добавлены. Введите номера выше и нажмите «Заполнить данные из Дислокации».</div>',
-    )
-    showSignersFields()
-    return
-  }
-
-  const isEndType = activeDraft.type === 'end'
-  const rowsHtml = activeDraft.wagons
-    .map((wagon, idx) => {
-      let durationText = '—'
-      if (isEndType && activeDraft.startAt && activeDraft.endAt) {
-        const startMs = parseTimeToMilliseconds(activeDraft.startAt)
-        const endMs = parseTimeToMilliseconds(activeDraft.endAt)
-        if (endMs >= startMs) {
-          const dur = calculateDuration(startMs, endMs)
-          durationText = `${dur.days} дн. ${dur.hours} ч.`
-        }
-      }
-
-      return `
-      <tr>
-        <td class="wn">${wagon.n}</td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.owner || '—'}</span></td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.kind || '—'}</span></td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.from || '—'}</span></td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.to || '—'}</span></td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.cargo || '—'}</span></td>
-        ${isEndType ? `<td class="dur">${durationText}</td>` : ''}
-        <td><button class="delx" data-idx="${idx}">×</button></td>
-      </tr>
-    `
-    })
-    .join('')
-
-  const tableHtml = `
-    <div style="overflow:auto;border:1px solid var(--line);border-radius:7px">
-      <table class="wtbl">
-        <thead>
-          <tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th>${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
-        </thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>
-    <div class="hint" style="margin-top:6px">Вагонов в акте: ${activeDraft.wagons.length}.</div>
-  `
-
-  $place
-    .html(tableHtml)
-    .find('.delx')
-    .on('click', function () {
-      activeDraft.wagons.splice($(this).data('idx'), 1)
-      showWagonsTable()
-    })
-
-  showSignersFields()
-}
-
-function showSignersFields() {
-  const $container = $('#signers-container')
-    .empty()
-    .append(
-      '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
-    )
-  const countNeeded = activeDraft.type === 'other' ? 2 : 3
-
-  for (let i = 0; i < countNeeded; i++) {
-    let signersList = []
-    let helpText = ''
-
-    if (activeDraft.type === 'other') {
-      signersList = references.signersOwnList || []
-      helpText = i === 0 ? 'Представитель предприятия' : 'Второй подписант'
-    } else {
-      if (i < 2) {
-        signersList = references.signersOwnList || []
-        helpText = 'Работник предприятия'
-      } else {
-        signersList = references.signersRzdList || []
-        helpText = 'Работник станции ОАО «РЖД»'
-      }
-    }
-
-    const signer = activeDraft.signers[i]
-    const isManual = signer && signer.manual === true
-
-    const toggleHtml = `
-      <div style="display:flex;gap:6px;margin-bottom:6px">
-        <button type="button" class="btn sm signer-mode-btn ${!isManual ? 'primary' : ''}" data-slot="${i}" data-mode="ref">Из справочника</button>
-        <button type="button" class="btn sm signer-mode-btn ${isManual ? 'primary' : ''}" data-slot="${i}" data-mode="manual">Вручную</button>
-      </div>
-    `
-
-    let inputHtml = ''
-    if (isManual) {
-      inputHtml = `
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px">
-          <input class="inp signer-fio" data-slot="${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
-          <input class="inp signer-post" data-slot="${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
-          <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
-        </div>
-      `
-    } else {
-      const optionsHtml = signersList
-        .map(
-          (s) =>
-            `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
-        )
-        .join('')
-      inputHtml = `
-        <select class="inp signer-select" data-slot="${i}">
-          <option value="">— выберите —</option>
-          ${optionsHtml}
-        </select>
-      `
-    }
-
-    $container.append(
-      showFormField(
-        `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${helpText}</span>`,
-        `<div>${toggleHtml}${inputHtml}</div>`,
+create or replace package body xx_disl_gu23_pkg as
+   c_dtf constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
+   c_us  constant char(1) := chr(31);                -- разделитель полей
+   c_rs  constant char(1) := chr(30);              -- разделитель записей
+
+    -- ----------------------------------------------------------------
+    -- вспомогательные
+    -- ----------------------------------------------------------------
+   procedure log_new (
+      p_function_name in varchar2,
+      p_text          in varchar2
+   ) is
+      pragma autonomous_transaction;
+   begin
+      insert into xx_disl_log_new (
+         function_name,
+         text
+      ) values ( p_function_name,
+                 p_text );
+      commit;
+   end;
+
+   function g_user_name (
+      p_user_id in number
+   ) return varchar2 is
+      v varchar2(256);
+   begin
+      if p_user_id is null then
+         return null;
+      end if;
+      select full_name
+        into v
+        from xx_disl_users
+       where id = p_user_id;
+
+      return v;
+   exception
+      when no_data_found then
+         return null;
+   end;
+
+   function fnc_boolean_num (
+      p_bool in boolean
+   ) return number is
+   begin
+      if p_bool then
+         return 1;
+      else
+         return 0;
+      end if;
+      return 0;
+   end;
+
+    -- n-е поле строки, разделители CHR(31)
+   function g_field (
+      p_line in varchar2,
+      p_idx  in pls_integer
+   ) return varchar2 is
+      v_from pls_integer := 1;
+      v_to   pls_integer;
+      v_i    pls_integer := 1;
+   begin
+      loop
+         v_to := instr(
+            p_line,
+            c_us,
+            1,
+            v_i
+         );
+         if v_i = p_idx then
+            if v_to = 0 then
+               return substr(
+                  p_line,
+                  v_from
+               );
+            else
+               return substr(
+                  p_line,
+                  v_from,
+                  v_to - v_from
+               );
+            end if;
+         end if;
+
+         exit when v_to = 0;
+         v_from := v_to + 1;
+         v_i := v_i + 1;
+      end loop;
+
+      return null;
+   end;
+
+   function g_to_date (
+      p_str in varchar2
+   ) return date is
+   begin
+      if p_str is null
+      or trim(p_str) is null then
+         return null;
+      end if;
+
+        -- принимаем 'YYYY-MM-DD HH24:MI' или с секундами; берём до минут
+      return to_date ( substr(
+         replace(
+            p_str,
+            'T',
+            ' '
+         ),
+         1,
+         16
       ),
-    )
-  }
+      'YYYY-MM-DD HH24:MI' );
+   end;
 
-  $('.signer-mode-btn').on('click', function () {
-    const slot = $(this).data('slot')
-    const mode = $(this).data('mode')
-    const current = activeDraft.signers[slot]
-    if (mode === 'manual') {
-      activeDraft.signers[slot] = {
-        id: null,
-        fio: current ? current.fio : '',
-        post: current ? current.post : '',
-        org: current ? current.org : '',
-        manual: true,
-      }
-    } else {
-      activeDraft.signers[slot] = null
-    }
-    showSignersFields()
-  })
+    -- следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
+   function g_next_number (
+      p_cex_id in number
+   ) return varchar2 is
+      v_yr       number := to_number ( to_char(
+         sysdate,
+         'YYYY'
+      ) );
+      v_cnt      number;
+      v_cex_code varchar2(32);
+   begin
+      select code
+        into v_cex_code
+        from xx_disl_gu23_ref_cex
+       where id = p_cex_id;
 
-  $('.signer-select').on('change', function () {
-    const slot = $(this).data('slot')
-    const value = this.value
-    const pool =
-      activeDraft.type === 'other'
-        ? references.signersOwnList
-        : slot < 2
-          ? references.signersOwnList
-          : references.signersRzdList
-    const matched = pool.find((x) => String(x.ID) === value)
-    activeDraft.signers[slot] = matched
-      ? {
-          id: matched.ID,
-          fio: matched.FIO,
-          post: matched.POST,
-          org: matched.ORG,
-          manual: false,
-        }
-      : null
-  })
+      update xx_disl_gu23_counter
+         set
+         cnt = cnt + 1
+       where cex_id = p_cex_id
+         and yr = v_yr returning cnt into v_cnt;
 
-  $('.signer-fio, .signer-post, .signer-org').on('input', function () {
-    const slot = $(this).data('slot')
-    if (!activeDraft.signers[slot])
-      activeDraft.signers[slot] = {
-        id: null,
-        fio: '',
-        post: '',
-        org: '',
-        manual: true,
-      }
-    if ($(this).hasClass('signer-fio'))
-      activeDraft.signers[slot].fio = this.value
-    else if ($(this).hasClass('signer-post'))
-      activeDraft.signers[slot].post = this.value
-    else activeDraft.signers[slot].org = this.value
-  })
-}
+      if sql%rowcount = 0 then
+         v_cnt := 1;
+         insert into xx_disl_gu23_counter (
+            id,
+            cex_id,
+            yr,
+            cnt
+         ) values ( xx_disl_gu23_counter_seq.nextval,
+                    p_cex_id,
+                    v_yr,
+                    v_cnt );
+      end if;
 
-function showFormButtons() {
-  $('#form-footer').html(`
-    <button class="btn ghost" id="btn-cancel">Отмена</button>
-    <button class="btn" id="btn-saveDraft">Сохранить черновик</button>
-    <button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>
-  `)
+      return 'ГУ23-'
+             || v_cex_code
+             || '-'
+             || v_yr
+             || '-'
+             || lpad(
+         v_cnt,
+         6,
+         '0'
+      );
+   end;
 
-  $('#btn-cancel').on('click', () => {
-    setActiveDraft(null)
-    navigateTo('archive')
-  })
-  $('#btn-saveDraft').on('click', () => saveActToServer('draft'))
-  $('#btn-saveActive').on('click', () => saveActToServer('active'))
-}
+    -- превращаем строку представления акта в RECORD
+   function g_act_row (
+      a in xx_disl_gu23_act_v%rowtype
+   ) return xx_disl_gu23_act_row is
+      o xx_disl_gu23_act_row;
+   begin
+      o.id := a.id;
+      o.act_number := a.act_number;
+      o.act_type := a.act_type;
+      o.status := a.status;
+      o.cex_id := a.cex_id;
+      o.cex := a.cex_code;
+      o.station_id := a.station_id;
+      o.station := a.station;
+      o.st_from_id := a.st_from_id;
+      o.st_from := a.st_from;
+      o.st_to_id := a.st_to_id;
+      o.st_to := a.st_to;
+      o.cargo_ref := a.cargo_ref;
+      o.reason_id := a.reason_id;
+      o.reason_name := a.reason_name;
+      o.circumstances := a.circumstances;
+      o.start_at := to_char(
+         a.start_at,
+         c_dtf
+      );
+      o.end_at := to_char(
+         a.end_at,
+         c_dtf
+      );
+      o.dur_days := a.dur_days;
+      o.dur_hours := a.dur_hours;
+      o.dur_total_h := a.dur_total_h;
+      o.cal_days := a.cal_days;
+      o.linked_start_id := a.linked_start_id;
+      o.linked_start_number := a.linked_start_number;
+      o.wagon_cnt := a.wagon_cnt;
+      o.file_cnt := a.file_cnt;
+      o.annul_reason := a.annul_reason;
+      o.created_at := to_char(
+         a.created_at,
+         c_dtf
+      );
+      o.created_by := g_user_name(a.created_by);
+      o.modified_at := to_char(
+         a.modified_at,
+         c_dtf
+      );
+      return o;
+   end;
 
-function validateForm(checkSigners) {
-  const errors = []
-  if (!activeDraft.departmentCode) errors.push('Не указан цех')
-  if (!activeDraft.reasonId) errors.push('Не указана причина составления')
-  if (!String(activeDraft.circumstances).trim())
-    errors.push('Не заполнены обстоятельства')
-  if (
-    !activeDraft.wagons.length &&
-    !activeDraft.cargoReference &&
-    !activeDraft.waybillNumber
-  )
-    errors.push('Добавьте вагоны или укажите груз / номер накладной')
-  if (!activeDraft.stationId) errors.push('Не указана ст. составления')
-  if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
-  if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
+    -- ----------------------------------------------------------------
+    -- справочники
+    -- ----------------------------------------------------------------
+   function gu23_get_ref_cex return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select id,
+                code,
+                name
+           from xx_disl_gu23_ref_cex
+          where active = 'Y'
+          order by name
+      ) loop
+         l_row.id := r.id;
+         l_row.code := r.code;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
 
-  if (activeDraft.type === 'start' && !activeDraft.startAt)
-    errors.push('Не указана дата начала простоя')
-  if (activeDraft.type === 'end') {
-    if (!activeDraft.linkedStartId)
-      errors.push('Не выбран открытый акт начала простоя')
-    if (!activeDraft.endAt) errors.push('Не указана дата окончания простоя')
-    if (
-      activeDraft.startAt &&
-      activeDraft.endAt &&
-      parseTimeToMilliseconds(activeDraft.endAt) <
-        parseTimeToMilliseconds(activeDraft.startAt)
-    ) {
-      errors.push('Дата окончания меньше даты начала')
-    }
-  }
+      return;
+   end;
 
-  if (checkSigners) {
-    const needed = activeDraft.type === 'other' ? 2 : 3
-    const filled = activeDraft.signers.filter((s) => {
-      if (!s || !s.fio || !s.fio.trim()) return false
-      if (s.manual) return !!(s.post && s.post.trim() && s.org && s.org.trim())
-      return true
-    }).length
-    if (filled < needed)
-      errors.push(`Указано подписантов ${filled} из ${needed}`)
-  }
-  return errors
-}
+   function gu23_get_ref_reason (
+      p_kind in varchar2 default null
+   ) return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select id,
+                name
+           from xx_disl_gu23_ref_reason
+          where active = 'Y'
+            and ( p_kind is null
+             or act_kind in ( 'any',
+                              p_kind ) )
+          order by name
+      ) loop
+         l_row.code := to_char(r.id);
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
 
-function saveActToServer(status, skipWarning = false) {
-  const errors =
-    status === 'active'
-      ? validateForm(true)
-      : activeDraft.departmentCode
-        ? []
-        : ['Не указан цех']
-  if (errors.length) return showToast(errors[0], 'err')
+      return;
+   end;
 
-  const payload = {
-    id: activeDraft.id || 0,
-    type: activeDraft.type,
-    status: status,
-    cex: activeDraft.departmentCode,
-    station: activeDraft.stationId || '',
-    st_from: activeDraft.stationFromId || '',
-    st_to: activeDraft.stationToId || '',
-    waybill_no: activeDraft.waybillNumber || '',
-    cargo_ref: activeDraft.cargoReference || '',
-    reason: activeDraft.reasonId,
-    circumstances: activeDraft.circumstances,
-    start_at: formatToDatabaseDate(activeDraft.startAt),
-    end_at: formatToDatabaseDate(activeDraft.endAt),
-    linked_start_id: activeDraft.linkedStartId || '',
-    wagons: JSON.stringify(activeDraft.wagons),
-    signers: JSON.stringify(activeDraft.signers.filter(Boolean)),
-    force: skipWarning ? 'Y' : 'N',
-  }
+    -- ст. составления — собственная станция предприятия (Углеуральская)
+   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select station_id,
+                name
+           from xx_disl_stations
+                  -- where short_name = 'Вод'
+          order by name
+      ) loop
+         l_row.code := r.station_id;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
 
-  sendApiRequest('gu23_save_act', payload).done((response) => {
-    if (response && response.ok) {
-      showToast(
-        status === 'draft'
-          ? 'Черновик сохранён'
-          : `Акт зарегистрирован ${response.number ? ', № ' + response.number : ''}`,
-        'ok',
+      return;
+   end;
+
+    -- ст. отправления
+   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select st_code as st_code,
+                st_name as name
+           from xx_etw.xx_etw_station_bi_v
+          where st_name like 'УГЛЕУ%'
+          order by name
+      ) loop
+         l_row.code := r.st_code;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- ст. назначения —
+   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select st_code as st_code,
+                st_name as name
+           from xx_etw.xx_etw_station_bi_v
+          order by name
+      ) loop
+         l_row.code := r.st_code;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- (ст. составления)
+   function gu23_get_ref_station return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select station_id,
+                name
+           from xx_disl_stations
+                  --where short_name = 'Угл'
+          order by name
+      ) loop
+         l_row.id := r.station_id;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select fr_code_etsng as code,
+                fr_name as name
+           from etw_nsi_freight
+          where trunc(sysdate) between recdatebegin and recdateend
+            and ( fr_name like upper('%Метанол%')
+             or fr_name like upper('%Карбамид%')
+             or fr_name like upper('%Меламин%') )
+      ) loop
+         l_row.code := r.name;
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- подписанты — работники предприятия (реальные пользователи)
+   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select du.id,
+                du.full_name as fio,
+                null as post,
+                dnt.name as org,
+                null as unit,
+                'Работник предприятия' as stype
+           from xx_disl_users du,
+                xx_disl_enterprise dnt
+          where du.open = 'Y'
+            and du.enterprise = dnt.id
+          order by du.full_name
+      ) loop
+         l_row.id := r.id;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := r.unit;
+         l_row.stype := r.stype;
+         l_row.ord_no := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- подписанты — работники станции ОАО «РЖД» (локальный справочник)
+   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select id,
+                fio,
+                post,
+                org,
+                unit,
+                stype
+           from xx_disl_gu23_ref_signer
+          where active = 'Y'
+            and stype = 'Работник станции ОАО «РЖД»'
+          order by fio
+      ) loop
+         l_row.id := r.id;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := r.unit;
+         l_row.stype := r.stype;
+         l_row.ord_no := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- старое имя оставлено для обратной совместимости (= работники предприятия)
+   function gu23_get_ref_signer return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select du.id,
+                du.full_name as fio,
+                null as post,
+                dnt.name as org,
+                null as unit,
+                null as stype
+           from xx_disl_users du,
+                xx_disl_enterprise dnt
+          where du.open = 'Y'
+            and du.enterprise = dnt.id
+          order by du.full_name
+      ) loop
+         l_row.id := r.id;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := r.unit;
+         l_row.stype := r.stype;
+         l_row.ord_no := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+    -- ----------------------------------------------------------------
+    -- акты (чтение)
+    -- ----------------------------------------------------------------
+   function gu23_get_acts (
+      p_q      in varchar2 default null,
+      p_type   in varchar2 default null,
+      p_status in varchar2 default null,
+      p_cex    in varchar2 default null
+   ) return xx_disl_gu23_act_tab
+      pipelined
+   is
+      v_q varchar2(512) := lower(p_q);
+   begin
+      for a in (
+         select *
+           from xx_disl_gu23_act_v a
+          where ( p_type is null
+             or a.act_type = p_type )
+            and ( p_status is null
+             or a.status = p_status )
+            and ( p_cex is null
+             or a.cex_id = to_number(p_cex) )
+            and ( v_q is null
+         or lower(a.act_number) like '%'
+                  || v_q
+                  || '%'
+         or lower(a.reason_name) like '%'
+                                      || v_q
+                                      || '%'
+             or exists (
+            select 1
+              from xx_disl_gu23_act_row r
+             where r.act_id = a.id
+               and r.wagon_no like '%'
+                                   || p_q
+                                   || '%'
+         ) )
+          order by a.created_at desc,
+                   a.id desc
+      ) loop
+         pipe row ( g_act_row(a) );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_act (
+      p_id in number
+   ) return xx_disl_gu23_act_tab
+      pipelined
+   is
+   begin
+      for a in (
+         select *
+           from xx_disl_gu23_act_v a
+          where a.id = p_id
+      ) loop
+         pipe row ( g_act_row(a) );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_rows (
+      p_act_id in number
+   ) return xx_disl_gu23_row_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_row;
+   begin
+      for r in (
+         select *
+           from xx_disl_gu23_act_row
+          where act_id = p_act_id
+          order by id
+      ) loop
+         l_row.id := r.id;
+         l_row.act_id := r.act_id;
+         l_row.wagon_no := r.wagon_no;
+         l_row.owner := r.owner;
+         l_row.kind := r.kind;
+         l_row.st_from := r.st_from;
+         l_row.st_to := r.st_to;
+         l_row.cargo := r.cargo;
+         l_row.weight := r.weight;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_files (
+      p_act_id in number
+   ) return xx_disl_gu23_file_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_file_row;
+   begin
+      for f in (
+         select *
+           from xx_disl_gu23_file
+          where act_id = p_act_id
+          order by id
+      ) loop
+         l_row.id := f.id;
+         l_row.act_id := f.act_id;
+         l_row.file_name := f.file_name;
+         l_row.file_ext := f.file_ext;
+         l_row.mime_type := f.mime_type;
+         l_row.real_path := f.real_path;
+         l_row.created_at := to_char(
+            f.created_at,
+            c_dtf
+         );
+         l_row.created_by := g_user_name(f.created_by);
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_signers (
+      p_act_id in number
+   ) return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for s in (
+         select *
+           from xx_disl_gu23_signer
+          where act_id = p_act_id
+          order by ord_no,
+                   id
+      ) loop
+         l_row.id := s.id;
+         l_row.signer_ref_id := s.signer_ref_id;
+         l_row.fio := s.fio;
+         l_row.post := s.post;
+         l_row.org := s.org;
+         l_row.unit := null;
+         l_row.stype := null;
+         l_row.ord_no := s.ord_no;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_hist (
+      p_act_id in number
+   ) return xx_disl_gu23_hist_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_hist_row;
+   begin
+      for h in (
+         select *
+           from xx_disl_gu23_hist
+          where act_id = p_act_id
+          order by ts desc,
+                   id desc
+      ) loop
+         l_row.id := h.id;
+         l_row.act_id := h.act_id;
+         l_row.ts := to_char(
+            h.ts,
+            c_dtf
+         );
+         l_row.usr := g_user_name(h.usr);
+         l_row.txt := h.txt;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_open_starts return xx_disl_gu23_act_tab
+      pipelined
+   is
+   begin
+      for a in (
+         select *
+           from xx_disl_gu23_act_v a
+          where a.act_type = 'start'
+            and a.status = 'active'
+          order by a.start_at
+      ) loop
+         pipe row ( g_act_row(a) );
+      end loop;
+
+      return;
+   end;
+
+    -- ещё открытые вагоны акта начала (не закрытые действующим актом окончания)
+   function gu23_get_open_rows (
+      p_start_id in number
+   ) return xx_disl_gu23_row_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_row;
+   begin
+      for r in (
+         select *
+           from xx_disl_gu23_act_row sr
+          where sr.act_id = p_start_id
+            and not exists (
+            select 1
+              from xx_disl_gu23_act e,
+                   xx_disl_gu23_act_row er
+             where er.act_id = e.id
+               and e.act_type = 'end'
+               and e.status = 'active'
+               and e.linked_start_id = p_start_id
+               and er.wagon_no = sr.wagon_no
+         )
+          order by sr.id
+      ) loop
+         l_row.id := r.id;
+         l_row.act_id := r.act_id;
+         l_row.wagon_no := r.wagon_no;
+         l_row.owner := r.owner;
+         l_row.kind := r.kind;
+         l_row.st_from := r.st_from;
+         l_row.st_to := r.st_to;
+         l_row.cargo := r.cargo;
+         l_row.weight := r.weight;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
+   function gu23_get_by_wagon (
+      p_wagon in varchar2
+   ) return xx_disl_gu23_act_tab
+      pipelined
+   is
+   begin
+      for a in (
+         select *
+           from xx_disl_gu23_act_v a
+          where exists (
+            select 1
+              from xx_disl_gu23_act_row r
+             where r.act_id = a.id
+               and r.wagon_no = p_wagon
+         )
+          order by a.created_at desc,
+                   a.id desc
+      ) loop
+         pipe row ( g_act_row(a) );
+      end loop;
+
+      return;
+   end;
+
+    -- ----------------------------------------------------------------
+    -- 
+    -- Данные из дислокации (внешняя ил по накладные из этрана)
+    -- p_waybill_no — по накладной
+    -- p_wagons - список вагонов(перечисление)
+    -- p_dest_station - станция назначения
+    -- ----------------------------------------------------------------
+   function gu23_get_wagon_info (
+      p_wagons       in clob,
+      p_waybill_no   in varchar2 default null,
+      p_dest_station in varchar2 default null
+   ) return xx_disl_gu23_wagon_tab
+      pipelined
+   is
+      l_function varchar2(150) := 'gu23_get_wagon_info';
+      v_len      pls_integer := nvl(
+         dbms_lob.getlength(p_wagons),
+         0
+      );
+      v_from     pls_integer := 1;
+      v_to       pls_integer;
+      v_no       varchar2(32);
+      l_row      xx_disl_gu23_wagon_row;
+
+    -- Вынесем тяжелый подзапрос в CTE (WITH) для читаемости и производительности
+      cursor c_dislocation (
+         v_w_no         varchar2,
+         v_waybill_no   varchar2,
+         v_dest_station varchar2
+      ) is
+      with max_dislocation as (
+         select max(report_dt) as max_dt,
+                type_reference
+           from xx_dislocation_rjd
+          group by type_reference
       )
-      setActiveDraft(null)
-      navigateTo('card', response.id)
-    } else {
-      const msg = (response && response.msg) || 'Ошибка сохранения'
-      if (/уже есть открытый акт начала/.test(msg)) {
-        showConfirmBox(
-          'Дубль открытого простоя',
-          `${msg}. Зарегистрировать акт?`,
-          () => saveActToServer(status, true),
-        )
-      } else {
-        showToast(msg, 'err')
-      }
-    }
-  })
-}
+      select ei.wagon_no,
+             ei.cargo_name,
+             ei.wagon_type_code,
+             ei.owner,
+             ei.depart_station,
+             ei.dest_station
+        from xx_dislocation_rjd ei
+        join max_dislocation md
+      on ei.report_dt = md.max_dt
+         and ei.type_reference = md.type_reference
+       where ei.wagon_no = nvl(
+            v_w_no,
+            ei.wagon_no
+         )
+         and upper(ei.dest_station) like '%'
+                                         || upper(v_dest_station)
+                                         || '%'
+         and ei.waybill_no = nvl(
+         v_waybill_no,
+         ei.waybill_no
+      );
+
+   begin
+    -- Очищаем строку перед использованием
+      l_row.weight := null; 
+      --log_new(l_function,'p_waybill_no='||p_waybill_no);
+      --log_new(l_function,'p_dest_station='||p_dest_station);
+      --log_new(l_function,'v_len='||v_len);
+    ---------------------------------------------------------------------
+    -- Список вагонов ПЕРЕДАН (парсим CLOB)
+    ---------------------------------------------------------------------
+        /*log_new(l_function,'p_waybill_no='||p_waybill_no);
+        log_new(l_function,'p_dest_station='||p_dest_station);
+        log_new(l_function,'p_wagons='||p_wagons);
+        log_new(l_function,'v_len='||v_len);
+        log_new(l_function,'length(p_wagons)'||length(p_wagons));
+        */
+      if
+         v_len > 0
+         and length(p_wagons) > 1
+      then
+         while v_from <= v_len loop
+            v_to := instr(
+               p_wagons,
+               c_rs,
+               v_from
+            );
+            if v_to = 0 then
+               v_to := v_len + 1;
+            end if;
+            v_no := trim(dbms_lob.substr(
+               p_wagons,
+               v_to - v_from,
+               v_from
+            ));
+            v_from := v_to + 1;
+            if v_no is null then
+               continue;
+            end if;
+            -- log_new(l_function,'v_no='||v_no);
+            -- Инициализируем дефолтные значения для текущего вагона
+            l_row.wagon_no := v_no;
+            l_row.found := 0;
+            l_row.owner := null;
+            l_row.kind := null;
+            l_row.st_from := null;
+            l_row.st_to := null;
+            l_row.cargo := null;
+            log_new(
+               l_function,
+               'p_waybill_no=' || p_waybill_no
+            );
+            log_new(
+               l_function,
+               'p_dest_station=' || p_dest_station
+            );
+            log_new(
+               l_function,
+               'v_no=' || v_no
+            );
+            -- Ищем данные по конкретному вагону
+            for d in c_dislocation(
+               v_no,
+               p_waybill_no,
+               p_dest_station
+            ) loop
+               l_row.owner := d.owner;
+               l_row.kind := d.wagon_type_code;
+               l_row.st_from := d.depart_station;
+               l_row.st_to := d.dest_station;
+               l_row.cargo := d.cargo_name;
+               l_row.found := 1;
+            end loop;
+
+            pipe row ( l_row );
+         end loop;
+
+    ---------------------------------------------------------------------
+    -- Список вагонов ПУСТОЙ (ищем только по станции/накладной)
+    ---------------------------------------------------------------------
+      elsif p_dest_station is not null
+      or p_waybill_no is not null then
+        --log_new(l_function,'Список вагонов ПУСТОЙ (ищем только по станции/накладной)');
+         for d in c_dislocation(
+            null,
+            p_waybill_no,
+            p_dest_station
+         ) loop
+            l_row.wagon_no := d.wagon_no;
+            l_row.owner := d.owner;
+            l_row.kind := d.wagon_type_code;
+            l_row.st_from := d.depart_station;
+            l_row.st_to := d.dest_station;
+            l_row.cargo := d.cargo_name;
+            l_row.found := 1;
+            pipe row ( l_row );
+         end loop;
+      end if;
+
+      return;
+   end;
+
+
+    -- ----------------------------------------------------------------
+    -- файлы
+    -- ----------------------------------------------------------------
+   function gu23_new_file_id return number is
+      v number;
+   begin
+      select xx_disl_gu23_file_seq.nextval
+        into v
+        from dual;
+
+      return v;
+   end;
+
+   function gu23_add_file (
+      p_data in t_gu23_add_file
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_file (
+         id,
+         act_id,
+         file_name,
+         file_ext,
+         mime_type,
+         real_path,
+         created_at,
+         created_by
+      ) values ( p_data.p_file_id,
+                 p_data.p_act_id,
+                 p_data.p_name,
+                 p_data.p_ext,
+                 p_data.p_mime,
+                 p_data.p_path,
+                 sysdate,
+                 p_data.p_user_id );
+
+      insert into xx_disl_gu23_hist (
+         id,
+         act_id,
+         ts,
+         usr,
+         txt
+      ) values ( xx_disl_gu23_hist_seq.nextval,
+                 p_data.p_act_id,
+                 sysdate,
+                 p_data.p_user_id,
+                 'Прикреплён файл: ' || p_data.p_name );
+
+      commit;
+      return 'done';
+   exception
+      when others then
+         rollback;
+         return 'ERR'
+                || c_us
+                || sqlerrm;
+   end;
+
+   function gu23_del_file (
+      p_data in t_gu23_del_file
+   ) return varchar2 is
+      v_act  number;
+      v_name varchar2(512);
+   begin
+      select act_id,
+             file_name
+        into
+         v_act,
+         v_name
+        from xx_disl_gu23_file
+       where id = p_data.p_file_id;
+
+      delete from xx_disl_gu23_file
+       where id = p_data.p_file_id;
+
+      insert into xx_disl_gu23_hist (
+         id,
+         act_id,
+         ts,
+         usr,
+         txt
+      ) values ( xx_disl_gu23_hist_seq.nextval,
+                 v_act,
+                 sysdate,
+                 p_data.p_user_id,
+                 'Удалён файл: ' || v_name );
+
+      commit;
+      return 'done';
+   exception
+      when others then
+         rollback;
+         return 'ERR'
+                || c_us
+                || sqlerrm;
+   end;
+
+    -- ----------------------------------------------------------------
+    -- сохранение акта
+    -- ----------------------------------------------------------------
+   function gu23_save_act (
+      p_data in t_gu23_save_act
+   ) return varchar2 is
+      l_row        xx_disl_gu23_hist%rowtype;
+      v_id         number;
+      v_number     varchar2(64);
+      v_cex_id     number;
+      v_station_id varchar2(100);
+      v_st_from_id varchar2(100);
+      v_st_to_id   varchar2(100);
+      v_start      date;
+      v_end        date;
+      v_dd         number;
+      v_dh         number;
+      v_th         number;
+      v_cd         number;
+      v_isnew      boolean;
+      v_len        pls_integer;
+      v_from       pls_integer;
+      v_to         pls_integer;
+      v_rec        varchar2(4000);
+      v_ord        number := 0;
+      v_wcnt       number := 0;
+      vw_no        varchar2(16);
+      vw_owner     varchar2(128);
+      vw_kind      varchar2(128);
+      vw_from      varchar2(128);
+      vw_to        varchar2(128);
+      vw_cargo     varchar2(256);
+      vw_weight    varchar2(32);
+      vs_ref_id    number;
+      vs_fio       varchar2(256);
+      vs_post      varchar2(256);
+      vs_org       varchar2(256);
+      v_dupnum     varchar2(64);
+      v_has_start  number;
+      v_tot        number;
+      v_closed     number;
+      v_cur_status varchar2(16);
+   begin
+      v_id := p_data.p_id;
+      v_isnew :=
+         case
+            when ( p_data.p_id is null
+                or p_data.p_id = 0 ) then
+               true
+            else
+               false
+         end;
+      v_start := g_to_date(p_data.p_start_at);
+      v_end := g_to_date(p_data.p_end_at);
+
+        -- тип акта
+      if p_data.p_type not in ( 'start',
+                                'end',
+                                'other' ) then
+         return 'ERR'
+                || c_us
+                || 'Неверный тип акта';
+      end if;
+
+        -- цех обязателен всегда (даже для черновика)
+      if nvl(
+         p_data.p_cex,
+         'X'
+      ) = 'X' then
+         return 'ERR'
+                || c_us
+                || 'Не указан цех';
+      end if;
+
+        -- получаем id цеха по коду
+      begin
+         select id
+           into v_cex_id
+           from xx_disl_gu23_ref_cex
+          where code = p_data.p_cex;
+      exception
+         when no_data_found then
+            return 'ERR'
+                   || c_us
+                   || 'Цех не найден: '
+                   || p_data.p_cex;
+      end;
+
+        -- преобразуем строковые ID станций в числа
+      v_station_id := ( nullif(
+         trim(p_data.p_station),
+         ''
+      ) );
+      v_st_from_id := ( nullif(
+         trim(p_data.p_st_from),
+         ''
+      ) );
+      v_st_to_id := ( nullif(
+         trim(p_data.p_st_to),
+         ''
+      ) );
+
+        -- проверки дат для акта "Начало простоя"
+      if
+         p_data.p_type = 'start'
+         and p_data.p_status = 'active'
+         and v_start is null
+      then
+         return 'ERR'
+                || c_us
+                || 'Не указана дата начала простоя';
+      end if;
+
+        -- проверки дат и связей для акта "Окончание простоя"
+      if
+         p_data.p_type = 'end'
+         and p_data.p_status = 'active'
+      then
+         if p_data.p_linked_start_id is null then
+            return 'ERR'
+                   || c_us
+                   || 'Не выбран открытый акт начала простоя';
+         end if;
+
+         if v_end is null then
+            return 'ERR'
+                   || c_us
+                   || 'Не указана дата окончания простоя';
+         end if;
+
+            -- если дата начала не передана с фронтенда, извлекаем из БД
+         if v_start is null then
+            begin
+               select start_at
+                 into v_start
+                 from xx_disl_gu23_act
+                where id = p_data.p_linked_start_id;
+            exception
+               when no_data_found then
+                  null;
+            end;
+         end if;
+
+         if
+            v_start is not null
+            and v_end < v_start
+         then
+            return 'ERR'
+                   || c_us
+                   || 'Дата окончания не может быть меньше даты начала';
+         end if;
+
+         if v_end > sysdate then
+            return 'ERR'
+                   || c_us
+                   || 'Дата окончания не может быть больше текущей даты (в будущем)';
+         end if;
+      end if;
+
+        -- расчёт длительности (только для акта окончания)
+      if
+         p_data.p_type = 'end'
+         and v_start is not null
+         and v_end is not null
+      then
+         v_th := round(
+            (v_end - v_start) * 24,
+            1
+         );
+         v_dd := trunc(v_end - v_start);
+         v_dh := round(((v_end - v_start) - v_dd) * 24);
+         v_cd := ceil(v_end - v_start);
+      end if;
+
+        -- INSERT или UPDATE шапки акта
+      if v_isnew then
+         v_number := g_next_number(v_cex_id);
+         v_id := xx_disl_gu23_act_seq.nextval;
+         insert into xx_disl_gu23_act (
+            id,
+            act_number,
+            act_type,
+            status,
+            cex_id,
+            station_id,
+            st_from_id,
+            st_to_id,
+            cargo_ref,
+            reason,
+            circumstances,
+            start_at,
+            end_at,
+            dur_days,
+            dur_hours,
+            dur_total_h,
+            cal_days,
+            linked_start_id,
+            created_at,
+            created_by,
+            modified_at,
+            modified_by
+         ) values ( v_id,
+                    v_number,
+                    p_data.p_type,
+                    p_data.p_status,
+                    v_cex_id,
+                    v_station_id,
+                    v_st_from_id,
+                    v_st_to_id,
+                    p_data.p_cargo_ref,
+                    p_data.p_reason,
+                    p_data.p_circumstances,
+                    v_start,
+                    v_end,
+                    v_dd,
+                    v_dh,
+                    v_th,
+                    v_cd,
+                    p_data.p_linked_start_id,
+                    sysdate,
+                    p_data.p_user_id,
+                    sysdate,
+                    p_data.p_user_id );
+      else
+            -- редактировать можно ТОЛЬКО черновик
+         begin
+            select act_number,
+                   status
+              into
+               v_number,
+               v_cur_status
+              from xx_disl_gu23_act
+             where id = v_id;
+         exception
+            when no_data_found then
+               return 'ERR'
+                      || c_us
+                      || 'Акт не найден';
+         end;
+
+         if v_cur_status <> 'draft' then
+            return 'ERR'
+                   || c_us
+                   || 'Действующий/закрытый акт не редактируется — аннулируйте и заведите новый';
+         end if;
+
+            -- если у черновика ещё нет номера — присваиваем
+         if v_number is null then
+            v_number := g_next_number(v_cex_id);
+         end if;
+         update xx_disl_gu23_act
+            set act_number = v_number,
+                act_type = p_data.p_type,
+                status = p_data.p_status,
+                cex_id = v_cex_id,
+                station_id = v_station_id,
+                st_from_id = v_st_from_id,
+                st_to_id = v_st_to_id,
+                cargo_ref = p_data.p_cargo_ref,
+                reason = p_data.p_reason,
+                circumstances = p_data.p_circumstances,
+                start_at = v_start,
+                end_at = v_end,
+                dur_days = v_dd,
+                dur_hours = v_dh,
+                dur_total_h = v_th,
+                cal_days = v_cd,
+                linked_start_id = p_data.p_linked_start_id,
+                modified_at = sysdate,
+                modified_by = p_data.p_user_id
+          where id = v_id;
+
+         delete from xx_disl_gu23_act_row
+          where act_id = v_id;
+
+         delete from xx_disl_gu23_signer
+          where act_id = v_id;
+      end if;
+
+        -- разбираем вагоны
+      v_len := nvl(
+         dbms_lob.getlength(p_data.p_wagons),
+         0
+      );
+      v_from := 1;
+      while v_from <= v_len loop
+         v_to := instr(
+            p_data.p_wagons,
+            c_rs,
+            v_from
+         );
+         if v_to = 0 then
+            v_to := v_len + 1;
+         end if;
+         v_rec := dbms_lob.substr(
+            p_data.p_wagons,
+            v_to - v_from,
+            v_from
+         );
+         v_from := v_to + 1;
+         vw_no := trim(g_field(
+            v_rec,
+            1
+         ));
+         if vw_no is null then
+            continue;
+         end if;
+         if p_data.p_type in ( 'start',
+                               'other' ) then
+                -- данные по вагону из дислокации
+            begin
+               select owner,
+                      kind,
+                      st_from,
+                      st_to,
+                      cargo,
+                      weight
+                 into
+                  vw_owner,
+                  vw_kind,
+                  vw_from,
+                  vw_to,
+                  vw_cargo,
+                  vw_weight
+                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
+                  vw_no,
+                  p_data.p_waybill_no
+               ) )
+                where rownum = 1;
+            exception
+               when others then
+                  vw_owner := null;
+                  vw_kind := null;
+                  vw_from := null;
+                  vw_to := null;
+                  vw_cargo := null;
+                  vw_weight := null;
+            end;
+         else
+                -- для окончания берём данные из акта начала (как прислал клиент)
+            vw_owner := g_field(
+               v_rec,
+               2
+            );
+            vw_kind := g_field(
+               v_rec,
+               3
+            );
+            vw_from := g_field(
+               v_rec,
+               4
+            );
+            vw_to := g_field(
+               v_rec,
+               5
+            );
+            vw_cargo := g_field(
+               v_rec,
+               6
+            );
+            vw_weight := g_field(
+               v_rec,
+               7
+            );
+         end if;
+
+            -- запрет дубля открытого простоя
+         if
+            p_data.p_type = 'start'
+            and p_data.p_status = 'active'
+            and nvl(
+               p_data.p_force,
+               'N'
+            ) <> 'Y'
+         then
+            v_dupnum := null;
+            begin
+               select a.act_number
+                 into v_dupnum
+                 from xx_disl_gu23_act a,
+                      xx_disl_gu23_act_row r
+                where r.act_id = a.id
+                  and a.act_type = 'start'
+                  and a.status = 'active'
+                  and a.id <> v_id
+                  and r.wagon_no = vw_no
+                  and rownum = 1;
+            exception
+               when no_data_found then
+                  v_dupnum := null;
+            end;
+
+            if v_dupnum is not null then
+               rollback;
+               return 'ERR'
+                      || c_us
+                      || 'Нельзя создать акт «Начало простоя»: по вагону '
+                      || vw_no
+                      || ' уже есть открытый цикл в акте '
+                      || v_dupnum;
+            end if;
+         end if;
+
+            -- проверки для акта окончания
+         if
+            p_data.p_type = 'end'
+            and p_data.p_status = 'active'
+         then
+            select count(*)
+              into v_has_start
+              from xx_disl_gu23_act_row r
+             where r.act_id = p_data.p_linked_start_id
+               and r.wagon_no = vw_no;
+
+            if v_has_start = 0 then
+               rollback;
+               return 'ERR'
+                      || c_us
+                      || 'Вагон '
+                      || vw_no
+                      || ' не относится к выбранному акту начала';
+            end if;
+
+            select count(*)
+              into v_has_start
+              from xx_disl_gu23_act e,
+                   xx_disl_gu23_act_row er
+             where er.act_id = e.id
+               and e.act_type = 'end'
+               and e.status = 'active'
+               and e.linked_start_id = p_data.p_linked_start_id
+               and e.id <> v_id
+               and er.wagon_no = vw_no;
+
+            if v_has_start > 0 then
+               rollback;
+               return 'ERR'
+                      || c_us
+                      || 'Вагон '
+                      || vw_no
+                      || ' уже закрыт другим актом окончания';
+            end if;
+         end if;
+
+         insert into xx_disl_gu23_act_row (
+            id,
+            act_id,
+            wagon_no,
+            owner,
+            kind,
+            st_from,
+            st_to,
+            cargo,
+            weight
+         ) values ( xx_disl_gu23_act_row_seq.nextval,
+                    v_id,
+                    vw_no,
+                    vw_owner,
+                    vw_kind,
+                    vw_from,
+                    vw_to,
+                    vw_cargo,
+                    vw_weight );
+
+         v_wcnt := v_wcnt + 1;
+      end loop;
+
+        -- при отправке нужен хотя бы один вагон ИЛИ указан груз
+      if
+         v_wcnt = 0
+         and p_data.p_cargo_ref is null
+         and p_data.p_status = 'active'
+      then
+         rollback;
+         return 'ERR'
+                || c_us
+                || 'Добавьте вагоны или укажите груз / накладную';
+      end if;
+
+        -- разбираем подписантов: поля ref_id|fio|post|org
+      v_len := nvl(
+         dbms_lob.getlength(p_data.p_signers),
+         0
+      );
+      v_from := 1;
+      while v_from <= v_len loop
+         v_to := instr(
+            p_data.p_signers,
+            c_rs,
+            v_from
+         );
+         if v_to = 0 then
+            v_to := v_len + 1;
+         end if;
+         v_rec := dbms_lob.substr(
+            p_data.p_signers,
+            v_to - v_from,
+            v_from
+         );
+         v_from := v_to + 1;
+         vs_ref_id := to_number ( nullif(
+            trim(g_field(
+               v_rec,
+               1
+            )),
+            ''
+         ) );
+         vs_fio := g_field(
+            v_rec,
+            2
+         );
+         vs_post := g_field(
+            v_rec,
+            3
+         );
+         vs_org := g_field(
+            v_rec,
+            4
+         );
+         if trim(vs_fio) is null then
+            continue;
+         end if;
+         v_ord := v_ord + 1;
+         insert into xx_disl_gu23_signer (
+            id,
+            act_id,
+            signer_ref_id,
+            fio,
+            post,
+            org,
+            ord_no
+         ) values ( xx_disl_gu23_signer_seq.nextval,
+                    v_id,
+                    vs_ref_id,
+                    vs_fio,
+                    vs_post,
+                    vs_org,
+                    v_ord );
+      end loop;
+
+        -- закрытие циклов акта начала: частичное/полное
+      if
+         p_data.p_type = 'end'
+         and p_data.p_status = 'active'
+         and p_data.p_linked_start_id is not null
+      then
+         select count(*)
+           into v_tot
+           from xx_disl_gu23_act_row
+          where act_id = p_data.p_linked_start_id;
+
+         select count(distinct er.wagon_no)
+           into v_closed
+           from xx_disl_gu23_act e,
+                xx_disl_gu23_act_row er
+          where er.act_id = e.id
+            and e.act_type = 'end'
+            and e.status = 'active'
+            and e.linked_start_id = p_data.p_linked_start_id;
+
+         if v_closed >= v_tot then
+            update xx_disl_gu23_act
+               set status = 'closed',
+                   modified_at = sysdate,
+                   modified_by = p_data.p_user_id
+             where id = p_data.p_linked_start_id
+               and status = 'active';
+
+            insert into xx_disl_gu23_hist (
+               id,
+               act_id,
+               ts,
+               usr,
+               txt
+            ) values ( xx_disl_gu23_hist_seq.nextval,
+                       p_data.p_linked_start_id,
+                       sysdate,
+                       p_data.p_user_id,
+                       'Цикл простоя полностью закрыт актом окончания ' || v_number );
+         else
+            insert into xx_disl_gu23_hist (
+               id,
+               act_id,
+               ts,
+               usr,
+               txt
+            ) values ( xx_disl_gu23_hist_seq.nextval,
+                       p_data.p_linked_start_id,
+                       sysdate,
+                       p_data.p_user_id,
+                       'Частично закрыто актом окончания '
+                       || v_number
+                       || ' ('
+                       || v_closed
+                       || ' из '
+                       || v_tot
+                       || ')' );
+         end if;
+      end if;
+
+      l_row.id := xx_disl_gu23_hist_seq.nextval;
+      l_row.act_id := v_id;
+      l_row.ts := sysdate;
+      l_row.usr := p_data.p_user_id;
+      l_row.txt :=
+         case
+            when xx_disl_gu23_pkg.fnc_boolean_num(v_isnew) = 1 then
+                  case
+                     when p_data.p_status = 'draft' then
+                        'Акт создан (черновик)'
+                     else
+                        'Акт создан и заведён'
+                  end
+            else
+               case
+                  when p_data.p_status = 'draft' then
+                        'Черновик изменён'
+                  else
+                     'Акт изменён / заведён'
+               end
+         end;
+
+      insert into xx_disl_gu23_hist (
+         id,
+         act_id,
+         ts,
+         usr,
+         txt
+      ) values ( l_row.id,
+                 l_row.act_id,
+                 l_row.ts,
+                 l_row.usr,
+                 l_row.txt );
+
+      commit;
+      return 'OK'
+             || c_us
+             || v_id
+             || c_us
+             || v_number;
+   exception
+      when others then
+         rollback;
+         return 'ERR'
+                || c_us
+                || sqlerrm;
+   end;
+
+   function gu23_del_act (
+      p_data in t_gu23_del_act
+   ) return varchar2 is
+      v_status varchar2(16);
+   begin
+      select status
+        into v_status
+        from xx_disl_gu23_act
+       where id = p_data.p_id;
+
+      if v_status <> 'draft' then
+         return 'ERR'
+                || c_us
+                || 'Удалять можно только черновик. Действующий акт аннулируется.';
+      end if;
+      delete from xx_disl_gu23_act
+       where id = p_data.p_id;             -- дети по ON DELETE CASCADE
+
+      commit;
+      return 'done';
+   exception
+      when no_data_found then
+         return 'ERR'
+                || c_us
+                || 'Акт не найден';
+      when others then
+         rollback;
+         return 'ERR'
+                || c_us
+                || sqlerrm;
+   end;
+
+   function gu23_annul_act (
+      p_data in t_gu23_annul_act
+   ) return varchar2 is
+      v_type   varchar2(16);
+      v_linked number;
+   begin
+      select act_type,
+             linked_start_id
+        into
+         v_type,
+         v_linked
+        from xx_disl_gu23_act
+       where id = p_data.p_id;
+
+      update xx_disl_gu23_act
+         set status = 'annulled',
+             annul_reason = p_data.p_reason,
+             modified_at = sysdate,
+             modified_by = p_data.p_user_id
+       where id = p_data.p_id;
+
+        -- при аннулировании акта окончания — снова открываем связанный акт начала
+      if
+         v_type = 'end'
+         and v_linked is not null
+      then
+         update xx_disl_gu23_act
+            set status = 'active',
+                modified_at = sysdate,
+                modified_by = p_data.p_user_id
+          where id = v_linked
+            and status = 'closed';
+      end if;
+
+      insert into xx_disl_gu23_hist (
+         id,
+         act_id,
+         ts,
+         usr,
+         txt
+      ) values ( xx_disl_gu23_hist_seq.nextval,
+                 p_data.p_id,
+                 sysdate,
+                 p_data.p_user_id,
+                 'Акт аннулирован: ' || p_data.p_reason );
+
+      commit;
+      return 'done';
+   exception
+      when no_data_found then
+         return 'ERR'
+                || c_us
+                || 'Акт не найден';
+      when others then
+         rollback;
+         return 'ERR'
+                || c_us
+                || sqlerrm;
+   end;
+
+    -- ----------------------------------------------------------------
+    -- поиск станций
+    -- ----------------------------------------------------------------
+   function gu23_search_station (
+      p_q in varchar2
+   ) return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+      v_q   varchar2(512) := lower(p_q);
+   begin
+      if length(trim(p_q)) < 3 then
+         return;
+      end if;
+      for r in (
+         select st_code,
+                st_name,
+                st_id
+           from xx_etw_station_bi_v
+          where lower(st_name) like '%'
+                                    || v_q
+                                    || '%'
+            and rownum <= 50
+          order by st_name--fetch first 50 rows only
+      ) loop
+         l_row.code := to_char(r.st_code);
+         l_row.name := r.st_name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+end xx_disl_gu23_pkg;
