@@ -460,8 +460,8 @@ create or replace package body xx_disl_gu23_pkg as
                                    || p_q
                                    || '%'
          ) )
-          order by a.created_at desc,
-                   a.id desc
+          order by a.start_at desc,
+                   a.end_at desc
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
@@ -480,6 +480,8 @@ create or replace package body xx_disl_gu23_pkg as
          select *
            from xx_disl_gu23_act_v a
           where a.id = p_id
+          order by a.created_at desc,
+                   a.id desc
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
