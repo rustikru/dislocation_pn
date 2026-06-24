@@ -1,8 +1,8 @@
 // Глобальные справочники, которые загружаются при старте приложения
 export const references = {
-  departmentsList: [], //  cexes
-  reasonsList: [], //  reasons
-  stationsList: [], //  stations
+  departmentsList: [], //  цех
+  reasonsList: [], //  причины
+  stationsList: [], //  станции
   stationsFromList: [], //  stations_from
   ownersList: [],
   wagonKindsList: [],
@@ -17,7 +17,7 @@ export const applicationState = {
   selectedActId: null,
 }
 
-// Активный черновик, с которым работает пользователь в форме
+// Активный черновик
 export let activeDraft = null
 
 export function setActiveDraft(value) {

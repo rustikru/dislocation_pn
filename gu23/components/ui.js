@@ -63,7 +63,7 @@ export function showToast(message, type) {
   setTimeout(() => $toast.remove(), 3200)
 }
 
-// модальное окно
+// модальное окошко
 export function openModalWindow(title, contentHtml, buttons = []) {
   const footerButtonsHtml = buttons
     .map(
@@ -102,7 +102,7 @@ export function closeModalWindow() {
   $('#modalRoot').empty()
 }
 
-// Окно подтверждения (Confirm)
+// Окно подтверждения
 export function showConfirmBox(title, message, onConfirm) {
   const content = `<p>${escapeHtml(message)}</p>`
   openModalWindow(title, content, [
@@ -118,7 +118,7 @@ export function showConfirmBox(title, message, onConfirm) {
   ])
 }
 
-// Окно ввода текста (Prompt)
+// Окно ввода текста
 export function showPromptBox(title, message, onConfirm) {
   const content = `
     <p>${escapeHtml(message)}</p>

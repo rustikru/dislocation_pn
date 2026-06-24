@@ -67,7 +67,8 @@ function showTypeSwitcher() {
 function showFormFields() {
   const $body = $('#form-body')
 
-  // Особенность для акта Окончания простоя
+  // Особенность для "акта Окончания простоя"
+  // Акт окончания простоя создается только на основе акта на начало простоя
   if (activeDraft.type === 'end') {
     $body.append(`
       <div class="banner info">Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.</div>
@@ -99,12 +100,12 @@ function showFormFields() {
 
   if (dateRowHtml) {
     $body.append(`<div class="cols">${dateRowHtml}<div></div></div>`)
-    // Подключаем твою маску/обработку из внешних модулей
+    // Подключаем маску/обработку из внешних модулей для дат, которые используются в general_function.js
     if (typeof init_date_time_input === 'function') {
       init_date_time_input($('.datetime-inp'))
     }
 
-    // Слушатели на дату
+    // Послушаем дату
     $('#inp-startAt').on('blur', function () {
       activeDraft.startAt = validateAndGetDate($(this))
     })
@@ -145,7 +146,7 @@ function showFormFields() {
     </div>
   `)
 
-  // Привязка селектов к модели
+  // Привязка к модели
   $('#sel-dept').on('change', function () {
     const prev = activeDraft.departmentCode
     activeDraft.departmentCode = this.value

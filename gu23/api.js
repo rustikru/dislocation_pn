@@ -28,7 +28,7 @@ $(document).ready(() => {
       actionName = new URLSearchParams(settings.data).get('ajax_action') || ''
     } catch (e) {}
 
-    console.error(`AJAX error [${actionName}]`, jqXHR.status, errorDetail)
+    console.error(`Ajax ошибка [${actionName}]`, jqXHR.status, errorDetail)
 
     const finalMessage = serverMessage
       ? `: ${serverMessage}`

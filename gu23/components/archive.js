@@ -21,7 +21,7 @@ export function showArchive(container) {
   const filterState = { q: '', type: '', status: '', cex: '' }
   let searchTimeout = null
 
-  // Создание фильтров-селектов
+  // Создание фильтров
   const createSelectFilter = (options, labels, key) => {
     const optionsHtml = options
       .map((val, idx) => `<option value="${val}">${labels[idx]}</option>`)
@@ -53,14 +53,14 @@ export function showArchive(container) {
     'cex',
   )
 
-  // Поиск с задержкой (Debounce)
+  // Поиск с задержкой
   $('#search-input').on('input', function () {
     filterState.q = $(this).val().trim()
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(loadArchiveData, 250)
   })
 
-  // Загрузка и рендеринг таблицы
+  // Загрузка и отрисовка таблицы
   function loadArchiveData() {
     sendApiRequest('gu23_get_acts', filterState).done((list) => {
       const acts = list || []

@@ -1,4 +1,4 @@
-// Экранирование HTML от вредоносного кода
+// Экранирование HTMLы
 export function escapeHtml(string) {
   return String(string == null ? '' : string).replace(/[&<>"]/g, (match) => {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[match]
