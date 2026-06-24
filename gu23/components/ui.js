@@ -9,7 +9,7 @@ const actTypesConfig = {
 
 const actStatusesConfig = {
   draft: { label: 'Черновик', className: 'st-draft' },
-  active: { label: 'Действующий', className: 'st-signed' },
+  active: { label: 'Открыт', className: 'st-signed' },
   closed: { label: 'Закрыт', className: 'st-closed' },
   annulled: { label: 'Аннулирован', className: 'st-annulled' },
 }

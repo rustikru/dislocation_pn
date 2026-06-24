@@ -1,3 +1,4 @@
+/* Formatted on 24.06.2026 13:14:09 (QP5 v5.417) */
 create or replace package xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
@@ -23,7 +24,7 @@ create or replace package xx_disl_gu23_pkg as
       table of xx_disl_gu23_ref_row;
    type xx_disl_gu23_signer_row is record (
          id            number,
-         signer_ref_id number,   -- ref ID из справочника 
+         signer_ref_id number,                      -- ref ID из справочника
          fio           varchar2(256),
          post          varchar2(256),
          org           varchar2(256),
@@ -38,15 +39,15 @@ create or replace package xx_disl_gu23_pkg as
          act_number          varchar2(64),
          act_type            varchar2(16),
          status              varchar2(16),
-         cex_id              number,           -- ID цеха
-         cex                 varchar2(32),     -- код цеха (для отображения)
+         cex_id              number,                              -- ID цеха
+         cex                 varchar2(32),    -- код цеха (для отображения)
          station_id          varchar2(150),           -- ID ст. составления
-         station             varchar2(128),    -- ст. составления (название)
+         station             varchar2(128),   -- ст. составления (название)
          st_from_id          varchar2(150),           -- ID ст. отправления
-         st_from             varchar2(128),    -- ст. отправления (название)
-         st_to_id            varchar2(150),           -- ID ст. назначения
+         st_from             varchar2(128),   -- ст. отправления (название)
+         st_to_id            varchar2(150),            -- ID ст. назначения
          st_to               varchar2(128),    -- ст. назначения (название)
-         cargo_ref           varchar2(256),    -- груз
+         cargo_ref           varchar2(256),                         -- груз
          reason_id           varchar2(512),
          reason_name         varchar2(1000),
          circumstances       varchar2(4000),
@@ -117,23 +118,23 @@ create or replace package xx_disl_gu23_pkg as
     -- ---- Типы для параметров Сохранения акта ----
    type t_gu23_save_act is record (
          p_user_id         number,
-         p_id              number,          -- 0/NULL = новый
-         p_type            varchar2(16),    -- start / end / other
-         p_status          varchar2(16),    -- draft / active
-         p_cex             varchar2(32),    -- код цеха 
-         p_station         varchar2(128),   -- ID ст. составления 
-         p_st_from         varchar2(128),   -- ID ст. отправления 
-         p_st_to           varchar2(128),   -- ID ст. назначения 
-         p_waybill_no      varchar2(64),    -- № накладной (только для поиска Дислокации, не хранится на строках акта)
+         p_id              number,                         -- 0/NULL = новый
+         p_type            varchar2(16),             -- start / end / other
+         p_status          varchar2(16),                  -- draft / active
+         p_cex             varchar2(32),                        -- код цеха
+         p_station         varchar2(128),             -- ID ст. составления
+         p_st_from         varchar2(128),             -- ID ст. отправления
+         p_st_to           varchar2(128),              -- ID ст. назначения
+         p_waybill_no      varchar2(64), -- № накладной (только для поиска Дислокации, не хранится на строках акта)
          p_cargo_ref       varchar2(256),
          p_reason          varchar2(512),
          p_circumstances   varchar2(4000),
-         p_start_at        varchar2(20),    -- 'YYYY-MM-DD HH24:MI' или NULL
+         p_start_at        varchar2(20),   -- 'YYYY-MM-DD HH24:MI' или NULL
          p_end_at          varchar2(20),
          p_linked_start_id number,
-         p_wagons          clob,            -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
-         p_signers         clob,            -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
-         p_force           varchar2(1)      -- 'Y' = разрешить дубль открытого простоя
+         p_wagons          clob, -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
+         p_signers         clob, -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
+         p_force           varchar2(1) -- 'Y' = разрешить дубль открытого простоя
    );
    type t_gu23_add_file is record (
          p_act_id  number,
@@ -162,6 +163,7 @@ create or replace package xx_disl_gu23_pkg as
    function fnc_boolean_num (
       p_bool in boolean
    ) return number;
+
     -- ---- Справочники
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined;
@@ -172,31 +174,25 @@ create or replace package xx_disl_gu23_pkg as
       pipelined;
 
     -- ---- Справочники станций
-   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab   -- ст. составления
+   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab                         -- ст. составления
       pipelined;
 
-   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab           -- ст. отправления
+   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab                         -- ст. отправления
       pipelined;
 
-   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab             -- ст. назначения
+   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab                          -- ст. назначения
       pipelined;
-    -- Не актуально(удалить)
-   function gu23_get_ref_station return xx_disl_gu23_ref_tab
-      pipelined;
-
 
    function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- ---- Справочники подписантов (две отдельные процедуры по типу)
-   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab     -- работники предприятия
+    -- Справочники подписантов
+    -- работники предприятия
+   function gu23_get_ref_signer_own return xx_disl_gu23_signer_tab
       pipelined;
 
-   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab     -- работники станции ОАО «РЖД»
-      pipelined;
-
-    -- Не актуально(удалить)
-   function gu23_get_ref_signer return xx_disl_gu23_signer_tab
+    -- работники станции ОАО «РЖД»
+   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined;
 
     -- ---- Акты ----

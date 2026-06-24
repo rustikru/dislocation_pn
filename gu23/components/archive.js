@@ -42,7 +42,7 @@ export function showArchive(container) {
   )
   createSelectFilter(
     ['', 'draft', 'active', 'closed', 'annulled'],
-    ['Все статусы', 'Черновик', 'Действующий', 'Закрыт', 'Аннулирован'],
+    ['Все статусы', 'Черновик', 'Открыт', 'Закрыт', 'Аннулирован'],
     'status',
   )
 
@@ -67,7 +67,7 @@ export function showArchive(container) {
 
       let rowsHtml = ''
       if (!acts.length) {
-        rowsHtml = `<tr><td colspan="8" class="muted" style="padding:24px;text-align:center">Актов не найдено</td></tr>`
+        rowsHtml = `<tr><td colspan="9" class="muted" style="padding:24px;text-align:center">Актов не найдено</td></tr>`
       } else {
         rowsHtml = acts
           .map(
@@ -75,6 +75,7 @@ export function showArchive(container) {
           <tr class="clickable-row" data-id="${act.ID}">
             <td class="num">${escapeHtml(act.ACT_NUMBER)}</td>
             <td class="muted">${formatDateTime(act.START_AT)}</td>
+            <td class="muted">${formatDateTime(act.END_AT)}</td>
             <td>${showTypeChip(act.ACT_TYPE)}</td>
             <td>${escapeHtml(act.CEX)}</td>
             <td class="muted text-ellipsis" style="max-width:230px" title="${escapeHtml(act.REASON_NAME)}">${escapeHtml(act.REASON_NAME)}</td>
@@ -91,7 +92,16 @@ export function showArchive(container) {
         <div style="overflow:auto">
           <table class="tbl">
             <thead>
-              <tr><th>Номер</th><th>Начало простоя</th><th>Тип</th><th>Цех</th><th>Причина</th><th>Вагоны</th><th>Статус</th></tr>
+              <tr>
+                <th>Номер</th>
+                <th>Начало простоя</th>
+                <th>Окончание простоя</th>
+                <th>Тип</th>
+                <th>Цех</th>
+                <th>Причина</th>
+                <th>Вагоны</th>
+                <th>Статус</th>
+              </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
           </table>
