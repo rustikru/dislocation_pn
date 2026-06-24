@@ -205,7 +205,7 @@ function showAttachmentsBlock(act, files) {
           const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
           return `
       <div style="display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
-        ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:38px;height:38px;object-fit:cover;border-radius:5px;cursor:pointer">` : `<div style="width:38px;height:38px;border-radius:5px;background:var(--surface2);display:grid;place-items:center;color:var(--muted)">📄</div>`}
+        ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:38px;height:38px;object-fit:cover;border-radius:5px;cursor:pointer">` : ``}
         <div style="flex:1;font-size:12.5px">
           <a href="get_file.php?id=${file.ID}">${escapeHtml(file.FILE_NAME)}</a>
           <div class="muted" style="font-size:11px">${formatDateTime(file.CREATED_AT)} · ${escapeHtml(file.CREATED_BY || '')}</div>
