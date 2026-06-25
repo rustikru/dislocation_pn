@@ -21,6 +21,7 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
+        ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
         ob_start();
         try {
             switch ($action) {
@@ -197,13 +198,12 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
-        $userId = $this->auth->getUserId();
-        $myStatus = null;
-        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid); END;');
-        oci_bind_by_name($st, ':r',   $myStatus, 16);
-        oci_bind_by_name($st, ':act', $id);
-        oci_bind_by_name($st, ':uid', $userId);
-        oci_execute($st);
+        $userId   = $this->auth->getUserId();
+        $myStatus = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid)',
+            [':act' => $id, ':uid' => $userId],
+            16
+        );
 
         // Является ли текущий пользователь подписантом-предприятием этого акта
         // (signer_ref_id для сотрудников предприятия = user_id; исключаем РЖД-подписантов)
