@@ -862,7 +862,7 @@ function saveActToServer(status, skipWarning = false) {
   sendApiRequest('gu23_save_act', payload).done((response) => {
     if (response && response.ok) {
       setActiveDraft(null)
-      if (status === 'active' && APPROVAL_MODE) {
+      if (status === 'active' && APPROVAL_MODE && APPROVAL_MODE !== 'false') {
         sendApiRequest('gu23_send_approval', {
           act_id: response.id,
           mode: APPROVAL_MODE,
