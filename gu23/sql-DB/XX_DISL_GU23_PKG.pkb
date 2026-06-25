@@ -1586,6 +1586,30 @@ create or replace package body xx_disl_gu23_pkg as
             and status = 'closed';
       end if;
 
+      -- при аннулировании акта начала — каскадно аннулируем связанные акты окончания
+      if v_type = 'start' then
+         for r in (
+            select id, act_number
+              from xx_disl_gu23_act
+             where linked_start_id = p_data.p_id
+               and status not in ('annulled', 'draft')
+         ) loop
+            update xx_disl_gu23_act
+               set status       = 'annulled',
+                   annul_reason = 'Каскадное аннулирование: аннулирован акт начала ' ||
+                                  (select act_number from xx_disl_gu23_act where id = p_data.p_id),
+                   modified_at  = sysdate,
+                   modified_by  = p_data.p_user_id
+             where id = r.id;
+
+            log_act_history(
+               p_act_id  => r.id,
+               p_user_id => p_data.p_user_id,
+               p_text    => 'Акт аннулирован каскадно (аннулирован акт начала): ' || p_data.p_reason
+            );
+         end loop;
+      end if;
+
       log_act_history(
          p_act_id  => p_data.p_id,
          p_user_id => p_data.p_user_id,
