@@ -589,6 +589,7 @@ end;';
     {
         $actId  = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
+        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
 
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
@@ -663,8 +664,16 @@ end;';
 
             // Формируем HTML-письмо
             $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $link);
+            $subject  = 'Требуется согласование акта ГУ-23';
 
-            if ($this->saveMailToFile($email, 'Требуется согласование акта ГУ-23', $htmlBody)) {
+            if ($mode === 'send_mail') {
+                $headers  = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
+                $ok = mail($email, $subject, $htmlBody, $headers);
+            } else {
+                $ok = $this->saveMailToFile($email, $subject, $htmlBody);
+            }
+
+            if ($ok) {
                 $sent++;
             } else {
                 $errors[] = $email;

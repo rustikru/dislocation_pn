@@ -6,4 +6,7 @@ phonebook/
 db_config.local.php
 gu23/request_data/
 .DS_Store
+
+# Тестовые и почтовые файлы
+test/
 mail/

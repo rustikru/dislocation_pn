@@ -27,9 +27,6 @@ export function showCard(container) {
 
 function buildCardView(container, data) {
   const act = data.act
-  console.log('[gu23 card] signers:', data.signers)
-  console.log('[gu23 card] approvals:', data.approvals)
-  console.log('[gu23 card] myApproval:', data.myApproval, '| isUserSigner:', data.isUserSigner)
 
   $(container).html(`
     <div class="phead">
@@ -78,12 +75,6 @@ function showToolbarButtons(act, data) {
     const $closeBtn = $('<button class="btn">Закрыть акт</button>')
     $closeBtn.on('click', () => closeAct(act))
     $toolbar.append($closeBtn)
-  }
-
-  if (act.STATUS === 'active' && data.isAdmin) {
-    const $notifyBtn = $('<button class="btn sm ghost">Отправить уведомления</button>')
-    $notifyBtn.on('click', () => sendNotifications(act))
-    $toolbar.append($notifyBtn)
   }
 
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
@@ -436,19 +427,6 @@ function closeAct(act) {
         navigateTo('card', act.ID)
       } else {
         showToast((response && response.msg) || 'Ошибка', 'err')
-      }
-    })
-  })
-}
-
-function sendNotifications(act) {
-  showConfirmBox('Отправить уведомления', 'Отправить запросы на согласование подписантам акта?', () => {
-    sendApiRequest('gu23_send_approval', { act_id: act.ID }).done((response) => {
-      if (response && response.ok) {
-        showToast(response.msg || 'Уведомления отправлены', 'ok')
-        navigateTo('card', act.ID)
-      } else {
-        showToast((response && response.msg) || 'Ошибка отправки', 'err')
       }
     })
   })
