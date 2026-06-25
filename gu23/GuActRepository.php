@@ -180,19 +180,14 @@ class GuActRepository
 
         // Является ли текущий пользователь подписантом-предприятием этого акта
         // (signer_ref_id для сотрудников предприятия = user_id; исключаем РЖД-подписантов)
-        $isUserSignerCnt = 0;
-        $stS = oci_parse($this->conn,
+        $signerCheck = $this->pipe(
             'SELECT COUNT(*) AS CNT FROM xx_disl_gu23_signer s
-              WHERE s.act_id = :act
-                AND s.signer_ref_id = :uid
-                AND NOT EXISTS (SELECT 1 FROM xx_disl_gu23_ref_signer r WHERE r.id = s.signer_ref_id)'
+              WHERE s.act_id = :b1
+                AND s.signer_ref_id = :b2
+                AND NOT EXISTS (SELECT 1 FROM xx_disl_gu23_ref_signer r WHERE r.id = s.signer_ref_id)',
+            [':b1' => $id, ':b2' => $userId]
         );
-        oci_bind_by_name($stS, ':act', $id);
-        oci_bind_by_name($stS, ':uid', $userId);
-        oci_execute($stS);
-        if ($row = oci_fetch_array($stS, OCI_ASSOC)) {
-            $isUserSignerCnt = (int) $row['CNT'];
-        }
+        $isUserSignerCnt = (int) ($signerCheck[0]['CNT'] ?? 0);
 
         echo json_encode([
             'ok'            => true,
