@@ -173,11 +173,25 @@ create or replace package xx_disl_gu23_pkg as
    );
 
    procedure insert_act_row (
-      p_row in xx_disl_gu23_act_row%rowtype
+      p_id       in number,
+      p_act_id   in number,
+      p_wagon_no in varchar2,
+      p_owner    in varchar2,
+      p_kind     in varchar2,
+      p_st_from  in varchar2,
+      p_st_to    in varchar2,
+      p_cargo    in varchar2,
+      p_weight   in varchar2
    );
 
    procedure insert_signer (
-      p_row in xx_disl_gu23_signer%rowtype
+      p_id            in number,
+      p_act_id        in number,
+      p_signer_ref_id in number,
+      p_fio           in varchar2,
+      p_post          in varchar2,
+      p_org           in varchar2,
+      p_ord_no        in number
    );
 
     -- ---- Справочники
