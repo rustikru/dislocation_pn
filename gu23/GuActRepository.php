@@ -870,8 +870,8 @@ HTML;
         }
 
         $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :uid',
-            [':act_id' => $actId, ':uid' => $userId]
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :user_id',
+            [':act_id' => $actId, ':user_id' => $userId]
         );
 
         if (empty($signers)) {
