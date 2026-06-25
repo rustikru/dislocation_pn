@@ -29,7 +29,8 @@ create or replace package xx_disl_gu23_pkg as
          org           varchar2(256),
          unit          varchar2(256),
          stype         varchar2(128),
-         ord_no        number
+         ord_no        number,
+         user_id       number                       -- ID пользователя (если ref-подписант)
    );
    type xx_disl_gu23_signer_tab is
       table of xx_disl_gu23_signer_row;

@@ -685,20 +685,22 @@ create or replace package body xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for s in (
-         select *
-           from xx_disl_gu23_signer
-          where act_id = p_act_id
-          order by ord_no,
-                   id
+         select s.*,
+                rs.user_id as ref_user_id
+           from xx_disl_gu23_signer s
+           left join xx_disl_gu23_ref_signer rs on rs.id = s.signer_ref_id
+          where s.act_id = p_act_id
+          order by s.ord_no, s.id
       ) loop
-         l_row.id := s.id;
+         l_row.id            := s.id;
          l_row.signer_ref_id := s.signer_ref_id;
-         l_row.fio := s.fio;
-         l_row.post := s.post;
-         l_row.org := s.org;
-         l_row.unit := null;
-         l_row.stype := null;
-         l_row.ord_no := s.ord_no;
+         l_row.fio           := s.fio;
+         l_row.post          := s.post;
+         l_row.org           := s.org;
+         l_row.unit          := null;
+         l_row.stype         := null;
+         l_row.ord_no        := s.ord_no;
+         l_row.user_id       := s.ref_user_id;
          pipe row ( l_row );
       end loop;
       return;

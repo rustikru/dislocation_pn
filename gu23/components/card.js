@@ -189,18 +189,27 @@ function showSignersBlock(act, signers, approvals, myApproval) {
   approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
 
   const listHtml = signers.length
-    ? signers.map((s) => `
+    ? signers.map((s) => {
+        const approval = s.USER_ID ? approvalMap[s.USER_ID] : null
+        let badge = ''
+        if (approval) {
+          if (approval.STATUS === 'approved') badge = ' <span style="color:var(--ok,#5a7a60);font-size:11px">✓ Подписано</span>'
+          else if (approval.STATUS === 'rejected') badge = ' <span style="color:var(--danger,#9e5b52);font-size:11px">✕ Отклонено</span>'
+          else if (approval.STATUS === 'pending')  badge = ' <span style="color:#b08000;font-size:11px">⏳ Ожидает</span>'
+        }
+        return `
         <div class="signrow">
           <div style="flex:1">
-            <div><b>${escapeHtml(s.FIO)}</b></div>
+            <div><b>${escapeHtml(s.FIO)}</b>${badge}</div>
             <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>
           </div>
-        </div>`).join('')
+        </div>`
+      }).join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  // Банер "подписать" для текущего пользователя
+  // Баннер "подписать" — только если текущему пользователю прислали запрос (pending)
   let myBannerHtml = ''
-  if (act.STATUS === 'active' && (myApproval === 'pending' || myApproval === 'none')) {
+  if (act.STATUS === 'active' && myApproval === 'pending') {
     const isPending = myApproval === 'pending'
     myBannerHtml = `
       <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:12px">
@@ -233,7 +242,7 @@ function showSignersBlock(act, signers, approvals, myApproval) {
     </div>
   `)
 
-  if (act.STATUS === 'active' && (myApproval === 'pending' || myApproval === 'none')) {
+  if (act.STATUS === 'active' && myApproval === 'pending') {
     $('#btn-sign-approve').on('click', () => submitInAppDecision(act.ID, 'approved', ''))
 
     $('#btn-sign-reject').on('click', () => {
