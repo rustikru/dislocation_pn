@@ -33,7 +33,7 @@ create or replace package xx_disl_gu23_pkg as
    );
    type xx_disl_gu23_signer_tab is
       table of xx_disl_gu23_signer_row;
-   type xx_disl_gu23_act_row is record (
+   type t_gu23_act_row is record (
          id                  number,
          act_number          varchar2(64),
          act_start_number    varchar2(64),
@@ -67,7 +67,7 @@ create or replace package xx_disl_gu23_pkg as
          modified_at         varchar2(20)
    );
    type xx_disl_gu23_act_tab is
-      table of xx_disl_gu23_act_row;
+      table of t_gu23_act_row;
    type xx_disl_gu23_row is record (
          id       number,
          act_id   number,
@@ -173,25 +173,11 @@ create or replace package xx_disl_gu23_pkg as
    );
 
    procedure insert_act_row (
-      p_id       in number,
-      p_act_id   in number,
-      p_wagon_no in varchar2,
-      p_owner    in varchar2,
-      p_kind     in varchar2,
-      p_st_from  in varchar2,
-      p_st_to    in varchar2,
-      p_cargo    in varchar2,
-      p_weight   in varchar2
+      p_row in xx_disl_gu23_act_row%rowtype
    );
 
    procedure insert_signer (
-      p_id            in number,
-      p_act_id        in number,
-      p_signer_ref_id in number,
-      p_fio           in varchar2,
-      p_post          in varchar2,
-      p_org           in varchar2,
-      p_ord_no        in number
+      p_row in xx_disl_gu23_signer%rowtype
    );
 
     -- ---- Справочники
