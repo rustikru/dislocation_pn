@@ -66,6 +66,12 @@ function showToolbarButtons(act, data) {
     $toolbar.append($editBtn, $delBtn)
   }
 
+  if (act.STATUS === 'active') {
+    const $approvalBtn = $('<button class="btn secondary">Отправить на согласование</button>')
+    $approvalBtn.on('click', () => sendForApproval(act))
+    $toolbar.append($approvalBtn)
+  }
+
   if (act.STATUS === 'active' || act.STATUS === 'closed') {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
@@ -350,6 +356,23 @@ function annulActiveAct(act) {
           }
         },
       )
+    },
+  )
+}
+
+function sendForApproval(act) {
+  showConfirmBox(
+    'Отправить на согласование',
+    'Запросить электронное согласование у подписантов акта?',
+    () => {
+      sendApiRequest('gu23_send_approval', { act_id: act.ID }).done((response) => {
+        if (response && response.ok) {
+          showToast(response.msg || 'Письма отправлены', 'ok')
+          navigateTo('card', act.ID)
+        } else {
+          showToast((response && response.msg) || 'Ошибка отправки', 'err')
+        }
+      })
     },
   )
 }

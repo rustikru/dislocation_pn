@@ -323,6 +323,28 @@ create or replace package xx_disl_gu23_pkg as
 
     -- ---- Согласование актов ----
 
+    -- Строка результата gu23_approval_get_signers
+   type t_gu23_approval_signer_row is record (
+      approver_id number,
+      full_name   varchar2(256),
+      fake_email  varchar2(256)
+   );
+   type t_gu23_approval_signer_tab is
+      table of t_gu23_approval_signer_row;
+
+    -- Подписанты акта, у которых есть user_id в справочнике (кандидаты на email-согласование)
+   function gu23_approval_get_signers (
+      p_act_id in number
+   ) return t_gu23_approval_signer_tab
+      pipelined;
+
+    -- Создать записи согласования для всех подходящих подписантов.
+    -- Возвращает число созданных записей или 'ERR'||CHR(31)||текст.
+   function gu23_approval_init (
+      p_act_id       in number,
+      p_requested_by in number
+   ) return varchar2;
+
     -- ФИО пользователя по ID
    function gu23_approval_get_name (
       p_id in number

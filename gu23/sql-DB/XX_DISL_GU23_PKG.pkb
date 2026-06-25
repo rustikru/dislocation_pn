@@ -1637,6 +1637,60 @@ create or replace package body xx_disl_gu23_pkg as
    -- согласование актов
    -- ----------------------------------------------------------------
 
+   function gu23_approval_get_signers (
+      p_act_id in number
+   ) return t_gu23_approval_signer_tab
+      pipelined
+   is
+      l_row t_gu23_approval_signer_row;
+   begin
+      for r in (
+         select u.id                                   as approver_id,
+                u.full_name,
+                lower(u.login) || '@company.ru'        as fake_email
+           from xx_disl_gu23_signer s
+           join xx_disl_gu23_ref_signer rs on rs.id  = s.signer_ref_id
+           join xx_disl_users u             on u.id  = rs.user_id
+          where s.act_id   = p_act_id
+            and rs.user_id is not null
+      ) loop
+         l_row.approver_id := r.approver_id;
+         l_row.full_name   := r.full_name;
+         l_row.fake_email  := r.fake_email;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end;
+
+   function gu23_approval_init (
+      p_act_id       in number,
+      p_requested_by in number
+   ) return varchar2 is
+      v_cnt number := 0;
+   begin
+      for r in (
+         select approver_id
+           from table ( gu23_approval_get_signers(p_act_id) )
+      ) loop
+         merge into xx_disl_gu23_approval t
+         using (select p_act_id       as act_id,
+                       r.approver_id  as approver_id
+                  from dual) s
+         on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+         when not matched then
+            insert (id, act_id, approver_id, status, requested_at, requested_by, token_sig)
+            values (xx_disl_gu23_approval_seq.nextval, s.act_id, s.approver_id,
+                    'pending', sysdate, p_requested_by, null);
+         v_cnt := v_cnt + sql%rowcount;
+      end loop;
+      commit;
+      return to_char(v_cnt);
+   exception
+      when others then
+         return format_error();
+   end;
+
+
    function gu23_approval_get_name (
       p_id in number
    ) return varchar2 is
