@@ -164,6 +164,14 @@ create or replace package xx_disl_gu23_pkg as
       p_bool in boolean
    ) return number;
 
+   procedure insert_act (
+      p_row in xx_disl_gu23_act%rowtype
+   );
+
+   procedure update_act (
+      p_row in xx_disl_gu23_act%rowtype
+   );
+
     -- ---- Справочники
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined;
