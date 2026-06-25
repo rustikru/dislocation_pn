@@ -181,11 +181,6 @@ function showSignersBlock(act, signers, approvals, myApproval) {
   const approvalMap = {}
   approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
 
-  const avatarInitial = (fio) => {
-    const parts = (fio || '').trim().split(/\s+/)
-    return (parts[0] || '?')[0].toUpperCase()
-  }
-
   const statusPill = (status) => {
     if (status === 'approved') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
     if (status === 'rejected') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
@@ -197,14 +192,12 @@ function showSignersBlock(act, signers, approvals, myApproval) {
     ? signers.map((s) => {
         const approval = s.USER_ID ? approvalMap[s.USER_ID] : null
         const pill = approval ? statusPill(approval.STATUS) : ''
-        const initial = avatarInitial(s.FIO)
         const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
         return `
-        <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line,#eee)">
-          <div style="width:36px;height:36px;border-radius:50%;background:var(--line2,#d4d8de);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--muted,#6b7280);flex-shrink:0">${escapeHtml(initial)}</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.FIO)}</div>
-            ${subtitle ? `<div class="muted" style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(subtitle)}</div>` : ''}
+            <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
+            ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
           </div>
           ${pill ? `<div style="flex-shrink:0">${pill}</div>` : ''}
         </div>`
