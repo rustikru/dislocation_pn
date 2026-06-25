@@ -1619,4 +1619,119 @@ create or replace package body xx_disl_gu23_pkg as
       end loop;
       return;
    end;
+   -- ----------------------------------------------------------------
+   -- согласование актов
+   -- ----------------------------------------------------------------
+
+   function gu23_approval_get_name (
+      p_id in number
+   ) return varchar2 is
+   begin
+      return g_user_name(p_id);
+   end;
+
+   function gu23_approval_by_sig (
+      p_sig in varchar2
+   ) return varchar2 is
+      v_status  varchar2(16);
+      v_decided varchar2(20);
+   begin
+      select status,
+             to_char(decided_at, 'DD.MM.YYYY HH24:MI')
+        into v_status,
+             v_decided
+        from xx_disl_gu23_approval
+       where token_sig = p_sig;
+
+      return v_status
+             || c_us
+             || nvl(v_decided, '');
+   exception
+      when no_data_found then
+         return null;
+   end;
+
+   function gu23_approval_request (
+      p_act_id       in number,
+      p_approver_id  in number,
+      p_requested_by in number,
+      p_token_sig    in varchar2
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_approval (
+         id,
+         act_id,
+         approver_id,
+         status,
+         requested_at,
+         requested_by,
+         token_sig
+      ) values (
+         xx_disl_gu23_approval_seq.nextval,
+         p_act_id,
+         p_approver_id,
+         'pending',
+         sysdate,
+         p_requested_by,
+         p_token_sig
+      );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
+   end;
+
+   function gu23_approval_save_decision (
+      p_act_id      in number,
+      p_approver_id in number,
+      p_status      in varchar2,
+      p_comment     in varchar2,
+      p_token_sig   in varchar2
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_approval
+       where token_sig = p_token_sig;
+
+      if v_cnt > 0 then
+         update xx_disl_gu23_approval
+            set status     = p_status,
+                comment    = p_comment,
+                decided_at = sysdate
+          where token_sig = p_token_sig;
+      else
+         insert into xx_disl_gu23_approval (
+            id,
+            act_id,
+            approver_id,
+            status,
+            comment,
+            requested_at,
+            requested_by,
+            decided_at,
+            token_sig
+         ) values (
+            xx_disl_gu23_approval_seq.nextval,
+            p_act_id,
+            p_approver_id,
+            p_status,
+            p_comment,
+            sysdate,
+            p_approver_id,
+            sysdate,
+            p_token_sig
+         );
+      end if;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
+   end;
+
 end xx_disl_gu23_pkg;

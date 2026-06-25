@@ -322,4 +322,34 @@ create or replace package xx_disl_gu23_pkg as
    function gu23_annul_act (
       p_data in t_gu23_annul_act
    ) return varchar2;
+
+    -- ---- Согласование актов ----
+
+    -- ФИО пользователя по ID
+   function gu23_approval_get_name (
+      p_id in number
+   ) return varchar2;
+
+    -- Найти запись по HMAC-подписи; возвращает 'status'||CHR(31)||'DD.MM.YYYY HH24:MI' или NULL
+   function gu23_approval_by_sig (
+      p_sig in varchar2
+   ) return varchar2;
+
+    -- Создать запрос на согласование; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_approval_request (
+      p_act_id       in number,
+      p_approver_id  in number,
+      p_requested_by in number,
+      p_token_sig    in varchar2
+   ) return varchar2;
+
+    -- Сохранить решение согласующего; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_approval_save_decision (
+      p_act_id      in number,
+      p_approver_id in number,
+      p_status      in varchar2,
+      p_comment     in varchar2,
+      p_token_sig   in varchar2
+   ) return varchar2;
+
 end xx_disl_gu23_pkg;
