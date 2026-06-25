@@ -40,5 +40,6 @@ return [
     'gu23_upload_file'     => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_del_file'        => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_search_station'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_send_approval'   => ['gu23/GuActRepository.php', 'GuActRepository'],
 
 ];
