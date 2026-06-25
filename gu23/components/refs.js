@@ -165,31 +165,31 @@ function showSignerForm(signer) {
   const isNew = !signer
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:420px;max-width:96vw;padding:18px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <b style="font-size:14px">Подписант</b>
-          <button class="sf-close" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888;line-height:1">×</button>
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">ФИО</label>
-          <input class="inp sf-fio" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Должность</label>
-          <input class="inp sf-post" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Организация</label>
-          <input class="inp sf-org" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
+      <div class="card" style="width:520px;max-width:96vw;padding:28px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <b style="font-size:16px">Подписант</b>
+          <button class="sf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
         <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Подразделение</label>
-          <input class="inp sf-unit" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">ФИО</label>
+          <input class="inp sf-fio" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn ghost sf-cancel" style="font-size:12px;padding:4px 12px">Отмена</button>
-          ${!isNew ? `<button class="btn danger sf-toggle" style="font-size:12px;padding:4px 12px">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
-          <button class="btn sf-save" style="font-size:12px;padding:4px 12px">Сохранить</button>
+        <div class="frow" style="margin-bottom:14px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Должность</label>
+          <input class="inp sf-post" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
+        </div>
+        <div class="frow" style="margin-bottom:14px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Организация</label>
+          <input class="inp sf-org" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
+        </div>
+        <div class="frow" style="margin-bottom:22px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Подразделение</label>
+          <input class="inp sf-unit" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn ghost sf-cancel">Отмена</button>
+          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn sf-save">Сохранить</button>
         </div>
       </div>
     </div>
@@ -297,23 +297,23 @@ function showReasonForm(reason) {
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:380px;max-width:96vw;padding:18px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <b style="font-size:14px">Причина составления</b>
-          <button class="rf-close" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888;line-height:1">×</button>
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Название <span style="color:red">*</span></label>
-          <input class="inp rf-name" style="font-size:13px;padding:5px 8px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+      <div class="card" style="width:480px;max-width:96vw;padding:28px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <b style="font-size:16px">Причина составления</b>
+          <button class="rf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
         <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Тип акта</label>
-          <select class="inp rf-kind" style="font-size:13px;padding:5px 8px">${kindOptions}</select>
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Название <span style="color:red">*</span></label>
+          <input class="inp rf-name" style="font-size:14px;padding:8px 10px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn ghost rf-cancel" style="font-size:12px;padding:4px 12px">Отмена</button>
-          ${!isNew ? `<button class="btn danger rf-toggle" style="font-size:12px;padding:4px 12px">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
-          <button class="btn rf-save" style="font-size:12px;padding:4px 12px">Сохранить</button>
+        <div class="frow" style="margin-bottom:22px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Тип акта</label>
+          <select class="inp rf-kind" style="font-size:14px;padding:8px 10px">${kindOptions}</select>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn ghost rf-cancel">Отмена</button>
+          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn rf-save">Сохранить</button>
         </div>
       </div>
     </div>
