@@ -172,6 +172,14 @@ create or replace package xx_disl_gu23_pkg as
       p_row in xx_disl_gu23_act%rowtype
    );
 
+   procedure insert_act_row (
+      p_row in xx_disl_gu23_act_row%rowtype
+   );
+
+   procedure insert_signer (
+      p_row in xx_disl_gu23_signer%rowtype
+   );
+
     -- ---- Справочники
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined;

@@ -405,6 +405,56 @@ create or replace package body xx_disl_gu23_pkg as
        where id = p_row.id;
    end update_act;
 
+   procedure insert_act_row (
+      p_row in xx_disl_gu23_act_row%rowtype
+   ) is
+   begin
+      insert into xx_disl_gu23_act_row (
+         id,
+         act_id,
+         wagon_no,
+         owner,
+         kind,
+         st_from,
+         st_to,
+         cargo,
+         weight
+      ) values (
+         p_row.id,
+         p_row.act_id,
+         p_row.wagon_no,
+         p_row.owner,
+         p_row.kind,
+         p_row.st_from,
+         p_row.st_to,
+         p_row.cargo,
+         p_row.weight
+      );
+   end insert_act_row;
+
+   procedure insert_signer (
+      p_row in xx_disl_gu23_signer%rowtype
+   ) is
+   begin
+      insert into xx_disl_gu23_signer (
+         id,
+         act_id,
+         signer_ref_id,
+         fio,
+         post,
+         org,
+         ord_no
+      ) values (
+         p_row.id,
+         p_row.act_id,
+         p_row.signer_ref_id,
+         p_row.fio,
+         p_row.post,
+         p_row.org,
+         p_row.ord_no
+      );
+   end insert_signer;
+
    -- ----------------------------------------------------------------
    -- справочники
    -- ----------------------------------------------------------------
@@ -1442,25 +1492,20 @@ create or replace package body xx_disl_gu23_pkg as
             end if;
          end if;
 
-         insert into xx_disl_gu23_act_row (
-            id,
-            act_id,
-            wagon_no,
-            owner,
-            kind,
-            st_from,
-            st_to,
-            cargo,
-            weight
-         ) values ( xx_disl_gu23_act_row_seq.nextval,
-                    v_id,
-                    w.wagon_no,
-                    vw_owner,
-                    vw_kind,
-                    vw_from,
-                    vw_to,
-                    vw_cargo,
-                    vw_weight );
+         declare
+            v_row xx_disl_gu23_act_row%rowtype;
+         begin
+            v_row.id       := xx_disl_gu23_act_row_seq.nextval;
+            v_row.act_id   := v_id;
+            v_row.wagon_no := w.wagon_no;
+            v_row.owner    := vw_owner;
+            v_row.kind     := vw_kind;
+            v_row.st_from  := vw_from;
+            v_row.st_to    := vw_to;
+            v_row.cargo    := vw_cargo;
+            v_row.weight   := vw_weight;
+            insert_act_row(v_row);
+         end;
          v_wcnt := v_wcnt + 1;
       end loop;
 
@@ -1518,21 +1563,18 @@ create or replace package body xx_disl_gu23_pkg as
             continue;
          end if;
          v_ord := v_ord + 1;
-         insert into xx_disl_gu23_signer (
-            id,
-            act_id,
-            signer_ref_id,
-            fio,
-            post,
-            org,
-            ord_no
-         ) values ( xx_disl_gu23_signer_seq.nextval,
-                    v_id,
-                    vs_ref_id,
-                    vs_fio,
-                    vs_post,
-                    vs_org,
-                    v_ord );
+         declare
+            v_row xx_disl_gu23_signer%rowtype;
+         begin
+            v_row.id           := xx_disl_gu23_signer_seq.nextval;
+            v_row.act_id       := v_id;
+            v_row.signer_ref_id := vs_ref_id;
+            v_row.fio          := vs_fio;
+            v_row.post         := vs_post;
+            v_row.org          := vs_org;
+            v_row.ord_no       := v_ord;
+            insert_signer(v_row);
+         end;
       end loop;
 
       -- закрытие циклов акта начала: частичное/полное
