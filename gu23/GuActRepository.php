@@ -121,6 +121,27 @@ class GuActRepository
         return implode(self::RS, $out);
     }
 
+    /** Вызвать функцию пакета, вернуть скалярный результат. */
+    private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
+    {
+        $sql = 'BEGIN :__ret := ' . $expr . '; END;';
+        $st  = oci_parse($this->conn, $sql);
+        if (!$st) {
+            $e = oci_error($this->conn);
+            throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
+        }
+        $ret = null;
+        oci_bind_by_name($st, ':__ret', $ret, $retLen);
+        foreach ($binds as $name => $val) {
+            oci_bind_by_name($st, $name, $binds[$name]);
+        }
+        if (!oci_execute($st)) {
+            $e = oci_error($st);
+            throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?'));
+        }
+        return $ret;
+    }
+
     /** Привязать строку как временный CLOB. */
     private function bindClob($st, string $name, string $value)
     {
@@ -531,16 +552,10 @@ end;';
             return;
         }
 
-        $result = null;
-        $st = oci_parse($this->conn,
-            'BEGIN :r := xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment); END;'
+        $result = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment)',
+            [':act' => $actId, ':uid' => $userId, ':status' => $decision, ':comment' => $comment]
         );
-        oci_bind_by_name($st, ':r',       $result, 256);
-        oci_bind_by_name($st, ':act',     $actId);
-        oci_bind_by_name($st, ':uid',     $userId);
-        oci_bind_by_name($st, ':status',  $decision, 16);
-        oci_bind_by_name($st, ':comment', $comment, 1000);
-        oci_execute($st);
 
         if (str_starts_with((string) $result, 'ERR')) {
             $parts = explode(self::US, $result, 2);
@@ -559,12 +574,7 @@ end;';
         }
         $id     = (int) filter_input(INPUT_POST, 'id');
         $userId = $this->auth->getUserId();
-        $result = null;
-        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_close_act(:id, :uid); END;');
-        oci_bind_by_name($st, ':r',   $result, 256);
-        oci_bind_by_name($st, ':id',  $id);
-        oci_bind_by_name($st, ':uid', $userId);
-        oci_execute($st);
+        $result = $this->callFunc('xx_disl_gu23_pkg.gu23_close_act(:id, :uid)', [':id' => $id, ':uid' => $userId]);
         if (str_starts_with((string) $result, 'ERR')) {
             $parts = explode(self::US, $result, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
@@ -586,12 +596,11 @@ end;';
         }
 
         // 1. Создаём pending-записи в xx_disl_gu23_approval (через пакет)
-        $initResult = null;
-        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_init(:act, :by); END;');
-        oci_bind_by_name($st, ':r',   $initResult, 64);
-        oci_bind_by_name($st, ':act', $actId);
-        oci_bind_by_name($st, ':by',  $userId);
-        oci_execute($st);
+        $initResult = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
+            [':act' => $actId, ':by' => $userId],
+            64
+        );
 
         if (str_starts_with((string) $initResult, 'ERR')) {
             $parts = explode(self::US, $initResult, 2);
@@ -639,19 +648,14 @@ end;';
                 PHP_URL_QUERY
             );
 
-            $sig    = null;
-            $stSig  = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_by_sig(:s); END;');
             // Сохраняем подпись из ссылки в БД
             parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $params);
             $tokenSig = $params['sig'] ?? '';
 
-            $stUpd = oci_parse($this->conn,
-                'UPDATE xx_disl_gu23_approval SET token_sig = :sig WHERE act_id = :act AND approver_id = :uid'
+            $this->pipe(
+                'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
+                [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
             );
-            oci_bind_by_name($stUpd, ':sig', $tokenSig);
-            oci_bind_by_name($stUpd, ':act', $actId);
-            oci_bind_by_name($stUpd, ':uid', $approverId);
-            oci_execute($stUpd);
             oci_commit($this->conn);
 
             // Строим ссылку заново с тем же токеном
