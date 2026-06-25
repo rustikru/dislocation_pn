@@ -12,6 +12,7 @@ $files = [
     $base . '/components/wagonSearch.js',
     $base . '/components/form.js',
     $base . '/components/card.js',
+    $base . '/components/refs.js',
     $base . '/app.js',
 ];
 
