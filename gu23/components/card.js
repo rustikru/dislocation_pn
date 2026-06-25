@@ -47,7 +47,13 @@ function buildCardView(container, data) {
   showToolbarButtons(act, data)
   showDetailsBlock(act)
   showWagonsBlock(data.wagons)
-  showSignersBlock(act, data.signers, data.approvals || [], data.myApproval || 'none', !!data.isUserSigner)
+  showSignersBlock(
+    act,
+    data.signers,
+    data.approvals || [],
+    data.myApproval || 'none',
+    !!data.isUserSigner,
+  )
   showAttachmentsBlock(act, data.files)
   showHistoryBlock(data.history)
 }
@@ -77,17 +83,28 @@ function showToolbarButtons(act, data) {
     $toolbar.append($closeBtn)
   }
 
-  if (act.STATUS === 'active' && data.isAdmin && data.signers && data.signers.length) {
+  if (
+    act.STATUS === 'active' &&
+    data.isAdmin &&
+    data.signers &&
+    data.signers.length
+  ) {
     const approvalMap = {}
-    ;(data.approvals || []).forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+    ;(data.approvals || []).forEach((a) => {
+      approvalMap[a.APPROVER_ID] = a
+    })
     const hasUnsigned = data.signers.some((s) => {
       if (s.STYPE === 'rzd' || !s.USER_ID) return false
       const appr = approvalMap[s.USER_ID]
       return !appr || appr.STATUS !== 'approved'
     })
     if (hasUnsigned) {
-      const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
-      $resendBtn.on('click', () => resendApprovalLinks(act, data.signers, data.approvals || []))
+      const $resendBtn = $(
+        '<button class="btn sm ghost">Переотправить ссылки</button>',
+      )
+      $resendBtn.on('click', () =>
+        resendApprovalLinks(act, data.signers, data.approvals || []),
+      )
       $toolbar.append($resendBtn)
     }
   }
@@ -199,26 +216,32 @@ function showWagonsBlock(wagons) {
 function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
   // Строим map: approver_id → approval record
   const approvalMap = {}
-  approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+  approvals.forEach((a) => {
+    approvalMap[a.APPROVER_ID] = a
+  })
 
   const statusPill = (status) => {
-    if (status === 'approved') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
-    if (status === 'rejected') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
-    if (status === 'pending')  return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900">⏳ Ожидает</span>'
+    if (status === 'approved')
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
+    if (status === 'rejected')
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
+    if (status === 'pending')
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900">⏳ Ожидает</span>'
     return ''
   }
 
   const listHtml = signers.length
-    ? signers.map((s) => {
-        const isRzd = s.STYPE === 'rzd'
-        const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
-        const pill = approval
-          ? statusPill(approval.STATUS)
-          : isRzd
-            ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
-            : ''
-        const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
-        return `
+    ? signers
+        .map((s) => {
+          const isRzd = s.STYPE === 'rzd'
+          const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
+          const pill = approval
+            ? statusPill(approval.STATUS)
+            : isRzd
+              ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
+              : ''
+          const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
+          return `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
@@ -226,16 +249,19 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
           </div>
           <div style="flex-shrink:0">${pill}</div>
         </div>`
-      }).join('')
+        })
+        .join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
   // Баннер "подписать" — для подписантов акта (pending = ждёт решения, none = ещё не инициировано)
-  const canSign = act.STATUS === 'active' && (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
+  const canSign =
+    act.STATUS === 'active' &&
+    (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
   if (canSign) {
     myBannerHtml = `
       <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
-        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">⏳ Ожидается ваше согласование</div>
+        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8"></div>
         <div style="display:flex;gap:8px">
           <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">✓ Согласовать</button>
           <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">✕ Отклонить</button>
@@ -259,7 +285,9 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
   `)
 
   if (canSign) {
-    $('#btn-sign-approve').on('click', () => submitInAppDecision(act.ID, 'approved', ''))
+    $('#btn-sign-approve').on('click', () =>
+      submitInAppDecision(act.ID, 'approved', ''),
+    )
 
     $('#btn-sign-reject').on('click', () => {
       const box = $('#reject-reason-box')
@@ -269,14 +297,21 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
 
     $('#btn-sign-reject-confirm').on('click', () => {
       const reason = $('#reject-reason-txt').val().trim()
-      if (!reason) { showToast('Укажите причину', 'err'); return }
+      if (!reason) {
+        showToast('Укажите причину', 'err')
+        return
+      }
       submitInAppDecision(act.ID, 'rejected', reason)
     })
   }
 }
 
 function submitInAppDecision(actId, decision, comment) {
-  sendApiRequest('gu23_approve_in_app', { act_id: actId, decision, comment }).done((resp) => {
+  sendApiRequest('gu23_approve_in_app', {
+    act_id: actId,
+    decision,
+    comment,
+  }).done((resp) => {
     if (resp && resp.ok) {
       showToast(resp.msg || 'Готово', 'ok')
       navigateTo('card', actId)
@@ -290,7 +325,9 @@ function showAttachmentsBlock(act, files) {
   const isAnnulled = act.STATUS === 'annulled'
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
-  const addBtn = isAnnulled ? '' : `
+  const addBtn = isAnnulled
+    ? ''
+    : `
     <div style="display:flex;gap:4px">
       <label title="Прикрепить общий файл" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--ink2);line-height:1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
@@ -307,9 +344,10 @@ function showAttachmentsBlock(act, files) {
 
   const renderSection = (label, items) => {
     if (!items.length) return ''
-    const rows = items.map((file) => {
-      const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
-      return `
+    const rows = items
+      .map((file) => {
+        const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
+        return `
         <div style="display:flex;gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
           ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;cursor:pointer">` : ''}
           <div style="flex:1;font-size:12.5px">
@@ -318,14 +356,17 @@ function showAttachmentsBlock(act, files) {
           </div>
           ${!isAnnulled ? `<button class="delx file-delete-btn" data-id="${file.ID}">×</button>` : ''}
         </div>`
-    }).join('')
+      })
+      .join('')
     return `
       <div style="font-size:11px;font-weight:600;color:#999;letter-spacing:.05em;margin:10px 0 4px">${label}</div>
       ${rows}`
   }
 
-  const general = files.filter((f) => (f.FILE_CATEGORY || 'general') === 'general')
-  const signed  = files.filter((f) => f.FILE_CATEGORY === 'signed')
+  const general = files.filter(
+    (f) => (f.FILE_CATEGORY || 'general') === 'general',
+  )
+  const signed = files.filter((f) => f.FILE_CATEGORY === 'signed')
 
   const bodyHtml = files.length
     ? renderSection('ОБЩИЕ', general) + renderSection('ПОДПИСАННЫЕ', signed)
@@ -460,21 +501,27 @@ function annulActiveAct(act) {
 }
 
 function closeAct(act) {
-  showConfirmBox('Закрыть акт', `Закрыть акт ${act.ACT_NUMBER}? Статус изменится на «Закрыт».`, () => {
-    sendApiRequest('gu23_close_act', { id: act.ID }).done((response) => {
-      if (response && response.ok) {
-        showToast('Акт закрыт', 'ok')
-        navigateTo('card', act.ID)
-      } else {
-        showToast((response && response.msg) || 'Ошибка', 'err')
-      }
-    })
-  })
+  showConfirmBox(
+    'Закрыть акт',
+    `Закрыть акт ${act.ACT_NUMBER}? Статус изменится на «Закрыт».`,
+    () => {
+      sendApiRequest('gu23_close_act', { id: act.ID }).done((response) => {
+        if (response && response.ok) {
+          showToast('Акт закрыт', 'ok')
+          navigateTo('card', act.ID)
+        } else {
+          showToast((response && response.msg) || 'Ошибка', 'err')
+        }
+      })
+    },
+  )
 }
 
 function resendApprovalLinks(act, signers, approvals) {
   const approvalMap = {}
-  ;(approvals || []).forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+  ;(approvals || []).forEach((a) => {
+    approvalMap[a.APPROVER_ID] = a
+  })
 
   const unsigned = (signers || []).filter((s) => {
     if (s.STYPE === 'rzd' || !s.USER_ID) return false
@@ -487,7 +534,9 @@ function resendApprovalLinks(act, signers, approvals) {
     return
   }
 
-  const rows = unsigned.map((s) => `
+  const rows = unsigned
+    .map(
+      (s) => `
     <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
       <input type="checkbox" class="resend-chk" value="${s.USER_ID}" style="width:16px;height:16px">
       <span>
@@ -495,7 +544,9 @@ function resendApprovalLinks(act, signers, approvals) {
         ${s.POST ? '<br><span class="muted" style="font-size:12px">' + escapeHtml(s.POST) + '</span>' : ''}
       </span>
     </label>
-  `).join('')
+  `,
+    )
+    .join('')
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
@@ -514,20 +565,29 @@ function resendApprovalLinks(act, signers, approvals) {
   $('body').append($modal)
 
   $('#resend-cancel').on('click', () => $modal.remove())
-  $modal.on('click', (e) => { if ($(e.target).is($modal)) $modal.remove() })
+  $modal.on('click', (e) => {
+    if ($(e.target).is($modal)) $modal.remove()
+  })
 
   $('#resend-send').on('click', () => {
     const selected = []
     $modal.find('.resend-chk:checked').each(function () {
       selected.push($(this).val())
     })
-    if (!selected.length) { showToast('Выберите хотя бы одного подписанта', 'err'); return }
+    if (!selected.length) {
+      showToast('Выберите хотя бы одного подписанта', 'err')
+      return
+    }
 
     $('#resend-send').prop('disabled', true).text('Отправка…')
     let done = 0
     let errors = 0
     selected.forEach((userId) => {
-      sendApiRequest('gu23_resend_approval', { act_id: act.ID, user_id: userId, mode: 'send_file' }).done((r) => {
+      sendApiRequest('gu23_resend_approval', {
+        act_id: act.ID,
+        user_id: userId,
+        mode: 'send_file',
+      }).done((r) => {
         done++
         if (!r || !r.ok) errors++
         if (done === selected.length) {
@@ -535,7 +595,10 @@ function resendApprovalLinks(act, signers, approvals) {
           if (errors === 0) {
             showToast(`Ссылки отправлены (${done})`, 'ok')
           } else {
-            showToast(`Отправлено ${done - errors} из ${done}, ошибок: ${errors}`, 'err')
+            showToast(
+              `Отправлено ${done - errors} из ${done}, ошибок: ${errors}`,
+              'err',
+            )
           }
         }
       })
@@ -548,14 +611,16 @@ function sendForApproval(act) {
     'Отправить на согласование',
     'Запросить электронное согласование у подписантов акта?',
     () => {
-      sendApiRequest('gu23_send_approval', { act_id: act.ID }).done((response) => {
-        if (response && response.ok) {
-          showToast(response.msg || 'Письма отправлены', 'ok')
-          navigateTo('card', act.ID)
-        } else {
-          showToast((response && response.msg) || 'Ошибка отправки', 'err')
-        }
-      })
+      sendApiRequest('gu23_send_approval', { act_id: act.ID }).done(
+        (response) => {
+          if (response && response.ok) {
+            showToast(response.msg || 'Письма отправлены', 'ok')
+            navigateTo('card', act.ID)
+          } else {
+            showToast((response && response.msg) || 'Ошибка отправки', 'err')
+          }
+        },
+      )
     },
   )
 }
