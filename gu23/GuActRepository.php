@@ -62,6 +62,9 @@ class GuActRepository
                 case 'gu23_send_approval':
                     $this->sendApproval();
                     break;
+                case 'gu23_approve_in_app':
+                    $this->approveInApp();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -167,13 +170,24 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
+        $userId = $this->auth->getUserId();
+        $myStatus = null;
+        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid); END;');
+        oci_bind_by_name($st, ':r',   $myStatus, 16);
+        oci_bind_by_name($st, ':act', $id);
+        oci_bind_by_name($st, ':uid', $userId);
+        oci_execute($st);
+
         echo json_encode([
-            'ok' => true,
-            'act' => $act[0],
-            'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
-            'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
-            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
-            'history' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'ok'            => true,
+            'act'           => $act[0],
+            'currentUserId' => (int) $userId,
+            'myApproval'    => $myStatus ?: 'none',
+            'wagons'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
+            'files'         => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
+            'signers'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
+            'history'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'approvals'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
         ]);
     }
 
@@ -483,6 +497,44 @@ end;';
     }
 
     /* ----------------------------------------------------------------- */
+    /* подписание акта прямо из интерфейса (без email-ссылки)             */
+    /* ----------------------------------------------------------------- */
+    private function approveInApp(): void
+    {
+        $actId    = (int) filter_input(INPUT_POST, 'act_id');
+        $decision = filter_input(INPUT_POST, 'decision') ?: '';
+        $comment  = trim((string) filter_input(INPUT_POST, 'comment'));
+        $userId   = $this->auth->getUserId();
+
+        if (!$actId || !in_array($decision, ['approved', 'rejected'], true)) {
+            echo json_encode(['ok' => false, 'msg' => 'Некорректные параметры']);
+            return;
+        }
+        if ($decision === 'rejected' && $comment === '') {
+            echo json_encode(['ok' => false, 'msg' => 'При отклонении укажите причину']);
+            return;
+        }
+
+        $result = null;
+        $st = oci_parse($this->conn,
+            'BEGIN :r := xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment); END;'
+        );
+        oci_bind_by_name($st, ':r',       $result, 256);
+        oci_bind_by_name($st, ':act',     $actId);
+        oci_bind_by_name($st, ':uid',     $userId);
+        oci_bind_by_name($st, ':status',  $decision, 16);
+        oci_bind_by_name($st, ':comment', $comment, 1000);
+        oci_execute($st);
+
+        if (str_starts_with((string) $result, 'ERR')) {
+            $parts = explode(self::US, $result, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            $label = $decision === 'approved' ? 'Акт согласован' : 'Акт отклонён';
+            echo json_encode(['ok' => true, 'msg' => $label]);
+        }
+    }
+
     /* отправка согласования подписантам                                  */
     /* ----------------------------------------------------------------- */
     private function sendApproval(): void

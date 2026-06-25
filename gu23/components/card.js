@@ -48,7 +48,7 @@ function buildCardView(container, data) {
   showToolbarButtons(act, data)
   showDetailsBlock(act)
   showWagonsBlock(data.wagons)
-  showSignersBlock(data.signers)
+  showSignersBlock(act, data.signers, data.approvals || [], data.myApproval || 'none')
   showAttachmentsBlock(act, data.files)
   showHistoryBlock(data.history)
 }
@@ -182,29 +182,89 @@ function showWagonsBlock(wagons) {
   `)
 }
 
-function showSignersBlock(signers) {
+function showSignersBlock(act, signers, approvals, myApproval) {
+  const statusBadge = (status) => {
+    if (status === 'approved') return '<span style="color:var(--ok,#5a7a60);font-size:11px">✓ Согласован</span>'
+    if (status === 'rejected') return '<span style="color:var(--danger,#9e5b52);font-size:11px">✕ Отклонён</span>'
+    if (status === 'pending')  return '<span style="color:#b08000;font-size:11px">⏳ Ожидает</span>'
+    return ''
+  }
+
+  // Строим map: approver_id → approval record
+  const approvalMap = {}
+  approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+
   const listHtml = signers.length
-    ? signers
-        .map(
-          (s) => `
-    <div class="signrow">
-     
-      <div style="flex:1">
-        <div><b>${escapeHtml(s.FIO)}</b></div>
-        <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>
-      </div>
-    </div>
-  `,
-        )
-        .join('')
+    ? signers.map((s) => `
+        <div class="signrow">
+          <div style="flex:1">
+            <div><b>${escapeHtml(s.FIO)}</b></div>
+            <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>
+          </div>
+        </div>`).join('')
     : '<div class="muted">Подписанты не назначены</div>'
+
+  // Банер "подписать" для текущего пользователя
+  let myBannerHtml = ''
+  if (act.STATUS === 'active' && (myApproval === 'pending' || myApproval === 'none')) {
+    const isPending = myApproval === 'pending'
+    myBannerHtml = `
+      <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">
+          ${isPending ? '⏳ Ожидается ваше согласование' : 'Вы указаны как подписант'}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm" id="btn-sign-approve" style="background:#5a7a60;color:#fff">✓ Согласовать</button>
+          <button class="btn sm" id="btn-sign-reject"  style="background:#9e5b52;color:#fff">✕ Отклонить</button>
+        </div>
+        <div id="reject-reason-box" style="display:none;margin-top:8px">
+          <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
+            style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
+          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#9e5b52;color:#fff">Подтвердить отклонение</button>
+        </div>
+      </div>`
+  } else if (myApproval === 'approved') {
+    myBannerHtml = '<div style="color:#5a7a60;font-size:13px;margin-bottom:10px">✓ Вы согласовали этот акт</div>'
+  } else if (myApproval === 'rejected') {
+    myBannerHtml = '<div style="color:#9e5b52;font-size:13px;margin-bottom:10px">✕ Вы отклонили этот акт</div>'
+  }
 
   $('#card-right-column').append(`
     <div class="card">
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Подписанты</b></div>
-      <div class="cardpad">${listHtml}</div>
+      <div class="cardpad">
+        ${myBannerHtml}
+        ${listHtml}
+      </div>
     </div>
   `)
+
+  if (act.STATUS === 'active' && (myApproval === 'pending' || myApproval === 'none')) {
+    $('#btn-sign-approve').on('click', () => submitInAppDecision(act.ID, 'approved', ''))
+
+    $('#btn-sign-reject').on('click', () => {
+      const box = $('#reject-reason-box')
+      box.toggle()
+      if (box.is(':visible')) $('#reject-reason-txt').focus()
+    })
+
+    $('#btn-sign-reject-confirm').on('click', () => {
+      const reason = $('#reject-reason-txt').val().trim()
+      if (!reason) { showToast('Укажите причину', 'err'); return }
+      submitInAppDecision(act.ID, 'rejected', reason)
+    })
+  }
+}
+
+function submitInAppDecision(actId, decision, comment) {
+  sendApiRequest('gu23_approve_in_app', { act_id: actId, decision, comment }).done((resp) => {
+    if (resp && resp.ok) {
+      showToast(resp.msg || 'Готово', 'ok')
+      navigateTo('card', actId)
+    } else {
+      showToast((resp && resp.msg) || 'Ошибка', 'err')
+    }
+  })
 }
 
 function showAttachmentsBlock(act, files) {

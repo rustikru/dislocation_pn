@@ -1802,4 +1802,83 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   function gu23_approval_my_status (
+      p_act_id  in number,
+      p_user_id in number
+   ) return varchar2 is
+      v_status varchar2(16);
+   begin
+      select status
+        into v_status
+        from xx_disl_gu23_approval
+       where act_id     = p_act_id
+         and approver_id = p_user_id
+         and rownum      = 1;
+      return v_status;
+   exception
+      when no_data_found then return 'none';
+   end;
+
+   function gu23_get_approvals (
+      p_act_id in number
+   ) return t_gu23_approval_tab
+      pipelined
+   is
+      l_row t_gu23_approval_row;
+   begin
+      for r in (
+         select a.approver_id,
+                u.full_name,
+                a.status,
+                to_char(a.decided_at, 'DD.MM.YYYY HH24:MI') as decided_at,
+                a.comment_txt
+           from xx_disl_gu23_approval a
+           join xx_disl_users u on u.id = a.approver_id
+          where a.act_id = p_act_id
+          order by a.requested_at
+      ) loop
+         l_row.approver_id := r.approver_id;
+         l_row.full_name   := r.full_name;
+         l_row.status      := r.status;
+         l_row.decided_at  := r.decided_at;
+         l_row.comment_txt := r.comment_txt;
+         pipe row(l_row);
+      end loop;
+      return;
+   end;
+
+   function gu23_direct_decision (
+      p_act_id  in number,
+      p_user_id in number,
+      p_status  in varchar2,
+      p_comment in varchar2
+   ) return varchar2 is
+   begin
+      -- Создаём запись если нет, иначе обновляем
+      merge into xx_disl_gu23_approval t
+      using (select p_act_id  as act_id,
+                    p_user_id as approver_id
+               from dual) s
+      on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+      when matched then
+         update set status      = p_status,
+                    comment_txt = p_comment,
+                    decided_at  = sysdate
+          where t.status = 'pending'
+      when not matched then
+         insert (id, act_id, approver_id, status, comment_txt,
+                 requested_at, requested_by, decided_at, token_sig)
+         values (xx_disl_gu23_approval_seq.nextval,
+                 p_act_id, p_user_id, p_status, p_comment,
+                 sysdate, p_user_id, sysdate, null);
+      commit;
+      if sql%rowcount = 0 then
+         return 'ERR' || c_us || 'Решение уже было принято ранее';
+      end if;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
+   end;
+
 end xx_disl_gu23_pkg;

@@ -372,4 +372,36 @@ create or replace package xx_disl_gu23_pkg as
       p_token_sig   in varchar2
    ) return varchar2;
 
+    -- Текущий статус согласования одного пользователя по акту
+    -- Возвращает: 'none' | 'pending' | 'approved' | 'rejected'
+   function gu23_approval_my_status (
+      p_act_id    in number,
+      p_user_id   in number
+   ) return varchar2;
+
+    -- Все записи согласования по акту (для отображения статусов в карточке)
+   type t_gu23_approval_row is record (
+      approver_id  number,
+      full_name    varchar2(256),
+      status       varchar2(16),
+      decided_at   varchar2(20),
+      comment_txt  varchar2(1000)
+   );
+   type t_gu23_approval_tab is
+      table of t_gu23_approval_row;
+
+   function gu23_get_approvals (
+      p_act_id in number
+   ) return t_gu23_approval_tab
+      pipelined;
+
+    -- Подписать акт напрямую (без email-ссылки, из интерфейса)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_direct_decision (
+      p_act_id    in number,
+      p_user_id   in number,
+      p_status    in varchar2,
+      p_comment   in varchar2
+   ) return varchar2;
+
 end xx_disl_gu23_pkg;
