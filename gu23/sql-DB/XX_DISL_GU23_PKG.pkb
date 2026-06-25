@@ -158,27 +158,63 @@ create or replace package body xx_disl_gu23_pkg as
    -- Разбирает CLOB в формате RS/US в таблицу строк вагонов (pipe row)
    function parse_wagon_clob (
       p_clob in clob
-   ) return t_wagon_clob_tab pipelined is
-      v_len  pls_integer := nvl(dbms_lob.getlength(p_clob), 0);
+   ) return t_wagon_clob_tab
+      pipelined
+   is
+      v_len  pls_integer := nvl(
+         dbms_lob.getlength(p_clob),
+         0
+      );
       v_from pls_integer := 1;
       v_to   pls_integer;
       v_rec  varchar2(32767);
       l_row  t_wagon_clob_row;
    begin
       while v_from <= v_len loop
-         v_to := instr(p_clob, c_rs, v_from);
-         if v_to = 0 then v_to := v_len + 1; end if;
-         v_rec         := dbms_lob.substr(p_clob, v_to - v_from, v_from);
-         v_from        := v_to + 1;
-         l_row.wagon_no := trim(g_field(v_rec, 1));
+         v_to := instr(
+            p_clob,
+            c_rs,
+            v_from
+         );
+         if v_to = 0 then
+            v_to := v_len + 1;
+         end if;
+         v_rec := dbms_lob.substr(
+            p_clob,
+            v_to - v_from,
+            v_from
+         );
+         v_from := v_to + 1;
+         l_row.wagon_no := trim(g_field(
+            v_rec,
+            1
+         ));
          if l_row.wagon_no is not null then
-            l_row.owner   := g_field(v_rec, 2);
-            l_row.kind    := g_field(v_rec, 3);
-            l_row.st_from := g_field(v_rec, 4);
-            l_row.st_to   := g_field(v_rec, 5);
-            l_row.cargo   := g_field(v_rec, 6);
-            l_row.weight  := g_field(v_rec, 7);
-            pipe row(l_row);
+            l_row.owner := g_field(
+               v_rec,
+               2
+            );
+            l_row.kind := g_field(
+               v_rec,
+               3
+            );
+            l_row.st_from := g_field(
+               v_rec,
+               4
+            );
+            l_row.st_to := g_field(
+               v_rec,
+               5
+            );
+            l_row.cargo := g_field(
+               v_rec,
+               6
+            );
+            l_row.weight := g_field(
+               v_rec,
+               7
+            );
+            pipe row ( l_row );
          end if;
       end loop;
       return;
@@ -735,71 +771,6 @@ create or replace package body xx_disl_gu23_pkg as
       end loop;
       return;
    end;
-
-   -- Парсер вагонов из clob
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined
-   is
-      v_len  pls_integer := nvl(
-         dbms_lob.getlength(p_clob),
-         0
-      );
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_rec  varchar2(32767);
-      l_row  t_wagon_clob_row;
-   begin
-      while v_from <= v_len loop
-         v_to := instr(
-            p_clob,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_clob,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         l_row.wagon_no := trim(g_field(
-            v_rec,
-            1
-         ));
-         if l_row.wagon_no is not null then
-            l_row.owner := g_field(
-               v_rec,
-               2
-            );
-            l_row.kind := g_field(
-               v_rec,
-               3
-            );
-            l_row.st_from := g_field(
-               v_rec,
-               4
-            );
-            l_row.st_to := g_field(
-               v_rec,
-               5
-            );
-            l_row.cargo := g_field(
-               v_rec,
-               6
-            );
-            l_row.weight := g_field(
-               v_rec,
-               7
-            );
-            pipe row ( l_row );
-         end if;
-      end loop;
-      return;
-   end parse_wagon_clob;
    -- ----------------------------------------------------------------
    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
    -- ----------------------------------------------------------------
@@ -1283,73 +1254,136 @@ create or replace package body xx_disl_gu23_pkg as
       end if;
       
       -- разбираем вагоны
-      for w in ( select * from table(parse_wagon_clob(p_data.p_wagons)) ) loop
-         if p_data.p_type in ( 'start', 'other' ) then
+      for w in (
+         select *
+           from table ( parse_wagon_clob(p_data.p_wagons) )
+      ) loop
+         if p_data.p_type in ( 'start',
+                               'other' ) then
             -- данные по вагону из дислокации
             begin
-               select owner, kind, st_from, st_to, cargo, weight
-                 into vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight
-                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(w.wagon_no, p_data.p_waybill_no) )
+               select owner,
+                      kind,
+                      st_from,
+                      st_to,
+                      cargo,
+                      weight
+                 into
+                  vw_owner,
+                  vw_kind,
+                  vw_from,
+                  vw_to,
+                  vw_cargo,
+                  vw_weight
+                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
+                  w.wagon_no,
+                  p_data.p_waybill_no
+               ) )
                 where rownum = 1;
             exception
                when others then
-                  vw_owner := null; vw_kind := null; vw_from := null;
-                  vw_to := null;    vw_cargo := null; vw_weight := null;
+                  vw_owner := null;
+                  vw_kind := null;
+                  vw_from := null;
+                  vw_to := null;
+                  vw_cargo := null;
+                  vw_weight := null;
             end;
          else
             -- для окончания берём данные из акта начала (уже в CLOB)
-            vw_owner := w.owner; vw_kind := w.kind;
-            vw_from  := w.st_from; vw_to := w.st_to;
-            vw_cargo := w.cargo;   vw_weight := w.weight;
+            vw_owner := w.owner;
+            vw_kind := w.kind;
+            vw_from := w.st_from;
+            vw_to := w.st_to;
+            vw_cargo := w.cargo;
+            vw_weight := w.weight;
          end if;
 
          -- запрет дубля открытого простоя
-         if p_data.p_type = 'start' and p_data.p_status = 'active'
-            and nvl(p_data.p_force, 'N') <> 'Y'
+         if
+            p_data.p_type = 'start'
+            and p_data.p_status = 'active'
+            and nvl(
+               p_data.p_force,
+               'N'
+            ) <> 'Y'
          then
             v_dupnum := null;
             begin
-               select a.act_number into v_dupnum
-                 from xx_disl_gu23_act a, xx_disl_gu23_act_row r
-                where r.act_id = a.id and a.act_type = 'start'
-                  and a.status = 'active' and a.id <> v_id
-                  and r.wagon_no = w.wagon_no and rownum = 1;
-            exception when no_data_found then v_dupnum := null;
+               select a.act_number
+                 into v_dupnum
+                 from xx_disl_gu23_act a,
+                      xx_disl_gu23_act_row r
+                where r.act_id = a.id
+                  and a.act_type = 'start'
+                  and a.status = 'active'
+                  and a.id <> v_id
+                  and r.wagon_no = w.wagon_no
+                  and rownum = 1;
+            exception
+               when no_data_found then
+                  v_dupnum := null;
             end;
             if v_dupnum is not null then
                rollback;
                return format_error('Нельзя создать акт «Начало простоя»: по вагону '
-                                   || w.wagon_no || ' уже есть открытый цикл в акте ' || v_dupnum);
+                                   || w.wagon_no
+                                   || ' уже есть открытый цикл в акте ' || v_dupnum);
             end if;
          end if;
 
          -- проверки для акта окончания
-         if p_data.p_type = 'end' and p_data.p_status = 'active' then
-            select count(*) into v_has_start
+         if
+            p_data.p_type = 'end'
+            and p_data.p_status = 'active'
+         then
+            select count(*)
+              into v_has_start
               from xx_disl_gu23_act_row r
-             where r.act_id = p_data.p_linked_start_id and r.wagon_no = w.wagon_no;
+             where r.act_id = p_data.p_linked_start_id
+               and r.wagon_no = w.wagon_no;
             if v_has_start = 0 then
                rollback;
-               return format_error('Вагон ' || w.wagon_no || ' не относится к выбранному акту начала');
+               return format_error('Вагон '
+                                   || w.wagon_no || ' не относится к выбранному акту начала');
             end if;
 
-            select count(*) into v_has_start
-              from xx_disl_gu23_act e, xx_disl_gu23_act_row er
-             where er.act_id = e.id and e.act_type = 'end' and e.status = 'active'
+            select count(*)
+              into v_has_start
+              from xx_disl_gu23_act e,
+                   xx_disl_gu23_act_row er
+             where er.act_id = e.id
+               and e.act_type = 'end'
+               and e.status = 'active'
                and e.linked_start_id = p_data.p_linked_start_id
-               and e.id <> v_id and er.wagon_no = w.wagon_no;
+               and e.id <> v_id
+               and er.wagon_no = w.wagon_no;
             if v_has_start > 0 then
                rollback;
-               return format_error('Вагон ' || w.wagon_no || ' уже закрыт другим актом окончания');
+               return format_error('Вагон '
+                                   || w.wagon_no || ' уже закрыт другим актом окончания');
             end if;
          end if;
 
          insert into xx_disl_gu23_act_row (
-            id, act_id, wagon_no, owner, kind, st_from, st_to, cargo, weight
-         ) values (
-            xx_disl_gu23_act_row_seq.nextval,
-            v_id, w.wagon_no, vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight
-         );
+            id,
+            act_id,
+            wagon_no,
+            owner,
+            kind,
+            st_from,
+            st_to,
+            cargo,
+            weight
+         ) values ( xx_disl_gu23_act_row_seq.nextval,
+                    v_id,
+                    w.wagon_no,
+                    vw_owner,
+                    vw_kind,
+                    vw_from,
+                    vw_to,
+                    vw_cargo,
+                    vw_weight );
          v_wcnt := v_wcnt + 1;
       end loop;
 
