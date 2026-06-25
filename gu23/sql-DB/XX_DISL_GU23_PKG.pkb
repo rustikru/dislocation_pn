@@ -697,7 +697,7 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.post          := s.post;
          l_row.org           := s.org;
          l_row.unit          := null;
-         l_row.stype         := null;
+         l_row.stype         := s.stype;
          l_row.ord_no        := s.ord_no;
          l_row.user_id       := s.ref_user_id;
          pipe row ( l_row );

@@ -195,8 +195,13 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
 
   const listHtml = signers.length
     ? signers.map((s) => {
-        const approval = s.USER_ID ? approvalMap[s.USER_ID] : null
-        const pill = approval ? statusPill(approval.STATUS) : ''
+        const isRzd = s.STYPE === 'rzd'
+        const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
+        const pill = approval
+          ? statusPill(approval.STATUS)
+          : isRzd
+            ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
+            : ''
         const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
         return `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)">
@@ -204,7 +209,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
             <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
             ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
           </div>
-          ${pill ? `<div style="flex-shrink:0">${pill}</div>` : ''}
+          <div style="flex-shrink:0">${pill}</div>
         </div>`
       }).join('')
     : '<div class="muted">Подписанты не назначены</div>'

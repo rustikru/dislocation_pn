@@ -127,14 +127,14 @@ class GuActRepository
     /** Вызвать функцию пакета, вернуть скалярный результат. */
     private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
     {
-        $sql = 'BEGIN :__ret := ' . $expr . '; END;';
+        $sql = 'BEGIN :ret_val := ' . $expr . '; END;';
         $st  = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
             throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
         }
         $ret = null;
-        oci_bind_by_name($st, ':__ret', $ret, $retLen);
+        oci_bind_by_name($st, ':ret_val', $ret, $retLen);
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
