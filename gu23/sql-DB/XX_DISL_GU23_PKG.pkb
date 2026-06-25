@@ -685,20 +685,21 @@ create or replace package body xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for s in (
-         select *
-           from xx_disl_gu23_signer
-          where act_id = p_act_id
-          order by ord_no,
-                   id
+         select s.*,
+                case when s.stype = 'own' then s.signer_ref_id else null end as ref_user_id
+           from xx_disl_gu23_signer s
+          where s.act_id = p_act_id
+          order by s.ord_no, s.id
       ) loop
-         l_row.id := s.id;
+         l_row.id            := s.id;
          l_row.signer_ref_id := s.signer_ref_id;
-         l_row.fio := s.fio;
-         l_row.post := s.post;
-         l_row.org := s.org;
-         l_row.unit := null;
-         l_row.stype := null;
-         l_row.ord_no := s.ord_no;
+         l_row.fio           := s.fio;
+         l_row.post          := s.post;
+         l_row.org           := s.org;
+         l_row.unit          := null;
+         l_row.stype         := s.stype;
+         l_row.ord_no        := s.ord_no;
+         l_row.user_id       := s.ref_user_id;
          pipe row ( l_row );
       end loop;
       return;
@@ -1061,6 +1062,7 @@ create or replace package body xx_disl_gu23_pkg as
       vs_fio       varchar2(256);
       vs_post      varchar2(256);
       vs_org       varchar2(256);
+      vs_stype     varchar2(16);
       v_dupnum     varchar2(64);
       v_has_start  number;
       v_tot        number;
@@ -1417,25 +1419,17 @@ create or replace package body xx_disl_gu23_pkg as
             v_rec,
             4
          );
+         vs_stype := trim(g_field(v_rec, 5)); -- 'own' или 'rzd'; null = вручную
          if trim(vs_fio) is null then
             continue;
          end if;
          v_ord := v_ord + 1;
          insert into xx_disl_gu23_signer (
-            id,
-            act_id,
-            signer_ref_id,
-            fio,
-            post,
-            org,
-            ord_no
-         ) values ( xx_disl_gu23_signer_seq.nextval,
-                    v_id,
-                    vs_ref_id,
-                    vs_fio,
-                    vs_post,
-                    vs_org,
-                    v_ord );
+            id, act_id, signer_ref_id, fio, post, org, ord_no, stype
+         ) values (
+            xx_disl_gu23_signer_seq.nextval, v_id, vs_ref_id,
+            vs_fio, vs_post, vs_org, v_ord, nullif(vs_stype, '')
+         );
       end loop;
 
       -- закрытие циклов акта начала: частичное/полное
@@ -1552,6 +1546,43 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   function gu23_close_act (
+      p_id      in number,
+      p_user_id in number
+   ) return varchar2 is
+      v_status varchar2(16);
+      v_type   varchar2(16);
+   begin
+      select status, act_type into v_status, v_type
+        from xx_disl_gu23_act
+       where id = p_id;
+
+      if v_type != 'end' then
+         return 'ERR' || c_us || 'Закрыть можно только акт окончания простоя';
+      end if;
+      if v_status != 'active' then
+         return 'ERR' || c_us || 'Акт должен быть в статусе «Открыт»';
+      end if;
+
+      update xx_disl_gu23_act
+         set status      = 'closed',
+             modified_at = sysdate,
+             modified_by = p_user_id
+       where id = p_id;
+
+      insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+      values (xx_disl_gu23_hist_seq.nextval, p_id, sysdate, p_user_id, 'Акт закрыт администратором');
+
+      commit;
+      return 'OK';
+   exception
+      when no_data_found then
+         return 'ERR' || c_us || 'Акт не найден';
+      when others then
+         rollback;
+         return 'ERR' || c_us || sqlerrm;
+   end;
+
    function gu23_annul_act (
       p_data in t_gu23_annul_act
    ) return varchar2 is
@@ -1584,6 +1615,30 @@ create or replace package body xx_disl_gu23_pkg as
                 modified_by = p_data.p_user_id
           where id = v_linked
             and status = 'closed';
+      end if;
+
+      -- при аннулировании акта начала — каскадно аннулируем связанные акты окончания
+      if v_type = 'start' then
+         for r in (
+            select id, act_number
+              from xx_disl_gu23_act
+             where linked_start_id = p_data.p_id
+               and status not in ('annulled', 'draft')
+         ) loop
+            update xx_disl_gu23_act
+               set status       = 'annulled',
+                   annul_reason = 'Каскадное аннулирование: аннулирован акт начала ' ||
+                                  (select act_number from xx_disl_gu23_act where id = p_data.p_id),
+                   modified_at  = sysdate,
+                   modified_by  = p_data.p_user_id
+             where id = r.id;
+
+            log_act_history(
+               p_act_id  => r.id,
+               p_user_id => p_data.p_user_id,
+               p_text    => 'Акт аннулирован каскадно (аннулирован акт начала): ' || p_data.p_reason
+            );
+         end loop;
       end if;
 
       log_act_history(
@@ -1645,14 +1700,14 @@ create or replace package body xx_disl_gu23_pkg as
       l_row t_gu23_approval_signer_row;
    begin
       for r in (
-         select u.id                                   as approver_id,
+         -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id напрямую
+         select u.id                             as approver_id,
                 u.full_name,
-                lower(u.login) || '@company.ru'        as fake_email
+                lower(u.login) || '@company.ru'  as fake_email
            from xx_disl_gu23_signer s
-           join xx_disl_gu23_ref_signer rs on rs.id  = s.signer_ref_id
-           join xx_disl_users u             on u.id  = rs.user_id
-          where s.act_id   = p_act_id
-            and rs.user_id is not null
+           join xx_disl_users u on u.id = s.signer_ref_id
+          where s.act_id = p_act_id
+            and s.stype  = 'own'
       ) loop
          l_row.approver_id := r.approver_id;
          l_row.full_name   := r.full_name;
@@ -1672,7 +1727,6 @@ create or replace package body xx_disl_gu23_pkg as
          select approver_id
            from table ( gu23_approval_get_signers(p_act_id) )
       ) loop
-         -- пропускаем если уже есть запись для этой пары
          merge into xx_disl_gu23_approval t
          using (select p_act_id       as act_id,
                        r.approver_id  as approver_id
@@ -1690,6 +1744,7 @@ create or replace package body xx_disl_gu23_pkg as
       when others then
          return format_error();
    end;
+
 
    function gu23_approval_get_name (
       p_id in number
@@ -1802,3 +1857,98 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   function gu23_approval_my_status (
+      p_act_id  in number,
+      p_user_id in number
+   ) return varchar2 is
+      v_status varchar2(16);
+   begin
+      select status
+        into v_status
+        from xx_disl_gu23_approval
+       where act_id     = p_act_id
+         and approver_id = p_user_id
+         and rownum      = 1;
+      return v_status;
+   exception
+      when no_data_found then return 'none';
+   end;
+
+   function gu23_get_approvals (
+      p_act_id in number
+   ) return t_gu23_approval_tab
+      pipelined
+   is
+      l_row t_gu23_approval_row;
+   begin
+      for r in (
+         select a.approver_id,
+                u.full_name,
+                a.status,
+                to_char(a.decided_at, 'DD.MM.YYYY HH24:MI') as decided_at,
+                a.comment_txt
+           from xx_disl_gu23_approval a
+           join xx_disl_users u on u.id = a.approver_id
+          where a.act_id = p_act_id
+          order by a.requested_at
+      ) loop
+         l_row.approver_id := r.approver_id;
+         l_row.full_name   := r.full_name;
+         l_row.status      := r.status;
+         l_row.decided_at  := r.decided_at;
+         l_row.comment_txt := r.comment_txt;
+         pipe row(l_row);
+      end loop;
+      return;
+   end;
+
+   function gu23_direct_decision (
+      p_act_id  in number,
+      p_user_id in number,
+      p_status  in varchar2,
+      p_comment in varchar2
+   ) return varchar2 is
+   begin
+      -- Создаём запись если нет, иначе обновляем
+      merge into xx_disl_gu23_approval t
+      using (select p_act_id  as act_id,
+                    p_user_id as approver_id
+               from dual) s
+      on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+      when matched then
+         update set status      = p_status,
+                    comment_txt = p_comment,
+                    decided_at  = sysdate
+          where t.status = 'pending'
+      when not matched then
+         insert (id, act_id, approver_id, status, comment_txt,
+                 requested_at, requested_by, decided_at, token_sig)
+         values (xx_disl_gu23_approval_seq.nextval,
+                 p_act_id, p_user_id, p_status, p_comment,
+                 sysdate, p_user_id, sysdate, null);
+      if sql%rowcount = 0 then
+         return 'ERR' || c_us || 'Решение уже было принято ранее';
+      end if;
+
+      -- Запись в историю
+      declare
+         v_txt varchar2(1000);
+      begin
+         v_txt := case p_status
+                     when 'approved' then 'Подписано'
+                     when 'rejected' then 'Отклонено: ' || p_comment
+                     else p_status
+                  end;
+         insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+         values (xx_disl_gu23_hist_seq.nextval, p_act_id, sysdate, p_user_id, v_txt);
+      end;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
+end xx_disl_gu23_pkg;

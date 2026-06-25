@@ -27,7 +27,6 @@ export function showCard(container) {
 
 function buildCardView(container, data) {
   const act = data.act
-  //console.log(act)
 
   $(container).html(`
     <div class="phead">
@@ -48,7 +47,7 @@ function buildCardView(container, data) {
   showToolbarButtons(act, data)
   showDetailsBlock(act)
   showWagonsBlock(data.wagons)
-  showSignersBlock(data.signers)
+  showSignersBlock(act, data.signers, data.approvals || [], data.myApproval || 'none', !!data.isUserSigner)
   showAttachmentsBlock(act, data.files)
   showHistoryBlock(data.history)
 }
@@ -66,20 +65,26 @@ function showToolbarButtons(act, data) {
     $toolbar.append($editBtn, $delBtn)
   }
 
-  if (act.STATUS === 'active') {
-    const $approvalBtn = $('<button class="btn secondary">Отправить на согласование</button>')
-    $approvalBtn.on('click', () => sendForApproval(act))
-    $toolbar.append($approvalBtn)
-  }
-
-  if (act.STATUS === 'active' || act.STATUS === 'closed') {
+  if ((act.STATUS === 'active' || act.STATUS === 'closed') && data.isAdmin) {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
     $toolbar.append($annulBtn)
   }
 
+  if (act.STATUS === 'active' && act.ACT_TYPE === 'end' && data.isAdmin) {
+    const $closeBtn = $('<button class="btn">Закрыть акт</button>')
+    $closeBtn.on('click', () => closeAct(act))
+    $toolbar.append($closeBtn)
+  }
+
+  if (act.STATUS === 'active' && data.isAdmin && data.signers && data.signers.length) {
+    const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
+    $resendBtn.on('click', () => resendApprovalLinks(act, data.signers, data.approvals || []))
+    $toolbar.append($resendBtn)
+  }
+
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
-  if (act.STATUS !== 'draft') {
+  if (act.STATUS !== 'draft' && act.STATUS !== 'annulled') {
     const $docxBtn = $(`
         <a class="btn report-word" target="_blank" title="Скачать акт">
             <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink: 0;">
@@ -182,29 +187,94 @@ function showWagonsBlock(wagons) {
   `)
 }
 
-function showSignersBlock(signers) {
+function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
+  // Строим map: approver_id → approval record
+  const approvalMap = {}
+  approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+
+  const statusPill = (status) => {
+    if (status === 'approved') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
+    if (status === 'rejected') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
+    if (status === 'pending')  return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900">⏳ Ожидает</span>'
+    return ''
+  }
+
   const listHtml = signers.length
-    ? signers
-        .map(
-          (s) => `
-    <div class="signrow">
-     
-      <div style="flex:1">
-        <div><b>${escapeHtml(s.FIO)}</b></div>
-        <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>
-      </div>
-    </div>
-  `,
-        )
-        .join('')
+    ? signers.map((s) => {
+        const isRzd = s.STYPE === 'rzd'
+        const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
+        const pill = approval
+          ? statusPill(approval.STATUS)
+          : isRzd
+            ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
+            : ''
+        const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
+        return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
+            ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
+          </div>
+          <div style="flex-shrink:0">${pill}</div>
+        </div>`
+      }).join('')
     : '<div class="muted">Подписанты не назначены</div>'
+
+  // Баннер "подписать" — для подписантов акта (pending = ждёт решения, none = ещё не инициировано)
+  const canSign = act.STATUS === 'active' && (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
+  let myBannerHtml = ''
+  if (canSign) {
+    myBannerHtml = `
+      <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
+        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">⏳ Ожидается ваше согласование</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">✓ Согласовать</button>
+          <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">✕ Отклонить</button>
+        </div>
+        <div id="reject-reason-box" style="display:none;margin-top:8px">
+          <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
+            style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
+          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Подтвердить отклонение</button>
+        </div>
+      </div>`
+  }
 
   $('#card-right-column').append(`
     <div class="card">
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Подписанты</b></div>
-      <div class="cardpad">${listHtml}</div>
+      <div style="padding:8px 16px 4px">
+        ${myBannerHtml}
+        ${listHtml}
+      </div>
     </div>
   `)
+
+  if (canSign) {
+    $('#btn-sign-approve').on('click', () => submitInAppDecision(act.ID, 'approved', ''))
+
+    $('#btn-sign-reject').on('click', () => {
+      const box = $('#reject-reason-box')
+      box.toggle()
+      if (box.is(':visible')) $('#reject-reason-txt').focus()
+    })
+
+    $('#btn-sign-reject-confirm').on('click', () => {
+      const reason = $('#reject-reason-txt').val().trim()
+      if (!reason) { showToast('Укажите причину', 'err'); return }
+      submitInAppDecision(act.ID, 'rejected', reason)
+    })
+  }
+}
+
+function submitInAppDecision(actId, decision, comment) {
+  sendApiRequest('gu23_approve_in_app', { act_id: actId, decision, comment }).done((resp) => {
+    if (resp && resp.ok) {
+      showToast(resp.msg || 'Готово', 'ok')
+      navigateTo('card', actId)
+    } else {
+      showToast((resp && resp.msg) || 'Ошибка', 'err')
+    }
+  })
 }
 
 function showAttachmentsBlock(act, files) {
@@ -358,6 +428,90 @@ function annulActiveAct(act) {
       )
     },
   )
+}
+
+function closeAct(act) {
+  showConfirmBox('Закрыть акт', `Закрыть акт ${act.ACT_NUMBER}? Статус изменится на «Закрыт».`, () => {
+    sendApiRequest('gu23_close_act', { id: act.ID }).done((response) => {
+      if (response && response.ok) {
+        showToast('Акт закрыт', 'ok')
+        navigateTo('card', act.ID)
+      } else {
+        showToast((response && response.msg) || 'Ошибка', 'err')
+      }
+    })
+  })
+}
+
+function resendApprovalLinks(act, signers, approvals) {
+  const approvalMap = {}
+  ;(approvals || []).forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+
+  const unsigned = (signers || []).filter((s) => {
+    if (s.STYPE === 'rzd' || !s.USER_ID) return false
+    const appr = approvalMap[s.USER_ID]
+    return !appr || appr.STATUS !== 'approved'
+  })
+
+  if (!unsigned.length) {
+    showToast('Все подписанты уже согласовали акт', 'ok')
+    return
+  }
+
+  const rows = unsigned.map((s) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
+      <input type="checkbox" class="resend-chk" value="${s.USER_ID}" style="width:16px;height:16px">
+      <span>
+        <b>${escapeHtml(s.FIO || '')}</b>
+        ${s.POST ? '<br><span class="muted" style="font-size:12px">' + escapeHtml(s.POST) + '</span>' : ''}
+      </span>
+    </label>
+  `).join('')
+
+  const $modal = $(`
+    <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
+      <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
+        <h3 style="margin:0 0 6px">Переотправить ссылки</h3>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">Выберите подписантов, которым нужно отправить новые ссылки согласования:</p>
+        <div style="max-height:300px;overflow-y:auto;margin-bottom:16px">${rows}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn ghost" id="resend-cancel">Отмена</button>
+          <button class="btn" id="resend-send">Отправить</button>
+        </div>
+      </div>
+    </div>
+  `)
+
+  $('body').append($modal)
+
+  $('#resend-cancel').on('click', () => $modal.remove())
+  $modal.on('click', (e) => { if ($(e.target).is($modal)) $modal.remove() })
+
+  $('#resend-send').on('click', () => {
+    const selected = []
+    $modal.find('.resend-chk:checked').each(function () {
+      selected.push($(this).val())
+    })
+    if (!selected.length) { showToast('Выберите хотя бы одного подписанта', 'err'); return }
+
+    $('#resend-send').prop('disabled', true).text('Отправка…')
+    let done = 0
+    let errors = 0
+    selected.forEach((userId) => {
+      sendApiRequest('gu23_resend_approval', { act_id: act.ID, user_id: userId, mode: 'send_file' }).done((r) => {
+        done++
+        if (!r || !r.ok) errors++
+        if (done === selected.length) {
+          $modal.remove()
+          if (errors === 0) {
+            showToast(`Ссылки отправлены (${done})`, 'ok')
+          } else {
+            showToast(`Отправлено ${done - errors} из ${done}, ошибок: ${errors}`, 'err')
+          }
+        }
+      })
+    })
+  })
 }
 
 function sendForApproval(act) {

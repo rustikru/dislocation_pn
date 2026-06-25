@@ -15,6 +15,7 @@ export const references = {
 export const applicationState = {
   currentPage: 'archive',
   selectedActId: null,
+  isAdmin: false,
 }
 
 // Активный черновик

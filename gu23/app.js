@@ -5,6 +5,7 @@ import { showArchive } from './components/registry.js'
 import { showForm } from './components/form.js'
 import { showCard } from './components/card.js'
 import { showWagonSearch } from './components/wagonSearch.js'
+import { showRefs } from './components/refs.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
@@ -28,6 +29,7 @@ export function showApplication() {
     new: showForm,
     card: showCard,
     wsearch: showWagonSearch,
+    refs: showRefs,
   }
 
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive
@@ -46,6 +48,7 @@ $(document).ready(() => {
     references.cargosList = (response && response.cargos) || []
     references.signersOwnList = (response && response.signersOwn) || []
     references.signersRzdList = (response && response.signersRzd) || []
+    applicationState.isAdmin = !!(response && response.isAdmin)
 
     // Показываем страничку
     showApplication()

@@ -21,6 +21,8 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
+        ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
+        ob_start();
         try {
             switch ($action) {
                 case 'gu23_get_refs':
@@ -62,11 +64,37 @@ class GuActRepository
                 case 'gu23_send_approval':
                     $this->sendApproval();
                     break;
+                case 'gu23_approve_in_app':
+                    $this->approveInApp();
+                    break;
+                case 'gu23_close_act':
+                    $this->closeAct();
+                    break;
+                case 'gu23_resend_approval':
+                    $this->resendApproval();
+                    break;
+                case 'gu23_refs_get_all':
+                    $this->refsGetAll();
+                    break;
+                case 'gu23_ref_signer_save':
+                    $this->refSignerSave();
+                    break;
+                case 'gu23_ref_signer_toggle':
+                    $this->refSignerToggle();
+                    break;
+                case 'gu23_ref_reason_save':
+                    $this->refReasonSave();
+                    break;
+                case 'gu23_ref_reason_toggle':
+                    $this->refReasonToggle();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
             }
+            ob_end_flush();
         } catch (\Throwable $e) {
+            ob_end_clean(); // сбрасываем любые PHP-предупреждения, не ломаем JSON
             http_response_code(500);
             echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
         }
@@ -79,7 +107,7 @@ class GuActRepository
     /** Выполнить конвейерную функцию и вернуть массив строк. */
     private function pipe(string $sql, array $binds = []): array
     {
-        $st = oci_parse($this->conn, $sql);
+        $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
             throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
@@ -87,7 +115,7 @@ class GuActRepository
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
-        if (!oci_execute($st)) {
+        if (!@oci_execute($st)) {
             $e = oci_error($st);
             throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
         }
@@ -113,6 +141,27 @@ class GuActRepository
             $out[] = implode(self::US, $vals);
         }
         return implode(self::RS, $out);
+    }
+
+    /** Вызвать функцию пакета, вернуть скалярный результат. */
+    private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
+    {
+        $sql = 'BEGIN :ret_val := ' . $expr . '; END;';
+        $st  = @oci_parse($this->conn, $sql);
+        if (!$st) {
+            $e = oci_error($this->conn);
+            throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
+        }
+        $ret = null;
+        oci_bind_by_name($st, ':ret_val', $ret, $retLen);
+        foreach ($binds as $name => $val) {
+            oci_bind_by_name($st, $name, $binds[$name]);
+        }
+        if (!@oci_execute($st)) {
+            $e = oci_error($st);
+            throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?'));
+        }
+        return $ret;
     }
 
     /** Привязать строку как временный CLOB. */
@@ -167,13 +216,36 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
+        $userId   = $this->auth->getUserId();
+        $myStatus = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid)',
+            [':act' => $id, ':uid' => $userId],
+            16
+        );
+
+        // Является ли текущий пользователь подписантом-предприятием этого акта
+        // (signer_ref_id для сотрудников предприятия = user_id; исключаем РЖД-подписантов)
+        $signerCheck = $this->pipe(
+            "SELECT COUNT(*) AS CNT FROM xx_disl_gu23_signer s
+              WHERE s.act_id = :b1
+                AND s.signer_ref_id = :b2
+                AND s.stype = 'own'",
+            [':b1' => $id, ':b2' => $userId]
+        );
+        $isUserSignerCnt = (int) ($signerCheck[0]['CNT'] ?? 0);
+
         echo json_encode([
-            'ok' => true,
-            'act' => $act[0],
-            'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
-            'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
-            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
-            'history' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'ok'            => true,
+            'act'           => $act[0],
+            'currentUserId' => (int) $userId,
+            'myApproval'    => $myStatus ?: 'none',
+            'isUserSigner'  => $isUserSignerCnt > 0,
+            'isAdmin'       => $this->auth->isAuthAdmin() ? true : false,
+            'wagons'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
+            'files'         => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
+            'signers'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
+            'history'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'approvals'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
         ]);
     }
 
@@ -252,7 +324,7 @@ class GuActRepository
         $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
 
         $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
-        $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org']); // field 1 = ref_id
+        $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org', 'stype']); // field 5 = stype
 
         $id = (int) filter_input(INPUT_POST, 'id');
         $type = filter_input(INPUT_POST, 'type');
@@ -483,12 +555,62 @@ end;';
     }
 
     /* ----------------------------------------------------------------- */
+    /* подписание акта прямо из интерфейса (без email-ссылки)             */
+    /* ----------------------------------------------------------------- */
+    private function approveInApp(): void
+    {
+        $actId    = (int) filter_input(INPUT_POST, 'act_id');
+        $decision = filter_input(INPUT_POST, 'decision') ?: '';
+        $comment  = trim((string) filter_input(INPUT_POST, 'comment'));
+        $userId   = $this->auth->getUserId();
+
+        if (!$actId || !in_array($decision, ['approved', 'rejected'], true)) {
+            echo json_encode(['ok' => false, 'msg' => 'Некорректные параметры']);
+            return;
+        }
+        if ($decision === 'rejected' && $comment === '') {
+            echo json_encode(['ok' => false, 'msg' => 'При отклонении укажите причину']);
+            return;
+        }
+
+        $result = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment)',
+            [':act' => $actId, ':uid' => $userId, ':status' => $decision, ':comment' => $comment]
+        );
+
+        if (str_starts_with((string) $result, 'ERR')) {
+            $parts = explode(self::US, $result, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            $label = $decision === 'approved' ? 'Акт согласован' : 'Акт отклонён';
+            echo json_encode(['ok' => true, 'msg' => $label]);
+        }
+    }
+
+    private function closeAct(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $id     = (int) filter_input(INPUT_POST, 'id');
+        $userId = $this->auth->getUserId();
+        $result = $this->callFunc('xx_disl_gu23_pkg.gu23_close_act(:id, :uid)', [':id' => $id, ':uid' => $userId]);
+        if (str_starts_with((string) $result, 'ERR')) {
+            $parts = explode(self::US, $result, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true, 'msg' => 'Акт закрыт']);
+        }
+    }
+
     /* отправка согласования подписантам                                  */
     /* ----------------------------------------------------------------- */
     private function sendApproval(): void
     {
         $actId  = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
+        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
 
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
@@ -496,12 +618,11 @@ end;';
         }
 
         // 1. Создаём pending-записи в xx_disl_gu23_approval (через пакет)
-        $initResult = null;
-        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_init(:act, :by); END;');
-        oci_bind_by_name($st, ':r',   $initResult, 64);
-        oci_bind_by_name($st, ':act', $actId);
-        oci_bind_by_name($st, ':by',  $userId);
-        oci_execute($st);
+        $initResult = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
+            [':act' => $actId, ':by' => $userId],
+            64
+        );
 
         if (str_starts_with((string) $initResult, 'ERR')) {
             $parts = explode(self::US, $initResult, 2);
@@ -543,39 +664,33 @@ end;';
             $email      = $signer['FAKE_EMAIL'];
             $fullName   = $signer['FULL_NAME'] ?? '';
 
-            // Обновляем token_sig в уже созданной pending-записи
-            $link = $baseUrl . '/gu23/approve.php?' . parse_url(
-                $hmac->generate($actId, $approverId, 'approve'),
-                PHP_URL_QUERY
-            );
+            // Генерируем HMAC для approve и reject по отдельности
+            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
+            parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
 
-            $sig    = null;
-            $stSig  = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_by_sig(:s); END;');
-            // Сохраняем подпись из ссылки в БД
-            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $params);
-            $tokenSig = $params['sig'] ?? '';
+            $tokenSig    = $approveParams['sig'] ?? '';
+            $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
+            $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
 
-            $stUpd = oci_parse($this->conn,
-                'UPDATE xx_disl_gu23_approval SET token_sig = :sig WHERE act_id = :act AND approver_id = :uid'
+            // Сохраняем approve-подпись в pending-записи (используется для проверки одноразовости)
+            $this->pipe(
+                'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
+                [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
             );
-            oci_bind_by_name($stUpd, ':sig', $tokenSig);
-            oci_bind_by_name($stUpd, ':act', $actId);
-            oci_bind_by_name($stUpd, ':uid', $approverId);
-            oci_execute($stUpd);
             oci_commit($this->conn);
 
-            // Строим ссылку заново с тем же токеном
-            $link = $baseUrl . '/gu23/approve.php?' . http_build_query($params);
+            // Формируем HTML-письмо
+            $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
+            $subject  = 'Требуется согласование акта ГУ-23';
 
-            // Отправляем email
-            $subject = '=?UTF-8?B?' . base64_encode('Требуется согласование акта ГУ-23') . '?=';
-            $body    = "Уважаемый(-ая) {$fullName},\r\n\r\n"
-                     . "Вас просят согласовать акт ГУ-23.\r\n\r\n"
-                     . "Для согласования перейдите по ссылке:\r\n{$link}\r\n\r\n"
-                     . "Ссылка действительна 7 дней.\r\n";
-            $headers = "From: noreply@company.ru\r\nContent-Type: text/plain; charset=UTF-8";
+            if ($mode === 'send_mail') {
+                $headers  = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
+                $ok = mail($email, $subject, $htmlBody, $headers);
+            } else {
+                $ok = $this->saveMailToFile($email, $subject, $htmlBody);
+            }
 
-            if (@mail($email, $subject, $body, $headers)) {
+            if ($ok) {
                 $sent++;
             } else {
                 $errors[] = $email;
@@ -588,6 +703,50 @@ end;';
         } else {
             echo json_encode(['ok' => false, 'msg' => 'Не удалось отправить ни одного письма: ' . implode(', ', $errors)]);
         }
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* сохранить письмо в папку mail/ (для тестирования без SMTP)        */
+    /* ----------------------------------------------------------------- */
+    private function saveMailToFile(string $to, string $subject, string $html): bool
+    {
+        $mailDir = __DIR__ . '/../mail';
+        if (!is_dir($mailDir)) {
+            mkdir($mailDir, 0755, true);
+        }
+        $ts       = date('Ymd_His');
+        $safe     = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
+        $filename = $mailDir . '/' . $ts . '_' . $safe . '.html';
+        $content  = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
+        return file_put_contents($filename, $content) !== false;
+    }
+
+    private function buildApprovalEmailHtml(string $name, int $actId, string $approveLink, string $rejectLink): string
+    {
+        $name = htmlspecialchars($name, ENT_QUOTES);
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Согласование акта ГУ-23</title></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#222">
+  <h2 style="color:#1a5fa8">Требуется согласование акта ГУ-23</h2>
+  <p>Уважаемый(-ая) <b>{$name}</b>,</p>
+  <p>Вас просят согласовать акт ГУ-23 № <b>{$actId}</b>.</p>
+  <p>Пожалуйста, перейдите по одной из ссылок ниже:</p>
+  <p style="margin:24px 0">
+    <a href="{$approveLink}"
+       style="background:#22863a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px;margin-right:12px">
+      ✓ Согласовать
+    </a>
+    <a href="{$rejectLink}"
+       style="background:#c0392b;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px">
+      ✗ Отклонить
+    </a>
+  </p>
+  <p style="color:#888;font-size:13px">Ссылка действительна 7 дней.<br>Это автоматическое сообщение — не отвечайте на него.</p>
+</body>
+</html>
+HTML;
     }
 
     /* ----------------------------------------------------------------- */
@@ -604,5 +763,154 @@ end;';
         } else {
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка операции']);
         }
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Справочники (администрирование)                                    */
+    /* ----------------------------------------------------------------- */
+
+    private function refsGetAll(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        echo json_encode([
+            'ok'      => true,
+            'signers' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_signers_all())'),
+            'reasons' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_reasons_all())'),
+        ]);
+    }
+
+    private function refSignerSave(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id   = (int)   filter_input(INPUT_POST, 'id');
+        $fio  = (string) filter_input(INPUT_POST, 'fio');
+        $post = (string) filter_input(INPUT_POST, 'post');
+        $org  = (string) filter_input(INPUT_POST, 'org');
+        $unit = (string) filter_input(INPUT_POST, 'unit');
+        $res  = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
+            [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
+        );
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refSignerToggle(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id  = (int) filter_input(INPUT_POST, 'id');
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_signer_toggle(:id)', [':id' => $id]);
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refReasonSave(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id      = (int)    filter_input(INPUT_POST, 'id');
+        $name    = (string)  filter_input(INPUT_POST, 'name');
+        $actKind = (string)  filter_input(INPUT_POST, 'act_kind');
+        $res = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',
+            [':id' => $id, ':name' => $name, ':kind' => $actKind]
+        );
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refReasonToggle(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id  = (int) filter_input(INPUT_POST, 'id');
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* переотправка ссылки конкретному подписанту                         */
+    /* ----------------------------------------------------------------- */
+    private function resendApproval(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+
+        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $userId = (int) filter_input(INPUT_POST, 'user_id');
+        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+
+        if (!$actId || !$userId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']); return;
+        }
+
+        require_once __DIR__ . '/../lib/HmacApproval.php';
+        if (!defined('HMAC_SECRET')) {
+            require_once file_exists(__DIR__ . '/../db_config.local.php')
+                ? __DIR__ . '/../db_config.local.php'
+                : __DIR__ . '/../db_config.php';
+        }
+        if (!defined('HMAC_SECRET')) {
+            define('HMAC_SECRET', 'change-me-in-production');
+        }
+
+        $signers = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :uid',
+            [':act_id' => $actId, ':uid' => $userId]
+        );
+
+        if (empty($signers)) {
+            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']); return;
+        }
+
+        $hmac       = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+        $signer     = $signers[0];
+        $approverId = (int) $signer['APPROVER_ID'];
+        $email      = $signer['FAKE_EMAIL'];
+        $fullName   = $signer['FULL_NAME'] ?? '';
+
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+        parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
+        parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
+
+        $tokenSig    = $approveParams['sig'] ?? '';
+        $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
+        $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
+
+        $this->pipe(
+            'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
+            [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
+        );
+        oci_commit($this->conn);
+
+        $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
+        $subject  = 'Требуется согласование акта ГУ-23';
+
+        if ($mode === 'send_mail') {
+            $headers = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
+            $ok = mail($email, $subject, $htmlBody, $headers);
+        } else {
+            $ok = $this->saveMailToFile($email, $subject, $htmlBody);
+        }
+
+        echo json_encode($ok
+            ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
+            : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
     }
 }

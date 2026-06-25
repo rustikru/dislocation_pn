@@ -29,11 +29,12 @@ create or replace package xx_disl_gu23_pkg as
          org           varchar2(256),
          unit          varchar2(256),
          stype         varchar2(128),
-         ord_no        number
+         ord_no        number,
+         user_id       number                       -- ID пользователя (если ref-подписант)
    );
    type xx_disl_gu23_signer_tab is
       table of xx_disl_gu23_signer_row;
-   type xx_disl_gu23_act_row is record (
+   type t_gu23_act_row is record (
          id                  number,
          act_number          varchar2(64),
          act_start_number    varchar2(64),
@@ -67,7 +68,7 @@ create or replace package xx_disl_gu23_pkg as
          modified_at         varchar2(20)
    );
    type xx_disl_gu23_act_tab is
-      table of xx_disl_gu23_act_row;
+      table of t_gu23_act_row;
    type xx_disl_gu23_row is record (
          id       number,
          act_id   number,
@@ -114,19 +115,6 @@ create or replace package xx_disl_gu23_pkg as
    );
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;
-
-   -- Строка, разобранная из CLOB-пачки вагонов (RS/US-формат)
-   type t_wagon_clob_row is record (
-         wagon_no varchar2(16),
-         owner    varchar2(128),
-         kind     varchar2(128),
-         st_from  varchar2(128),
-         st_to    varchar2(128),
-         cargo    varchar2(256),
-         weight   varchar2(32)
-   );
-   type t_wagon_clob_tab is
-      table of t_wagon_clob_row;
 
     -- ---- Типы для параметров Сохранения акта ----
    type t_gu23_save_act is record (
@@ -176,6 +164,22 @@ create or replace package xx_disl_gu23_pkg as
    function fnc_boolean_num (
       p_bool in boolean
    ) return number;
+
+   procedure insert_act (
+      p_row in xx_disl_gu23_act%rowtype
+   );
+
+   procedure update_act (
+      p_row in xx_disl_gu23_act%rowtype
+   );
+
+   procedure insert_act_row (
+      p_row in xx_disl_gu23_act_row%rowtype
+   );
+
+   procedure insert_signer (
+      p_row in xx_disl_gu23_signer%rowtype
+   );
 
     -- ---- Справочники
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
@@ -304,11 +308,6 @@ create or replace package xx_disl_gu23_pkg as
       p_data in t_gu23_del_file
    ) return varchar2;
 
-   -- Разбирает CLOB в формате RS/US в таблицу строк вагонов
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab pipelined;
-
     -- Сохранение акта (создание/правка черновика) вместе со строками и подписантами.
     -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
    function gu23_save_act (
@@ -321,6 +320,13 @@ create or replace package xx_disl_gu23_pkg as
 
    function gu23_annul_act (
       p_data in t_gu23_annul_act
+   ) return varchar2;
+
+    -- Закрыть акт (только тип 'end', только активный)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_close_act (
+      p_id      in number,
+      p_user_id in number
    ) return varchar2;
 
     -- ---- Согласование актов ----
@@ -372,6 +378,38 @@ create or replace package xx_disl_gu23_pkg as
       p_status      in varchar2,
       p_comment     in varchar2,
       p_token_sig   in varchar2
+   ) return varchar2;
+
+    -- Текущий статус согласования одного пользователя по акту
+    -- Возвращает: 'none' | 'pending' | 'approved' | 'rejected'
+   function gu23_approval_my_status (
+      p_act_id    in number,
+      p_user_id   in number
+   ) return varchar2;
+
+    -- Все записи согласования по акту (для отображения статусов в карточке)
+   type t_gu23_approval_row is record (
+      approver_id  number,
+      full_name    varchar2(256),
+      status       varchar2(16),
+      decided_at   varchar2(20),
+      comment_txt  varchar2(1000)
+   );
+   type t_gu23_approval_tab is
+      table of t_gu23_approval_row;
+
+   function gu23_get_approvals (
+      p_act_id in number
+   ) return t_gu23_approval_tab
+      pipelined;
+
+    -- Подписать акт напрямую (без email-ссылки, из интерфейса)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_direct_decision (
+      p_act_id    in number,
+      p_user_id   in number,
+      p_status    in varchar2,
+      p_comment   in varchar2
    ) return varchar2;
 
 end xx_disl_gu23_pkg;
