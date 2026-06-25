@@ -21,6 +21,7 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
+        ob_start();
         try {
             switch ($action) {
                 case 'gu23_get_refs':
@@ -72,7 +73,9 @@ class GuActRepository
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
             }
+            ob_end_flush();
         } catch (\Throwable $e) {
+            ob_end_clean(); // сбрасываем любые PHP-предупреждения, не ломаем JSON
             http_response_code(500);
             echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
         }
@@ -85,7 +88,7 @@ class GuActRepository
     /** Выполнить конвейерную функцию и вернуть массив строк. */
     private function pipe(string $sql, array $binds = []): array
     {
-        $st = oci_parse($this->conn, $sql);
+        $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
             throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
@@ -93,7 +96,7 @@ class GuActRepository
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
-        if (!oci_execute($st)) {
+        if (!@oci_execute($st)) {
             $e = oci_error($st);
             throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
         }
@@ -125,7 +128,7 @@ class GuActRepository
     private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
     {
         $sql = 'BEGIN :__ret := ' . $expr . '; END;';
-        $st  = oci_parse($this->conn, $sql);
+        $st  = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
             throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
@@ -135,7 +138,7 @@ class GuActRepository
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
-        if (!oci_execute($st)) {
+        if (!@oci_execute($st)) {
             $e = oci_error($st);
             throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?'));
         }
