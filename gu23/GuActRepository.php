@@ -567,15 +567,10 @@ end;';
             // Строим ссылку заново с тем же токеном
             $link = $baseUrl . '/gu23/approve.php?' . http_build_query($params);
 
-            // Отправляем email
-            $subject = '=?UTF-8?B?' . base64_encode('Требуется согласование акта ГУ-23') . '?=';
-            $body    = "Уважаемый(-ая) {$fullName},\r\n\r\n"
-                     . "Вас просят согласовать акт ГУ-23.\r\n\r\n"
-                     . "Для согласования перейдите по ссылке:\r\n{$link}\r\n\r\n"
-                     . "Ссылка действительна 7 дней.\r\n";
-            $headers = "From: noreply@company.ru\r\nContent-Type: text/plain; charset=UTF-8";
+            // Формируем HTML-письмо
+            $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $link);
 
-            if (@mail($email, $subject, $body, $headers)) {
+            if ($this->saveMailToFile($email, 'Требуется согласование акта ГУ-23', $htmlBody)) {
                 $sent++;
             } else {
                 $errors[] = $email;
@@ -588,6 +583,51 @@ end;';
         } else {
             echo json_encode(['ok' => false, 'msg' => 'Не удалось отправить ни одного письма: ' . implode(', ', $errors)]);
         }
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* сохранить письмо в папку mail/ (для тестирования без SMTP)        */
+    /* ----------------------------------------------------------------- */
+    private function saveMailToFile(string $to, string $subject, string $html): bool
+    {
+        $mailDir = __DIR__ . '/../mail';
+        if (!is_dir($mailDir)) {
+            mkdir($mailDir, 0755, true);
+        }
+        $ts       = date('Ymd_His');
+        $safe     = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
+        $filename = $mailDir . '/' . $ts . '_' . $safe . '.html';
+        $content  = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
+        return file_put_contents($filename, $content) !== false;
+    }
+
+    private function buildApprovalEmailHtml(string $name, int $actId, string $approveLink): string
+    {
+        $rejectLink = preg_replace('/action=approve/', 'action=reject', $approveLink);
+        $name = htmlspecialchars($name, ENT_QUOTES);
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Согласование акта ГУ-23</title></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#222">
+  <h2 style="color:#1a5fa8">Требуется согласование акта ГУ-23</h2>
+  <p>Уважаемый(-ая) <b>{$name}</b>,</p>
+  <p>Вас просят согласовать акт ГУ-23 № <b>{$actId}</b>.</p>
+  <p>Пожалуйста, перейдите по одной из ссылок ниже:</p>
+  <p style="margin:24px 0">
+    <a href="{$approveLink}"
+       style="background:#22863a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px;margin-right:12px">
+      ✓ Согласовать
+    </a>
+    <a href="{$rejectLink}"
+       style="background:#c0392b;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px">
+      ✗ Отклонить
+    </a>
+  </p>
+  <p style="color:#888;font-size:13px">Ссылка действительна 7 дней.<br>Это автоматическое сообщение — не отвечайте на него.</p>
+</body>
+</html>
+HTML;
     }
 
     /* ----------------------------------------------------------------- */
