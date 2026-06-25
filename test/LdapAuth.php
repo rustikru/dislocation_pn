@@ -22,7 +22,8 @@ class LdapAuth
             return ['ok' => false, 'msg' => 'Логин и пароль обязательны'];
         }
 
-        $ldap = ldap_connect($this->cfg['host'], $this->cfg['port'] ?? 389);
+        $host = rtrim($this->cfg['host'], '/') . ':' . ($this->cfg['port'] ?? 389);
+        $ldap = ldap_connect($host);
         if (!$ldap) {
             return ['ok' => false, 'msg' => 'Не удалось подключиться к LDAP'];
         }
