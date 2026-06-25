@@ -74,6 +74,18 @@ function showToolbarButtons(act, data) {
     $toolbar.append($annulBtn)
   }
 
+  if (act.STATUS === 'active' && act.ACT_TYPE === 'end' && data.isAdmin) {
+    const $closeBtn = $('<button class="btn">Закрыть акт</button>')
+    $closeBtn.on('click', () => closeAct(act))
+    $toolbar.append($closeBtn)
+  }
+
+  if (act.STATUS === 'active' && data.isAdmin) {
+    const $notifyBtn = $('<button class="btn sm ghost">Отправить уведомления</button>')
+    $notifyBtn.on('click', () => sendNotifications(act))
+    $toolbar.append($notifyBtn)
+  }
+
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
   if (act.STATUS !== 'draft') {
     const $docxBtn = $(`
@@ -414,6 +426,32 @@ function annulActiveAct(act) {
       )
     },
   )
+}
+
+function closeAct(act) {
+  showConfirmBox('Закрыть акт', `Закрыть акт ${act.ACT_NUMBER}? Статус изменится на «Закрыт».`, () => {
+    sendApiRequest('gu23_close_act', { id: act.ID }).done((response) => {
+      if (response && response.ok) {
+        showToast('Акт закрыт', 'ok')
+        navigateTo('card', act.ID)
+      } else {
+        showToast((response && response.msg) || 'Ошибка', 'err')
+      }
+    })
+  })
+}
+
+function sendNotifications(act) {
+  showConfirmBox('Отправить уведомления', 'Отправить запросы на согласование подписантам акта?', () => {
+    sendApiRequest('gu23_send_approval', { act_id: act.ID }).done((response) => {
+      if (response && response.ok) {
+        showToast(response.msg || 'Уведомления отправлены', 'ok')
+        navigateTo('card', act.ID)
+      } else {
+        showToast((response && response.msg) || 'Ошибка отправки', 'err')
+      }
+    })
+  })
 }
 
 function sendForApproval(act) {

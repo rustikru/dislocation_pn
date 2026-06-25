@@ -322,6 +322,13 @@ create or replace package xx_disl_gu23_pkg as
       p_data in t_gu23_annul_act
    ) return varchar2;
 
+    -- Закрыть акт (только тип 'end', только активный)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_close_act (
+      p_id      in number,
+      p_user_id in number
+   ) return varchar2;
+
     -- ---- Согласование актов ----
 
     -- Строка результата gu23_approval_get_signers

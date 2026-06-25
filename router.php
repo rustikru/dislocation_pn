@@ -42,5 +42,6 @@ return [
     'gu23_search_station'  => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_send_approval'   => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_approve_in_app'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_close_act'       => ['gu23/GuActRepository.php', 'GuActRepository'],
 
 ];

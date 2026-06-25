@@ -65,6 +65,9 @@ class GuActRepository
                 case 'gu23_approve_in_app':
                     $this->approveInApp();
                     break;
+                case 'gu23_close_act':
+                    $this->closeAct();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -545,6 +548,28 @@ end;';
         } else {
             $label = $decision === 'approved' ? 'Акт согласован' : 'Акт отклонён';
             echo json_encode(['ok' => true, 'msg' => $label]);
+        }
+    }
+
+    private function closeAct(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $id     = (int) filter_input(INPUT_POST, 'id');
+        $userId = $this->auth->getUserId();
+        $result = null;
+        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_close_act(:id, :uid); END;');
+        oci_bind_by_name($st, ':r',   $result, 256);
+        oci_bind_by_name($st, ':id',  $id);
+        oci_bind_by_name($st, ':uid', $userId);
+        oci_execute($st);
+        if (str_starts_with((string) $result, 'ERR')) {
+            $parts = explode(self::US, $result, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true, 'msg' => 'Акт закрыт']);
         }
     }
 

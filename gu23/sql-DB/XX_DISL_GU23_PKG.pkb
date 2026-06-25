@@ -1546,6 +1546,43 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   function gu23_close_act (
+      p_id      in number,
+      p_user_id in number
+   ) return varchar2 is
+      v_status varchar2(16);
+      v_type   varchar2(16);
+   begin
+      select status, act_type into v_status, v_type
+        from xx_disl_gu23_act
+       where id = p_id;
+
+      if v_type != 'end' then
+         return 'ERR' || c_us || 'Закрыть можно только акт окончания простоя';
+      end if;
+      if v_status != 'active' then
+         return 'ERR' || c_us || 'Акт должен быть в статусе «Открыт»';
+      end if;
+
+      update xx_disl_gu23_act
+         set status      = 'closed',
+             modified_at = sysdate,
+             modified_by = p_user_id
+       where id = p_id;
+
+      insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+      values (xx_disl_gu23_hist_seq.nextval, p_id, sysdate, p_user_id, 'Акт закрыт администратором');
+
+      commit;
+      return 'OK';
+   exception
+      when no_data_found then
+         return 'ERR' || c_us || 'Акт не найден';
+      when others then
+         rollback;
+         return 'ERR' || c_us || sqlerrm;
+   end;
+
    function gu23_annul_act (
       p_data in t_gu23_annul_act
    ) return varchar2 is
@@ -1889,13 +1926,28 @@ create or replace package body xx_disl_gu23_pkg as
          values (xx_disl_gu23_approval_seq.nextval,
                  p_act_id, p_user_id, p_status, p_comment,
                  sysdate, p_user_id, sysdate, null);
-      commit;
       if sql%rowcount = 0 then
          return 'ERR' || c_us || 'Решение уже было принято ранее';
       end if;
+
+      -- Запись в историю
+      declare
+         v_txt varchar2(1000);
+      begin
+         v_txt := case p_status
+                     when 'approved' then 'Подписано'
+                     when 'rejected' then 'Отклонено: ' || p_comment
+                     else p_status
+                  end;
+         insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
+         values (xx_disl_gu23_hist_seq.nextval, p_act_id, sysdate, p_user_id, v_txt);
+      end;
+
+      commit;
       return 'OK';
    exception
       when others then
+         rollback;
          return format_error();
    end;
 
