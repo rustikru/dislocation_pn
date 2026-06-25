@@ -641,18 +641,7 @@ end;';
         }
 
         // 2. Получаем список подписантов с email
-        require_once __DIR__ . '/../lib/HmacApproval.php';
-        if (!defined('HMAC_SECRET')) {
-            require_once file_exists(__DIR__ . '/../db_config.local.php')
-                ? __DIR__ . '/../db_config.local.php'
-                : __DIR__ . '/../db_config.php';
-        }
-        if (!defined('HMAC_SECRET')) {
-            define('HMAC_SECRET', 'change-me-in-production');
-        }
-
-        $hmac     = new HmacApproval(HMAC_SECRET, ttlDays: 7);
-        $signers  = $this->pipe(
+        $signers = $this->pipe(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))',
             [':act_id' => $actId]
         );
@@ -662,11 +651,8 @@ end;';
             return;
         }
 
-        // Определяем базовый URL сайта
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-        $sent  = 0;
+        $mailer = $this->loadMailer();
+        $sent   = 0;
         $errors = [];
 
         foreach ($signers as $signer) {
@@ -674,31 +660,16 @@ end;';
             $email      = $signer['FAKE_EMAIL'];
             $fullName   = $signer['FULL_NAME'] ?? '';
 
-            // Генерируем HMAC для approve и reject по отдельности
-            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
-            parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
+            $links = $mailer->generateLinks($actId, $approverId);
 
-            $tokenSig    = $approveParams['sig'] ?? '';
-            $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
-            $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
-
-            // Сохраняем approve-подпись в pending-записи (используется для проверки одноразовости)
             $this->pipe(
                 'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
-                [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
+                [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
             );
             oci_commit($this->conn);
 
-            // Формируем HTML-письмо
-            $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
-            $subject  = 'Требуется согласование акта ГУ-23';
-
-            if ($mode === 'send_mail') {
-                $headers  = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
-                $ok = mail($email, $subject, $htmlBody, $headers);
-            } else {
-                $ok = $this->saveMailToFile($email, $subject, $htmlBody);
-            }
+            $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
+            $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
 
             if ($ok) {
                 $sent++;
@@ -716,47 +687,26 @@ end;';
     }
 
     /* ----------------------------------------------------------------- */
-    /* сохранить письмо в папку mail/ (для тестирования без SMTP)        */
+    /* создать ApprovalMailer с нужными настройками                      */
     /* ----------------------------------------------------------------- */
-    private function saveMailToFile(string $to, string $subject, string $html): bool
+    private function loadMailer(): ApprovalMailer
     {
-        $mailDir = __DIR__ . '/../mail';
-        if (!is_dir($mailDir)) {
-            mkdir($mailDir, 0755, true);
-        }
-        $ts       = date('Ymd_His');
-        $safe     = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
-        $filename = $mailDir . '/' . $ts . '_' . $safe . '.html';
-        $content  = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
-        return file_put_contents($filename, $content) !== false;
-    }
+        require_once __DIR__ . '/../lib/HmacApproval.php';
+        require_once __DIR__ . '/../lib/ApprovalMailer.php';
 
-    private function buildApprovalEmailHtml(string $name, int $actId, string $approveLink, string $rejectLink): string
-    {
-        $name = htmlspecialchars($name, ENT_QUOTES);
-        return <<<HTML
-<!DOCTYPE html>
-<html lang="ru">
-<head><meta charset="UTF-8"><title>Согласование акта ГУ-23</title></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#222">
-  <h2 style="color:#1a5fa8">Требуется согласование акта ГУ-23</h2>
-  <p>Уважаемый(-ая) <b>{$name}</b>,</p>
-  <p>Вас просят согласовать акт ГУ-23 № <b>{$actId}</b>.</p>
-  <p>Пожалуйста, перейдите по одной из ссылок ниже:</p>
-  <p style="margin:24px 0">
-    <a href="{$approveLink}"
-       style="background:#22863a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px;margin-right:12px">
-      ✓ Согласовать
-    </a>
-    <a href="{$rejectLink}"
-       style="background:#c0392b;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px">
-      ✗ Отклонить
-    </a>
-  </p>
-  <p style="color:#888;font-size:13px">Ссылка действительна 7 дней.<br>Это автоматическое сообщение — не отвечайте на него.</p>
-</body>
-</html>
-HTML;
+        if (!defined('HMAC_SECRET')) {
+            require_once file_exists(__DIR__ . '/../db_config.local.php')
+                ? __DIR__ . '/../db_config.local.php'
+                : __DIR__ . '/../db_config.php';
+        }
+        if (!defined('HMAC_SECRET')) {
+            define('HMAC_SECRET', 'change-me-in-production');
+        }
+
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+        return new ApprovalMailer(HMAC_SECRET, $baseUrl);
     }
 
     /* ----------------------------------------------------------------- */
@@ -915,16 +865,6 @@ HTML;
             echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']); return;
         }
 
-        require_once __DIR__ . '/../lib/HmacApproval.php';
-        if (!defined('HMAC_SECRET')) {
-            require_once file_exists(__DIR__ . '/../db_config.local.php')
-                ? __DIR__ . '/../db_config.local.php'
-                : __DIR__ . '/../db_config.php';
-        }
-        if (!defined('HMAC_SECRET')) {
-            define('HMAC_SECRET', 'change-me-in-production');
-        }
-
         $signers = $this->pipe(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :user_id',
             [':act_id' => $actId, ':user_id' => $userId]
@@ -934,37 +874,22 @@ HTML;
             echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']); return;
         }
 
-        $hmac       = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+        $mailer     = $this->loadMailer();
         $signer     = $signers[0];
         $approverId = (int) $signer['APPROVER_ID'];
         $email      = $signer['FAKE_EMAIL'];
         $fullName   = $signer['FULL_NAME'] ?? '';
 
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-        parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
-        parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
-
-        $tokenSig    = $approveParams['sig'] ?? '';
-        $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
-        $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
+        $links = $mailer->generateLinks($actId, $approverId);
 
         $this->pipe(
             'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
-            [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
+            [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
         );
         oci_commit($this->conn);
 
-        $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
-        $subject  = 'Требуется согласование акта ГУ-23';
-
-        if ($mode === 'send_mail') {
-            $headers = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
-            $ok = mail($email, $subject, $htmlBody, $headers);
-        } else {
-            $ok = $this->saveMailToFile($email, $subject, $htmlBody);
-        }
+        $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
+        $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
 
         echo json_encode($ok
             ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
