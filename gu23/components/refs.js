@@ -2,32 +2,55 @@ import { sendApiRequest } from '../api.js'
 import { escapeHtml } from '../utils.js'
 import { showToast, showConfirmBox } from './ui.js'
 
+let currentTab = 'signers'
+let cachedData = null
+
 export function showRefs(container) {
   $(container).html(`
     <div class="phead">
       <h1>Справочники</h1>
+      <span class="muted" style="font-size:13px;margin-left:12px">Подписанты РЖД и причины составления — управляются администратором</span>
     </div>
-    <div id="refs-content"><div class="muted">Загрузка…</div></div>
+    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:20px;border-bottom:2px solid var(--line)">
+      <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты РЖД</button>
+      <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины составления</button>
+    </div>
+    <div id="refs-body"><div class="muted">Загрузка…</div></div>
   `)
+
+  $(container).on('click', '.refs-tab', function () {
+    currentTab = $(this).data('tab')
+    $('.refs-tab').each(function () {
+      $(this).attr('style', tabStyle($(this).data('tab') === currentTab))
+    })
+    if (cachedData) renderTab()
+  })
 
   sendApiRequest('gu23_refs_get_all').done((data) => {
     if (!data || !data.ok) {
-      $('#refs-content').html('<div class="muted">Ошибка загрузки данных</div>')
+      $('#refs-body').html('<div class="muted">Ошибка загрузки данных</div>')
       return
     }
-    renderRefs(data.signers || [], data.reasons || [])
+    cachedData = data
+    renderTab()
   })
 }
 
-function renderRefs(signers, reasons) {
-  $('#refs-content').html(`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
-      <div id="ref-signers-block"></div>
-      <div id="ref-reasons-block"></div>
-    </div>
-  `)
-  renderSigners(signers)
-  renderReasons(reasons)
+function tabStyle(active) {
+  return active
+    ? 'padding:8px 20px;border:none;background:none;font-size:14px;font-weight:600;color:var(--accent,#2563eb);border-bottom:2px solid var(--accent,#2563eb);margin-bottom:-2px;cursor:pointer'
+    : 'padding:8px 20px;border:none;background:none;font-size:14px;font-weight:400;color:var(--muted,#888);cursor:pointer'
+}
+
+function renderTab() {
+  if (currentTab === 'signers') renderSigners(cachedData.signers || [])
+  else renderReasons(cachedData.reasons || [])
+}
+
+function reloadRefs() {
+  sendApiRequest('gu23_refs_get_all').done((data) => {
+    if (data && data.ok) { cachedData = data; renderTab() }
+  })
 }
 
 // ─────────────────────────────────────────────
@@ -36,35 +59,40 @@ function renderRefs(signers, reasons) {
 
 function renderSigners(signers) {
   const rows = signers.map((s) => {
-    const inactive = s.ACTIVE !== 'Y'
+    const active = s.ACTIVE === 'Y'
     return `
-      <tr data-id="${s.ID}" class="${inactive ? 'row-inactive' : ''}">
-        <td>${escapeHtml(s.FIO || '')}</td>
-        <td class="muted">${escapeHtml(s.POST || '')}</td>
-        <td class="muted">${escapeHtml(s.ORG || '')}</td>
-        <td style="white-space:nowrap">
-          <button class="btn xs" data-action="edit-signer" data-id="${s.ID}">Изменить</button>
-          <button class="btn xs ${inactive ? '' : 'ghost'}" data-action="toggle-signer" data-id="${s.ID}" title="${inactive ? 'Активировать' : 'Деактивировать'}">
-            ${inactive ? 'Вкл' : 'Выкл'}
-          </button>
+      <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}">
+        <td><b>${escapeHtml(s.FIO || '')}</b></td>
+        <td class="muted">${escapeHtml(s.POST || '—')}</td>
+        <td class="muted">${escapeHtml(s.ORG || '—')}</td>
+        <td class="muted">${escapeHtml(s.UNIT || '—')}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
+            background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
+            <span style="width:7px;height:7px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            ${active ? 'Активен' : 'Неактивен'}
+          </span>
+        </td>
+        <td style="text-align:right">
+          <button class="btn xs ghost" data-action="edit-signer" data-id="${s.ID}">Изменить</button>
         </td>
       </tr>`
   }).join('')
 
-  $('#ref-signers-block').html(`
+  $('#refs-body').html(`
     <div class="card">
       <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)">
-        <b>Подписанты РЖД</b>
+        <b>Справочник подписантов РЖД</b>
         <button class="btn sm" id="btn-add-signer">+ Добавить</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="ref-table" style="width:100%;border-collapse:collapse">
+        <table class="tbl" style="width:100%">
           <thead>
             <tr>
-              <th>ФИО</th><th>Должность</th><th>Организация</th><th></th>
+              <th>ФИО</th><th>Должность</th><th>Организация</th><th>Подразделение</th><th>Статус</th><th></th>
             </tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="4" class="muted" style="padding:12px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="6" class="muted" style="padding:16px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -72,59 +100,48 @@ function renderSigners(signers) {
 
   $('#btn-add-signer').on('click', () => showSignerForm(null))
 
-  $('#ref-signers-block').on('click', '[data-action="edit-signer"]', function () {
+  $('#refs-body').on('click', '[data-action="edit-signer"]', function () {
     const id = $(this).data('id')
-    const tr = $(this).closest('tr')
-    showSignerForm({
-      ID:   id,
-      FIO:  tr.find('td').eq(0).text(),
-      POST: tr.find('td').eq(1).text(),
-      ORG:  tr.find('td').eq(2).text(),
-    })
-  })
-
-  $('#ref-signers-block').on('click', '[data-action="toggle-signer"]', function () {
-    const id  = $(this).data('id')
-    const btn = $(this)
-    const active = btn.text().trim() === 'Выкл'
-    const msg = active ? 'Деактивировать подписанта?' : 'Активировать подписанта?'
-    showConfirmBox('Изменить статус', msg, () => {
-      sendApiRequest('gu23_ref_signer_toggle', { id }).done((r) => {
-        if (r && r.ok) {
-          reloadRefs()
-        } else {
-          showToast((r && r.msg) || 'Ошибка', 'err')
-        }
-      })
-    })
+    const signer = (cachedData.signers || []).find((s) => String(s.ID) === String(id))
+    if (signer) showSignerForm(signer)
   })
 }
 
 function showSignerForm(signer) {
   const isNew = !signer
-  const title  = isNew ? 'Добавить подписанта РЖД' : 'Изменить подписанта'
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
-        <h3 style="margin:0 0 18px">${title}</h3>
-        <div class="frow" style="margin-bottom:10px">
-          <label>ФИО <span class="req">*</span></label>
-          <input class="inp" id="sf-fio" value="${escapeHtml(signer?.FIO || '')}">
+      <div class="card" style="width:500px;max-width:96vw;padding:28px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h3 style="margin:0">Подписант</h3>
+          <button style="border:none;background:none;font-size:20px;cursor:pointer;color:#888" id="sf-close">×</button>
         </div>
-        <div class="frow" style="margin-bottom:10px">
-          <label>Должность</label>
-          <input class="inp" id="sf-post" value="${escapeHtml(signer?.POST || '')}">
+        <div class="frow" style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">ФИО</label>
+          <input class="inp" id="sf-fio" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
         </div>
-        <div class="frow" style="margin-bottom:10px">
-          <label>Организация</label>
-          <input class="inp" id="sf-org" value="${escapeHtml(signer?.ORG || '')}">
+        <div class="frow" style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Должность</label>
+          <input class="inp" id="sf-post" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
         </div>
-        <div class="frow" style="margin-bottom:18px">
-          <label>Подразделение</label>
-          <input class="inp" id="sf-unit" value="${escapeHtml(signer?.UNIT || '')}">
+        <div class="frow" style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Организация</label>
+          <input class="inp" id="sf-org" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
         </div>
+        <div class="frow" style="margin-bottom:20px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Подразделение</label>
+          <input class="inp" id="sf-unit" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
+        </div>
+        ${!isNew ? `
+        <div style="margin-bottom:20px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="sf-active" ${signer?.ACTIVE === 'Y' ? 'checked' : ''} style="width:16px;height:16px">
+            Активен (доступен для выбора)
+          </label>
+        </div>` : ''}
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost" id="sf-cancel">Отмена</button>
+          ${!isNew ? '<button class="btn danger" id="sf-toggle">' + (signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать') + '</button>' : ''}
           <button class="btn" id="sf-save">Сохранить</button>
         </div>
       </div>
@@ -134,8 +151,18 @@ function showSignerForm(signer) {
   $('body').append($modal)
   $('#sf-fio').focus()
 
-  $('#sf-cancel').on('click', () => $modal.remove())
+  $('#sf-close, #sf-cancel').on('click', () => $modal.remove())
   $modal.on('click', (e) => { if ($(e.target).is($modal)) $modal.remove() })
+
+  $('#sf-toggle').on('click', () => {
+    const msg = signer?.ACTIVE === 'Y' ? 'Деактивировать подписанта?' : 'Активировать подписанта?'
+    showConfirmBox('Изменить статус', msg, () => {
+      sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
+        if (r && r.ok) { $modal.remove(); reloadRefs() }
+        else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  })
 
   $('#sf-save').on('click', () => {
     const fio = $('#sf-fio').val().trim()
@@ -166,32 +193,36 @@ const KIND_LABELS = { start: 'Начало', end: 'Окончание', other: '
 
 function renderReasons(reasons) {
   const rows = reasons.map((r) => {
-    const inactive = r.ACTIVE !== 'Y'
+    const active = r.ACTIVE === 'Y'
     return `
-      <tr data-id="${r.ID}" class="${inactive ? 'row-inactive' : ''}">
-        <td>${escapeHtml(r.NAME || '')}</td>
-        <td class="muted" style="white-space:nowrap">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
-        <td style="white-space:nowrap">
-          <button class="btn xs" data-action="edit-reason" data-id="${r.ID}">Изменить</button>
-          <button class="btn xs ${inactive ? '' : 'ghost'}" data-action="toggle-reason" data-id="${r.ID}">
-            ${inactive ? 'Вкл' : 'Выкл'}
-          </button>
+      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}">
+        <td><b>${escapeHtml(r.NAME || '')}</b></td>
+        <td class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
+            background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
+            <span style="width:7px;height:7px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            ${active ? 'Активна' : 'Неактивна'}
+          </span>
+        </td>
+        <td style="text-align:right">
+          <button class="btn xs ghost" data-action="edit-reason" data-id="${r.ID}">Изменить</button>
         </td>
       </tr>`
   }).join('')
 
-  $('#ref-reasons-block').html(`
+  $('#refs-body').html(`
     <div class="card">
       <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)">
-        <b>Причины составления</b>
+        <b>Справочник причин составления</b>
         <button class="btn sm" id="btn-add-reason">+ Добавить</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="ref-table" style="width:100%;border-collapse:collapse">
+        <table class="tbl" style="width:100%">
           <thead>
-            <tr><th>Название</th><th>Тип акта</th><th></th></tr>
+            <tr><th>Название</th><th>Тип акта</th><th>Статус</th><th></th></tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:12px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="4" class="muted" style="padding:16px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -199,28 +230,10 @@ function renderReasons(reasons) {
 
   $('#btn-add-reason').on('click', () => showReasonForm(null))
 
-  $('#ref-reasons-block').on('click', '[data-action="edit-reason"]', function () {
+  $('#refs-body').on('click', '[data-action="edit-reason"]', function () {
     const id = $(this).data('id')
-    const tr = $(this).closest('tr')
-    showReasonForm({
-      ID:       id,
-      NAME:     tr.find('td').eq(0).text(),
-      ACT_KIND: Object.keys(KIND_LABELS).find((k) => KIND_LABELS[k] === tr.find('td').eq(1).text()) || 'any',
-    })
-  })
-
-  $('#ref-reasons-block').on('click', '[data-action="toggle-reason"]', function () {
-    const id  = $(this).data('id')
-    const active = $(this).text().trim() === 'Выкл'
-    showConfirmBox('Изменить статус', active ? 'Деактивировать причину?' : 'Активировать причину?', () => {
-      sendApiRequest('gu23_ref_reason_toggle', { id }).done((r) => {
-        if (r && r.ok) {
-          reloadRefs()
-        } else {
-          showToast((r && r.msg) || 'Ошибка', 'err')
-        }
-      })
-    })
+    const reason = (cachedData.reasons || []).find((r) => String(r.ID) === String(id))
+    if (reason) showReasonForm(reason)
   })
 }
 
@@ -232,18 +245,22 @@ function showReasonForm(reason) {
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:440px;max-width:96vw;padding:24px">
-        <h3 style="margin:0 0 18px">${isNew ? 'Добавить причину' : 'Изменить причину'}</h3>
-        <div class="frow" style="margin-bottom:10px">
-          <label>Название <span class="req">*</span></label>
-          <input class="inp" id="rf-name" value="${escapeHtml(reason?.NAME || '')}">
+      <div class="card" style="width:500px;max-width:96vw;padding:28px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h3 style="margin:0">Причина составления</h3>
+          <button style="border:none;background:none;font-size:20px;cursor:pointer;color:#888" id="rf-close">×</button>
         </div>
-        <div class="frow" style="margin-bottom:18px">
-          <label>Тип акта</label>
+        <div class="frow" style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Название <span style="color:red">*</span></label>
+          <input class="inp" id="rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+        </div>
+        <div class="frow" style="margin-bottom:20px">
+          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Тип акта</label>
           <select class="inp" id="rf-kind">${kindOptions}</select>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost" id="rf-cancel">Отмена</button>
+          ${!isNew ? '<button class="btn danger" id="rf-toggle">' + (reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать') + '</button>' : ''}
           <button class="btn" id="rf-save">Сохранить</button>
         </div>
       </div>
@@ -253,8 +270,18 @@ function showReasonForm(reason) {
   $('body').append($modal)
   $('#rf-name').focus()
 
-  $('#rf-cancel').on('click', () => $modal.remove())
+  $('#rf-close, #rf-cancel').on('click', () => $modal.remove())
   $modal.on('click', (e) => { if ($(e.target).is($modal)) $modal.remove() })
+
+  $('#rf-toggle').on('click', () => {
+    const msg = reason?.ACTIVE === 'Y' ? 'Деактивировать причину?' : 'Активировать причину?'
+    showConfirmBox('Изменить статус', msg, () => {
+      sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
+        if (r && r.ok) { $modal.remove(); reloadRefs() }
+        else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  })
 
   $('#rf-save').on('click', () => {
     const name = $('#rf-name').val().trim()
@@ -272,15 +299,5 @@ function showReasonForm(reason) {
         showToast((r && r.msg) || 'Ошибка', 'err')
       }
     })
-  })
-}
-
-// ─────────────────────────────────────────────
-// Перезагрузка данных
-// ─────────────────────────────────────────────
-
-function reloadRefs() {
-  sendApiRequest('gu23_refs_get_all').done((data) => {
-    if (data && data.ok) renderRefs(data.signers || [], data.reasons || [])
   })
 }
