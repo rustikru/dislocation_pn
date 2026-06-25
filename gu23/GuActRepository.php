@@ -70,6 +70,24 @@ class GuActRepository
                 case 'gu23_close_act':
                     $this->closeAct();
                     break;
+                case 'gu23_resend_approval':
+                    $this->resendApproval();
+                    break;
+                case 'gu23_refs_get_all':
+                    $this->refsGetAll();
+                    break;
+                case 'gu23_ref_signer_save':
+                    $this->refSignerSave();
+                    break;
+                case 'gu23_ref_signer_toggle':
+                    $this->refSignerToggle();
+                    break;
+                case 'gu23_ref_reason_save':
+                    $this->refReasonSave();
+                    break;
+                case 'gu23_ref_reason_toggle':
+                    $this->refReasonToggle();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -745,5 +763,154 @@ HTML;
         } else {
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка операции']);
         }
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Справочники (администрирование)                                    */
+    /* ----------------------------------------------------------------- */
+
+    private function refsGetAll(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        echo json_encode([
+            'ok'      => true,
+            'signers' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_signers_all())'),
+            'reasons' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_reasons_all())'),
+        ]);
+    }
+
+    private function refSignerSave(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id   = (int)   filter_input(INPUT_POST, 'id');
+        $fio  = (string) filter_input(INPUT_POST, 'fio');
+        $post = (string) filter_input(INPUT_POST, 'post');
+        $org  = (string) filter_input(INPUT_POST, 'org');
+        $unit = (string) filter_input(INPUT_POST, 'unit');
+        $res  = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
+            [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
+        );
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refSignerToggle(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id  = (int) filter_input(INPUT_POST, 'id');
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_signer_toggle(:id)', [':id' => $id]);
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refReasonSave(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id      = (int)    filter_input(INPUT_POST, 'id');
+        $name    = (string)  filter_input(INPUT_POST, 'name');
+        $actKind = (string)  filter_input(INPUT_POST, 'act_kind');
+        $res = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',
+            [':id' => $id, ':name' => $name, ':kind' => $actKind]
+        );
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    private function refReasonToggle(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+        $id  = (int) filter_input(INPUT_POST, 'id');
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
+        echo json_encode(str_starts_with((string)$res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* переотправка ссылки конкретному подписанту                         */
+    /* ----------------------------------------------------------------- */
+    private function resendApproval(): void
+    {
+        if (!$this->auth->isAuthAdmin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+        }
+
+        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $userId = (int) filter_input(INPUT_POST, 'user_id');
+        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+
+        if (!$actId || !$userId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']); return;
+        }
+
+        require_once __DIR__ . '/../lib/HmacApproval.php';
+        if (!defined('HMAC_SECRET')) {
+            require_once file_exists(__DIR__ . '/../db_config.local.php')
+                ? __DIR__ . '/../db_config.local.php'
+                : __DIR__ . '/../db_config.php';
+        }
+        if (!defined('HMAC_SECRET')) {
+            define('HMAC_SECRET', 'change-me-in-production');
+        }
+
+        $signers = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :uid',
+            [':act_id' => $actId, ':uid' => $userId]
+        );
+
+        if (empty($signers)) {
+            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']); return;
+        }
+
+        $hmac       = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+        $signer     = $signers[0];
+        $approverId = (int) $signer['APPROVER_ID'];
+        $email      = $signer['FAKE_EMAIL'];
+        $fullName   = $signer['FULL_NAME'] ?? '';
+
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+        parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
+        parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
+
+        $tokenSig    = $approveParams['sig'] ?? '';
+        $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
+        $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
+
+        $this->pipe(
+            'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
+            [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
+        );
+        oci_commit($this->conn);
+
+        $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
+        $subject  = 'Требуется согласование акта ГУ-23';
+
+        if ($mode === 'send_mail') {
+            $headers = "MIME-Version: 1.0\r\nContent-type: text/html; charset=utf-8\r\nFrom: noreply@company.ru\r\n";
+            $ok = mail($email, $subject, $htmlBody, $headers);
+        } else {
+            $ok = $this->saveMailToFile($email, $subject, $htmlBody);
+        }
+
+        echo json_encode($ok
+            ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
+            : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
     }
 }

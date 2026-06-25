@@ -44,4 +44,14 @@ return [
     'gu23_approve_in_app'  => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_close_act'       => ['gu23/GuActRepository.php', 'GuActRepository'],
 
+    // ------------------------------------------------------------------
+    // ГУ-23 · Справочники (администрирование)
+    // ------------------------------------------------------------------
+    'gu23_resend_approval'   => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_refs_get_all'      => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_ref_signer_save'   => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_ref_signer_toggle' => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_ref_reason_save'   => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_ref_reason_toggle' => ['gu23/GuActRepository.php', 'GuActRepository'],
+
 ];

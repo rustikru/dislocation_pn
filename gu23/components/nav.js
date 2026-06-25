@@ -6,6 +6,9 @@ export function drawNav() {
     { page: 'new', icon: '＋', label: 'Создать акт' },
     { page: 'archive', icon: '', label: 'Реестр актов' },
   ]
+  if (applicationState.isAdmin) {
+    navigationItems.push({ page: 'refs', icon: '⚙', label: 'Справочники' })
+  }
 
   const $nav = $('#nav').empty()
 

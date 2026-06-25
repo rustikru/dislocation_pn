@@ -79,7 +79,7 @@ function showToolbarButtons(act, data) {
 
   if (act.STATUS === 'active' && data.isAdmin && data.signers && data.signers.length) {
     const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
-    $resendBtn.on('click', () => resendApprovalLinks(act))
+    $resendBtn.on('click', () => resendApprovalLinks(act, data.signers, data.approvals || []))
     $toolbar.append($resendBtn)
   }
 
@@ -443,20 +443,75 @@ function closeAct(act) {
   })
 }
 
-function resendApprovalLinks(act) {
-  showConfirmBox(
-    'Переотправить ссылки',
-    'Сгенерировать новые ссылки согласования и отправить подписантам повторно?',
-    () => {
-      sendApiRequest('gu23_send_approval', { act_id: act.ID, mode: 'send_file' }).done((response) => {
-        if (response && response.ok) {
-          showToast(response.msg || 'Ссылки сгенерированы', 'ok')
-        } else {
-          showToast((response && response.msg) || 'Ошибка', 'err')
+function resendApprovalLinks(act, signers, approvals) {
+  const approvalMap = {}
+  ;(approvals || []).forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+
+  const unsigned = (signers || []).filter((s) => {
+    if (s.STYPE === 'rzd' || !s.USER_ID) return false
+    const appr = approvalMap[s.USER_ID]
+    return !appr || appr.STATUS !== 'approved'
+  })
+
+  if (!unsigned.length) {
+    showToast('Все подписанты уже согласовали акт', 'ok')
+    return
+  }
+
+  const rows = unsigned.map((s) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer">
+      <input type="checkbox" class="resend-chk" value="${s.USER_ID}" style="width:16px;height:16px">
+      <span>
+        <b>${escapeHtml(s.FIO || '')}</b>
+        ${s.POST ? '<br><span class="muted" style="font-size:12px">' + escapeHtml(s.POST) + '</span>' : ''}
+      </span>
+    </label>
+  `).join('')
+
+  const $modal = $(`
+    <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
+      <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
+        <h3 style="margin:0 0 6px">Переотправить ссылки</h3>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">Выберите подписантов, которым нужно отправить новые ссылки согласования:</p>
+        <div style="max-height:300px;overflow-y:auto;margin-bottom:16px">${rows}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn ghost" id="resend-cancel">Отмена</button>
+          <button class="btn" id="resend-send">Отправить</button>
+        </div>
+      </div>
+    </div>
+  `)
+
+  $('body').append($modal)
+
+  $('#resend-cancel').on('click', () => $modal.remove())
+  $modal.on('click', (e) => { if ($(e.target).is($modal)) $modal.remove() })
+
+  $('#resend-send').on('click', () => {
+    const selected = []
+    $modal.find('.resend-chk:checked').each(function () {
+      selected.push($(this).val())
+    })
+    if (!selected.length) { showToast('Выберите хотя бы одного подписанта', 'err'); return }
+
+    $('#resend-send').prop('disabled', true).text('Отправка…')
+    let done = 0
+    let errors = 0
+    selected.forEach((userId) => {
+      sendApiRequest('gu23_resend_approval', { act_id: act.ID, user_id: userId, mode: 'send_file' }).done((r) => {
+        done++
+        if (!r || !r.ok) errors++
+        if (done === selected.length) {
+          $modal.remove()
+          if (errors === 0) {
+            showToast(`Ссылки отправлены (${done})`, 'ok')
+          } else {
+            showToast(`Отправлено ${done - errors} из ${done}, ошибок: ${errors}`, 'err')
+          }
         }
       })
-    },
-  )
+    })
+  })
 }
 
 function sendForApproval(act) {
