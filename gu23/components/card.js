@@ -48,7 +48,7 @@ function buildCardView(container, data) {
   showToolbarButtons(act, data)
   showDetailsBlock(act)
   showWagonsBlock(data.wagons)
-  showSignersBlock(act, data.signers, data.approvals || [], data.myApproval || 'none')
+  showSignersBlock(act, data.signers, data.approvals || [], data.myApproval || 'none', !!data.isUserSigner)
   showAttachmentsBlock(act, data.files)
   showHistoryBlock(data.history)
 }
@@ -176,7 +176,7 @@ function showWagonsBlock(wagons) {
   `)
 }
 
-function showSignersBlock(act, signers, approvals, myApproval) {
+function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
   // Строим map: approver_id → approval record
   const approvalMap = {}
   approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
@@ -204,9 +204,10 @@ function showSignersBlock(act, signers, approvals, myApproval) {
       }).join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  // Баннер "подписать" — только если текущему пользователю прислали запрос (pending)
+  // Баннер "подписать" — для подписантов акта (pending = ждёт решения, none = ещё не инициировано)
+  const canSign = act.STATUS === 'active' && (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
-  if (act.STATUS === 'active' && myApproval === 'pending') {
+  if (canSign) {
     myBannerHtml = `
       <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
         <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">⏳ Ожидается ваше согласование</div>
@@ -236,7 +237,7 @@ function showSignersBlock(act, signers, approvals, myApproval) {
     </div>
   `)
 
-  if (act.STATUS === 'active' && myApproval === 'pending') {
+  if (canSign) {
     $('#btn-sign-approve').on('click', () => submitInAppDecision(act.ID, 'approved', ''))
 
     $('#btn-sign-reject').on('click', () => {

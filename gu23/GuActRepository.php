@@ -178,11 +178,28 @@ class GuActRepository
         oci_bind_by_name($st, ':uid', $userId);
         oci_execute($st);
 
+        // Является ли текущий пользователь подписантом-предприятием этого акта
+        // (signer_ref_id для сотрудников предприятия = user_id; исключаем РЖД-подписантов)
+        $isUserSignerCnt = 0;
+        $stS = oci_parse($this->conn,
+            'SELECT COUNT(*) AS CNT FROM xx_disl_gu23_signer s
+              WHERE s.act_id = :act
+                AND s.signer_ref_id = :uid
+                AND NOT EXISTS (SELECT 1 FROM xx_disl_gu23_ref_signer r WHERE r.id = s.signer_ref_id)'
+        );
+        oci_bind_by_name($stS, ':act', $id);
+        oci_bind_by_name($stS, ':uid', $userId);
+        oci_execute($stS);
+        if ($row = oci_fetch_array($stS, OCI_ASSOC)) {
+            $isUserSignerCnt = (int) $row['CNT'];
+        }
+
         echo json_encode([
             'ok'            => true,
             'act'           => $act[0],
             'currentUserId' => (int) $userId,
             'myApproval'    => $myStatus ?: 'none',
+            'isUserSigner'  => $isUserSignerCnt > 0,
             'isAdmin'       => $this->auth->isAuthAdmin() ? true : false,
             'wagons'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files'         => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
