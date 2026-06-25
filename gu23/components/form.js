@@ -1,7 +1,7 @@
 import { sendApiRequest } from '../api.js'
 
 // 'send_mail' — реальная отправка email, 'send_file' — сохранить письмо в папку mail/, false — не отправлять
-const APPROVAL_MODE = 'send_file'
+const APPROVAL_MODE = 'false'
 import {
   references,
   activeDraft,
@@ -863,21 +863,22 @@ function saveActToServer(status, skipWarning = false) {
     if (response && response.ok) {
       setActiveDraft(null)
       if (status === 'active' && APPROVAL_MODE) {
-        sendApiRequest('gu23_send_approval', { act_id: response.id, mode: APPROVAL_MODE }).done(
-          (approvalResp) => {
-            const approvalMsg =
-              approvalResp && approvalResp.ok
-                ? approvalResp.msg || 'Письма отправлены'
-                : approvalResp && approvalResp.msg
-                  ? 'Письма: ' + approvalResp.msg
-                  : 'Письма не отправлены'
-            showToast(
-              `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
-              'ok',
-            )
-            navigateTo('card', response.id)
-          },
-        )
+        sendApiRequest('gu23_send_approval', {
+          act_id: response.id,
+          mode: APPROVAL_MODE,
+        }).done((approvalResp) => {
+          const approvalMsg =
+            approvalResp && approvalResp.ok
+              ? approvalResp.msg || 'Письма отправлены'
+              : approvalResp && approvalResp.msg
+                ? 'Письма: ' + approvalResp.msg
+                : 'Письма не отправлены'
+          showToast(
+            `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
+            'ok',
+          )
+          navigateTo('card', response.id)
+        })
       } else {
         const msg =
           status === 'active'
