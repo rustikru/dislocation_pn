@@ -1,4 +1,6 @@
 import { sendApiRequest } from '../api.js'
+
+const SEND_APPROVAL_ON_SAVE = true // false — отключить авто-рассылку при сохранении
 import {
   references,
   activeDraft,
@@ -857,7 +859,7 @@ function saveActToServer(status, skipWarning = false) {
   sendApiRequest('gu23_save_act', payload).done((response) => {
     if (response && response.ok) {
       setActiveDraft(null)
-      if (status === 'active') {
+      if (status === 'active' && SEND_APPROVAL_ON_SAVE) {
         sendApiRequest('gu23_send_approval', { act_id: response.id }).done((approvalResp) => {
           const approvalMsg = approvalResp && approvalResp.ok
             ? (approvalResp.msg || 'Письма отправлены')
