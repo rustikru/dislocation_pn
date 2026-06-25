@@ -7,14 +7,47 @@ create or replace package body xx_disl_gu23_pkg as
      ---------  ----------  ---------------  ------------------------------------
      1.0        23.06.2026  BekmansurovRR    1. Created this package.
      1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
-                                               waybill_no, cargo_ref; раздельные
-                                               справочники станций и подписантов;
+                                               waybill_no, cargo_ref;
+                                               раздельные справочники станций и подписантов;
                                                справочник грузов.
   ******************************************************************************/
    c_package constant varchar2(30) := 'xx_disl_gu23_pkg';
    c_dtf     constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us      constant char(1) := chr(31);            -- разделитель полей
-   c_rs      constant char(1) := chr(30);          -- разделитель записей
+   c_us      constant char(1) := chr(31); -- разделитель полей
+   c_rs      constant char(1) := chr(30); -- разделитель записей
+
+   procedure log_act_history (
+      p_act_id  in number,
+      p_user_id in number,
+      p_text    in varchar2
+   ) is
+   begin
+      insert into xx_disl_gu23_hist (
+         id,
+         act_id,
+         ts,
+         usr,
+         txt
+      ) values ( xx_disl_gu23_hist_seq.nextval,
+                 p_act_id,
+                 sysdate,
+                 p_user_id,
+                 p_text );
+   end;
+
+   -- Возврат ответа для php или другим системам
+   function format_error (
+      p_msg in varchar2 default null
+   ) return varchar2 is
+   begin
+      -- Если передали свой текст, отдаем его, иначе отдаем системный sqlerrm
+      return 'ERR'
+             || c_us
+             || nvl(
+         p_msg,
+         sqlerrm
+      );
+   end format_error;
 
    procedure log_new (
       p_function_name in varchar2,
@@ -29,7 +62,6 @@ create or replace package body xx_disl_gu23_pkg as
                  || '->'
                  || p_function_name,
                  p_text );
-
       commit;
    end;
 
@@ -64,7 +96,7 @@ create or replace package body xx_disl_gu23_pkg as
       return 0;
    end;
 
-    -- n-е поле строки, разделители CHR(31)
+   -- n-е поле строки, разделители CHR(31)
    function g_field (
       p_line in varchar2,
       p_idx  in pls_integer
@@ -243,11 +275,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- Причины
+   -- Причины
    function gu23_get_ref_reason (
       p_kind in varchar2 default null
    ) return xx_disl_gu23_ref_tab
@@ -269,11 +300,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- ст. составления —
+    -- ст. составления
    function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab
       pipelined
    is
@@ -283,14 +313,12 @@ create or replace package body xx_disl_gu23_pkg as
          select station_id,
                 name
            from xx_disl_stations
-                  -- where short_name = 'Вод'
           order by name
       ) loop
          l_row.code := r.station_id;
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
@@ -311,11 +339,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- ст. назначения —
+    -- ст. назначения
    function gu23_get_ref_st_to return xx_disl_gu23_ref_tab
       pipelined
    is
@@ -331,11 +358,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- ГРуз
+   -- Груз
    function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
       pipelined
    is
@@ -355,11 +381,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- подписанты — работники предприятия
+   -- подписанты — работники предприятия
    function gu23_get_ref_signer_own (
       p_dept_id in varchar2 default null
    ) return xx_disl_gu23_signer_tab
@@ -368,43 +393,17 @@ create or replace package body xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
-         -- Примечание: поле unit возвращает код цеха из xx_disl_users.dept_id
-         -- (скорректируйте условие фильтра если имя колонки отличается)
          select du.id,
                 du.full_name as fio,
                 null as post,
                 dnt.name as org,
                 null as unit,
-                --rc.code as unit,
                 'Работник предприятия' as stype
            from xx_disl_users du
            join xx_disl_enterprise dnt
          on dnt.id = du.enterprise
-           --left join xx_disl_gu23_ref_cex rc on rc.id = du.dept_id
           where du.open = 'Y'
-            -- and ( p_dept_code is null or rc.code = p_dept_code )
           order by du.full_name
-          /*
-          select du.id,
-                         du.full_name               as fio,
-                         prv.APPOINT_NAME           as POST,
-                         prv.FIRM_NAME              as org,
-                         prv.THEME                  as unit,
-                         'Работник предприятия'     as stype
-                    from xx_disl_users du
-                         left join xx_scud.prv_emp prv
-                             on     du.card_id = prv.card_id
-                                and TRUNC (SYSDATE) between D_FROM and D_TO
-                                and TRUNC (SYSDATE) between D_IN and D_OUT
-                         left join xx_disl_enterprise de
-                             on du.enterprise = de.id
-                   where     du.OPEN = 'Y'
-                         and de.name = 'Метафракс'
-                         and du.full_name not like '%user%'
-                         and prv.APPOINT_NAME not like 'Советн%'
-                --and prv.THEME like '%ЖДЦ%'
-                order by fio
-          */
       ) loop
          l_row.id := r.id;
          l_row.fio := r.fio;
@@ -415,7 +414,6 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.ord_no := null;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
@@ -446,7 +444,6 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.ord_no := null;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
@@ -495,7 +492,6 @@ create or replace package body xx_disl_gu23_pkg as
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
-
       return;
    end;
 
@@ -515,7 +511,6 @@ create or replace package body xx_disl_gu23_pkg as
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
-
       return;
    end;
 
@@ -544,11 +539,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.weight := r.weight;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- Файлы
+   -- Файлы
    function gu23_get_files (
       p_act_id in number
    ) return xx_disl_gu23_file_tab
@@ -575,11 +569,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.created_by := g_user_name(f.created_by);
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- ПОдписанты
+   -- Подписанты
    function gu23_get_signers (
       p_act_id in number
    ) return xx_disl_gu23_signer_tab
@@ -604,11 +597,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.ord_no := s.ord_no;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- Историязменения по акту
+   -- История изменений по акту
    function gu23_get_hist (
       p_act_id in number
    ) return xx_disl_gu23_hist_tab
@@ -633,11 +625,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.txt := h.txt;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- Открытые акты (акт на начало)
+   -- Открытые акты (акт на начало)
    function gu23_get_open_starts return xx_disl_gu23_act_tab
       pipelined
    is
@@ -651,11 +642,10 @@ create or replace package body xx_disl_gu23_pkg as
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
-
       return;
    end;
 
-    -- открытые вагоны акта начала (не закрытые действующим актом окончания)
+   -- открытые вагоны акта начала (не закрытые действующим актом окончания)
    function gu23_get_open_rows (
       p_start_id in number
    ) return xx_disl_gu23_row_tab
@@ -672,8 +662,8 @@ create or replace package body xx_disl_gu23_pkg as
               from xx_disl_gu23_act e,
                    xx_disl_gu23_act_row er
              where er.act_id = e.id
-               and e.act_type = 'end' -- акт на окончания
-               and e.status = 'active'   -- активыне
+               and e.act_type = 'end'
+               and e.status = 'active'
                and e.linked_start_id = p_start_id
                and er.wagon_no = sr.wagon_no
          )
@@ -690,11 +680,10 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.weight := r.weight;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 
-    -- поиск по вагону (в каких актах)
+   -- поиск по вагону (в каких актах)
    function gu23_get_by_wagon (
       p_wagon in varchar2
    ) return xx_disl_gu23_act_tab
@@ -715,19 +704,12 @@ create or replace package body xx_disl_gu23_pkg as
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
-
       return;
    end;
 
-    -- ----------------------------------------------------------------
-    --
-    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
-
-    -- p_waybill_no — по накладной
-    -- p_wagons - список вагонов(перечисление)
-    -- p_dest_station - станция назначения
-    -- p_cargo_name - название груза
-    -- ----------------------------------------------------------------
+   -- ----------------------------------------------------------------
+   -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
+   -- ----------------------------------------------------------------
    function gu23_get_wagon_info (
       p_wagons       in clob,
       p_waybill_no   in varchar2 default null,
@@ -745,13 +727,13 @@ create or replace package body xx_disl_gu23_pkg as
       v_to       pls_integer;
       v_no       varchar2(32);
       l_row      xx_disl_gu23_wagon_row;
-
-        -- Курсор данных
+      
+      -- Курсор данных
       cursor c_dislocation (
-         v_w_no         varchar2,              -- вагон
-         v_waybill_no   varchar2,          -- накладная
-         v_dest_station varchar2, -- станция назначения
-         v_cargo_name   varchar2                -- груз
+         v_w_no         varchar2,
+         v_waybill_no   varchar2,
+         v_dest_station varchar2,
+         v_cargo_name   varchar2
       ) is
       with max_dislocation as (
          select max(report_dt) as max_dt,
@@ -783,19 +765,6 @@ create or replace package body xx_disl_gu23_pkg as
       );
    begin
       l_row.weight := null;
-
-        --log_new(l_function,'p_waybill_no='||p_waybill_no);
-        --log_new(l_function,'p_dest_station='||p_dest_station);
-        --log_new(l_function,'v_len='||v_len);
-        ---------------------------------------------------------------------
-        -- Отправили Список вагонов
-        ---------------------------------------------------------------------
-        /*log_new(l_function,'p_waybill_no='||p_waybill_no);
-        log_new(l_function,'p_dest_station='||p_dest_station);
-        log_new(l_function,'p_wagons='||p_wagons);
-        log_new(l_function,'v_len='||v_len);
-        log_new(l_function,'length(p_wagons)'||length(p_wagons));
-        */
       if
          v_len > 0
          and length(p_wagons) > 1
@@ -818,9 +787,6 @@ create or replace package body xx_disl_gu23_pkg as
             if v_no is null then
                continue;
             end if;
-
-                -- log_new(l_function,'v_no='||v_no);
-                -- Инициализируем дефолтные значения для текущего вагона
             l_row.wagon_no := v_no;
             l_row.found := 0;
             l_row.owner := null;
@@ -840,8 +806,6 @@ create or replace package body xx_disl_gu23_pkg as
                l_function,
                'v_no=' || v_no
             );
-
-                -- Ищем данные по конкретному вагону
             for d in c_dislocation(
                v_no,
                p_waybill_no,
@@ -859,12 +823,9 @@ create or replace package body xx_disl_gu23_pkg as
 
             pipe row ( l_row );
          end loop;
-        ---------------------------------------------------------------------
-        -- Список вагонов ПУСТОЙ (ищем только по станции/накладной/грузу)
-        ---------------------------------------------------------------------
+
       elsif p_dest_station is not null
       or p_waybill_no is not null then
-            --log_new(l_function,'Список вагонов ПУСТОЙ (ищем только по станции/накладной)');
          for d in c_dislocation(
             null,
             p_waybill_no,
@@ -886,21 +847,19 @@ create or replace package body xx_disl_gu23_pkg as
       return;
    end;
 
-
-    -- ----------------------------------------------------------------
-    -- файлы (id)
-    -- ----------------------------------------------------------------
+   -- ----------------------------------------------------------------
+   -- файлы (id)
+   -- ----------------------------------------------------------------
    function gu23_new_file_id return number is
       v number;
    begin
       select xx_disl_gu23_file_seq.nextval
         into v
         from dual;
-
       return v;
    end;
 
-    -- Добавление файла
+   -- Добавление файла
    function gu23_add_file (
       p_data in t_gu23_add_file
    ) return varchar2 is
@@ -923,26 +882,17 @@ create or replace package body xx_disl_gu23_pkg as
                  sysdate,
                  p_data.p_user_id );
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values ( xx_disl_gu23_hist_seq.nextval,
-                 p_data.p_act_id,
-                 sysdate,
-                 p_data.p_user_id,
-                 'Прикреплён файл: ' || p_data.p_name );
-
+      log_act_history(
+         p_act_id  => p_data.p_act_id,
+         p_user_id => p_data.p_user_id,
+         p_text    => 'Прикреплён файл: ' || p_data.p_name
+      );
       commit;
       return 'done';
    exception
       when others then
          rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
+         return format_error();
    end;
 
    function gu23_del_file (
@@ -962,31 +912,22 @@ create or replace package body xx_disl_gu23_pkg as
       delete from xx_disl_gu23_file
        where id = p_data.p_file_id;
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values ( xx_disl_gu23_hist_seq.nextval,
-                 v_act,
-                 sysdate,
-                 p_data.p_user_id,
-                 'Удалён файл: ' || v_name );
-
+      log_act_history(
+         p_act_id  => v_act,
+         p_user_id => p_data.p_user_id,
+         p_text    => 'Удалён файл: ' || v_name
+      );
       commit;
       return 'done';
    exception
       when others then
          rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
+         return format_error();
    end;
 
-    -- ----------------------------------------------------------------
-    -- сохранение акта
-    -- ----------------------------------------------------------------
+   -- ----------------------------------------------------------------
+   -- сохранение акта
+   -- ----------------------------------------------------------------
    function gu23_save_act (
       p_data in t_gu23_save_act
    ) return varchar2 is
@@ -1037,6 +978,7 @@ create or replace package body xx_disl_gu23_pkg as
             else
                false
          end;
+
       log_new(
          l_function,
          'p_data.p_type=' || p_data.p_type
@@ -1052,26 +994,22 @@ create or replace package body xx_disl_gu23_pkg as
       v_start := g_to_date(p_data.p_start_at);
       v_end := g_to_date(p_data.p_end_at);
 
-        -- тип акта
+      -- тип акта
       if p_data.p_type not in ( 'start',
                                 'end',
                                 'other' ) then
-         return 'ERR'
-                || c_us
-                || 'Неверный тип акта';
+         return format_error('Неверный тип акта');
       end if;
 
-        -- цех обязателен (для формирования номера акта)
+      -- цех обязателен (для формирования номера акта)
       if nvl(
          p_data.p_dept,
          'X'
       ) = 'X' then
-         return 'ERR'
-                || c_us
-                || 'Не указан цех';
+         return format_error('Не указан цех');
       end if;
 
-        -- получаем id цеха по коду
+      -- получаем id цеха по коду
       begin
          select id
            into v_dept_id
@@ -1079,55 +1017,44 @@ create or replace package body xx_disl_gu23_pkg as
           where code = p_data.p_dept;
       exception
          when no_data_found then
-            return 'ERR'
-                   || c_us
-                   || 'Цех не найден: '
-                   || p_data.p_dept;
+            return format_error('Цех не найден: ' || p_data.p_dept);
       end;
 
-
-      v_station_id := ( nullif(
+      v_station_id := nullif(
          trim(p_data.p_station),
          ''
-      ) );
-      v_st_from_id := ( nullif(
+      );
+      v_st_from_id := nullif(
          trim(p_data.p_st_from),
          ''
-      ) );
-      v_st_to_id := ( nullif(
+      );
+      v_st_to_id := nullif(
          trim(p_data.p_st_to),
          ''
-      ) );
-
-        -- проверки дат для акта "Начало простоя"
+      );
+      
+      -- проверки дат для акта "Начало простоя"
       if
          p_data.p_type = 'start'
          and p_data.p_status = 'active'
          and v_start is null
       then
-         return 'ERR'
-                || c_us
-                || 'Не указана дата начала простоя';
+         return format_error('Не указана дата начала простоя');
       end if;
 
-        -- проверки дат и связей для акта "Окончание простоя"
+      -- проверки дат и связей для акта "Окончание простоя"
       if
          p_data.p_type = 'end'
          and p_data.p_status = 'active'
       then
          if p_data.p_linked_start_id is null then
-            return 'ERR'
-                   || c_us
-                   || 'Не выбран открытый акт начала простоя';
+            return format_error('Не выбран открытый акт начала простоя');
          end if;
-
          if v_end is null then
-            return 'ERR'
-                   || c_us
-                   || 'Не указана дата окончания простоя';
+            return format_error('Не указана дата окончания простоя');
          end if;
 
-            -- если дата начала не передана, извлекаем из БД
+         -- если дата начала не передана, извлекаем из БД
          if v_start is null then
             begin
                select start_at
@@ -1144,19 +1071,15 @@ create or replace package body xx_disl_gu23_pkg as
             v_start is not null
             and v_end < v_start
          then
-            return 'ERR'
-                   || c_us
-                   || 'Дата окончания не может быть меньше даты начала';
+            return format_error('Дата окончания не может быть меньше даты начала');
          end if;
 
          if v_end > sysdate then
-            return 'ERR'
-                   || c_us
-                   || 'Дата окончания не может быть больше текущей даты (в будущем)';
+            return format_error('Дата окончания не может быть больше текущей даты (в будущем)');
          end if;
       end if;
-
-        -- расчёт длительности (только для акта окончания)
+      
+      -- расчёт длительности (только для акта окончания)
       if
          p_data.p_type = 'end'
          and v_start is not null
@@ -1171,12 +1094,10 @@ create or replace package body xx_disl_gu23_pkg as
          v_cd := ceil(v_end - v_start);
       end if;
 
-        -- INSERT или UPDATE шапки акта
+      -- INSERT или UPDATE шапки акта
       if v_isnew then
          v_number := g_next_number(v_dept_id);
          v_id := xx_disl_gu23_act_seq.nextval;
-
-            -- потом поправить на процедуру (api)
          insert into xx_disl_gu23_act (
             id,
             act_number,
@@ -1223,7 +1144,7 @@ create or replace package body xx_disl_gu23_pkg as
                     sysdate,
                     p_data.p_user_id );
       else
-            -- редактировать можно ТОЛЬКО черновик
+         -- редактировать можно ТОЛЬКО черновик
          begin
             select act_number,
                    status
@@ -1234,23 +1155,17 @@ create or replace package body xx_disl_gu23_pkg as
              where id = v_id;
          exception
             when no_data_found then
-               return 'ERR'
-                      || c_us
-                      || 'Акт не найден';
+               return format_error('Акт не найден');
          end;
 
          if v_cur_status <> 'draft' then
-            return 'ERR'
-                   || c_us
-                   || 'Действующий/закрытый акт не редактируется — аннулируйте и заведите новый';
+            return format_error('Действующий/закрытый акт не редактируется — аннулируйте и заведите новый');
          end if;
-
-            -- если у черновика ещё нет номера — присваиваем
+         
+         -- если у черновика ещё нет номера — присваиваем
          if v_number is null then
             v_number := g_next_number(v_dept_id);
          end if;
-
-            -- потом поправить на процедуру (api)
          update xx_disl_gu23_act
             set act_number = v_number,
                 act_type = p_data.p_type,
@@ -1275,12 +1190,11 @@ create or replace package body xx_disl_gu23_pkg as
 
          delete from xx_disl_gu23_act_row
           where act_id = v_id;
-
          delete from xx_disl_gu23_signer
           where act_id = v_id;
       end if;
-
-        -- разбираем вагоны
+      
+      -- разбираем вагоны
       v_len := nvl(
          dbms_lob.getlength(p_data.p_wagons),
          0
@@ -1310,7 +1224,7 @@ create or replace package body xx_disl_gu23_pkg as
          end if;
          if p_data.p_type in ( 'start',
                                'other' ) then
-                -- данные по вагону из дислокации
+            -- данные по вагону из дислокации
             begin
                select owner,
                       kind,
@@ -1340,7 +1254,7 @@ create or replace package body xx_disl_gu23_pkg as
                   vw_weight := null;
             end;
          else
-                -- для окончания берём данные из акта начала
+            -- для окончания берём данные из акта начала
             vw_owner := g_field(
                v_rec,
                2
@@ -1367,7 +1281,7 @@ create or replace package body xx_disl_gu23_pkg as
             );
          end if;
 
-            -- запрет дубля открытого простоя
+         -- запрет дубля открытого простоя
          if
             p_data.p_type = 'start'
             and p_data.p_status = 'active'
@@ -1395,16 +1309,13 @@ create or replace package body xx_disl_gu23_pkg as
 
             if v_dupnum is not null then
                rollback;
-               return 'ERR'
-                      || c_us
-                      || 'Нельзя создать акт «Начало простоя»: по вагону '
-                      || vw_no
-                      || ' уже есть открытый цикл в акте '
-                      || v_dupnum;
+               return format_error('Нельзя создать акт «Начало простоя»: по вагону '
+                                   || vw_no
+                                   || ' уже есть открытый цикл в акте ' || v_dupnum);
             end if;
          end if;
 
-            -- проверки для акта окончания
+         -- проверки для акта окончания
          if
             p_data.p_type = 'end'
             and p_data.p_status = 'active'
@@ -1417,11 +1328,8 @@ create or replace package body xx_disl_gu23_pkg as
 
             if v_has_start = 0 then
                rollback;
-               return 'ERR'
-                      || c_us
-                      || 'Вагон '
-                      || vw_no
-                      || ' не относится к выбранному акту начала';
+               return format_error('Вагон '
+                                   || vw_no || ' не относится к выбранному акту начала');
             end if;
 
             select count(*)
@@ -1437,11 +1345,8 @@ create or replace package body xx_disl_gu23_pkg as
 
             if v_has_start > 0 then
                rollback;
-               return 'ERR'
-                      || c_us
-                      || 'Вагон '
-                      || vw_no
-                      || ' уже закрыт другим актом окончания';
+               return format_error('Вагон '
+                                   || vw_no || ' уже закрыт другим актом окончания');
             end if;
          end if;
 
@@ -1464,23 +1369,20 @@ create or replace package body xx_disl_gu23_pkg as
                     vw_to,
                     vw_cargo,
                     vw_weight );
-
          v_wcnt := v_wcnt + 1;
       end loop;
 
-        -- при отправке нужен хотя бы один вагон ИЛИ указан груз
+      -- при отправке нужен хотя бы один вагон ИЛИ указан груз
       if
          v_wcnt = 0
          and p_data.p_cargo_ref is null
          and p_data.p_status = 'active'
       then
          rollback;
-         return 'ERR'
-                || c_us
-                || 'Добавьте вагоны или укажите груз / накладную';
+         return format_error('Добавьте вагоны или укажите груз / накладную');
       end if;
 
-        -- разбираем подписантов: поля ref_id|fio|post|org
+      -- разбираем подписантов: поля ref_id|fio|post|org
       v_len := nvl(
          dbms_lob.getlength(p_data.p_signers),
          0
@@ -1541,7 +1443,7 @@ create or replace package body xx_disl_gu23_pkg as
                     v_ord );
       end loop;
 
-        -- закрытие циклов акта начала: частичное/полное
+      -- закрытие циклов акта начала: частичное/полное
       if
          p_data.p_type = 'end'
          and p_data.p_status = 'active'
@@ -1569,35 +1471,23 @@ create or replace package body xx_disl_gu23_pkg as
              where id = p_data.p_linked_start_id
                and status = 'active';
 
-            insert into xx_disl_gu23_hist (
-               id,
-               act_id,
-               ts,
-               usr,
-               txt
-            ) values ( xx_disl_gu23_hist_seq.nextval,
-                       p_data.p_linked_start_id,
-                       sysdate,
-                       p_data.p_user_id,
-                       'Цикл простоя полностью закрыт актом окончания ' || v_number );
+            log_act_history(
+               p_act_id  => p_data.p_linked_start_id,
+               p_user_id => p_data.p_user_id,
+               p_text    => 'Цикл простоя полностью закрыт актом окончания ' || v_number
+            );
          else
-            insert into xx_disl_gu23_hist (
-               id,
-               act_id,
-               ts,
-               usr,
-               txt
-            ) values ( xx_disl_gu23_hist_seq.nextval,
-                       p_data.p_linked_start_id,
-                       sysdate,
-                       p_data.p_user_id,
-                       'Частично закрыто актом окончания '
-                       || v_number
-                       || ' ('
-                       || v_closed
-                       || ' из '
-                       || v_tot
-                       || ')' );
+            log_act_history(
+               p_act_id  => p_data.p_linked_start_id,
+               p_user_id => p_data.p_user_id,
+               p_text    => 'Частично закрыто актом окончания '
+                         || v_number
+                         || ' ('
+                         || v_closed
+                         || ' из '
+                         || v_tot
+                         || ')'
+            );
          end if;
       end if;
 
@@ -1623,17 +1513,11 @@ create or replace package body xx_disl_gu23_pkg as
                end
          end;
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values ( l_row.id,
-                 l_row.act_id,
-                 l_row.ts,
-                 l_row.usr,
-                 l_row.txt );
+      log_act_history(
+         p_act_id  => l_row.act_id,
+         p_user_id => l_row.usr,
+         p_text    => l_row.txt
+      );
 
       commit;
       return 'OK'
@@ -1644,9 +1528,7 @@ create or replace package body xx_disl_gu23_pkg as
    exception
       when others then
          rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
+         return format_error();
    end;
 
    function gu23_del_act (
@@ -1660,9 +1542,7 @@ create or replace package body xx_disl_gu23_pkg as
        where id = p_data.p_id;
 
       if v_status <> 'draft' then
-         return 'ERR'
-                || c_us
-                || 'Удалять можно только черновик. Действующий акт аннулируется.';
+         return format_error('Удалять можно только черновик. Действующий акт аннулируется.');
       end if;
       delete from xx_disl_gu23_act
        where id = p_data.p_id;
@@ -1671,14 +1551,10 @@ create or replace package body xx_disl_gu23_pkg as
       return 'done';
    exception
       when no_data_found then
-         return 'ERR'
-                || c_us
-                || 'Акт не найден';
+         return format_error('Акт не найден');
       when others then
          rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
+         return format_error();
    end;
 
    function gu23_annul_act (
@@ -1701,8 +1577,8 @@ create or replace package body xx_disl_gu23_pkg as
              modified_at = sysdate,
              modified_by = p_data.p_user_id
        where id = p_data.p_id;
-
-        -- при аннулировании акта окончания — снова открываем связанный акт начала
+       
+      -- при аннулировании акта окончания — снова открываем связанный акт начала
       if
          v_type = 'end'
          and v_linked is not null
@@ -1715,35 +1591,25 @@ create or replace package body xx_disl_gu23_pkg as
             and status = 'closed';
       end if;
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values ( xx_disl_gu23_hist_seq.nextval,
-                 p_data.p_id,
-                 sysdate,
-                 p_data.p_user_id,
-                 'Акт аннулирован: ' || p_data.p_reason );
+      log_act_history(
+         p_act_id  => p_data.p_id,
+         p_user_id => p_data.p_user_id,
+         p_text    => 'Акт аннулирован: ' || p_data.p_reason
+      );
 
       commit;
       return 'done';
    exception
       when no_data_found then
-         return 'ERR'
-                || c_us
-                || 'Акт не найден';
+         return format_error('Акт не найден');
       when others then
          rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
+         return format_error();
    end;
 
-    -- ----------------------------------------------------------------
-    -- поиск станций
-    -- ----------------------------------------------------------------
+   -- ----------------------------------------------------------------
+   -- поиск станций
+   -- ----------------------------------------------------------------
    function gu23_search_station (
       p_q in varchar2
    ) return xx_disl_gu23_ref_tab
@@ -1770,7 +1636,6 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.name := r.st_name;
          pipe row ( l_row );
       end loop;
-
       return;
    end;
 end xx_disl_gu23_pkg;
