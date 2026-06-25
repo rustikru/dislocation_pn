@@ -1813,9 +1813,10 @@ create or replace package body xx_disl_gu23_pkg as
       p_comment     in varchar2,
       p_token_sig   in varchar2
    ) return varchar2 is
-      v_cnt number;
+      v_cnt      number;
+      v_hist_txt varchar2(1000);
    begin
-      -- Ищем по (act_id, approver_id) — это надёжнее чем по token_sig,
+      -- Ищем по (act_id, approver_id) — надёжнее чем по token_sig,
       -- т.к. approve и reject ссылки имеют разные sig (action входит в хэш)
       select count(*)
         into v_cnt
@@ -1833,25 +1834,29 @@ create or replace package body xx_disl_gu23_pkg as
             and approver_id = p_approver_id;
       else
          insert into xx_disl_gu23_approval (
-            id,
-            act_id,
-            approver_id,
-            status,
-            comment_txt,
-            requested_at,
-            requested_by,
-            decided_at,
-            token_sig
+            id, act_id, approver_id, status, comment_txt,
+            requested_at, requested_by, decided_at, token_sig
          ) values (
             xx_disl_gu23_approval_seq.nextval,
-            p_act_id,
-            p_approver_id,
-            p_status,
-            p_comment,
-            sysdate,
-            p_approver_id,
-            sysdate,
-            p_token_sig
+            p_act_id, p_approver_id, p_status, p_comment,
+            sysdate, p_approver_id, sysdate, p_token_sig
+         );
+      end if;
+
+      -- Запись в историю акта
+      if p_status = 'approved' then
+         v_hist_txt := 'Акт подписан: ' || g_user_name(p_approver_id);
+      elsif p_status = 'rejected' then
+         v_hist_txt := 'Акт отклонён: ' || g_user_name(p_approver_id)
+                       || case when p_comment is not null
+                               then ' — ' || p_comment else '' end;
+      end if;
+
+      if v_hist_txt is not null then
+         log_act_history(
+            p_act_id  => p_act_id,
+            p_user_id => p_approver_id,
+            p_text    => v_hist_txt
          );
       end if;
 
@@ -1859,6 +1864,7 @@ create or replace package body xx_disl_gu23_pkg as
       return 'OK';
    exception
       when others then
+         rollback;
          return format_error();
    end;
 
