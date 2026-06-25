@@ -27,7 +27,9 @@ export function showCard(container) {
 
 function buildCardView(container, data) {
   const act = data.act
-  //console.log(act)
+  console.log('[gu23 card] signers:', data.signers)
+  console.log('[gu23 card] approvals:', data.approvals)
+  console.log('[gu23 card] myApproval:', data.myApproval, '| isUserSigner:', data.isUserSigner)
 
   $(container).html(`
     <div class="phead">
