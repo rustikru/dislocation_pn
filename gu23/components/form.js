@@ -738,7 +738,7 @@ function showSignersFields() {
           ? ownFiltered
           : references.signersRzdList
     const matched = pool.find((x) => String(x.ID) === value)
-    const stype = pool === (references.signersRzdList) ? 'rzd' : 'own'
+    const stype = pool === references.signersRzdList ? 'rzd' : 'own'
     activeDraft.signers[slot] = matched
       ? {
           id: matched.ID,
@@ -878,9 +878,10 @@ function saveActToServer(status, skipWarning = false) {
           },
         )
       } else {
-        const msg = status === 'active'
-          ? `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`
-          : 'Черновик сохранён'
+        const msg =
+          status === 'active'
+            ? `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`
+            : 'Черновик сохранён'
         showToast(msg, 'ok')
         navigateTo('card', response.id)
       }
