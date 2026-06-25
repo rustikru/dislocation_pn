@@ -18,7 +18,7 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
-  const filterState = { q: '', type: '', status: '', DEPT: '' }
+  const filterState = { q: '', type: '', status: '', dept: '' }
   let searchTimeout = null
 
   // Создание фильтров
@@ -53,7 +53,7 @@ export function showArchive(container) {
   createSelectFilter(
     [''].concat(references.departmentsList.map((d) => String(d.ID))),
     ['Все цеха'].concat(departmentCodes),
-    'DEPT',
+    'dept',
   )
 
   // Поиск с задержкой
