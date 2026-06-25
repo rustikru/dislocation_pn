@@ -3,36 +3,83 @@ import { escapeHtml } from '../utils.js'
 import { showToast, showConfirmBox } from './ui.js'
 
 let currentTab = 'signers'
-let cachedData = null
+let currentSearch = ''
+let currentPage = 1
+let currentItems = []
+let searchTimer = null
+
+const PAGE_SIZE = 20
 
 export function showRefs(container) {
+  currentSearch = ''
+  currentPage = 1
+  currentItems = []
+
   $(container).html(`
     <div class="phead" style="padding-bottom:10px">
       <h2 style="margin:0;font-size:16px">Справочники</h2>
     </div>
-    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:14px;border-bottom:2px solid var(--line)">
+    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:10px;border-bottom:2px solid var(--line)">
       <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты РЖД</button>
       <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины составления</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <input class="inp" id="refs-search" value="" placeholder="Поиск…" style="width:220px;font-size:13px;padding:4px 8px">
+      <button class="btn sm" id="btn-add-ref" style="font-size:12px;padding:3px 10px">+ Добавить</button>
     </div>
     <div id="refs-body"><div class="muted" style="font-size:13px">Загрузка…</div></div>
   `)
 
   $(container).on('click', '.refs-tab', function () {
-    currentTab = $(this).data('tab')
+    const tab = $(this).data('tab')
+    if (tab === currentTab) return
+    currentTab = tab
+    currentSearch = ''
+    currentPage = 1
+    $('#refs-search').val('')
     $('.refs-tab').each(function () {
       $(this).attr('style', tabStyle($(this).data('tab') === currentTab))
     })
-    if (cachedData) renderTab()
+    fetchTab()
   })
 
-  sendApiRequest('gu23_refs_get_all').done((data) => {
+  $(container).on('input', '#refs-search', function () {
+    clearTimeout(searchTimer)
+    const val = $(this).val()
+    searchTimer = setTimeout(() => {
+      currentSearch = val
+      currentPage = 1
+      fetchTab()
+    }, 400)
+  })
+
+  $(container).on('click', '#btn-add-ref', () => {
+    if (currentTab === 'signers') showSignerForm(null)
+    else showReasonForm(null)
+  })
+
+  fetchTab()
+}
+
+function fetchTab() {
+  $('#refs-body').html('<div class="muted" style="font-size:13px">Загрузка…</div>')
+  sendApiRequest('gu23_refs_get_all', {
+    tab:    currentTab,
+    search: currentSearch,
+    page:   currentPage,
+  }).done((data) => {
     if (!data || !data.ok) {
       $('#refs-body').html('<div class="muted" style="font-size:13px">Ошибка загрузки данных</div>')
       return
     }
-    cachedData = data
-    renderTab()
+    currentItems = data.items || []
+    if (currentTab === 'signers') renderSigners(currentItems, data.total, data.page)
+    else renderReasons(currentItems, data.total, data.page)
   })
+}
+
+function reloadRefs() {
+  fetchTab()
 }
 
 function tabStyle(active) {
@@ -41,23 +88,28 @@ function tabStyle(active) {
     : 'padding:5px 16px;border:none;background:none;font-size:13px;font-weight:400;color:var(--muted,#888);cursor:pointer'
 }
 
-function renderTab() {
-  if (currentTab === 'signers') renderSigners(cachedData.signers || [])
-  else renderReasons(cachedData.reasons || [])
-}
-
-function reloadRefs() {
-  sendApiRequest('gu23_refs_get_all').done((data) => {
-    if (data && data.ok) { cachedData = data; renderTab() }
-  })
+function renderPager(total, page) {
+  const pages = Math.ceil(total / PAGE_SIZE)
+  if (pages <= 1) return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
+  let html = '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;flex-wrap:wrap">'
+  html += `<button class="btn ghost pager-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} style="padding:3px 8px;font-size:12px">←</button>`
+  const start = Math.max(1, page - 2)
+  const end = Math.min(pages, start + 4)
+  for (let i = start; i <= end; i++) {
+    html += `<button class="${i === page ? 'btn' : 'btn ghost'} pager-btn" data-page="${i}" style="padding:3px 8px;font-size:12px;min-width:28px">${i}</button>`
+  }
+  html += `<button class="btn ghost pager-btn" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''} style="padding:3px 8px;font-size:12px">→</button>`
+  html += `<span class="muted" style="margin-left:6px;font-size:12px">Всего: ${total}</span>`
+  html += '</div>'
+  return html
 }
 
 // ─────────────────────────────────────────────
 // Подписанты РЖД
 // ─────────────────────────────────────────────
 
-function renderSigners(signers) {
-  const rows = signers.map((s) => {
+function renderSigners(items, total, page) {
+  const rows = items.map((s) => {
     const active = s.ACTIVE === 'Y'
     return `
       <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
@@ -77,27 +129,35 @@ function renderSigners(signers) {
 
   $('#refs-body').html(`
     <div class="card">
-      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 12px">
-        <b style="font-size:13px">Подписанты РЖД</b>
-        <button class="btn sm" id="btn-add-signer" style="font-size:12px;padding:3px 10px">+ Добавить</button>
-      </div>
       <div style="overflow-x:auto">
         <table class="tbl" style="width:100%;font-size:13px">
           <thead>
-            <tr style="font-size:12px"><th style="padding:5px 8px">ФИО</th><th style="padding:5px 8px">Должность</th><th style="padding:5px 8px">Организация</th><th style="padding:5px 8px">Подразделение</th><th style="padding:5px 8px">Статус</th></tr>
+            <tr style="font-size:12px">
+              <th style="padding:5px 8px">ФИО</th>
+              <th style="padding:5px 8px">Должность</th>
+              <th style="padding:5px 8px">Организация</th>
+              <th style="padding:5px 8px">Подразделение</th>
+              <th style="padding:5px 8px">Статус</th>
+            </tr>
           </thead>
           <tbody>${rows || '<tr><td colspan="5" class="muted" style="padding:10px 8px;font-size:13px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
+    ${renderPager(total, page)}
   `)
-
-  $('#btn-add-signer').on('click', () => showSignerForm(null))
 
   $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
     const id = $(this).data('id')
-    const signer = (cachedData.signers || []).find((s) => String(s.ID) === String(id))
+    const signer = currentItems.find((s) => String(s.ID) === String(id))
     if (signer) showSignerForm(signer)
+  })
+
+  $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
+    const p = parseInt($(this).data('page'))
+    if (!p || p === currentPage) return
+    currentPage = p
+    fetchTab()
   })
 }
 
@@ -180,8 +240,8 @@ function showSignerForm(signer) {
 
 const KIND_LABELS = { start: 'Начало', end: 'Окончание', other: 'Прочий', any: 'Любой' }
 
-function renderReasons(reasons) {
-  const rows = reasons.map((r) => {
+function renderReasons(items, total, page) {
+  const rows = items.map((r) => {
     const active = r.ACTIVE === 'Y'
     return `
       <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
@@ -199,27 +259,33 @@ function renderReasons(reasons) {
 
   $('#refs-body').html(`
     <div class="card">
-      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 12px">
-        <b style="font-size:13px">Причины составления</b>
-        <button class="btn sm" id="btn-add-reason" style="font-size:12px;padding:3px 10px">+ Добавить</button>
-      </div>
       <div style="overflow-x:auto">
         <table class="tbl" style="width:100%;font-size:13px">
           <thead>
-            <tr style="font-size:12px"><th style="padding:5px 8px">Название</th><th style="padding:5px 8px">Тип акта</th><th style="padding:5px 8px">Статус</th></tr>
+            <tr style="font-size:12px">
+              <th style="padding:5px 8px">Название</th>
+              <th style="padding:5px 8px">Тип акта</th>
+              <th style="padding:5px 8px">Статус</th>
+            </tr>
           </thead>
           <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:10px 8px;font-size:13px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
+    ${renderPager(total, page)}
   `)
-
-  $('#btn-add-reason').on('click', () => showReasonForm(null))
 
   $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
     const id = $(this).data('id')
-    const reason = (cachedData.reasons || []).find((r) => String(r.ID) === String(id))
+    const reason = currentItems.find((r) => String(r.ID) === String(id))
     if (reason) showReasonForm(reason)
+  })
+
+  $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
+    const p = parseInt($(this).data('page'))
+    if (!p || p === currentPage) return
+    currentPage = p
+    fetchTab()
   })
 }
 

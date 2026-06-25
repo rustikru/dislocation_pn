@@ -775,10 +775,57 @@ HTML;
         if (!$this->auth->isAuthAdmin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
         }
+        $tab    = filter_input(INPUT_POST, 'tab') ?: 'signers';
+        $search = trim((string)(filter_input(INPUT_POST, 'search') ?? ''));
+        $page   = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
+        $limit  = 20;
+        $offset = ($page - 1) * $limit;
+        $srch   = '%' . mb_strtoupper($search) . '%';
+
+        if ($tab === 'signers') {
+            $total = (int)($this->pipe(
+                'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_signer
+                  WHERE (UPPER(FIO) LIKE :s1 OR UPPER(POST) LIKE :s2
+                      OR UPPER(ORG) LIKE :s3 OR UPPER(UNIT) LIKE :s4)',
+                [':s1' => $srch, ':s2' => $srch, ':s3' => $srch, ':s4' => $srch]
+            )[0]['CNT'] ?? 0);
+            $items = $this->pipe(
+                'SELECT * FROM (
+                   SELECT s.*, ROWNUM rn FROM (
+                     SELECT ID, FIO, POST, ORG, UNIT, ACTIVE
+                       FROM xx_disl_gu23_ref_signer
+                      WHERE (UPPER(FIO) LIKE :s1 OR UPPER(POST) LIKE :s2
+                          OR UPPER(ORG) LIKE :s3 OR UPPER(UNIT) LIKE :s4)
+                      ORDER BY DECODE(ACTIVE,\'Y\',0,1), FIO
+                   ) s WHERE ROWNUM <= :top_rn
+                 ) WHERE rn > :off_rn',
+                [':s1' => $srch, ':s2' => $srch, ':s3' => $srch, ':s4' => $srch,
+                 ':top_rn' => $offset + $limit, ':off_rn' => $offset]
+            );
+        } else {
+            $total = (int)($this->pipe(
+                'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_reason WHERE UPPER(NAME) LIKE :s1',
+                [':s1' => $srch]
+            )[0]['CNT'] ?? 0);
+            $items = $this->pipe(
+                'SELECT * FROM (
+                   SELECT s.*, ROWNUM rn FROM (
+                     SELECT ID, NAME, ACT_KIND, ACTIVE
+                       FROM xx_disl_gu23_ref_reason
+                      WHERE UPPER(NAME) LIKE :s1
+                      ORDER BY DECODE(ACTIVE,\'Y\',0,1), NAME
+                   ) s WHERE ROWNUM <= :top_rn
+                 ) WHERE rn > :off_rn',
+                [':s1' => $srch, ':top_rn' => $offset + $limit, ':off_rn' => $offset]
+            );
+        }
         echo json_encode([
-            'ok'      => true,
-            'signers' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_signers_all())'),
-            'reasons' => $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_ref_reasons_all())'),
+            'ok'        => true,
+            'tab'       => $tab,
+            'items'     => $items,
+            'total'     => $total,
+            'page'      => $page,
+            'page_size' => $limit,
         ]);
     }
 
