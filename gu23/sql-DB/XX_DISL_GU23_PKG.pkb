@@ -810,71 +810,6 @@ create or replace package body xx_disl_gu23_pkg as
       end loop;
       return;
    end;
-
-   -- Парсер вагонов из clob
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined
-   is
-      v_len  pls_integer := nvl(
-         dbms_lob.getlength(p_clob),
-         0
-      );
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_rec  varchar2(32767);
-      l_row  t_wagon_clob_row;
-   begin
-      while v_from <= v_len loop
-         v_to := instr(
-            p_clob,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_clob,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         l_row.wagon_no := trim(g_field(
-            v_rec,
-            1
-         ));
-         if l_row.wagon_no is not null then
-            l_row.owner := g_field(
-               v_rec,
-               2
-            );
-            l_row.kind := g_field(
-               v_rec,
-               3
-            );
-            l_row.st_from := g_field(
-               v_rec,
-               4
-            );
-            l_row.st_to := g_field(
-               v_rec,
-               5
-            );
-            l_row.cargo := g_field(
-               v_rec,
-               6
-            );
-            l_row.weight := g_field(
-               v_rec,
-               7
-            );
-            pipe row ( l_row );
-         end if;
-      end loop;
-      return;
-   end parse_wagon_clob;
    -- ----------------------------------------------------------------
    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
    -- ----------------------------------------------------------------
@@ -1131,6 +1066,10 @@ create or replace package body xx_disl_gu23_pkg as
       v_tot        number;
       v_closed     number;
       v_cur_status varchar2(16);
+      v_len        pls_integer;
+      v_from       pls_integer;
+      v_to         pls_integer;
+      v_rec        varchar2(32767);
    begin
       v_id := p_data.p_id;
       v_isnew :=
