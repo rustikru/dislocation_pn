@@ -234,8 +234,8 @@ create or replace package body xx_disl_gu23_pkg as
     -- строка акта в RECORD
    function g_act_row (
       a in xx_disl_gu23_act_v%rowtype
-   ) return xx_disl_gu23_act_row is
-      o xx_disl_gu23_act_row;
+   ) return t_gu23_act_row is
+      o t_gu23_act_row;
    begin
       o.id := a.id;
       o.act_start_number := a.act_start_number;
@@ -282,6 +282,81 @@ create or replace package body xx_disl_gu23_pkg as
       );
       return o;
    end;
+
+
+   -- ----------------------------------------------------------------
+   -- сохранение данных в таблицы (общий API)
+   -- ----------------------------------------------------------------
+
+   procedure insert_act (
+      p_row in xx_disl_gu23_act%rowtype
+   ) is
+   begin
+      insert into xx_disl_gu23_act (
+         id, act_number, act_type, status, dept_id, station_id,
+         st_from_id, st_to_id, cargo_ref, reason, circumstances,
+         start_at, end_at, dur_days, dur_hours, dur_total_h,
+         cal_days, linked_start_id, created_at, created_by, modified_at, modified_by
+      ) values (
+         p_row.id, p_row.act_number, p_row.act_type, p_row.status, p_row.dept_id,
+         p_row.station_id, p_row.st_from_id, p_row.st_to_id, p_row.cargo_ref,
+         p_row.reason, p_row.circumstances, p_row.start_at, p_row.end_at,
+         p_row.dur_days, p_row.dur_hours, p_row.dur_total_h, p_row.cal_days,
+         p_row.linked_start_id, p_row.created_at, p_row.created_by,
+         p_row.modified_at, p_row.modified_by
+      );
+   end insert_act;
+
+   procedure update_act (
+      p_row in xx_disl_gu23_act%rowtype
+   ) is
+   begin
+      update xx_disl_gu23_act
+         set act_number      = p_row.act_number,
+             act_type        = p_row.act_type,
+             status          = p_row.status,
+             dept_id         = p_row.dept_id,
+             station_id      = p_row.station_id,
+             st_from_id      = p_row.st_from_id,
+             st_to_id        = p_row.st_to_id,
+             cargo_ref       = p_row.cargo_ref,
+             reason          = p_row.reason,
+             circumstances   = p_row.circumstances,
+             start_at        = p_row.start_at,
+             end_at          = p_row.end_at,
+             dur_days        = p_row.dur_days,
+             dur_hours       = p_row.dur_hours,
+             dur_total_h     = p_row.dur_total_h,
+             cal_days        = p_row.cal_days,
+             linked_start_id = p_row.linked_start_id,
+             modified_at     = p_row.modified_at,
+             modified_by     = p_row.modified_by
+       where id = p_row.id;
+   end update_act;
+
+   procedure insert_act_row (
+      p_row in xx_disl_gu23_act_row%rowtype
+   ) is
+   begin
+      insert into xx_disl_gu23_act_row (
+         id, act_id, wagon_no, owner, kind, st_from, st_to, cargo, weight
+      ) values (
+         p_row.id, p_row.act_id, p_row.wagon_no, p_row.owner, p_row.kind,
+         p_row.st_from, p_row.st_to, p_row.cargo, p_row.weight
+      );
+   end insert_act_row;
+
+   procedure insert_signer (
+      p_row in xx_disl_gu23_signer%rowtype
+   ) is
+   begin
+      insert into xx_disl_gu23_signer (
+         id, act_id, signer_ref_id, fio, post, org, ord_no
+      ) values (
+         p_row.id, p_row.act_id, p_row.signer_ref_id,
+         p_row.fio, p_row.post, p_row.org, p_row.ord_no
+      );
+   end insert_signer;
 
     -- ----------------------------------------------------------------
     -- справочники
@@ -735,71 +810,6 @@ create or replace package body xx_disl_gu23_pkg as
       end loop;
       return;
    end;
-
-   -- Парсер вагонов из clob
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined
-   is
-      v_len  pls_integer := nvl(
-         dbms_lob.getlength(p_clob),
-         0
-      );
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_rec  varchar2(32767);
-      l_row  t_wagon_clob_row;
-   begin
-      while v_from <= v_len loop
-         v_to := instr(
-            p_clob,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_clob,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         l_row.wagon_no := trim(g_field(
-            v_rec,
-            1
-         ));
-         if l_row.wagon_no is not null then
-            l_row.owner := g_field(
-               v_rec,
-               2
-            );
-            l_row.kind := g_field(
-               v_rec,
-               3
-            );
-            l_row.st_from := g_field(
-               v_rec,
-               4
-            );
-            l_row.st_to := g_field(
-               v_rec,
-               5
-            );
-            l_row.cargo := g_field(
-               v_rec,
-               6
-            );
-            l_row.weight := g_field(
-               v_rec,
-               7
-            );
-            pipe row ( l_row );
-         end if;
-      end loop;
-      return;
-   end parse_wagon_clob;
    -- ----------------------------------------------------------------
    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
    -- ----------------------------------------------------------------
@@ -1056,6 +1066,10 @@ create or replace package body xx_disl_gu23_pkg as
       v_tot        number;
       v_closed     number;
       v_cur_status varchar2(16);
+      v_len        pls_integer;
+      v_from       pls_integer;
+      v_to         pls_integer;
+      v_rec        varchar2(32767);
    begin
       v_id := p_data.p_id;
       v_isnew :=
@@ -1623,6 +1637,60 @@ create or replace package body xx_disl_gu23_pkg as
    -- согласование актов
    -- ----------------------------------------------------------------
 
+   function gu23_approval_get_signers (
+      p_act_id in number
+   ) return t_gu23_approval_signer_tab
+      pipelined
+   is
+      l_row t_gu23_approval_signer_row;
+   begin
+      for r in (
+         select u.id                                   as approver_id,
+                u.full_name,
+                lower(u.login) || '@company.ru'        as fake_email
+           from xx_disl_gu23_signer s
+           join xx_disl_gu23_ref_signer rs on rs.id  = s.signer_ref_id
+           join xx_disl_users u             on u.id  = rs.user_id
+          where s.act_id   = p_act_id
+            and rs.user_id is not null
+      ) loop
+         l_row.approver_id := r.approver_id;
+         l_row.full_name   := r.full_name;
+         l_row.fake_email  := r.fake_email;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end;
+
+   function gu23_approval_init (
+      p_act_id       in number,
+      p_requested_by in number
+   ) return varchar2 is
+      v_cnt number := 0;
+   begin
+      for r in (
+         select approver_id
+           from table ( gu23_approval_get_signers(p_act_id) )
+      ) loop
+         -- пропускаем если уже есть запись для этой пары
+         merge into xx_disl_gu23_approval t
+         using (select p_act_id       as act_id,
+                       r.approver_id  as approver_id
+                  from dual) s
+         on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+         when not matched then
+            insert (id, act_id, approver_id, status, requested_at, requested_by, token_sig)
+            values (xx_disl_gu23_approval_seq.nextval, s.act_id, s.approver_id,
+                    'pending', sysdate, p_requested_by, null);
+         v_cnt := v_cnt + sql%rowcount;
+      end loop;
+      commit;
+      return to_char(v_cnt);
+   exception
+      when others then
+         return format_error();
+   end;
+
    function gu23_approval_get_name (
       p_id in number
    ) return varchar2 is
@@ -1700,7 +1768,7 @@ create or replace package body xx_disl_gu23_pkg as
       if v_cnt > 0 then
          update xx_disl_gu23_approval
             set status     = p_status,
-                comment    = p_comment,
+                comment_txt = p_comment,
                 decided_at = sysdate
           where token_sig = p_token_sig;
       else
@@ -1709,7 +1777,7 @@ create or replace package body xx_disl_gu23_pkg as
             act_id,
             approver_id,
             status,
-            comment,
+            comment_txt,
             requested_at,
             requested_by,
             decided_at,
@@ -1734,4 +1802,3 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
-end xx_disl_gu23_pkg;

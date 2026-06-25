@@ -59,6 +59,9 @@ class GuActRepository
                 case 'gu23_search_station':
                     $this->searchStation();
                     break;
+                case 'gu23_send_approval':
+                    $this->sendApproval();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -477,6 +480,114 @@ end;';
             @unlink($path);
         }
         $this->emitResult($res);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* отправка согласования подписантам                                  */
+    /* ----------------------------------------------------------------- */
+    private function sendApproval(): void
+    {
+        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $userId = $this->auth->getUserId();
+
+        if (!$actId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
+            return;
+        }
+
+        // 1. Создаём pending-записи в xx_disl_gu23_approval (через пакет)
+        $initResult = null;
+        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_init(:act, :by); END;');
+        oci_bind_by_name($st, ':r',   $initResult, 64);
+        oci_bind_by_name($st, ':act', $actId);
+        oci_bind_by_name($st, ':by',  $userId);
+        oci_execute($st);
+
+        if (str_starts_with((string) $initResult, 'ERR')) {
+            $parts = explode(self::US, $initResult, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка инициализации согласования']);
+            return;
+        }
+
+        // 2. Получаем список подписантов с email
+        require_once __DIR__ . '/../lib/HmacApproval.php';
+        if (!defined('HMAC_SECRET')) {
+            require_once file_exists(__DIR__ . '/../db_config.local.php')
+                ? __DIR__ . '/../db_config.local.php'
+                : __DIR__ . '/../db_config.php';
+        }
+        if (!defined('HMAC_SECRET')) {
+            define('HMAC_SECRET', 'change-me-in-production');
+        }
+
+        $hmac     = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+        $signers  = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))',
+            [':act_id' => $actId]
+        );
+
+        if (empty($signers)) {
+            echo json_encode(['ok' => false, 'msg' => 'Нет подписантов с учётными записями для отправки']);
+            return;
+        }
+
+        // Определяем базовый URL сайта
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+        $sent  = 0;
+        $errors = [];
+
+        foreach ($signers as $signer) {
+            $approverId = (int) $signer['APPROVER_ID'];
+            $email      = $signer['FAKE_EMAIL'];
+            $fullName   = $signer['FULL_NAME'] ?? '';
+
+            // Обновляем token_sig в уже созданной pending-записи
+            $link = $baseUrl . '/gu23/approve.php?' . parse_url(
+                $hmac->generate($actId, $approverId, 'approve'),
+                PHP_URL_QUERY
+            );
+
+            $sig    = null;
+            $stSig  = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_by_sig(:s); END;');
+            // Сохраняем подпись из ссылки в БД
+            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $params);
+            $tokenSig = $params['sig'] ?? '';
+
+            $stUpd = oci_parse($this->conn,
+                'UPDATE xx_disl_gu23_approval SET token_sig = :sig WHERE act_id = :act AND approver_id = :uid'
+            );
+            oci_bind_by_name($stUpd, ':sig', $tokenSig);
+            oci_bind_by_name($stUpd, ':act', $actId);
+            oci_bind_by_name($stUpd, ':uid', $approverId);
+            oci_execute($stUpd);
+            oci_commit($this->conn);
+
+            // Строим ссылку заново с тем же токеном
+            $link = $baseUrl . '/gu23/approve.php?' . http_build_query($params);
+
+            // Отправляем email
+            $subject = '=?UTF-8?B?' . base64_encode('Требуется согласование акта ГУ-23') . '?=';
+            $body    = "Уважаемый(-ая) {$fullName},\r\n\r\n"
+                     . "Вас просят согласовать акт ГУ-23.\r\n\r\n"
+                     . "Для согласования перейдите по ссылке:\r\n{$link}\r\n\r\n"
+                     . "Ссылка действительна 7 дней.\r\n";
+            $headers = "From: noreply@company.ru\r\nContent-Type: text/plain; charset=UTF-8";
+
+            if (@mail($email, $subject, $body, $headers)) {
+                $sent++;
+            } else {
+                $errors[] = $email;
+            }
+        }
+
+        if ($sent > 0) {
+            echo json_encode(['ok' => true, 'sent' => $sent, 'errors' => $errors,
+                'msg' => "Отправлено писем: {$sent}" . ($errors ? '. Ошибки: ' . implode(', ', $errors) : '')]);
+        } else {
+            echo json_encode(['ok' => false, 'msg' => 'Не удалось отправить ни одного письма: ' . implode(', ', $errors)]);
+        }
     }
 
     /* ----------------------------------------------------------------- */
