@@ -66,7 +66,7 @@ function showToolbarButtons(act, data) {
     $toolbar.append($editBtn, $delBtn)
   }
 
-  if (act.STATUS === 'active' || act.STATUS === 'closed') {
+  if ((act.STATUS === 'active' || act.STATUS === 'closed') && data.isAdmin) {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
     $toolbar.append($annulBtn)
@@ -177,32 +177,36 @@ function showWagonsBlock(wagons) {
 }
 
 function showSignersBlock(act, signers, approvals, myApproval) {
-  const statusBadge = (status) => {
-    if (status === 'approved') return '<span style="color:var(--ok,#5a7a60);font-size:11px">✓ Согласован</span>'
-    if (status === 'rejected') return '<span style="color:var(--danger,#9e5b52);font-size:11px">✕ Отклонён</span>'
-    if (status === 'pending')  return '<span style="color:#b08000;font-size:11px">⏳ Ожидает</span>'
-    return ''
-  }
-
   // Строим map: approver_id → approval record
   const approvalMap = {}
   approvals.forEach((a) => { approvalMap[a.APPROVER_ID] = a })
 
+  const avatarInitial = (fio) => {
+    const parts = (fio || '').trim().split(/\s+/)
+    return (parts[0] || '?')[0].toUpperCase()
+  }
+
+  const statusPill = (status) => {
+    if (status === 'approved') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
+    if (status === 'rejected') return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
+    if (status === 'pending')  return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900">⏳ Ожидает</span>'
+    return ''
+  }
+
   const listHtml = signers.length
     ? signers.map((s) => {
         const approval = s.USER_ID ? approvalMap[s.USER_ID] : null
-        let badge = ''
-        if (approval) {
-          if (approval.STATUS === 'approved') badge = ' <span style="color:var(--ok,#5a7a60);font-size:11px">✓ Подписано</span>'
-          else if (approval.STATUS === 'rejected') badge = ' <span style="color:var(--danger,#9e5b52);font-size:11px">✕ Отклонено</span>'
-          else if (approval.STATUS === 'pending')  badge = ' <span style="color:#b08000;font-size:11px">⏳ Ожидает</span>'
-        }
+        const pill = approval ? statusPill(approval.STATUS) : ''
+        const initial = avatarInitial(s.FIO)
+        const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
         return `
-        <div class="signrow">
-          <div style="flex:1">
-            <div><b>${escapeHtml(s.FIO)}</b>${badge}</div>
-            <div class="muted" style="font-size:11.5px">${s.POST || ''} · ${s.ORG || ''}</div>
+        <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line,#eee)">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--line2,#d4d8de);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--muted,#6b7280);flex-shrink:0">${escapeHtml(initial)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.FIO)}</div>
+            ${subtitle ? `<div class="muted" style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(subtitle)}</div>` : ''}
           </div>
+          ${pill ? `<div style="flex-shrink:0">${pill}</div>` : ''}
         </div>`
       }).join('')
     : '<div class="muted">Подписанты не назначены</div>'
@@ -210,32 +214,29 @@ function showSignersBlock(act, signers, approvals, myApproval) {
   // Баннер "подписать" — только если текущему пользователю прислали запрос (pending)
   let myBannerHtml = ''
   if (act.STATUS === 'active' && myApproval === 'pending') {
-    const isPending = myApproval === 'pending'
     myBannerHtml = `
-      <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:12px">
-        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">
-          ${isPending ? '⏳ Ожидается ваше согласование' : 'Вы указаны как подписант'}
-        </div>
+      <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
+        <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8">⏳ Ожидается ваше согласование</div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm" id="btn-sign-approve" style="background:#5a7a60;color:#fff">✓ Согласовать</button>
-          <button class="btn sm" id="btn-sign-reject"  style="background:#9e5b52;color:#fff">✕ Отклонить</button>
+          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">✓ Согласовать</button>
+          <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">✕ Отклонить</button>
         </div>
         <div id="reject-reason-box" style="display:none;margin-top:8px">
           <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
             style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
-          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#9e5b52;color:#fff">Подтвердить отклонение</button>
+          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Подтвердить отклонение</button>
         </div>
       </div>`
   } else if (myApproval === 'approved') {
-    myBannerHtml = '<div style="color:#5a7a60;font-size:13px;margin-bottom:10px">✓ Вы согласовали этот акт</div>'
+    myBannerHtml = '<div style="color:#2d7a47;font-size:13px;margin-bottom:4px;font-weight:600">✓ Вы согласовали этот акт</div>'
   } else if (myApproval === 'rejected') {
-    myBannerHtml = '<div style="color:#9e5b52;font-size:13px;margin-bottom:10px">✕ Вы отклонили этот акт</div>'
+    myBannerHtml = '<div style="color:#a03030;font-size:13px;margin-bottom:4px;font-weight:600">✕ Вы отклонили этот акт</div>'
   }
 
   $('#card-right-column').append(`
     <div class="card">
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Подписанты</b></div>
-      <div class="cardpad">
+      <div style="padding:8px 16px 4px">
         ${myBannerHtml}
         ${listHtml}
       </div>

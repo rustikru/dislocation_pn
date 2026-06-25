@@ -183,6 +183,7 @@ class GuActRepository
             'act'           => $act[0],
             'currentUserId' => (int) $userId,
             'myApproval'    => $myStatus ?: 'none',
+            'isAdmin'       => $this->auth->isAuthAdmin() ? true : false,
             'wagons'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files'         => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
             'signers'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
