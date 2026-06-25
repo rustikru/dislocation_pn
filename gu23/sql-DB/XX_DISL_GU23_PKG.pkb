@@ -768,7 +768,7 @@ create or replace package body xx_disl_gu23_pkg as
                    xx_disl_gu23_act_row er
              where er.act_id = e.id
                and e.act_type = 'end'
-               and e.status = 'active'
+               and e.status in ('active', 'closed')
                and e.linked_start_id = p_start_id
                and er.wagon_no = sr.wagon_no
          )
