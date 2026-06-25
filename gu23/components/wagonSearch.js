@@ -38,7 +38,7 @@ export function showWagonSearch(container) {
           <tr class="wagon-act-row" data-id="${act.ID}">
             <td class="num">${escapeHtml(act.ACT_NUMBER)}</td>
             <td>${showTypeChip(act.ACT_TYPE)}</td>
-            <td>${escapeHtml(act.CEX)}</td>
+            <td>${escapeHtml(act.DEPT)}</td>
             <td class="muted text-ellipsis" style="max-width:230px">${escapeHtml(act.REASON)}</td>
             <td class="num">${act.WAGON_CNT || 0}</td>
             <td class="muted">${formatDate(act.CREATED_AT)}</td>

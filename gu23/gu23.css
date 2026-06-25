@@ -564,26 +564,23 @@ a {
 .typchip {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  /* padding: 2px 8px; */
   border-radius: 5px;
   /* border: 1px solid var(--line2); */
   color: var(--ink2);
 }
-/* .typ-start {
+.typ-start {
   color: var(--sign);
   border-color: #e2d6c0;
-  background: #f1ebdf;
 }
 .typ-end {
   color: var(--info);
   border-color: #d3dae3;
-  background: var(--infobg);
 }
 .typ-other {
   color: #6f6481;
   border-color: #d8d2e0;
-  background: #efedf3;
-} */
+}
 
 /* forms */
 .frow {

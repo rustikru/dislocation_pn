@@ -310,7 +310,7 @@ function applySelectedStartAct(id, filterNums = null) {
   activeDraft.linkedStartId = selectedAct.ID
   activeDraft.linkedStartNumber = selectedAct.ACT_NUMBER
   activeDraft.startAt = formatToInputDate(selectedAct.START_AT)
-  activeDraft.departmentCode = selectedAct.CEX
+  activeDraft.departmentCode = selectedAct.DEPT
   activeDraft.stationId = String(selectedAct.STATION_ID || '')
   activeDraft.stationFromId = String(selectedAct.ST_FROM_ID || '')
   activeDraft.stationFromName = selectedAct.ST_FROM || ''
@@ -644,9 +644,9 @@ function showSignersFields() {
     )
   const countNeeded = activeDraft.type === 'other' ? 2 : 3
 
-  const cex = activeDraft.departmentCode
+  const dept = activeDraft.departmentCode
   const ownFiltered = (references.signersOwnList || []).filter(
-    (s) => !cex || !s.UNIT || s.UNIT === cex,
+    (s) => !dept || !s.UNIT || s.UNIT === dept,
   )
 
   for (let i = 0; i < countNeeded; i++) {
@@ -838,7 +838,7 @@ function saveActToServer(status, skipWarning = false) {
     id: activeDraft.id || 0,
     type: activeDraft.type,
     status: status,
-    cex: activeDraft.departmentCode,
+    dept: activeDraft.departmentCode,
     station: activeDraft.stationId || '',
     st_from: activeDraft.stationFromId || '',
     st_to: activeDraft.stationToId || '',

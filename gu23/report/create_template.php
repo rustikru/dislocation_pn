@@ -14,7 +14,7 @@
  *
  * Доступные плейсхолдеры:
  *   {{ACT_NUMBER}}     – номер акта
- *   {{CEX}}            – цех
+ *   {{DEPT}}            – цех
  *   {{STATION}}        – станция составления
  *   {{ST_FROM}}        – станция отправления
  *   {{ST_TO}}          – станция назначения
@@ -221,7 +221,7 @@ function buildDocumentXml(): string
   {$rp('center',
       '<w:r><w:rPr><w:b/></w:rPr><w:t>АКТ ОБЩЕЙ ФОРМЫ № {{ACT_NUMBER}}</w:t></w:r>'
     . '<w:r><w:rPr><w:b/></w:rPr><w:br/></w:r>'
-    . '<w:r><w:t>Цех: {{CEX}}</w:t></w:r>')}
+    . '<w:r><w:t>Цех: {{DEPT}}</w:t></w:r>')}
 
   $empty
 

@@ -6,19 +6,15 @@ begin
         from (
          select column_value t
            from table ( sys.odcivarchar2list(
+            'XX_DISL_GU23_ACT',
+            'XX_DISL_GU23_ACT_ROW',
+            'XX_DISL_GU23_FILE',
             'XX_DISL_GU23_HIST',
             'XX_DISL_GU23_SIGNER',
-            'XX_DISL_GU23_FILE',
-            'XX_DISL_GU23_ACT_ROW',
-            'XX_DISL_GU23_ACT',
             'XX_DISL_GU23_COUNTER',
-            'XX_DISL_GU23_REF_SIGNER',
-            'XX_DISL_GU23_REF_WAGON_KIND',
-            'XX_DISL_GU23_REF_OWNER',
-            'XX_DISL_GU23_REF_STATION',
+            ---
             'XX_DISL_GU23_REF_REASON',
-            'XX_DISL_GU23_REF_CEX',
-            'XX_DISL_GU23_USERS'
+            'XX_DISL_GU23_REF_SIGNER'
          ) )
       )
       union all
@@ -26,42 +22,15 @@ begin
         from (
          select column_value s
            from table ( sys.odcivarchar2list(
+            'XX_DISL_GU23_ACT_SEQ',
+            'XX_DISL_GU23_ACT_ROW_SEQ',
+            'XX_DISL_GU23_FILE_SEQ',
             'XX_DISL_GU23_HIST_SEQ',
             'XX_DISL_GU23_SIGNER_SEQ',
-            'XX_DISL_GU23_FILE_SEQ',
-            'XX_DISL_GU23_ACT_ROW_SEQ',
-            'XX_DISL_GU23_ACT_SEQ',
             'XX_DISL_GU23_COUNTER_SEQ',
+            ----
             'XX_DISL_GU23_REF_SIGNER_SEQ',
-            'XX_DISL_GU23_REF_WAGON_KIND_SEQ',
-            'XX_DISL_GU23_REF_OWNER_SEQ',
-            'XX_DISL_GU23_REF_STATION_SEQ',
-            'XX_DISL_GU23_REF_REASON_SEQ',
-            'XX_DISL_GU23_REF_CEX_SEQ',
-            'XX_DISL_GU23_USERS_SEQ'
-         ) )
-      )
-      union all
-      select 'DROP TYPE '
-             || tp
-             || ' FORCE'
-        from (
-         select column_value tp
-           from table ( sys.odcivarchar2list(
-            'XX_DISL_GU23_WAGON_TAB',
-            'XX_DISL_GU23_WAGON_OBJ',
-            'XX_DISL_GU23_HIST_TAB',
-            'XX_DISL_GU23_HIST_OBJ',
-            'XX_DISL_GU23_FILE_TAB',
-            'XX_DISL_GU23_FILE_OBJ',
-            'XX_DISL_GU23_ROW_TAB',
-            'XX_DISL_GU23_ROW_OBJ',
-            'XX_DISL_GU23_ACT_TAB',
-            'XX_DISL_GU23_ACT_OBJ',
-            'XX_DISL_GU23_SIGNER_TAB',
-            'XX_DISL_GU23_SIGNER_OBJ',
-            'XX_DISL_GU23_REF_TAB',
-            'XX_DISL_GU23_REF_OBJ'
+            'XX_DISL_GU23_REF_REASON_SEQ'
          ) )
       )
    ) loop
@@ -75,13 +44,19 @@ begin
 end;
 /
 
-create table xx_disl_gu23_ref_cex (
-   id     number primary key,
-   code   varchar2(32) not null,
-   name   varchar2(256) not null,
-   active char(1) default 'Y'
-);
-create sequence xx_disl_gu23_ref_cex_seq start with 1 increment by 1 nocache;
+
+create or replace view xx_disl_dept_v as
+   (
+      select id,
+             name,
+             case
+                when name like '%ЖДЦ%' then
+                   'ЖДЦ'
+                else
+                   name
+             end as code
+        from hr_dept
+   );
 
 create table xx_disl_gu23_ref_reason (
    id       number primary key,
@@ -89,18 +64,18 @@ create table xx_disl_gu23_ref_reason (
    act_kind varchar2(16) default 'any',   -- start/end/other/any
    active   char(1) default 'Y'
 );
+
+create sequence xx_disl_gu23_ref_signer_seq start with 1 increment by 1 nocache;
+
 create sequence xx_disl_gu23_ref_reason_seq start with 1 increment by 1 nocache;
 
 create table xx_disl_gu23_counter (
-   id     number primary key,
-   cex_id number not null,
-   yr     number not null,
-   cnt    number default 0,
-   constraint xx_disl_gu23_counter_uk unique ( cex_id,
-                                               yr ),
-   constraint xx_disl_gu23_counter_fk foreign key ( cex_id )
-      references xx_disl_gu23_ref_cex ( id )
-         on delete cascade
+   id      number primary key,
+   dept_id number not null,
+   yr      number not null,
+   cnt     number default 0,
+   constraint xx_disl_gu23_counter_uk unique ( dept_id,
+                                               yr )
 );
 create sequence xx_disl_gu23_counter_seq start with 1 increment by 1 nocache;
 
@@ -109,10 +84,10 @@ create table xx_disl_gu23_act (
    act_number      varchar2(64),
    act_type        varchar2(16) not null,    -- start / end / other
    status          varchar2(16) not null,    -- draft / active / closed / annulled
-   cex_id          number,                   -- ID цеха -> xx_disl_gu23_ref_cex.id
-   station_id      varchar2(50),                   -- ID ст. составления -> xx_disl_stations (STATION_ID)
-   st_from_id      varchar2(50),                   -- code ст. отправления -> xx_etw_station_bi_v (code)
-   st_to_id        varchar2(50),                   -- code ст. назначения -> xx_etw_station_bi_v (code)
+   dept_id         number,                   -- ID цеха -> hr_dept.id
+   station_id      varchar2(50),             -- ID ст. составления -> xx_disl_stations (STATION_ID)
+   st_from_id      varchar2(50),             -- code ст. отправления -> xx_etw_station_bi_v (code)
+   st_to_id        varchar2(50),             -- code ст. назначения -> xx_etw_station_bi_v (code)
    cargo_ref       varchar2(256),            -- груз (из справочника)
    reason          varchar2(512),
    circumstances   varchar2(4000),
@@ -226,9 +201,9 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    "ACT_START_NUMBER",
    "ACT_TYPE",
    "STATUS",
-   "CEX_ID",
-   "CEX_CODE",
-   "CEX_NAME",
+   "DEPT_ID",
+   "DEPT_CODE",
+   "DEPT_NAME",
    "STATION_ID",
    "STATION",
    "ST_FROM_ID",
@@ -260,9 +235,9 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
           a_start.act_number as act_star_number,
           a.act_type,
           a.status,
-          a.cex_id,
-          rc.code as cex_code,
-          rc.name as cex_name,
+          null as dept_id,
+          null as dept_code,
+          null as depr_name,
           a.station_id,
           ss.name as station,
           a.st_from_id,
@@ -301,8 +276,8 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
           a.modified_at,
           a.modified_by
      from xx_disl_gu23_act a
-     left join xx_disl_gu23_ref_cex rc
-   on rc.id = a.cex_id
+     --left join hr_deprt dept
+   --on dept.id = a.dept_id
      left join xx_disl_gu23_act a_start
    on a.linked_start_id = a_start.id
      left join xx_disl_stations ss
@@ -318,27 +293,6 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ
 -- =====================================================================
 
--- пользователи (локальный аналог справочника пользователей)
-comment on table xx_disl_gu23_users is
-   'Пользователи модуля ГУ-23 (id, логин, ФИО)';
-comment on column xx_disl_gu23_users.user_id is
-   'ID пользователя (первичный ключ)';
-comment on column xx_disl_gu23_users.login is
-   'Логин';
-comment on column xx_disl_gu23_users.full_name is
-   'ФИО';
-
--- справочник: цеха
-comment on table xx_disl_gu23_ref_cex is
-   'Справочник цехов';
-comment on column xx_disl_gu23_ref_cex.id is
-   'ID цеха (первичный ключ)';
-comment on column xx_disl_gu23_ref_cex.code is
-   'Код цеха (входит в номер акта, напр. ЖДЦ)';
-comment on column xx_disl_gu23_ref_cex.name is
-   'Наименование цеха';
-comment on column xx_disl_gu23_ref_cex.active is
-   'Признак активности: Y/N';
 
 -- справочник: причины
 comment on table xx_disl_gu23_ref_reason is
@@ -391,8 +345,8 @@ comment on table xx_disl_gu23_counter is
    'Счётчик номеров актов: своё значение на каждый цех и год';
 comment on column xx_disl_gu23_counter.id is
    'ID строки счётчика (первичный ключ)';
-comment on column xx_disl_gu23_counter.cex_id is
-   'ID цеха -> xx_disl_gu23_ref_cex.id';
+comment on column xx_disl_gu23_counter.dept_id is
+   'ID цеха -> hr_dept.dept_id';
 comment on column xx_disl_gu23_counter.yr is
    'Год нумерации';
 comment on column xx_disl_gu23_counter.cnt is
@@ -409,14 +363,14 @@ comment on column xx_disl_gu23_act.act_type is
    'Тип акта: start (начало) / end (окончание) / other (прочий)';
 comment on column xx_disl_gu23_act.status is
    'Статус: draft / active / closed / annulled';
-comment on column xx_disl_gu23_act.cex_id is
-   'ID цеха -> xx_disl_gu23_ref_cex.id';
+comment on column xx_disl_gu23_act.dept_id is
+   'ID цеха -> hr_dept.id';
 comment on column xx_disl_gu23_act.station_id is
    'ID станции составления -> xx_disl_stations.station_id';
 comment on column xx_disl_gu23_act.st_from_id is
-   'ID станции отправления -> xx_disl_stations.station_id';
+   'ID станции отправления -> xx_etw_station_bi_v (code)';
 comment on column xx_disl_gu23_act.st_to_id is
-   'ID станции назначения -> xx_disl_stations.station_id';
+   'ID станции назначения -> xx_etw_station_bi_v (code)';
 comment on column xx_disl_gu23_act.cargo_ref is
    'Груз (из справочника грузов)';
 comment on column xx_disl_gu23_act.reason is
@@ -442,11 +396,11 @@ comment on column xx_disl_gu23_act.annul_reason is
 comment on column xx_disl_gu23_act.created_at is
    'Дата создания';
 comment on column xx_disl_gu23_act.created_by is
-   'Кто создал -> xx_disl_gu23_users.user_id';
+   'Кто создал -> xx_disl_users.user_id';
 comment on column xx_disl_gu23_act.modified_at is
    'Дата последнего изменения';
 comment on column xx_disl_gu23_act.modified_by is
-   'Кто изменил -> xx_disl_gu23_users.user_id';
+   'Кто изменил -> xx_disl_users.user_id';
 
 -- строки актов (вагоны)
 comment on table xx_disl_gu23_act_row is
@@ -488,7 +442,7 @@ comment on column xx_disl_gu23_file.real_path is
 comment on column xx_disl_gu23_file.created_at is
    'Дата загрузки';
 comment on column xx_disl_gu23_file.created_by is
-   'Кто загрузил -> xx_disl_gu23_users.user_id';
+   'Кто загрузил -> xx_disl_users.id';
 
 -- подписанты акта (хранение, без процесса подписания)
 comment on table xx_disl_gu23_signer is
@@ -518,7 +472,7 @@ comment on column xx_disl_gu23_hist.act_id is
 comment on column xx_disl_gu23_hist.ts is
    'Дата и время события';
 comment on column xx_disl_gu23_hist.usr is
-   'Кто выполнил -> xx_disl_gu23_users.user_id';
+   'Кто выполнил -> xx_disl_users.user_id';
 comment on column xx_disl_gu23_hist.txt is
    'Текст события';
 

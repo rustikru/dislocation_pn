@@ -125,41 +125,41 @@ create or replace package body xx_disl_gu23_pkg as
 
     -- следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
    function g_next_number (
-      p_cex_id in number
+      p_dept_id in number
    ) return varchar2 is
-      v_yr       number := to_number ( to_char(
+      v_yr        number := to_number ( to_char(
          sysdate,
          'YYYY'
       ) );
-      v_cnt      number;
-      v_cex_code varchar2(32);
+      v_cnt       number;
+      v_dept_code varchar2(32);
    begin
       select code
-        into v_cex_code
-        from xx_disl_gu23_ref_cex
-       where id = p_cex_id;
+        into v_dept_code
+        from xx_disl_dept_v
+       where id = p_dept_id;
 
       update xx_disl_gu23_counter
          set
          cnt = cnt + 1
-       where cex_id = p_cex_id
+       where dept_id = p_dept_id
          and yr = v_yr returning cnt into v_cnt;
 
       if sql%rowcount = 0 then
          v_cnt := 1;
          insert into xx_disl_gu23_counter (
             id,
-            cex_id,
+            dept_id,
             yr,
             cnt
          ) values ( xx_disl_gu23_counter_seq.nextval,
-                    p_cex_id,
+                    p_dept_id,
                     v_yr,
                     v_cnt );
       end if;
 
       return 'ГУ23-'
-             || v_cex_code
+             || v_dept_code
              || '-'
              || v_yr
              || '-'
@@ -181,8 +181,8 @@ create or replace package body xx_disl_gu23_pkg as
       o.act_number := a.act_number;
       o.act_type := a.act_type;
       o.status := a.status;
-      o.cex_id := a.cex_id;
-      o.cex := a.cex_code;
+      o.dept_id := a.dept_id;
+      o.dept := a.dept_code;
       o.station_id := a.station_id;
       o.station := a.station;
       o.st_from_id := a.st_from_id;
@@ -235,8 +235,7 @@ create or replace package body xx_disl_gu23_pkg as
          select id,
                 code,
                 name
-           from xx_disl_gu23_ref_cex
-          where active = 'Y'
+           from xx_disl_dept_v
           order by name
       ) loop
          l_row.id := r.id;
@@ -362,14 +361,14 @@ create or replace package body xx_disl_gu23_pkg as
 
     -- подписанты — работники предприятия
    function gu23_get_ref_signer_own (
-      p_cex in varchar2 default null
+      p_dept_id in varchar2 default null
    ) return xx_disl_gu23_signer_tab
       pipelined
    is
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
-         -- Примечание: поле unit возвращает код цеха из xx_disl_users.cex_id
+         -- Примечание: поле unit возвращает код цеха из xx_disl_users.dept_id
          -- (скорректируйте условие фильтра если имя колонки отличается)
          select du.id,
                 du.full_name as fio,
@@ -381,9 +380,9 @@ create or replace package body xx_disl_gu23_pkg as
            from xx_disl_users du
            join xx_disl_enterprise dnt
          on dnt.id = du.enterprise
-           --left join xx_disl_gu23_ref_cex rc on rc.id = du.cex_id
+           --left join xx_disl_gu23_ref_cex rc on rc.id = du.dept_id
           where du.open = 'Y'
-            -- and ( p_cex is null or rc.code = p_cex )
+            -- and ( p_dept_code is null or rc.code = p_dept_code )
           order by du.full_name
       ) loop
          l_row.id := r.id;
@@ -434,10 +433,10 @@ create or replace package body xx_disl_gu23_pkg as
     -- акты
     -- ----------------------------------------------------------------
    function gu23_get_acts (
-      p_q      in varchar2 default null,
-      p_type   in varchar2 default null,
-      p_status in varchar2 default null,
-      p_cex    in varchar2 default null
+      p_q       in varchar2 default null,
+      p_type    in varchar2 default null,
+      p_status  in varchar2 default null,
+      p_dept_id in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -450,8 +449,8 @@ create or replace package body xx_disl_gu23_pkg as
              or a.act_type = p_type )
             and ( p_status is null
              or a.status = p_status )
-            and ( p_cex is null
-             or a.cex_id = to_number(p_cex) )
+            and ( p_dept_id is null
+             or a.dept_id = to_number(p_dept_id) )
             and ( v_q is null
          or lower(a.act_number) like '%'
                   || v_q
@@ -974,7 +973,7 @@ create or replace package body xx_disl_gu23_pkg as
       l_row        xx_disl_gu23_hist%rowtype;
       v_id         number;
       v_number     varchar2(64);
-      v_cex_id     number;
+      v_dept_id    number;
       v_station_id varchar2(100);
       v_st_from_id varchar2(100);
       v_st_to_id   varchar2(100);
@@ -1043,7 +1042,7 @@ create or replace package body xx_disl_gu23_pkg as
 
         -- цех обязателен (для формирования номера акта)
       if nvl(
-         p_data.p_cex,
+         p_data.p_dept_code,
          'X'
       ) = 'X' then
          return 'ERR'
@@ -1054,15 +1053,15 @@ create or replace package body xx_disl_gu23_pkg as
         -- получаем id цеха по коду
       begin
          select id
-           into v_cex_id
-           from xx_disl_gu23_ref_cex
-          where code = p_data.p_cex;
+           into v_dept_id
+           from xx_disl_dept_v
+          where code = p_data.p_dept_code;
       exception
          when no_data_found then
             return 'ERR'
                    || c_us
                    || 'Цех не найден: '
-                   || p_data.p_cex;
+                   || p_data.p_dept_code;
       end;
 
 
@@ -1153,7 +1152,7 @@ create or replace package body xx_disl_gu23_pkg as
 
         -- INSERT или UPDATE шапки акта
       if v_isnew then
-         v_number := g_next_number(v_cex_id);
+         v_number := g_next_number(v_dept_id);
          v_id := xx_disl_gu23_act_seq.nextval;
 
             -- потом поправить на процедуру (api)
@@ -1162,7 +1161,7 @@ create or replace package body xx_disl_gu23_pkg as
             act_number,
             act_type,
             status,
-            cex_id,
+            dept_id,
             station_id,
             st_from_id,
             st_to_id,
@@ -1184,7 +1183,7 @@ create or replace package body xx_disl_gu23_pkg as
                     v_number,
                     p_data.p_type,
                     p_data.p_status,
-                    v_cex_id,
+                    v_dept_id,
                     v_station_id,
                     v_st_from_id,
                     v_st_to_id,
@@ -1227,7 +1226,7 @@ create or replace package body xx_disl_gu23_pkg as
 
             -- если у черновика ещё нет номера — присваиваем
          if v_number is null then
-            v_number := g_next_number(v_cex_id);
+            v_number := g_next_number(v_dept_id);
          end if;
 
             -- потом поправить на процедуру (api)
@@ -1235,7 +1234,7 @@ create or replace package body xx_disl_gu23_pkg as
             set act_number = v_number,
                 act_type = p_data.p_type,
                 status = p_data.p_status,
-                cex_id = v_cex_id,
+                dept_id = v_dept_id,
                 station_id = v_station_id,
                 st_from_id = v_st_from_id,
                 st_to_id = v_st_to_id,

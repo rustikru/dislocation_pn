@@ -147,11 +147,11 @@ class GuActRepository
         $q = filter_input(INPUT_POST, 'q') ?: null;
         $type = filter_input(INPUT_POST, 'type') ?: null;
         $status = filter_input(INPUT_POST, 'status') ?: null;
-        $cex = filter_input(INPUT_POST, 'cex') ?: null;
+        $dept = filter_input(INPUT_POST, 'dept') ?: null;
 
         $rows = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4))',
-            [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $cex]
+            [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $dept]
         );
         echo json_encode($rows);
     }
@@ -254,7 +254,7 @@ class GuActRepository
         $id = (int) filter_input(INPUT_POST, 'id');
         $type = filter_input(INPUT_POST, 'type');
         $status = filter_input(INPUT_POST, 'status');
-        $cex = filter_input(INPUT_POST, 'cex');           // CODE цеха
+        $dept = filter_input(INPUT_POST, 'dept');           // CODE цеха
         $station = filter_input(INPUT_POST, 'station') ?: null; // station_id as string
         $stFrom = filter_input(INPUT_POST, 'st_from') ?: null; // st_from_id as string
         $stTo = filter_input(INPUT_POST, 'st_to') ?: null; // st_to_id as string
@@ -275,7 +275,7 @@ class GuActRepository
                     v_d.p_id              := :id;
                     v_d.p_type            := :type;
                     v_d.p_status          := :status;
-                    v_d.p_cex             := :cex;
+                    v_d.p_dept             := :dept;
                     v_d.p_station         := :station;
                     v_d.p_st_from         := :st_from;
                     v_d.p_st_to           := :st_to;
@@ -299,7 +299,7 @@ class GuActRepository
         oci_bind_by_name($st, ':id', $id);
         oci_bind_by_name($st, ':type', $type);
         oci_bind_by_name($st, ':status', $status);
-        oci_bind_by_name($st, ':cex', $cex);
+        oci_bind_by_name($st, ':dept', $dept);
         oci_bind_by_name($st, ':station', $station);
         oci_bind_by_name($st, ':st_from', $stFrom);
         oci_bind_by_name($st, ':st_to', $stTo);

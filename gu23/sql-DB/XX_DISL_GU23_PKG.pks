@@ -39,8 +39,8 @@ create or replace package xx_disl_gu23_pkg as
          act_start_number    varchar2(64),
          act_type            varchar2(16),
          status              varchar2(16),
-         cex_id              number,                              -- ID цеха
-         cex                 varchar2(32),    -- код цеха (для отображения)
+         dept_id             number,                              -- ID цеха
+         dept                varchar2(32),    -- код цеха (для отображения)
          station_id          varchar2(150),           -- ID ст. составления
          station             varchar2(128),   -- ст. составления (название)
          st_from_id          varchar2(150),           -- ID ст. отправления
@@ -121,7 +121,7 @@ create or replace package xx_disl_gu23_pkg as
          p_id              number,                         -- 0/NULL = новый
          p_type            varchar2(16),             -- start / end / other
          p_status          varchar2(16),                  -- draft / active
-         p_cex             varchar2(32),                        -- код цеха
+         p_dept_code       varchar2(32),                        -- код цеха
          p_station         varchar2(128),             -- ID ст. составления
          p_st_from         varchar2(128),             -- ID ст. отправления
          p_st_to           varchar2(128),              -- ID ст. назначения
@@ -189,7 +189,7 @@ create or replace package xx_disl_gu23_pkg as
     -- Справочники подписантов
     -- работники предприятия; p_cex — код цеха для фильтрации (null = все)
    function gu23_get_ref_signer_own (
-      p_cex in varchar2 default null
+      p_dept_id in varchar2 default null
    ) return xx_disl_gu23_signer_tab
       pipelined;
 
@@ -199,10 +199,10 @@ create or replace package xx_disl_gu23_pkg as
 
     -- ---- Акты ----
    function gu23_get_acts (
-      p_q      in varchar2 default null,
-      p_type   in varchar2 default null,
-      p_status in varchar2 default null,
-      p_cex    in varchar2 default null
+      p_q       in varchar2 default null,
+      p_type    in varchar2 default null,
+      p_status  in varchar2 default null,
+      p_dept_id in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined;
 

@@ -6,7 +6,7 @@
  * Работает на чистом PHP 8.1+ без сторонних зависимостей (только ZipArchive).
  *
  * Шаблоны: gu23/report/template/*.docx
- * Плейсхолдеры в шаблоне: {{ACT_NUMBER}}, {{CEX}}, {{WAGON_NO}} и т.д.
+ * Плейсхолдеры в шаблоне: {{ACT_NUMBER}}, {{DEPT}}, {{WAGON_NO}} и т.д.
  * Строки вагонов: первая строка таблицы, содержащая {{WAGON_NO}}, повторяется
  * для каждого вагона.
  */
@@ -32,7 +32,7 @@ class GuActDocxReport
     /**
      * Сформировать DOCX и сразу отдать браузеру как скачиваемый файл.
      *
-     * @param array $act     Строка акта (ACT_NUMBER, CEX, ACT_TYPE, START_AT …)
+     * @param array $act     Строка акта (ACT_NUMBER, DEPT, ACT_TYPE, START_AT …)
      * @param array $wagons  Массив вагонов  (WAGON_NO, KIND, CARGO, WEIGHT, OWNER …)
      * @param array $signers Массив подписантов (FIO, POST, ORG …)
      */
@@ -215,7 +215,7 @@ class GuActDocxReport
 
         $vars = [
             '{{ACT_NUMBER}}' => $act['ACT_NUMBER'] ?? '',
-            '{{CEX}}' => $act['CEX'] ?? '',
+            '{{DEPT}}' => $act['DEPT'] ?? '',
             '{{STATION}}' => $act['STATION'] ?? '',
             '{{ST_FROM}}' => $act['ST_FROM'] ?? '',
             '{{ST_TO}}' => $act['ST_TO'] ?? '',

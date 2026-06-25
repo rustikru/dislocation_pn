@@ -18,7 +18,7 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
-  const filterState = { q: '', type: '', status: '', cex: '' }
+  const filterState = { q: '', type: '', status: '', DEPT: '' }
   let searchTimeout = null
 
   // Создание фильтров
@@ -53,7 +53,7 @@ export function showArchive(container) {
   createSelectFilter(
     [''].concat(references.departmentsList.map((d) => String(d.ID))),
     ['Все цеха'].concat(departmentCodes),
-    'cex',
+    'DEPT',
   )
 
   // Поиск с задержкой
@@ -127,7 +127,7 @@ export function showArchive(container) {
           showTypeChip(act.ACT_TYPE) +
           '</td>' +
           '<td>' +
-          escapeHtml(act.CEX) +
+          escapeHtml(act.DEPT) +
           '</td>' +
           '<td class="muted text-ellipsis" style="max-width:230px" title="' +
           escapeHtml(act.REASON_NAME) +

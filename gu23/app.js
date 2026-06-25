@@ -1,7 +1,7 @@
 import { sendApiRequest } from './api.js'
 import { applicationState, references, setActiveDraft } from './state.js'
 import { drawNav } from './components/nav.js'
-import { showArchive } from './components/archive.js'
+import { showArchive } from './components/registry.js'
 import { showForm } from './components/form.js'
 import { showCard } from './components/card.js'
 import { showWagonSearch } from './components/wagonSearch.js'
