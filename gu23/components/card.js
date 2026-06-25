@@ -230,6 +230,17 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
     return ''
   }
 
+  const versionBadge = (approval) => {
+    if (!approval || approval.STATUS !== 'approved') return ''
+    const sv = approval.SIGNED_VERSION
+    const cv = act.CONTENT_VERSION
+    if (!sv || !cv) return ''
+    const match = String(sv) === String(cv)
+    return match
+      ? `<span title="Подписано версию ${sv}, текущая версия ${cv}" style="font-size:10px;color:#2d7a47;margin-left:4px">v${sv} ✓</span>`
+      : `<span title="Подписано версию ${sv}, но документ изменён (текущая v${cv})" style="font-size:10px;color:#b45309;margin-left:4px;font-weight:600">v${sv} ⚠</span>`
+  }
+
   const listHtml = signers.length
     ? signers
         .map((s) => {
@@ -247,7 +258,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
             <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
             ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
           </div>
-          <div style="flex-shrink:0">${pill}</div>
+          <div style="flex-shrink:0">${pill}${versionBadge(approval)}</div>
         </div>`
         })
         .join('')

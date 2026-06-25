@@ -18,7 +18,7 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
-  const filterState = { q: '', type: '', status: '', dept: '', page: 1 }
+  const filterState = { q: '', type: '', status: '', dept: '', date_from: '', date_to: '', page: 1 }
   const PAGE_SIZE = 50
   let searchTimeout = null
 
@@ -46,8 +46,8 @@ export function showArchive(container) {
     'type',
   )
   createSelectFilter(
-    ['', 'draft', 'active', 'closed', 'annulled'],
-    ['Все статусы', 'Черновик', 'Открыт', 'Закрыт', 'Аннулирован'],
+    ['', 'draft', 'active', 'closed', 'annulled', 'signed', 'rejected'],
+    ['Все статусы', 'Черновик', 'Открыт', 'Закрыт', 'Аннулирован', 'Подписан', 'Отклонён'],
     'status',
   )
 
@@ -57,6 +57,21 @@ export function showArchive(container) {
     ['Все цеха'].concat(departmentCodes),
     'dept',
   )
+
+  // Фильтр по дате
+  const $dateFrom = $('<input type="date" class="inp" title="Дата с">')
+  const $dateTo   = $('<input type="date" class="inp" title="Дата по">')
+  $dateFrom.on('change', (e) => {
+    filterState.date_from = e.target.value ? e.target.value.split('-').reverse().join('.') : ''
+    filterState.page = 1
+    loadArchiveData()
+  })
+  $dateTo.on('change', (e) => {
+    filterState.date_to = e.target.value ? e.target.value.split('-').reverse().join('.') : ''
+    filterState.page = 1
+    loadArchiveData()
+  })
+  $('#archive-filters').append($dateFrom, $dateTo)
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {

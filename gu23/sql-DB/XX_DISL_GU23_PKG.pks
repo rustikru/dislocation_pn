@@ -65,7 +65,8 @@ create or replace package xx_disl_gu23_pkg as
          annul_reason        varchar2(1000),
          created_at          varchar2(20),
          created_by          varchar2(256),
-         modified_at         varchar2(20)
+         modified_at         varchar2(20),
+         content_version     number
    );
    type xx_disl_gu23_act_tab is
       table of t_gu23_act_row;
@@ -218,10 +219,12 @@ create or replace package xx_disl_gu23_pkg as
 
     -- ---- Акты ----
    function gu23_get_acts (
-      p_q       in varchar2 default null,
-      p_type    in varchar2 default null,
-      p_status  in varchar2 default null,
-      p_dept_id in varchar2 default null
+      p_q         in varchar2 default null,
+      p_type      in varchar2 default null,
+      p_status    in varchar2 default null,
+      p_dept_id   in varchar2 default null,
+      p_date_from in varchar2 default null,   -- 'DD.MM.YYYY'
+      p_date_to   in varchar2 default null    -- 'DD.MM.YYYY'
    ) return xx_disl_gu23_act_tab
       pipelined;
 
@@ -385,7 +388,8 @@ create or replace package xx_disl_gu23_pkg as
       p_approver_id in number,
       p_status      in varchar2,
       p_comment     in varchar2,
-      p_token_sig   in varchar2
+      p_token_sig   in varchar2,
+      p_signer_ip   in varchar2 default null
    ) return varchar2;
 
     -- Текущий статус согласования одного пользователя по акту
@@ -397,11 +401,13 @@ create or replace package xx_disl_gu23_pkg as
 
     -- Все записи согласования по акту (для отображения статусов в карточке)
    type t_gu23_approval_row is record (
-      approver_id  number,
-      full_name    varchar2(256),
-      status       varchar2(16),
-      decided_at   varchar2(20),
-      comment_txt  varchar2(1000)
+      approver_id     number,
+      full_name       varchar2(256),
+      status          varchar2(16),
+      decided_at      varchar2(20),
+      comment_txt     varchar2(1000),
+      signed_version  number,
+      signer_ip       varchar2(64)
    );
    type t_gu23_approval_tab is
       table of t_gu23_approval_row;
@@ -417,7 +423,8 @@ create or replace package xx_disl_gu23_pkg as
       p_act_id    in number,
       p_user_id   in number,
       p_status    in varchar2,
-      p_comment   in varchar2
+      p_comment   in varchar2,
+      p_signer_ip in varchar2 default null
    ) return varchar2;
 
    -- ---- Администрирование справочников ----

@@ -103,12 +103,13 @@ class ApprovalRepository
         int    $approverId,
         string $status,
         string $comment,
-        string $tokenSig
+        string $tokenSig,
+        string $signerIp = ''
     ): bool {
         $result = null;
         $st = oci_parse(
             $this->conn,
-            'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_save_decision(:act, :uid, :s, :c, :sig); END;'
+            'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_save_decision(:act, :uid, :s, :c, :sig, :ip); END;'
         );
         oci_bind_by_name($st, ':r',   $result, 64);
         oci_bind_by_name($st, ':act', $actId);
@@ -116,6 +117,7 @@ class ApprovalRepository
         oci_bind_by_name($st, ':s',   $status);
         oci_bind_by_name($st, ':c',   $comment, 1000);
         oci_bind_by_name($st, ':sig', $tokenSig);
+        oci_bind_by_name($st, ':ip',  $signerIp, 64);
         oci_execute($st);
         return str_starts_with((string) $result, 'OK');
     }

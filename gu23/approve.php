@@ -26,6 +26,9 @@ $actId      = (int)($params['act']    ?? 0);
 $approverId = (int)($params['uid']    ?? 0);
 $action     = $params['action']       ?? '';
 $sig        = $params['sig']          ?? '';
+$signerIp   = $_SERVER['HTTP_X_FORWARDED_FOR']
+    ? trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0])
+    : ($_SERVER['REMOTE_ADDR'] ?? '');
 
 // -------------------------------------------------------------------
 // Если ссылка невалидна — показываем ошибку и выходим
@@ -69,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
         showRejectForm($actNumber, $name, $actId, $approverId, $sig, 'Укажите причину отклонения');
         exit;
     }
-    $ok = $repo->saveDecision($actId, $approverId, 'rejected', $comment, $sig);
+    $ok = $repo->saveDecision($actId, $approverId, 'rejected', $comment, $sig, $signerIp);
     if ($ok) {
         renderPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
@@ -86,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
 // GET: согласование
 // -------------------------------------------------------------------
 if ($action === 'approve') {
-    $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig);
+    $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig, $signerIp);
     if ($ok) {
         renderPage('Акт согласован', "
             <p>Вы согласовали акт <b>{$actNumber}</b>.</p>

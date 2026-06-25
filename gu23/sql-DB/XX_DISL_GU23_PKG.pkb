@@ -280,6 +280,7 @@ create or replace package body xx_disl_gu23_pkg as
          a.modified_at,
          c_dtf
       );
+      o.content_version := nvl(a.content_version, 1);
       return o;
    end;
 
@@ -555,44 +556,39 @@ create or replace package body xx_disl_gu23_pkg as
     -- акты
     -- ----------------------------------------------------------------
    function gu23_get_acts (
-      p_q       in varchar2 default null,
-      p_type    in varchar2 default null,
-      p_status  in varchar2 default null,
-      p_dept_id in varchar2 default null
+      p_q         in varchar2 default null,
+      p_type      in varchar2 default null,
+      p_status    in varchar2 default null,
+      p_dept_id   in varchar2 default null,
+      p_date_from in varchar2 default null,
+      p_date_to   in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
-      v_q varchar2(512) := lower(p_q);
+      v_q    varchar2(512) := lower(p_q);
+      v_from date := case when p_date_from is not null
+                          then to_date(p_date_from, 'DD.MM.YYYY') end;
+      v_to   date := case when p_date_to   is not null
+                          then to_date(p_date_to,   'DD.MM.YYYY') + 1 end;
    begin
       for a in (
          select *
            from xx_disl_gu23_act_v a
-          where ( p_type is null
-             or a.act_type = p_type )
-            and ( p_status is null
-             or a.status = p_status )
-            and ( p_dept_id is null
-             or a.dept_id = to_number(p_dept_id) )
+          where ( p_type is null    or a.act_type = p_type )
+            and ( p_status is null  or a.status   = p_status )
+            and ( p_dept_id is null or a.dept_id  = to_number(p_dept_id) )
+            and ( v_from is null    or a.created_at >= v_from )
+            and ( v_to   is null    or a.created_at <  v_to  )
             and ( v_q is null
-         or lower(a.act_number) like '%'
-                  || v_q
-                  || '%'
-         or lower(a.act_start_number) like '%'
-                  || v_q
-                  || '%'
-         or lower(a.reason_name) like '%'
-                                      || v_q
-                                      || '%'
-             or exists (
-            select 1
-              from xx_disl_gu23_act_row r
-             where r.act_id = a.id
-               and r.wagon_no like '%'
-                                   || p_q
-                                   || '%'
-         ) )
-          order by a.start_at desc,
-                   a.end_at desc
+               or lower(a.act_number)      like '%' || v_q || '%'
+               or lower(a.act_start_number) like '%' || v_q || '%'
+               or lower(a.reason_name)      like '%' || v_q || '%'
+               or exists (
+                     select 1 from xx_disl_gu23_act_row r
+                      where r.act_id = a.id
+                        and r.wagon_no like '%' || p_q || '%'
+                  ) )
+          order by a.created_at desc
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
@@ -1806,40 +1802,87 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   -- Автоматически обновить статус акта на основе решений подписантов.
+   -- Вызывается после каждого сохранения решения.
+   procedure sync_act_status (p_act_id in number) is
+      v_rejected number;
+      v_total    number;
+      v_approved number;
+   begin
+      -- есть хоть одно отклонение → акт отклонён
+      select count(*) into v_rejected
+        from xx_disl_gu23_approval
+       where act_id = p_act_id and status = 'rejected';
+
+      if v_rejected > 0 then
+         update xx_disl_gu23_act
+            set status = 'rejected', modified_at = sysdate
+          where id = p_act_id and status = 'active';
+         return;
+      end if;
+
+      -- число подписантов предприятия (stype != 'rzd') с user_id — обязаны подписать
+      select count(*) into v_total
+        from xx_disl_gu23_signer
+       where act_id = p_act_id and stype != 'rzd' and user_id is not null;
+
+      if v_total = 0 then return; end if;
+
+      -- число тех, кто уже одобрил
+      select count(*) into v_approved
+        from xx_disl_gu23_approval a
+        join xx_disl_gu23_signer   s
+          on s.user_id = a.approver_id and s.act_id = a.act_id
+       where a.act_id = p_act_id and a.status = 'approved' and s.stype != 'rzd';
+
+      if v_approved >= v_total then
+         update xx_disl_gu23_act
+            set status = 'signed', modified_at = sysdate
+          where id = p_act_id and status = 'active';
+      end if;
+   end sync_act_status;
+
    function gu23_approval_save_decision (
       p_act_id      in number,
       p_approver_id in number,
       p_status      in varchar2,
       p_comment     in varchar2,
-      p_token_sig   in varchar2
+      p_token_sig   in varchar2,
+      p_signer_ip   in varchar2 default null
    ) return varchar2 is
       v_cnt      number;
       v_hist_txt varchar2(1000);
+      v_ver      number;
    begin
+      -- текущая версия акта (будет зафиксирована в подписи)
+      select nvl(content_version, 1) into v_ver
+        from xx_disl_gu23_act where id = p_act_id;
+
       -- Ищем по (act_id, approver_id) — надёжнее чем по token_sig,
       -- т.к. approve и reject ссылки имеют разные sig (action входит в хэш)
-      select count(*)
-        into v_cnt
+      select count(*) into v_cnt
         from xx_disl_gu23_approval
-       where act_id      = p_act_id
-         and approver_id = p_approver_id;
+       where act_id = p_act_id and approver_id = p_approver_id;
 
       if v_cnt > 0 then
          update xx_disl_gu23_approval
-            set status      = p_status,
-                comment_txt = p_comment,
-                decided_at  = sysdate,
-                token_sig   = p_token_sig
-          where act_id      = p_act_id
-            and approver_id = p_approver_id;
+            set status         = p_status,
+                comment_txt    = p_comment,
+                decided_at     = sysdate,
+                token_sig      = p_token_sig,
+                signed_version = v_ver,
+                signer_ip      = p_signer_ip
+          where act_id = p_act_id and approver_id = p_approver_id;
       else
          insert into xx_disl_gu23_approval (
             id, act_id, approver_id, status, comment_txt,
-            requested_at, requested_by, decided_at, token_sig
+            requested_at, requested_by, decided_at, token_sig,
+            signed_version, signer_ip
          ) values (
             xx_disl_gu23_approval_seq.nextval,
             p_act_id, p_approver_id, p_status, p_comment,
-            sysdate, p_approver_id, sysdate, p_token_sig
+            sysdate, p_approver_id, sysdate, p_token_sig,
+            v_ver, p_signer_ip
          );
       end if;
 
@@ -1848,17 +1891,15 @@ create or replace package body xx_disl_gu23_pkg as
          v_hist_txt := 'Акт подписан: ' || g_user_name(p_approver_id);
       elsif p_status = 'rejected' then
          v_hist_txt := 'Акт отклонён: ' || g_user_name(p_approver_id)
-                       || case when p_comment is not null
-                               then ' — ' || p_comment else '' end;
+                       || case when p_comment is not null then ' — ' || p_comment else '' end;
       end if;
 
       if v_hist_txt is not null then
-         log_act_history(
-            p_act_id  => p_act_id,
-            p_user_id => p_approver_id,
-            p_text    => v_hist_txt
-         );
+         log_act_history(p_act_id => p_act_id, p_user_id => p_approver_id, p_text => v_hist_txt);
       end if;
+
+      -- Автоматически обновить статус акта
+      sync_act_status(p_act_id);
 
       commit;
       return 'OK';
@@ -1919,29 +1960,39 @@ create or replace package body xx_disl_gu23_pkg as
                 u.full_name,
                 a.status,
                 to_char(a.decided_at, 'DD.MM.YYYY HH24:MI') as decided_at,
-                a.comment_txt
+                a.comment_txt,
+                a.signed_version,
+                a.signer_ip
            from xx_disl_gu23_approval a
            join xx_disl_users u on u.id = a.approver_id
           where a.act_id = p_act_id
           order by a.requested_at
       ) loop
-         l_row.approver_id := r.approver_id;
-         l_row.full_name   := r.full_name;
-         l_row.status      := r.status;
-         l_row.decided_at  := r.decided_at;
-         l_row.comment_txt := r.comment_txt;
+         l_row.approver_id    := r.approver_id;
+         l_row.full_name      := r.full_name;
+         l_row.status         := r.status;
+         l_row.decided_at     := r.decided_at;
+         l_row.comment_txt    := r.comment_txt;
+         l_row.signed_version := r.signed_version;
+         l_row.signer_ip      := r.signer_ip;
          pipe row(l_row);
       end loop;
       return;
    end;
 
    function gu23_direct_decision (
-      p_act_id  in number,
-      p_user_id in number,
-      p_status  in varchar2,
-      p_comment in varchar2
+      p_act_id    in number,
+      p_user_id   in number,
+      p_status    in varchar2,
+      p_comment   in varchar2,
+      p_signer_ip in varchar2 default null
    ) return varchar2 is
+      v_ver number;
    begin
+      -- текущая версия акта
+      select nvl(content_version, 1) into v_ver
+        from xx_disl_gu23_act where id = p_act_id;
+
       -- Создаём запись если нет, иначе обновляем
       merge into xx_disl_gu23_approval t
       using (select p_act_id  as act_id,
@@ -1949,16 +2000,21 @@ create or replace package body xx_disl_gu23_pkg as
                from dual) s
       on (t.act_id = s.act_id and t.approver_id = s.approver_id)
       when matched then
-         update set status      = p_status,
-                    comment_txt = p_comment,
-                    decided_at  = sysdate
+         update set status         = p_status,
+                    comment_txt    = p_comment,
+                    decided_at     = sysdate,
+                    signed_version = v_ver,
+                    signer_ip      = p_signer_ip
           where t.status = 'pending'
       when not matched then
          insert (id, act_id, approver_id, status, comment_txt,
-                 requested_at, requested_by, decided_at, token_sig)
+                 requested_at, requested_by, decided_at, token_sig,
+                 signed_version, signer_ip)
          values (xx_disl_gu23_approval_seq.nextval,
                  p_act_id, p_user_id, p_status, p_comment,
-                 sysdate, p_user_id, sysdate, null);
+                 sysdate, p_user_id, sysdate, null,
+                 v_ver, p_signer_ip);
+
       if sql%rowcount = 0 then
          return 'ERR' || c_us || 'Решение уже было принято ранее';
       end if;
@@ -1975,6 +2031,9 @@ create or replace package body xx_disl_gu23_pkg as
          insert into xx_disl_gu23_hist (id, act_id, ts, usr, txt)
          values (xx_disl_gu23_hist_seq.nextval, p_act_id, sysdate, p_user_id, v_txt);
       end;
+
+      -- Автоматически обновить статус акта
+      sync_act_status(p_act_id);
 
       commit;
       return 'OK';

@@ -197,19 +197,22 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function getActs(): void
     {
-        $q      = filter_input(INPUT_POST, 'q')      ?: null;
-        $type   = filter_input(INPUT_POST, 'type')   ?: null;
-        $status = filter_input(INPUT_POST, 'status') ?: null;
-        $dept   = filter_input(INPUT_POST, 'dept')   ?: null;
-        $page   = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
-        $limit  = 50;
+        $q         = filter_input(INPUT_POST, 'q')         ?: null;
+        $type      = filter_input(INPUT_POST, 'type')      ?: null;
+        $status    = filter_input(INPUT_POST, 'status')    ?: null;
+        $dept      = filter_input(INPUT_POST, 'dept')      ?: null;
+        $dateFrom  = filter_input(INPUT_POST, 'date_from') ?: null;
+        $dateTo    = filter_input(INPUT_POST, 'date_to')   ?: null;
+        $page      = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
+        $limit     = 50;
 
-        $all    = $this->pipe(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4))',
-            [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $dept]
+        $all = $this->pipe(
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6))',
+            [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $dept,
+             ':b5' => $dateFrom, ':b6' => $dateTo]
         );
-        $total  = count($all);
-        $acts   = array_slice($all, ($page - 1) * $limit, $limit);
+        $total = count($all);
+        $acts  = array_slice($all, ($page - 1) * $limit, $limit);
 
         echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
     }
