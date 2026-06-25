@@ -182,7 +182,7 @@ create or replace package body xx_disl_gu23_pkg as
       o.act_type := a.act_type;
       o.status := a.status;
       o.dept_id := a.dept_id;
-      o.dept := a.dept_code;
+      o.cex := a.dept_code;
       o.station_id := a.station_id;
       o.station := a.station;
       o.st_from_id := a.st_from_id;
@@ -1042,7 +1042,7 @@ create or replace package body xx_disl_gu23_pkg as
 
         -- цех обязателен (для формирования номера акта)
       if nvl(
-         p_data.p_dept_code,
+         p_data.p_dept,
          'X'
       ) = 'X' then
          return 'ERR'
@@ -1055,13 +1055,13 @@ create or replace package body xx_disl_gu23_pkg as
          select id
            into v_dept_id
            from xx_disl_dept_v
-          where code = p_data.p_dept_code;
+          where code = p_data.p_dept;
       exception
          when no_data_found then
             return 'ERR'
                    || c_us
                    || 'Цех не найден: '
-                   || p_data.p_dept_code;
+                   || p_data.p_dept;
       end;
 
 
