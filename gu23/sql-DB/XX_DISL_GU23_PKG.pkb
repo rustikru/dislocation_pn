@@ -686,12 +686,8 @@ create or replace package body xx_disl_gu23_pkg as
    begin
       for s in (
          select s.*,
-                -- Подписанты предприятия: signer_ref_id = xx_disl_users.id
-                -- Подписанты РЖД: signer_ref_id = xx_disl_gu23_ref_signer.id, user_id = null
-                case when rzd.id is null then du.id else null end as ref_user_id
+                case when s.stype = 'own' then s.signer_ref_id else null end as ref_user_id
            from xx_disl_gu23_signer s
-           left join xx_disl_gu23_ref_signer rzd on rzd.id = s.signer_ref_id
-           left join xx_disl_users du on du.id = s.signer_ref_id
           where s.act_id = p_act_id
           order by s.ord_no, s.id
       ) loop
@@ -1426,21 +1422,23 @@ create or replace package body xx_disl_gu23_pkg as
             continue;
          end if;
          v_ord := v_ord + 1;
-         insert into xx_disl_gu23_signer (
-            id,
-            act_id,
-            signer_ref_id,
-            fio,
-            post,
-            org,
-            ord_no
-         ) values ( xx_disl_gu23_signer_seq.nextval,
-                    v_id,
-                    vs_ref_id,
-                    vs_fio,
-                    vs_post,
-                    vs_org,
-                    v_ord );
+         -- определяем тип подписанта: own = предприятие, rzd = станция РЖД
+         declare
+            v_stype_cnt number := 0;
+            v_stype     varchar2(16);
+         begin
+            if vs_ref_id is not null then
+               select count(*) into v_stype_cnt
+                 from xx_disl_users where id = vs_ref_id;
+               v_stype := case when v_stype_cnt > 0 then 'own' else 'rzd' end;
+            end if;
+            insert into xx_disl_gu23_signer (
+               id, act_id, signer_ref_id, fio, post, org, ord_no, stype
+            ) values (
+               xx_disl_gu23_signer_seq.nextval, v_id, vs_ref_id,
+               vs_fio, vs_post, vs_org, v_ord, v_stype
+            );
+         end;
       end loop;
 
       -- закрытие циклов акта начала: частичное/полное

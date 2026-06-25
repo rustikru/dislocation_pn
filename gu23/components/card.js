@@ -223,10 +223,6 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
           <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Подтвердить отклонение</button>
         </div>
       </div>`
-  } else if (myApproval === 'approved') {
-    myBannerHtml = '<div style="color:#2d7a47;font-size:13px;margin-bottom:4px;font-weight:600">✓ Вы согласовали этот акт</div>'
-  } else if (myApproval === 'rejected') {
-    myBannerHtml = '<div style="color:#a03030;font-size:13px;margin-bottom:4px;font-weight:600">✕ Вы отклонили этот акт</div>'
   }
 
   $('#card-right-column').append(`
