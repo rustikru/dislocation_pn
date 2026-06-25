@@ -197,16 +197,21 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function getActs(): void
     {
-        $q = filter_input(INPUT_POST, 'q') ?: null;
-        $type = filter_input(INPUT_POST, 'type') ?: null;
+        $q      = filter_input(INPUT_POST, 'q')      ?: null;
+        $type   = filter_input(INPUT_POST, 'type')   ?: null;
         $status = filter_input(INPUT_POST, 'status') ?: null;
-        $dept = filter_input(INPUT_POST, 'dept') ?: null;
+        $dept   = filter_input(INPUT_POST, 'dept')   ?: null;
+        $page   = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
+        $limit  = 50;
 
-        $rows = $this->pipe(
+        $all    = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4))',
             [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $dept]
         );
-        echo json_encode($rows);
+        $total  = count($all);
+        $acts   = array_slice($all, ($page - 1) * $limit, $limit);
+
+        echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
     }
 
     private function getActCard(): void
