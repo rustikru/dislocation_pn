@@ -235,9 +235,9 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
           a_start.act_number as act_star_number,
           a.act_type,
           a.status,
-          d.id as dept_id,
-          d.code as dept_code,
-          d.name as dept_name,
+          dept.id as dept_id,
+          dept.code as dept_code,
+          dept.name as dept_name,
           a.station_id,
           ss.name as station,
           a.st_from_id,
@@ -276,7 +276,7 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
           a.modified_at,
           a.modified_by
      from xx_disl_gu23_act a
-     left join hr_deprt dept
+     left join xx_disl_dept_v dept
    on dept.id = a.dept_id
      left join xx_disl_gu23_act a_start
    on a.linked_start_id = a_start.id
