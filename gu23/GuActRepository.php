@@ -275,7 +275,7 @@ class GuActRepository
                     v_d.p_id              := :id;
                     v_d.p_type            := :type;
                     v_d.p_status          := :status;
-                    v_d.p_cex              := :dept;
+                    v_d.p_dept             := :dept;
                     v_d.p_station         := :station;
                     v_d.p_st_from         := :st_from;
                     v_d.p_st_to           := :st_to;
