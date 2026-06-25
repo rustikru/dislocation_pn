@@ -738,6 +738,7 @@ function showSignersFields() {
           ? ownFiltered
           : references.signersRzdList
     const matched = pool.find((x) => String(x.ID) === value)
+    const stype = pool === (references.signersRzdList) ? 'rzd' : 'own'
     activeDraft.signers[slot] = matched
       ? {
           id: matched.ID,
@@ -745,6 +746,7 @@ function showSignersFields() {
           post: matched.POST,
           org: matched.ORG,
           manual: false,
+          stype: stype,
         }
       : null
   })

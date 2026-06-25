@@ -279,7 +279,7 @@ class GuActRepository
         $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
 
         $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
-        $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org']); // field 1 = ref_id
+        $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org', 'stype']); // field 5 = stype
 
         $id = (int) filter_input(INPUT_POST, 'id');
         $type = filter_input(INPUT_POST, 'type');

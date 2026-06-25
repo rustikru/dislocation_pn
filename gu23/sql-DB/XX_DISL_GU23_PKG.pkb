@@ -1062,6 +1062,7 @@ create or replace package body xx_disl_gu23_pkg as
       vs_fio       varchar2(256);
       vs_post      varchar2(256);
       vs_org       varchar2(256);
+      vs_stype     varchar2(16);
       v_dupnum     varchar2(64);
       v_has_start  number;
       v_tot        number;
@@ -1418,27 +1419,17 @@ create or replace package body xx_disl_gu23_pkg as
             v_rec,
             4
          );
+         vs_stype := trim(g_field(v_rec, 5)); -- 'own' или 'rzd'; null = вручную
          if trim(vs_fio) is null then
             continue;
          end if;
          v_ord := v_ord + 1;
-         -- определяем тип подписанта: own = предприятие, rzd = станция РЖД
-         declare
-            v_stype_cnt number := 0;
-            v_stype     varchar2(16);
-         begin
-            if vs_ref_id is not null then
-               select count(*) into v_stype_cnt
-                 from xx_disl_users where id = vs_ref_id;
-               v_stype := case when v_stype_cnt > 0 then 'own' else 'rzd' end;
-            end if;
-            insert into xx_disl_gu23_signer (
-               id, act_id, signer_ref_id, fio, post, org, ord_no, stype
-            ) values (
-               xx_disl_gu23_signer_seq.nextval, v_id, vs_ref_id,
-               vs_fio, vs_post, vs_org, v_ord, v_stype
-            );
-         end;
+         insert into xx_disl_gu23_signer (
+            id, act_id, signer_ref_id, fio, post, org, ord_no, stype
+         ) values (
+            xx_disl_gu23_signer_seq.nextval, v_id, vs_ref_id,
+            vs_fio, vs_post, vs_org, v_ord, nullif(vs_stype, '')
+         );
       end loop;
 
       -- закрытие циклов акта начала: частичное/полное
@@ -1672,14 +1663,14 @@ create or replace package body xx_disl_gu23_pkg as
       l_row t_gu23_approval_signer_row;
    begin
       for r in (
-         select u.id                                   as approver_id,
+         -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id напрямую
+         select u.id                             as approver_id,
                 u.full_name,
-                lower(u.login) || '@company.ru'        as fake_email
+                lower(u.login) || '@company.ru'  as fake_email
            from xx_disl_gu23_signer s
-           join xx_disl_gu23_ref_signer rs on rs.id  = s.signer_ref_id
-           join xx_disl_users u             on u.id  = rs.user_id
-          where s.act_id   = p_act_id
-            and rs.user_id is not null
+           join xx_disl_users u on u.id = s.signer_ref_id
+          where s.act_id = p_act_id
+            and s.stype  = 'own'
       ) loop
          l_row.approver_id := r.approver_id;
          l_row.full_name   := r.full_name;
