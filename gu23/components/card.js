@@ -78,9 +78,18 @@ function showToolbarButtons(act, data) {
   }
 
   if (act.STATUS === 'active' && data.isAdmin && data.signers && data.signers.length) {
-    const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
-    $resendBtn.on('click', () => resendApprovalLinks(act, data.signers, data.approvals || []))
-    $toolbar.append($resendBtn)
+    const approvalMap = {}
+    ;(data.approvals || []).forEach((a) => { approvalMap[a.APPROVER_ID] = a })
+    const hasUnsigned = data.signers.some((s) => {
+      if (s.STYPE === 'rzd' || !s.USER_ID) return false
+      const appr = approvalMap[s.USER_ID]
+      return !appr || appr.STATUS !== 'approved'
+    })
+    if (hasUnsigned) {
+      const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
+      $resendBtn.on('click', () => resendApprovalLinks(act, data.signers, data.approvals || []))
+      $toolbar.append($resendBtn)
+    }
   }
 
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
