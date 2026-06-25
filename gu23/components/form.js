@@ -856,14 +856,19 @@ function saveActToServer(status, skipWarning = false) {
 
   sendApiRequest('gu23_save_act', payload).done((response) => {
     if (response && response.ok) {
-      showToast(
-        status === 'draft'
-          ? 'Черновик сохранён'
-          : `Акт зарегистрирован ${response.number ? ', № ' + response.number : ''}`,
-        'ok',
-      )
       setActiveDraft(null)
-      navigateTo('card', response.id)
+      if (status === 'active') {
+        sendApiRequest('gu23_send_approval', { act_id: response.id }).done((approvalResp) => {
+          const approvalMsg = approvalResp && approvalResp.ok
+            ? (approvalResp.msg || 'Письма отправлены')
+            : (approvalResp && approvalResp.msg ? 'Письма: ' + approvalResp.msg : 'Письма не отправлены')
+          showToast(`Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`, 'ok')
+          navigateTo('card', response.id)
+        })
+      } else {
+        showToast('Черновик сохранён', 'ok')
+        navigateTo('card', response.id)
+      }
     } else {
       const msg = (response && response.msg) || 'Ошибка сохранения'
       if (/уже есть открытый акт начала/.test(msg)) {
