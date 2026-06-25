@@ -1,6 +1,6 @@
 import { sendApiRequest } from '../api.js'
 
-const SEND_APPROVAL_ON_SAVE = true // false — отключить авто-рассылку при сохранении
+const SEND_APPROVAL_ON_SAVE = false // false — отключить авто-рассылку при сохранении
 import {
   references,
   activeDraft,
@@ -860,13 +860,21 @@ function saveActToServer(status, skipWarning = false) {
     if (response && response.ok) {
       setActiveDraft(null)
       if (status === 'active' && SEND_APPROVAL_ON_SAVE) {
-        sendApiRequest('gu23_send_approval', { act_id: response.id }).done((approvalResp) => {
-          const approvalMsg = approvalResp && approvalResp.ok
-            ? (approvalResp.msg || 'Письма отправлены')
-            : (approvalResp && approvalResp.msg ? 'Письма: ' + approvalResp.msg : 'Письма не отправлены')
-          showToast(`Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`, 'ok')
-          navigateTo('card', response.id)
-        })
+        sendApiRequest('gu23_send_approval', { act_id: response.id }).done(
+          (approvalResp) => {
+            const approvalMsg =
+              approvalResp && approvalResp.ok
+                ? approvalResp.msg || 'Письма отправлены'
+                : approvalResp && approvalResp.msg
+                  ? 'Письма: ' + approvalResp.msg
+                  : 'Письма не отправлены'
+            showToast(
+              `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
+              'ok',
+            )
+            navigateTo('card', response.id)
+          },
+        )
       } else {
         showToast('Черновик сохранён', 'ok')
         navigateTo('card', response.id)
