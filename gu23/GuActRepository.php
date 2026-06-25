@@ -646,27 +646,23 @@ end;';
             $email      = $signer['FAKE_EMAIL'];
             $fullName   = $signer['FULL_NAME'] ?? '';
 
-            // Обновляем token_sig в уже созданной pending-записи
-            $link = $baseUrl . '/gu23/approve.php?' . parse_url(
-                $hmac->generate($actId, $approverId, 'approve'),
-                PHP_URL_QUERY
-            );
+            // Генерируем HMAC для approve и reject по отдельности
+            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $approveParams);
+            parse_str(parse_url($hmac->generate($actId, $approverId, 'reject'),  PHP_URL_QUERY), $rejectParams);
 
-            // Сохраняем подпись из ссылки в БД
-            parse_str(parse_url($hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY), $params);
-            $tokenSig = $params['sig'] ?? '';
+            $tokenSig    = $approveParams['sig'] ?? '';
+            $approveLink = $baseUrl . '/gu23/approve.php?' . http_build_query($approveParams);
+            $rejectLink  = $baseUrl . '/gu23/approve.php?' . http_build_query($rejectParams);
 
+            // Сохраняем approve-подпись в pending-записи (используется для проверки одноразовости)
             $this->pipe(
                 'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
                 [':b1' => $tokenSig, ':b2' => $actId, ':b3' => $approverId]
             );
             oci_commit($this->conn);
 
-            // Строим ссылку заново с тем же токеном
-            $link = $baseUrl . '/gu23/approve.php?' . http_build_query($params);
-
             // Формируем HTML-письмо
-            $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $link);
+            $htmlBody = $this->buildApprovalEmailHtml($fullName, $actId, $approveLink, $rejectLink);
             $subject  = 'Требуется согласование акта ГУ-23';
 
             if ($mode === 'send_mail') {
@@ -707,9 +703,8 @@ end;';
         return file_put_contents($filename, $content) !== false;
     }
 
-    private function buildApprovalEmailHtml(string $name, int $actId, string $approveLink): string
+    private function buildApprovalEmailHtml(string $name, int $actId, string $approveLink, string $rejectLink): string
     {
-        $rejectLink = preg_replace('/action=approve/', 'action=reject', $approveLink);
         $name = htmlspecialchars($name, ENT_QUOTES);
         return <<<HTML
 <!DOCTYPE html>
