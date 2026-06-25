@@ -878,7 +878,10 @@ function saveActToServer(status, skipWarning = false) {
           },
         )
       } else {
-        showToast('Черновик сохранён', 'ok')
+        const msg = status === 'active'
+          ? `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`
+          : 'Черновик сохранён'
+        showToast(msg, 'ok')
         navigateTo('card', response.id)
       }
     } else {
