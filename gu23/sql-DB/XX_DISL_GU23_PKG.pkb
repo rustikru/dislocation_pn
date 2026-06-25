@@ -384,6 +384,27 @@ create or replace package body xx_disl_gu23_pkg as
           where du.open = 'Y'
             -- and ( p_dept_code is null or rc.code = p_dept_code )
           order by du.full_name
+          /*
+          select du.id,
+                         du.full_name               as fio,
+                         prv.APPOINT_NAME           as POST,
+                         prv.FIRM_NAME              as org,
+                         prv.THEME                  as unit,
+                         'Работник предприятия'     as stype
+                    from xx_disl_users du
+                         left join xx_scud.prv_emp prv
+                             on     du.card_id = prv.card_id
+                                and TRUNC (SYSDATE) between D_FROM and D_TO
+                                and TRUNC (SYSDATE) between D_IN and D_OUT
+                         left join xx_disl_enterprise de
+                             on du.enterprise = de.id
+                   where     du.OPEN = 'Y'
+                         and de.name = 'Метафракс'
+                         and du.full_name not like '%user%'
+                         and prv.APPOINT_NAME not like 'Советн%'
+                --and prv.THEME like '%ЖДЦ%'
+                order by fio
+          */
       ) loop
          l_row.id := r.id;
          l_row.fio := r.fio;
