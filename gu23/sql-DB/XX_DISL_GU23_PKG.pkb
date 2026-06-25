@@ -1010,6 +1010,10 @@ create or replace package body xx_disl_gu23_pkg as
       v_th         number;
       v_cd         number;
       v_isnew      boolean;
+      v_len        pls_integer;
+      v_from       pls_integer;
+      v_to         pls_integer;
+      v_rec        varchar2(4000);
       v_ord        number := 0;
       v_wcnt       number := 0;
       vw_owner     varchar2(128);
