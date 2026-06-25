@@ -61,7 +61,7 @@ function renderSigners(signers) {
     const active = s.ACTIVE === 'Y'
     return `
       <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
-        <td style="padding:5px 8px"><b>${escapeHtml(s.FIO || '')}</b></td>
+        <td style="padding:5px 8px">${escapeHtml(s.FIO || '')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.POST || '—')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.ORG || '—')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.UNIT || '—')}</td>
@@ -185,7 +185,7 @@ function renderReasons(reasons) {
     const active = r.ACTIVE === 'Y'
     return `
       <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
-        <td style="padding:5px 8px"><b>${escapeHtml(r.NAME || '')}</b></td>
+        <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
         <td style="padding:5px 8px" class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
         <td style="padding:5px 8px">
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
