@@ -77,6 +77,12 @@ function showToolbarButtons(act, data) {
     $toolbar.append($closeBtn)
   }
 
+  if (act.STATUS === 'active' && data.isAdmin && data.signers && data.signers.length) {
+    const $resendBtn = $('<button class="btn sm ghost">Переотправить ссылки</button>')
+    $resendBtn.on('click', () => resendApprovalLinks(act))
+    $toolbar.append($resendBtn)
+  }
+
   // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
   if (act.STATUS !== 'draft' && act.STATUS !== 'annulled') {
     const $docxBtn = $(`
@@ -435,6 +441,22 @@ function closeAct(act) {
       }
     })
   })
+}
+
+function resendApprovalLinks(act) {
+  showConfirmBox(
+    'Переотправить ссылки',
+    'Сгенерировать новые ссылки согласования и отправить подписантам повторно?',
+    () => {
+      sendApiRequest('gu23_send_approval', { act_id: act.ID, mode: 'send_file' }).done((response) => {
+        if (response && response.ok) {
+          showToast(response.msg || 'Ссылки сгенерированы', 'ok')
+        } else {
+          showToast((response && response.msg) || 'Ошибка', 'err')
+        }
+      })
+    },
+  )
 }
 
 function sendForApproval(act) {

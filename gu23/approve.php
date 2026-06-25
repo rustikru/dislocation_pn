@@ -35,7 +35,7 @@ if (!$verify['ok']) {
     exit;
 }
 
-$repo = new ApprovalRepository($conn);
+$repo = new ApprovalRepository($conn1);
 $act  = $repo->getAct($actId);
 $name = $repo->getApproverName($approverId);
 
