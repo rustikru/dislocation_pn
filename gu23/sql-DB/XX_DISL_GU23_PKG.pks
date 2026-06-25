@@ -253,6 +253,23 @@ create or replace package xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
+-- Строка, разобранная из CLOB-пачки вагонов (RS/US-формат)
+   type t_wagon_clob_row is record (
+         wagon_no varchar2(16),
+         owner    varchar2(128),
+         kind     varchar2(128),
+         st_from  varchar2(128),
+         st_to    varchar2(128),
+         cargo    varchar2(256),
+         weight   varchar2(32)
+   );
+   type t_wagon_clob_tab is
+      table of t_wagon_clob_row;
+   function parse_wagon_clob (
+      p_clob in clob
+   ) return t_wagon_clob_tab
+      pipelined;
+      
     -- получить данные по вагонам из дислокации ----
    function gu23_get_wagon_info (
       p_wagons       in clob,
