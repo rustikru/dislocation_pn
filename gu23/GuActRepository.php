@@ -444,8 +444,10 @@ end;';
     /* ----------------------------------------------------------------- */
     private function uploadFile(): void
     {
-        $actId = (int) filter_input(INPUT_POST, 'act_id');
-        $userId = $this->auth->getUserId();
+        $actId    = (int) filter_input(INPUT_POST, 'act_id');
+        $userId   = $this->auth->getUserId();
+        $category = filter_input(INPUT_POST, 'file_category') ?: 'general';
+        if (!in_array($category, ['general', 'signed'], true)) $category = 'general';
 
         // Сначала определяем тип акта для формирования корректного пути
         $actType = 'other'; // значение по умолчанию
@@ -494,7 +496,8 @@ end;';
                             v_d.p_ext     := :ext;
                             v_d.p_mime    := :mime;
                             v_d.p_path    := :path;
-                            v_d.p_user_id := :uid;
+                            v_d.p_user_id  := :uid;
+                            v_d.p_category := :cat;
                             :res := xx_etw.xx_disl_gu23_pkg.gu23_add_file(v_d);
                         end;';
             $st = oci_parse($this->conn, $addSql);
@@ -507,6 +510,7 @@ end;';
             oci_bind_by_name($st, ':mime', $mime);
             oci_bind_by_name($st, ':path', $disk);
             oci_bind_by_name($st, ':uid', $userId);
+            oci_bind_by_name($st, ':cat', $category);
             oci_execute($st);
 
             if (strpos($res, 'done') === 0) {

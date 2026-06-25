@@ -666,11 +666,9 @@ create or replace package body xx_disl_gu23_pkg as
          l_row.file_ext := f.file_ext;
          l_row.mime_type := f.mime_type;
          l_row.real_path := f.real_path;
-         l_row.created_at := to_char(
-            f.created_at,
-            c_dtf
-         );
-         l_row.created_by := g_user_name(f.created_by);
+         l_row.created_at    := to_char(f.created_at, c_dtf);
+         l_row.created_by    := g_user_name(f.created_by);
+         l_row.file_category := nvl(f.file_category, 'general');
          pipe row ( l_row );
       end loop;
       return;
@@ -976,7 +974,8 @@ create or replace package body xx_disl_gu23_pkg as
          mime_type,
          real_path,
          created_at,
-         created_by
+         created_by,
+         file_category
       ) values ( p_data.p_file_id,
                  p_data.p_act_id,
                  p_data.p_name,
@@ -984,7 +983,8 @@ create or replace package body xx_disl_gu23_pkg as
                  p_data.p_mime,
                  p_data.p_path,
                  sysdate,
-                 p_data.p_user_id );
+                 p_data.p_user_id,
+                 nvl(p_data.p_category, 'general') );
 
       log_act_history(
          p_act_id  => p_data.p_act_id,

@@ -83,14 +83,15 @@ create or replace package xx_disl_gu23_pkg as
    type xx_disl_gu23_row_tab is
       table of xx_disl_gu23_row;
    type xx_disl_gu23_file_row is record (
-         id         number,
-         act_id     number,
-         file_name  varchar2(512),
-         file_ext   varchar2(32),
-         mime_type  varchar2(128),
-         real_path  varchar2(1024),
-         created_at varchar2(20),
-         created_by varchar2(256)
+         id            number,
+         act_id        number,
+         file_name     varchar2(512),
+         file_ext      varchar2(32),
+         mime_type     varchar2(128),
+         real_path     varchar2(1024),
+         created_at    varchar2(20),
+         created_by    varchar2(256),
+         file_category varchar2(16)
    );
    type xx_disl_gu23_file_tab is
       table of xx_disl_gu23_file_row;
@@ -138,13 +139,14 @@ create or replace package xx_disl_gu23_pkg as
          p_force           varchar2(1) -- 'Y' = разрешить дубль открытого простоя
    );
    type t_gu23_add_file is record (
-         p_act_id  number,
-         p_file_id number,
-         p_name    varchar2(512),
-         p_ext     varchar2(32),
-         p_mime    varchar2(128),
-         p_path    varchar2(1024),
-         p_user_id number
+         p_act_id   number,
+         p_file_id  number,
+         p_name     varchar2(512),
+         p_ext      varchar2(32),
+         p_mime     varchar2(128),
+         p_path     varchar2(1024),
+         p_user_id  number,
+         p_category varchar2(16)
    );
    type t_gu23_annul_act is record (
          p_id      number,

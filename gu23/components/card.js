@@ -288,46 +288,86 @@ function submitInAppDecision(actId, decision, comment) {
 
 function showAttachmentsBlock(act, files) {
   const isAnnulled = act.STATUS === 'annulled'
+  const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
-  const headHtml = `
-    <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center">
-      <b>Приложения</b>
-      <div style="flex:1"></div>
-      ${!isAnnulled ? `<label class="btn sm" id="lbl-upload">＋ Файл<input type="file" multiple id="file-input-field" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"></label>` : ''}
+  const addBtn = isAnnulled ? '' : `
+    <div style="position:relative;display:inline-flex">
+      <label class="btn sm" id="lbl-upload-def" style="border-radius:4px 0 0 4px;border-right:1px solid rgba(255,255,255,.25);cursor:pointer">
+        ＋ Добавить
+        <input type="file" multiple id="file-input-def" data-cat="general" style="display:none" accept="${accept}">
+      </label>
+      <button id="btn-add-arrow" class="btn sm" style="border-radius:0 4px 4px 0;padding:4px 7px">▾</button>
+      <div id="upload-cat-menu" style="display:none;position:absolute;top:100%;right:0;z-index:200;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;margin-top:3px">
+        <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)">
+          <span>📄</span> Загрузить как общий
+          <input type="file" multiple class="file-cat-input" data-cat="general" style="display:none" accept="${accept}">
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;font-size:13px">
+          <span>🔒</span> Загрузить как подписанный
+          <input type="file" multiple class="file-cat-input" data-cat="signed" style="display:none" accept="${accept}">
+        </label>
+      </div>
     </div>
   `
 
+  const renderSection = (label, items) => {
+    if (!items.length) return ''
+    const rows = items.map((file) => {
+      const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
+      return `
+        <div style="display:flex;gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+          ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;cursor:pointer">` : ''}
+          <div style="flex:1;font-size:12.5px">
+            <a href="get_file.php?id=${file.ID}">${escapeHtml(file.FILE_NAME)}</a>
+            <div class="muted" style="font-size:11px">${formatDateTime(file.CREATED_AT)} · ${escapeHtml(file.CREATED_BY || '')}</div>
+          </div>
+          ${!isAnnulled ? `<button class="delx file-delete-btn" data-id="${file.ID}">×</button>` : ''}
+        </div>`
+    }).join('')
+    return `
+      <div style="font-size:11px;font-weight:600;color:#999;letter-spacing:.05em;margin:10px 0 4px">${label}</div>
+      ${rows}`
+  }
+
+  const general = files.filter((f) => (f.FILE_CATEGORY || 'general') === 'general')
+  const signed  = files.filter((f) => f.FILE_CATEGORY === 'signed')
+
   const bodyHtml = files.length
-    ? files
-        .map((file) => {
-          const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
-          return `
-      <div style="display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
-        ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:38px;height:38px;object-fit:cover;border-radius:5px;cursor:pointer">` : ``}
-        <div style="flex:1;font-size:12.5px">
-          <a href="get_file.php?id=${file.ID}">${escapeHtml(file.FILE_NAME)}</a>
-          <div class="muted" style="font-size:11px">${formatDateTime(file.CREATED_AT)} · ${escapeHtml(file.CREATED_BY || '')}</div>
-        </div>
-        ${!isAnnulled ? `<button class="delx file-delete-btn" data-id="${file.ID}">×</button>` : ''}
-      </div>
-    `
-        })
-        .join('')
-    : '<div class="muted" style="font-size:12.5px">Фото и файлы не прикреплены.</div>'
+    ? renderSection('ОБЩИЕ', general) + renderSection('ПОДПИСАННЫЕ', signed)
+    : '<div class="muted" style="font-size:12.5px">Файлы не прикреплены.</div>'
 
   const $block = $(`
     <div class="card" style="margin-top:16px">
-      ${headHtml}
+      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center">
+        <b>Приложения</b>
+        <div style="flex:1"></div>
+        ${addBtn}
+      </div>
       <div class="cardpad">${bodyHtml}</div>
     </div>
   `)
 
   $('#card-right-column').append($block)
 
-  // Навешивание событий
-  $('#file-input-field').on('change', function () {
-    uploadFilesToServer(act.ID, this.files)
+  // Дефолтная кнопка — загружает как "general"
+  $('#file-input-def').on('change', function () {
+    uploadFilesToServer(act.ID, this.files, 'general')
   })
+
+  // Стрелка — показывает/скрывает меню
+  $('#btn-add-arrow').on('click', function (e) {
+    e.stopPropagation()
+    $('#upload-cat-menu').toggle()
+  })
+  $(document).on('click.uploadmenu', () => $('#upload-cat-menu').hide())
+
+  // Пункты меню — загрузка в нужную категорию
+  $('.file-cat-input').on('change', function () {
+    const cat = $(this).data('cat')
+    uploadFilesToServer(act.ID, this.files, cat)
+    $('#upload-cat-menu').hide()
+  })
+
   $('.img-preview').on('click', function () {
     window.open(`get_file.php?inline=1&id=${$(this).data('id')}`)
   })
@@ -540,11 +580,12 @@ function sendForApproval(act) {
   )
 }
 
-function uploadFilesToServer(actId, files) {
+function uploadFilesToServer(actId, files, category) {
   if (!files || !files.length) return
   const formData = new FormData()
   formData.append('ajax_action', 'gu23_upload_file')
   formData.append('act_id', actId)
+  formData.append('file_category', category || 'general')
 
   for (let i = 0; i < files.length; i++) {
     formData.append(`file${i}`, files[i])
