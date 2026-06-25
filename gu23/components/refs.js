@@ -94,7 +94,7 @@ function renderSigners(signers) {
 
   $('#btn-add-signer').on('click', () => showSignerForm(null))
 
-  $('#refs-body').on('click', 'tbody tr', function () {
+  $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
     const id = $(this).data('id')
     const signer = (cachedData.signers || []).find((s) => String(s.ID) === String(id))
     if (signer) showSignerForm(signer)
@@ -216,7 +216,7 @@ function renderReasons(reasons) {
 
   $('#btn-add-reason').on('click', () => showReasonForm(null))
 
-  $('#refs-body').on('click', 'tbody tr', function () {
+  $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
     const id = $(this).data('id')
     const reason = (cachedData.reasons || []).find((r) => String(r.ID) === String(id))
     if (reason) showReasonForm(reason)
