@@ -354,30 +354,28 @@ create or replace package body xx_disl_gu23_pkg as
          created_by,
          modified_at,
          modified_by
-      ) values (
-         p_row.id,
-         p_row.act_number,
-         p_row.act_type,
-         p_row.status,
-         p_row.dept_id,
-         p_row.station_id,
-         p_row.st_from_id,
-         p_row.st_to_id,
-         p_row.cargo_ref,
-         p_row.reason,
-         p_row.circumstances,
-         p_row.start_at,
-         p_row.end_at,
-         p_row.dur_days,
-         p_row.dur_hours,
-         p_row.dur_total_h,
-         p_row.cal_days,
-         p_row.linked_start_id,
-         p_row.created_at,
-         p_row.created_by,
-         p_row.modified_at,
-         p_row.modified_by
-      );
+      ) values ( p_row.id,
+                 p_row.act_number,
+                 p_row.act_type,
+                 p_row.status,
+                 p_row.dept_id,
+                 p_row.station_id,
+                 p_row.st_from_id,
+                 p_row.st_to_id,
+                 p_row.cargo_ref,
+                 p_row.reason,
+                 p_row.circumstances,
+                 p_row.start_at,
+                 p_row.end_at,
+                 p_row.dur_days,
+                 p_row.dur_hours,
+                 p_row.dur_total_h,
+                 p_row.cal_days,
+                 p_row.linked_start_id,
+                 p_row.created_at,
+                 p_row.created_by,
+                 p_row.modified_at,
+                 p_row.modified_by );
    end insert_act;
 
    procedure update_act (
@@ -385,25 +383,25 @@ create or replace package body xx_disl_gu23_pkg as
    ) is
    begin
       update xx_disl_gu23_act
-         set act_number      = p_row.act_number,
-             act_type        = p_row.act_type,
-             status          = p_row.status,
-             dept_id         = p_row.dept_id,
-             station_id      = p_row.station_id,
-             st_from_id      = p_row.st_from_id,
-             st_to_id        = p_row.st_to_id,
-             cargo_ref       = p_row.cargo_ref,
-             reason          = p_row.reason,
-             circumstances   = p_row.circumstances,
-             start_at        = p_row.start_at,
-             end_at          = p_row.end_at,
-             dur_days        = p_row.dur_days,
-             dur_hours       = p_row.dur_hours,
-             dur_total_h     = p_row.dur_total_h,
-             cal_days        = p_row.cal_days,
+         set act_number = p_row.act_number,
+             act_type = p_row.act_type,
+             status = p_row.status,
+             dept_id = p_row.dept_id,
+             station_id = p_row.station_id,
+             st_from_id = p_row.st_from_id,
+             st_to_id = p_row.st_to_id,
+             cargo_ref = p_row.cargo_ref,
+             reason = p_row.reason,
+             circumstances = p_row.circumstances,
+             start_at = p_row.start_at,
+             end_at = p_row.end_at,
+             dur_days = p_row.dur_days,
+             dur_hours = p_row.dur_hours,
+             dur_total_h = p_row.dur_total_h,
+             cal_days = p_row.cal_days,
              linked_start_id = p_row.linked_start_id,
-             modified_at     = p_row.modified_at,
-             modified_by     = p_row.modified_by
+             modified_at = p_row.modified_at,
+             modified_by = p_row.modified_by
        where id = p_row.id;
    end update_act;
 
@@ -606,7 +604,6 @@ create or replace package body xx_disl_gu23_pkg as
    -- ----------------------------------------------------------------
 
    -- ---- чтение актов ----
-
    function gu23_get_acts (
       p_q       in varchar2 default null,
       p_type    in varchar2 default null,
@@ -1254,28 +1251,28 @@ create or replace package body xx_disl_gu23_pkg as
          declare
             v_row xx_disl_gu23_act%rowtype;
          begin
-            v_row.id              := v_id;
-            v_row.act_number      := v_number;
-            v_row.act_type        := p_data.p_type;
-            v_row.status          := p_data.p_status;
-            v_row.dept_id         := v_dept_id;
-            v_row.station_id      := v_station_id;
-            v_row.st_from_id      := v_st_from_id;
-            v_row.st_to_id        := v_st_to_id;
-            v_row.cargo_ref       := p_data.p_cargo_ref;
-            v_row.reason          := p_data.p_reason;
-            v_row.circumstances   := p_data.p_circumstances;
-            v_row.start_at        := v_start;
-            v_row.end_at          := v_end;
-            v_row.dur_days        := v_dd;
-            v_row.dur_hours       := v_dh;
-            v_row.dur_total_h     := v_th;
-            v_row.cal_days        := v_cd;
+            v_row.id := v_id;
+            v_row.act_number := v_number;
+            v_row.act_type := p_data.p_type;
+            v_row.status := p_data.p_status;
+            v_row.dept_id := v_dept_id;
+            v_row.station_id := v_station_id;
+            v_row.st_from_id := v_st_from_id;
+            v_row.st_to_id := v_st_to_id;
+            v_row.cargo_ref := p_data.p_cargo_ref;
+            v_row.reason := p_data.p_reason;
+            v_row.circumstances := p_data.p_circumstances;
+            v_row.start_at := v_start;
+            v_row.end_at := v_end;
+            v_row.dur_days := v_dd;
+            v_row.dur_hours := v_dh;
+            v_row.dur_total_h := v_th;
+            v_row.cal_days := v_cd;
             v_row.linked_start_id := p_data.p_linked_start_id;
-            v_row.created_at      := sysdate;
-            v_row.created_by      := p_data.p_user_id;
-            v_row.modified_at     := sysdate;
-            v_row.modified_by     := p_data.p_user_id;
+            v_row.created_at := sysdate;
+            v_row.created_by := p_data.p_user_id;
+            v_row.modified_at := sysdate;
+            v_row.modified_by := p_data.p_user_id;
             insert_act(v_row);
          end;
       else
@@ -1304,26 +1301,26 @@ create or replace package body xx_disl_gu23_pkg as
          declare
             v_row xx_disl_gu23_act%rowtype;
          begin
-            v_row.id              := v_id;
-            v_row.act_number      := v_number;
-            v_row.act_type        := p_data.p_type;
-            v_row.status          := p_data.p_status;
-            v_row.dept_id         := v_dept_id;
-            v_row.station_id      := v_station_id;
-            v_row.st_from_id      := v_st_from_id;
-            v_row.st_to_id        := v_st_to_id;
-            v_row.cargo_ref       := p_data.p_cargo_ref;
-            v_row.reason          := p_data.p_reason;
-            v_row.circumstances   := p_data.p_circumstances;
-            v_row.start_at        := v_start;
-            v_row.end_at          := v_end;
-            v_row.dur_days        := v_dd;
-            v_row.dur_hours       := v_dh;
-            v_row.dur_total_h     := v_th;
-            v_row.cal_days        := v_cd;
+            v_row.id := v_id;
+            v_row.act_number := v_number;
+            v_row.act_type := p_data.p_type;
+            v_row.status := p_data.p_status;
+            v_row.dept_id := v_dept_id;
+            v_row.station_id := v_station_id;
+            v_row.st_from_id := v_st_from_id;
+            v_row.st_to_id := v_st_to_id;
+            v_row.cargo_ref := p_data.p_cargo_ref;
+            v_row.reason := p_data.p_reason;
+            v_row.circumstances := p_data.p_circumstances;
+            v_row.start_at := v_start;
+            v_row.end_at := v_end;
+            v_row.dur_days := v_dd;
+            v_row.dur_hours := v_dh;
+            v_row.dur_total_h := v_th;
+            v_row.cal_days := v_cd;
             v_row.linked_start_id := p_data.p_linked_start_id;
-            v_row.modified_at     := sysdate;
-            v_row.modified_by     := p_data.p_user_id;
+            v_row.modified_at := sysdate;
+            v_row.modified_by := p_data.p_user_id;
             update_act(v_row);
          end;
 
@@ -1597,14 +1594,14 @@ create or replace package body xx_disl_gu23_pkg as
                      when p_data.p_status = 'draft' then
                         'Акт создан (черновик)'
                      else
-                        'Акт создан и заведён'
+                        'Акт создан и оформлен'
                   end
             else
                case
                   when p_data.p_status = 'draft' then
                         'Черновик изменён'
                   else
-                     'Акт изменён / заведён'
+                     'Акт изменён / оформлен'
                end
          end;
 
