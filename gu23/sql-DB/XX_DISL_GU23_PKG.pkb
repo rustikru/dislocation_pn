@@ -1775,7 +1775,7 @@ create or replace package body xx_disl_gu23_pkg as
       if v_cnt > 0 then
          update xx_disl_gu23_approval
             set status     = p_status,
-                comment    = p_comment,
+                comment_txt = p_comment,
                 decided_at = sysdate
           where token_sig = p_token_sig;
       else
@@ -1784,7 +1784,7 @@ create or replace package body xx_disl_gu23_pkg as
             act_id,
             approver_id,
             status,
-            comment,
+            comment_txt,
             requested_at,
             requested_by,
             decided_at,
