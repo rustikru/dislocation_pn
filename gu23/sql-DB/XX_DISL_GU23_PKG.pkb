@@ -214,7 +214,7 @@ create or replace package body xx_disl_gu23_pkg as
       o.act_type := a.act_type;
       o.status := a.status;
       o.dept_id := a.dept_id;
-      o.cex := a.dept_code;
+      o.dept := a.dept_code;
       o.station_id := a.station_id;
       o.station := a.station;
       o.st_from_id := a.st_from_id;

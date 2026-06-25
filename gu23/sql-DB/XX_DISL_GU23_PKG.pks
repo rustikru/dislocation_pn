@@ -40,7 +40,7 @@ create or replace package xx_disl_gu23_pkg as
          act_type            varchar2(16),
          status              varchar2(16),
          dept_id             number,                              -- ID цеха
-         cex                 varchar2(32),    -- код цеха (для отображения)
+         dept                varchar2(32),    -- код цеха (для отображения)
          station_id          varchar2(150),           -- ID ст. составления
          station             varchar2(128),   -- ст. составления (название)
          st_from_id          varchar2(150),           -- ID ст. отправления
