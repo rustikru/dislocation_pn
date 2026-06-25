@@ -7,14 +7,14 @@ let cachedData = null
 
 export function showRefs(container) {
   $(container).html(`
-    <div class="phead">
-      <h1>Справочники</h1>
+    <div class="phead" style="padding-bottom:10px">
+      <h2 style="margin:0;font-size:16px">Справочники</h2>
     </div>
-    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:20px;border-bottom:2px solid var(--line)">
+    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:14px;border-bottom:2px solid var(--line)">
       <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты РЖД</button>
       <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины составления</button>
     </div>
-    <div id="refs-body"><div class="muted">Загрузка…</div></div>
+    <div id="refs-body"><div class="muted" style="font-size:13px">Загрузка…</div></div>
   `)
 
   $(container).on('click', '.refs-tab', function () {
@@ -27,7 +27,7 @@ export function showRefs(container) {
 
   sendApiRequest('gu23_refs_get_all').done((data) => {
     if (!data || !data.ok) {
-      $('#refs-body').html('<div class="muted">Ошибка загрузки данных</div>')
+      $('#refs-body').html('<div class="muted" style="font-size:13px">Ошибка загрузки данных</div>')
       return
     }
     cachedData = data
@@ -37,8 +37,8 @@ export function showRefs(container) {
 
 function tabStyle(active) {
   return active
-    ? 'padding:8px 20px;border:none;background:none;font-size:14px;font-weight:600;color:var(--accent,#2563eb);border-bottom:2px solid var(--accent,#2563eb);margin-bottom:-2px;cursor:pointer'
-    : 'padding:8px 20px;border:none;background:none;font-size:14px;font-weight:400;color:var(--muted,#888);cursor:pointer'
+    ? 'padding:5px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--accent,#2563eb);border-bottom:2px solid var(--accent,#2563eb);margin-bottom:-2px;cursor:pointer'
+    : 'padding:5px 16px;border:none;background:none;font-size:13px;font-weight:400;color:var(--muted,#888);cursor:pointer'
 }
 
 function renderTab() {
@@ -60,15 +60,15 @@ function renderSigners(signers) {
   const rows = signers.map((s) => {
     const active = s.ACTIVE === 'Y'
     return `
-      <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer" title="Нажмите для редактирования">
-        <td><b>${escapeHtml(s.FIO || '')}</b></td>
-        <td class="muted">${escapeHtml(s.POST || '—')}</td>
-        <td class="muted">${escapeHtml(s.ORG || '—')}</td>
-        <td class="muted">${escapeHtml(s.UNIT || '—')}</td>
-        <td>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
+      <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
+        <td style="padding:5px 8px"><b>${escapeHtml(s.FIO || '')}</b></td>
+        <td style="padding:5px 8px" class="muted">${escapeHtml(s.POST || '—')}</td>
+        <td style="padding:5px 8px" class="muted">${escapeHtml(s.ORG || '—')}</td>
+        <td style="padding:5px 8px" class="muted">${escapeHtml(s.UNIT || '—')}</td>
+        <td style="padding:5px 8px">
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
-            <span style="width:7px;height:7px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
             ${active ? 'Активен' : 'Неактивен'}
           </span>
         </td>
@@ -77,16 +77,16 @@ function renderSigners(signers) {
 
   $('#refs-body').html(`
     <div class="card">
-      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)">
-        <b>Справочник подписантов РЖД</b>
-        <button class="btn sm" id="btn-add-signer">+ Добавить</button>
+      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 12px">
+        <b style="font-size:13px">Подписанты РЖД</b>
+        <button class="btn sm" id="btn-add-signer" style="font-size:12px;padding:3px 10px">+ Добавить</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="tbl" style="width:100%">
+        <table class="tbl" style="width:100%;font-size:13px">
           <thead>
-            <tr><th>ФИО</th><th>Должность</th><th>Организация</th><th>Подразделение</th><th>Статус</th></tr>
+            <tr style="font-size:12px"><th style="padding:5px 8px">ФИО</th><th style="padding:5px 8px">Должность</th><th style="padding:5px 8px">Организация</th><th style="padding:5px 8px">Подразделение</th><th style="padding:5px 8px">Статус</th></tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="5" class="muted" style="padding:16px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="5" class="muted" style="padding:10px 8px;font-size:13px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -105,31 +105,31 @@ function showSignerForm(signer) {
   const isNew = !signer
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:500px;max-width:96vw;padding:28px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <h3 style="margin:0">Подписант</h3>
-          <button class="sf-close" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+      <div class="card" style="width:420px;max-width:96vw;padding:18px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <b style="font-size:14px">Подписант</b>
+          <button class="sf-close" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
-        <div class="frow" style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">ФИО</label>
-          <input class="inp sf-fio" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
+        <div class="frow" style="margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">ФИО</label>
+          <input class="inp sf-fio" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
         </div>
-        <div class="frow" style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Должность</label>
-          <input class="inp sf-post" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
+        <div class="frow" style="margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Должность</label>
+          <input class="inp sf-post" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
         </div>
-        <div class="frow" style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Организация</label>
-          <input class="inp sf-org" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
+        <div class="frow" style="margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Организация</label>
+          <input class="inp sf-org" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
         </div>
-        <div class="frow" style="margin-bottom:20px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Подразделение</label>
-          <input class="inp sf-unit" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
+        <div class="frow" style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Подразделение</label>
+          <input class="inp sf-unit" style="font-size:13px;padding:5px 8px" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn ghost sf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
-          <button class="btn sf-save">Сохранить</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn ghost sf-cancel" style="font-size:12px;padding:4px 12px">Отмена</button>
+          ${!isNew ? `<button class="btn danger sf-toggle" style="font-size:12px;padding:4px 12px">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn sf-save" style="font-size:12px;padding:4px 12px">Сохранить</button>
         </div>
       </div>
     </div>
@@ -184,13 +184,13 @@ function renderReasons(reasons) {
   const rows = reasons.map((r) => {
     const active = r.ACTIVE === 'Y'
     return `
-      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer" title="Нажмите для редактирования">
-        <td><b>${escapeHtml(r.NAME || '')}</b></td>
-        <td class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
-        <td>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
+      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
+        <td style="padding:5px 8px"><b>${escapeHtml(r.NAME || '')}</b></td>
+        <td style="padding:5px 8px" class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
+        <td style="padding:5px 8px">
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
-            <span style="width:7px;height:7px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
             ${active ? 'Активна' : 'Неактивна'}
           </span>
         </td>
@@ -199,16 +199,16 @@ function renderReasons(reasons) {
 
   $('#refs-body').html(`
     <div class="card">
-      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)">
-        <b>Справочник причин составления</b>
-        <button class="btn sm" id="btn-add-reason">+ Добавить</button>
+      <div class="cardpad" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 12px">
+        <b style="font-size:13px">Причины составления</b>
+        <button class="btn sm" id="btn-add-reason" style="font-size:12px;padding:3px 10px">+ Добавить</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="tbl" style="width:100%">
+        <table class="tbl" style="width:100%;font-size:13px">
           <thead>
-            <tr><th>Название</th><th>Тип акта</th><th>Статус</th></tr>
+            <tr style="font-size:12px"><th style="padding:5px 8px">Название</th><th style="padding:5px 8px">Тип акта</th><th style="padding:5px 8px">Статус</th></tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:16px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:10px 8px;font-size:13px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -231,23 +231,23 @@ function showReasonForm(reason) {
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:500px;max-width:96vw;padding:28px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <h3 style="margin:0">Причина составления</h3>
-          <button class="rf-close" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+      <div class="card" style="width:380px;max-width:96vw;padding:18px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <b style="font-size:14px">Причина составления</b>
+          <button class="rf-close" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
-        <div class="frow" style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Название <span style="color:red">*</span></label>
-          <input class="inp rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+        <div class="frow" style="margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Название <span style="color:red">*</span></label>
+          <input class="inp rf-name" style="font-size:13px;padding:5px 8px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
         </div>
-        <div class="frow" style="margin-bottom:20px">
-          <label style="display:block;font-size:12px;color:#888;margin-bottom:4px">Тип акта</label>
-          <select class="inp rf-kind">${kindOptions}</select>
+        <div class="frow" style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:#888;margin-bottom:3px">Тип акта</label>
+          <select class="inp rf-kind" style="font-size:13px;padding:5px 8px">${kindOptions}</select>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn ghost rf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
-          <button class="btn rf-save">Сохранить</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn ghost rf-cancel" style="font-size:12px;padding:4px 12px">Отмена</button>
+          ${!isNew ? `<button class="btn danger rf-toggle" style="font-size:12px;padding:4px 12px">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn rf-save" style="font-size:12px;padding:4px 12px">Сохранить</button>
         </div>
       </div>
     </div>
