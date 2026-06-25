@@ -1951,4 +1951,117 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   -- ----------------------------------------------------------------
+   -- Администрирование справочников
+   -- ----------------------------------------------------------------
+
+   function gu23_ref_signers_all return t_gu23_ref_signer_tab pipelined is
+      l_row t_gu23_ref_signer_row;
+   begin
+      for r in (
+         select id, fio, post, org, unit, active
+           from xx_disl_gu23_ref_signer
+          order by active desc, fio
+      ) loop
+         l_row.id     := r.id;
+         l_row.fio    := r.fio;
+         l_row.post   := r.post;
+         l_row.org    := r.org;
+         l_row.unit   := r.unit;
+         l_row.active := r.active;
+         pipe row(l_row);
+      end loop;
+      return;
+   end;
+
+   function gu23_ref_reasons_all return t_gu23_ref_reason_tab pipelined is
+      l_row t_gu23_ref_reason_row;
+   begin
+      for r in (
+         select id, name, act_kind, active
+           from xx_disl_gu23_ref_reason
+          order by active desc, name
+      ) loop
+         l_row.id       := r.id;
+         l_row.name     := r.name;
+         l_row.act_kind := r.act_kind;
+         l_row.active   := r.active;
+         pipe row(l_row);
+      end loop;
+      return;
+   end;
+
+   function gu23_ref_signer_save(
+      p_id   in number,
+      p_fio  in varchar2,
+      p_post in varchar2,
+      p_org  in varchar2,
+      p_unit in varchar2
+   ) return varchar2 is
+   begin
+      if p_id > 0 then
+         update xx_disl_gu23_ref_signer
+            set fio  = p_fio,
+                post = p_post,
+                org  = p_org,
+                unit = p_unit
+          where id = p_id;
+      else
+         insert into xx_disl_gu23_ref_signer (id, fio, post, org, unit, stype, active)
+         values (xx_disl_gu23_ref_signer_seq.nextval, p_fio, p_post, p_org, p_unit,
+                 'Работник станции ОАО РЖД', 'Y');
+      end if;
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
+   function gu23_ref_signer_toggle(p_id in number) return varchar2 is
+   begin
+      update xx_disl_gu23_ref_signer
+         set active = case when active = 'Y' then 'N' else 'Y' end
+       where id = p_id;
+      commit;
+      return 'OK';
+   exception
+      when others then return format_error();
+   end;
+
+   function gu23_ref_reason_save(
+      p_id       in number,
+      p_name     in varchar2,
+      p_act_kind in varchar2
+   ) return varchar2 is
+   begin
+      if p_id > 0 then
+         update xx_disl_gu23_ref_reason
+            set name     = p_name,
+                act_kind = p_act_kind
+          where id = p_id;
+      else
+         insert into xx_disl_gu23_ref_reason (id, name, act_kind, active)
+         values (xx_disl_gu23_ref_reason_seq.nextval, p_name, p_act_kind, 'Y');
+      end if;
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
+   function gu23_ref_reason_toggle(p_id in number) return varchar2 is
+   begin
+      update xx_disl_gu23_ref_reason
+         set active = case when active = 'Y' then 'N' else 'Y' end
+       where id = p_id;
+      commit;
+      return 'OK';
+   exception
+      when others then return format_error();
+   end;
+
 end xx_disl_gu23_pkg;

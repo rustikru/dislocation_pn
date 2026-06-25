@@ -412,4 +412,45 @@ create or replace package xx_disl_gu23_pkg as
       p_comment   in varchar2
    ) return varchar2;
 
+   -- ---- Администрирование справочников ----
+
+   type t_gu23_ref_signer_row is record (
+      id     number,
+      fio    varchar2(256),
+      post   varchar2(256),
+      org    varchar2(256),
+      unit   varchar2(256),
+      active char(1)
+   );
+   type t_gu23_ref_signer_tab is table of t_gu23_ref_signer_row;
+
+   type t_gu23_ref_reason_row is record (
+      id       number,
+      name     varchar2(512),
+      act_kind varchar2(16),
+      active   char(1)
+   );
+   type t_gu23_ref_reason_tab is table of t_gu23_ref_reason_row;
+
+   function gu23_ref_signers_all return t_gu23_ref_signer_tab pipelined;
+   function gu23_ref_reasons_all return t_gu23_ref_reason_tab pipelined;
+
+   function gu23_ref_signer_save (
+      p_id   in number,
+      p_fio  in varchar2,
+      p_post in varchar2,
+      p_org  in varchar2,
+      p_unit in varchar2
+   ) return varchar2;
+
+   function gu23_ref_signer_toggle (p_id in number) return varchar2;
+
+   function gu23_ref_reason_save (
+      p_id       in number,
+      p_name     in varchar2,
+      p_act_kind in varchar2
+   ) return varchar2;
+
+   function gu23_ref_reason_toggle (p_id in number) return varchar2;
+
 end xx_disl_gu23_pkg;
