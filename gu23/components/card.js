@@ -291,22 +291,15 @@ function showAttachmentsBlock(act, files) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
   const addBtn = isAnnulled ? '' : `
-    <div style="position:relative;display:inline-flex">
-      <label class="btn sm" id="lbl-upload-def" style="border-radius:4px 0 0 4px;border-right:1px solid rgba(255,255,255,.25);cursor:pointer">
-        ＋ Добавить
-        <input type="file" multiple id="file-input-def" data-cat="general" style="display:none" accept="${accept}">
+    <div style="display:flex;gap:6px">
+      <label class="btn sm ghost" style="cursor:pointer;font-size:12px">
+        ＋ Общий
+        <input type="file" multiple class="file-cat-input" data-cat="general" style="display:none" accept="${accept}">
       </label>
-      <button id="btn-add-arrow" class="btn sm" style="border-radius:0 4px 4px 0;padding:4px 7px">▾</button>
-      <div id="upload-cat-menu" style="display:none;position:absolute;top:100%;right:0;z-index:200;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;margin-top:3px">
-        <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)">
-          <span>📄</span> Загрузить как общий
-          <input type="file" multiple class="file-cat-input" data-cat="general" style="display:none" accept="${accept}">
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;font-size:13px">
-          <span>🔒</span> Загрузить как подписанный
-          <input type="file" multiple class="file-cat-input" data-cat="signed" style="display:none" accept="${accept}">
-        </label>
-      </div>
+      <label class="btn sm ghost" style="cursor:pointer;font-size:12px">
+        ＋ Подписанный
+        <input type="file" multiple class="file-cat-input" data-cat="signed" style="display:none" accept="${accept}">
+      </label>
     </div>
   `
 
@@ -349,23 +342,8 @@ function showAttachmentsBlock(act, files) {
 
   $('#card-right-column').append($block)
 
-  // Дефолтная кнопка — загружает как "general"
-  $('#file-input-def').on('change', function () {
-    uploadFilesToServer(act.ID, this.files, 'general')
-  })
-
-  // Стрелка — показывает/скрывает меню
-  $('#btn-add-arrow').on('click', function (e) {
-    e.stopPropagation()
-    $('#upload-cat-menu').toggle()
-  })
-  $(document).on('click.uploadmenu', () => $('#upload-cat-menu').hide())
-
-  // Пункты меню — загрузка в нужную категорию
   $('.file-cat-input').on('change', function () {
-    const cat = $(this).data('cat')
-    uploadFilesToServer(act.ID, this.files, cat)
-    $('#upload-cat-menu').hide()
+    uploadFilesToServer(act.ID, this.files, $(this).data('cat'))
   })
 
   $('.img-preview').on('click', function () {
