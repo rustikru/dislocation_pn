@@ -686,9 +686,12 @@ create or replace package body xx_disl_gu23_pkg as
    begin
       for s in (
          select s.*,
-                rs.user_id as ref_user_id
+                -- Подписанты предприятия: signer_ref_id = xx_disl_users.id
+                -- Подписанты РЖД: signer_ref_id = xx_disl_gu23_ref_signer.id, user_id = null
+                case when rzd.id is null then du.id else null end as ref_user_id
            from xx_disl_gu23_signer s
-           left join xx_disl_gu23_ref_signer rs on rs.id = s.signer_ref_id
+           left join xx_disl_gu23_ref_signer rzd on rzd.id = s.signer_ref_id
+           left join xx_disl_users du on du.id = s.signer_ref_id
           where s.act_id = p_act_id
           order by s.ord_no, s.id
       ) loop
