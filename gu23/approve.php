@@ -49,7 +49,7 @@ $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? '#' . $actId);
 // -------------------------------------------------------------------
 // Проверяем: не было ли уже решения по этой ссылке
 // -------------------------------------------------------------------
-$existing = $repo->getByTokenSig($sig);
+$existing = $repo->getStatusByIds($actId, $approverId);
 if ($existing && $existing['STATUS'] !== 'pending') {
     $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
     $decidedAt   = $existing['DECIDED_AT'] ?? '';

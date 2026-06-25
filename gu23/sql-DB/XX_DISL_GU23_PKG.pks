@@ -363,6 +363,12 @@ create or replace package xx_disl_gu23_pkg as
       p_sig in varchar2
    ) return varchar2;
 
+    -- Статус согласования по act_id + approver_id (для reject-ссылок с другим sig)
+   function gu23_approval_get_status (
+      p_act_id      in number,
+      p_approver_id in number
+   ) return varchar2;
+
     -- Создать запрос на согласование; возвращает 'OK' или 'ERR'||CHR(31)||текст
    function gu23_approval_request (
       p_act_id       in number,

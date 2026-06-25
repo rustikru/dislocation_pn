@@ -1815,17 +1815,22 @@ create or replace package body xx_disl_gu23_pkg as
    ) return varchar2 is
       v_cnt number;
    begin
+      -- Ищем по (act_id, approver_id) — это надёжнее чем по token_sig,
+      -- т.к. approve и reject ссылки имеют разные sig (action входит в хэш)
       select count(*)
         into v_cnt
         from xx_disl_gu23_approval
-       where token_sig = p_token_sig;
+       where act_id      = p_act_id
+         and approver_id = p_approver_id;
 
       if v_cnt > 0 then
          update xx_disl_gu23_approval
-            set status     = p_status,
+            set status      = p_status,
                 comment_txt = p_comment,
-                decided_at = sysdate
-          where token_sig = p_token_sig;
+                decided_at  = sysdate,
+                token_sig   = p_token_sig
+          where act_id      = p_act_id
+            and approver_id = p_approver_id;
       else
          insert into xx_disl_gu23_approval (
             id,
@@ -1855,6 +1860,28 @@ create or replace package body xx_disl_gu23_pkg as
    exception
       when others then
          return format_error();
+   end;
+
+   function gu23_approval_get_status (
+      p_act_id      in number,
+      p_approver_id in number
+   ) return varchar2 is
+      v_status  varchar2(16);
+      v_decided varchar2(20);
+   begin
+      select status,
+             to_char(decided_at, 'DD.MM.YYYY HH24:MI')
+        into v_status,
+             v_decided
+        from xx_disl_gu23_approval
+       where act_id      = p_act_id
+         and approver_id = p_approver_id
+         and rownum      = 1;
+
+      return v_status || c_us || nvl(v_decided, '');
+   exception
+      when no_data_found then
+         return null;
    end;
 
    function gu23_approval_my_status (

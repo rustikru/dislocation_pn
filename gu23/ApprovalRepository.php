@@ -57,6 +57,25 @@ class ApprovalRepository
     }
 
     /**
+     * Получить текущий статус согласования по act_id + approver_id.
+     * Надёжнее getByTokenSig для reject-ссылок (у них другой sig).
+     */
+    public function getStatusByIds(int $actId, int $approverId): ?array
+    {
+        $result = null;
+        $st = oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_get_status(:act, :uid); END;');
+        oci_bind_by_name($st, ':r',   $result, 64);
+        oci_bind_by_name($st, ':act', $actId);
+        oci_bind_by_name($st, ':uid', $approverId);
+        oci_execute($st);
+        if ($result === null) {
+            return null;
+        }
+        [$status, $decidedAt] = explode(self::US, $result, 2) + [1 => ''];
+        return ['STATUS' => $status, 'DECIDED_AT' => $decidedAt ?: null];
+    }
+
+    /**
      * Создать запрос на согласование (вызывается инициатором).
      * Возвращает true при успехе.
      */
