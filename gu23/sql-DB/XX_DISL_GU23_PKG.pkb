@@ -16,10 +16,6 @@ create or replace package body xx_disl_gu23_pkg as
    c_us      constant char(1) := chr(31); -- разделитель полей
    c_rs      constant char(1) := chr(30); -- разделитель записей
 
-   -- ----------------------------------------------------------------
-   -- базовые функции
-   -- ----------------------------------------------------------------
-
    procedure log_act_history (
       p_act_id  in number,
       p_user_id in number,
@@ -162,63 +158,27 @@ create or replace package body xx_disl_gu23_pkg as
    -- Разбирает CLOB в формате RS/US в таблицу строк вагонов (pipe row)
    function parse_wagon_clob (
       p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined
-   is
-      v_len  pls_integer := nvl(
-         dbms_lob.getlength(p_clob),
-         0
-      );
+   ) return t_wagon_clob_tab pipelined is
+      v_len  pls_integer := nvl(dbms_lob.getlength(p_clob), 0);
       v_from pls_integer := 1;
       v_to   pls_integer;
       v_rec  varchar2(32767);
       l_row  t_wagon_clob_row;
    begin
       while v_from <= v_len loop
-         v_to := instr(
-            p_clob,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_clob,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         l_row.wagon_no := trim(g_field(
-            v_rec,
-            1
-         ));
+         v_to := instr(p_clob, c_rs, v_from);
+         if v_to = 0 then v_to := v_len + 1; end if;
+         v_rec         := dbms_lob.substr(p_clob, v_to - v_from, v_from);
+         v_from        := v_to + 1;
+         l_row.wagon_no := trim(g_field(v_rec, 1));
          if l_row.wagon_no is not null then
-            l_row.owner := g_field(
-               v_rec,
-               2
-            );
-            l_row.kind := g_field(
-               v_rec,
-               3
-            );
-            l_row.st_from := g_field(
-               v_rec,
-               4
-            );
-            l_row.st_to := g_field(
-               v_rec,
-               5
-            );
-            l_row.cargo := g_field(
-               v_rec,
-               6
-            );
-            l_row.weight := g_field(
-               v_rec,
-               7
-            );
-            pipe row ( l_row );
+            l_row.owner   := g_field(v_rec, 2);
+            l_row.kind    := g_field(v_rec, 3);
+            l_row.st_from := g_field(v_rec, 4);
+            l_row.st_to   := g_field(v_rec, 5);
+            l_row.cargo   := g_field(v_rec, 6);
+            l_row.weight  := g_field(v_rec, 7);
+            pipe row(l_row);
          end if;
       end loop;
       return;
@@ -323,6 +283,7 @@ create or replace package body xx_disl_gu23_pkg as
       return o;
    end;
 
+
    -- ----------------------------------------------------------------
    -- сохранение данных в таблицы (общий API)
    -- ----------------------------------------------------------------
@@ -332,50 +293,18 @@ create or replace package body xx_disl_gu23_pkg as
    ) is
    begin
       insert into xx_disl_gu23_act (
-         id,
-         act_number,
-         act_type,
-         status,
-         dept_id,
-         station_id,
-         st_from_id,
-         st_to_id,
-         cargo_ref,
-         reason,
-         circumstances,
-         start_at,
-         end_at,
-         dur_days,
-         dur_hours,
-         dur_total_h,
-         cal_days,
-         linked_start_id,
-         created_at,
-         created_by,
-         modified_at,
-         modified_by
-      ) values ( p_row.id,
-                 p_row.act_number,
-                 p_row.act_type,
-                 p_row.status,
-                 p_row.dept_id,
-                 p_row.station_id,
-                 p_row.st_from_id,
-                 p_row.st_to_id,
-                 p_row.cargo_ref,
-                 p_row.reason,
-                 p_row.circumstances,
-                 p_row.start_at,
-                 p_row.end_at,
-                 p_row.dur_days,
-                 p_row.dur_hours,
-                 p_row.dur_total_h,
-                 p_row.cal_days,
-                 p_row.linked_start_id,
-                 p_row.created_at,
-                 p_row.created_by,
-                 p_row.modified_at,
-                 p_row.modified_by );
+         id, act_number, act_type, status, dept_id, station_id,
+         st_from_id, st_to_id, cargo_ref, reason, circumstances,
+         start_at, end_at, dur_days, dur_hours, dur_total_h,
+         cal_days, linked_start_id, created_at, created_by, modified_at, modified_by
+      ) values (
+         p_row.id, p_row.act_number, p_row.act_type, p_row.status, p_row.dept_id,
+         p_row.station_id, p_row.st_from_id, p_row.st_to_id, p_row.cargo_ref,
+         p_row.reason, p_row.circumstances, p_row.start_at, p_row.end_at,
+         p_row.dur_days, p_row.dur_hours, p_row.dur_total_h, p_row.cal_days,
+         p_row.linked_start_id, p_row.created_at, p_row.created_by,
+         p_row.modified_at, p_row.modified_by
+      );
    end insert_act;
 
    procedure update_act (
@@ -383,25 +312,25 @@ create or replace package body xx_disl_gu23_pkg as
    ) is
    begin
       update xx_disl_gu23_act
-         set act_number = p_row.act_number,
-             act_type = p_row.act_type,
-             status = p_row.status,
-             dept_id = p_row.dept_id,
-             station_id = p_row.station_id,
-             st_from_id = p_row.st_from_id,
-             st_to_id = p_row.st_to_id,
-             cargo_ref = p_row.cargo_ref,
-             reason = p_row.reason,
-             circumstances = p_row.circumstances,
-             start_at = p_row.start_at,
-             end_at = p_row.end_at,
-             dur_days = p_row.dur_days,
-             dur_hours = p_row.dur_hours,
-             dur_total_h = p_row.dur_total_h,
-             cal_days = p_row.cal_days,
+         set act_number      = p_row.act_number,
+             act_type        = p_row.act_type,
+             status          = p_row.status,
+             dept_id         = p_row.dept_id,
+             station_id      = p_row.station_id,
+             st_from_id      = p_row.st_from_id,
+             st_to_id        = p_row.st_to_id,
+             cargo_ref       = p_row.cargo_ref,
+             reason          = p_row.reason,
+             circumstances   = p_row.circumstances,
+             start_at        = p_row.start_at,
+             end_at          = p_row.end_at,
+             dur_days        = p_row.dur_days,
+             dur_hours       = p_row.dur_hours,
+             dur_total_h     = p_row.dur_total_h,
+             cal_days        = p_row.cal_days,
              linked_start_id = p_row.linked_start_id,
-             modified_at = p_row.modified_at,
-             modified_by = p_row.modified_by
+             modified_at     = p_row.modified_at,
+             modified_by     = p_row.modified_by
        where id = p_row.id;
    end update_act;
 
@@ -410,25 +339,10 @@ create or replace package body xx_disl_gu23_pkg as
    ) is
    begin
       insert into xx_disl_gu23_act_row (
-         id,
-         act_id,
-         wagon_no,
-         owner,
-         kind,
-         st_from,
-         st_to,
-         cargo,
-         weight
+         id, act_id, wagon_no, owner, kind, st_from, st_to, cargo, weight
       ) values (
-         p_row.id,
-         p_row.act_id,
-         p_row.wagon_no,
-         p_row.owner,
-         p_row.kind,
-         p_row.st_from,
-         p_row.st_to,
-         p_row.cargo,
-         p_row.weight
+         p_row.id, p_row.act_id, p_row.wagon_no, p_row.owner, p_row.kind,
+         p_row.st_from, p_row.st_to, p_row.cargo, p_row.weight
       );
    end insert_act_row;
 
@@ -437,28 +351,16 @@ create or replace package body xx_disl_gu23_pkg as
    ) is
    begin
       insert into xx_disl_gu23_signer (
-         id,
-         act_id,
-         signer_ref_id,
-         fio,
-         post,
-         org,
-         ord_no
+         id, act_id, signer_ref_id, fio, post, org, ord_no
       ) values (
-         p_row.id,
-         p_row.act_id,
-         p_row.signer_ref_id,
-         p_row.fio,
-         p_row.post,
-         p_row.org,
-         p_row.ord_no
+         p_row.id, p_row.act_id, p_row.signer_ref_id,
+         p_row.fio, p_row.post, p_row.org, p_row.ord_no
       );
    end insert_signer;
 
-   -- ----------------------------------------------------------------
-   -- справочники
-   -- ----------------------------------------------------------------
-
+    -- ----------------------------------------------------------------
+    -- справочники
+    -- ----------------------------------------------------------------
     -- Цеха
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined
@@ -649,11 +551,9 @@ create or replace package body xx_disl_gu23_pkg as
       return;
    end;
 
-   -- ----------------------------------------------------------------
-   -- обработка данных
-   -- ----------------------------------------------------------------
-
-   -- ---- чтение актов ----
+    -- ----------------------------------------------------------------
+    -- акты
+    -- ----------------------------------------------------------------
    function gu23_get_acts (
       p_q       in varchar2 default null,
       p_type    in varchar2 default null,
@@ -911,8 +811,73 @@ create or replace package body xx_disl_gu23_pkg as
       return;
    end;
 
-   -- ---- данные из дислокации ----
-
+   -- Парсер вагонов из clob
+   function parse_wagon_clob (
+      p_clob in clob
+   ) return t_wagon_clob_tab
+      pipelined
+   is
+      v_len  pls_integer := nvl(
+         dbms_lob.getlength(p_clob),
+         0
+      );
+      v_from pls_integer := 1;
+      v_to   pls_integer;
+      v_rec  varchar2(32767);
+      l_row  t_wagon_clob_row;
+   begin
+      while v_from <= v_len loop
+         v_to := instr(
+            p_clob,
+            c_rs,
+            v_from
+         );
+         if v_to = 0 then
+            v_to := v_len + 1;
+         end if;
+         v_rec := dbms_lob.substr(
+            p_clob,
+            v_to - v_from,
+            v_from
+         );
+         v_from := v_to + 1;
+         l_row.wagon_no := trim(g_field(
+            v_rec,
+            1
+         ));
+         if l_row.wagon_no is not null then
+            l_row.owner := g_field(
+               v_rec,
+               2
+            );
+            l_row.kind := g_field(
+               v_rec,
+               3
+            );
+            l_row.st_from := g_field(
+               v_rec,
+               4
+            );
+            l_row.st_to := g_field(
+               v_rec,
+               5
+            );
+            l_row.cargo := g_field(
+               v_rec,
+               6
+            );
+            l_row.weight := g_field(
+               v_rec,
+               7
+            );
+            pipe row ( l_row );
+         end if;
+      end loop;
+      return;
+   end parse_wagon_clob;
+   -- ----------------------------------------------------------------
+   -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
+   -- ----------------------------------------------------------------
    function gu23_get_wagon_info (
       p_wagons       in clob,
       p_waybill_no   in varchar2 default null,
@@ -930,7 +895,7 @@ create or replace package body xx_disl_gu23_pkg as
       v_to       pls_integer;
       v_no       varchar2(32);
       l_row      xx_disl_gu23_wagon_row;
-
+      
       -- Курсор данных
       cursor c_dislocation (
          v_w_no         varchar2,
@@ -1050,8 +1015,9 @@ create or replace package body xx_disl_gu23_pkg as
       return;
    end;
 
-   -- ---- файлы ----
-
+   -- ----------------------------------------------------------------
+   -- файлы (id)
+   -- ----------------------------------------------------------------
    function gu23_new_file_id return number is
       v number;
    begin
@@ -1127,8 +1093,9 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
-   -- ---- сохранение акта ----
-
+   -- ----------------------------------------------------------------
+   -- сохранение акта
+   -- ----------------------------------------------------------------
    function gu23_save_act (
       p_data in t_gu23_save_act
    ) return varchar2 is
@@ -1147,10 +1114,6 @@ create or replace package body xx_disl_gu23_pkg as
       v_th         number;
       v_cd         number;
       v_isnew      boolean;
-      v_len        pls_integer;
-      v_from       pls_integer;
-      v_to         pls_integer;
-      v_rec        varchar2(4000);
       v_ord        number := 0;
       v_wcnt       number := 0;
       vw_owner     varchar2(128);
@@ -1232,7 +1195,7 @@ create or replace package body xx_disl_gu23_pkg as
          trim(p_data.p_st_to),
          ''
       );
-
+      
       -- проверки дат для акта "Начало простоя"
       if
          p_data.p_type = 'start'
@@ -1278,7 +1241,7 @@ create or replace package body xx_disl_gu23_pkg as
             return format_error('Дата окончания не может быть больше текущей даты (в будущем)');
          end if;
       end if;
-
+      
       -- расчёт длительности (только для акта окончания)
       if
          p_data.p_type = 'end'
@@ -1298,33 +1261,51 @@ create or replace package body xx_disl_gu23_pkg as
       if v_isnew then
          v_number := g_next_number(v_dept_id);
          v_id := xx_disl_gu23_act_seq.nextval;
-         declare
-            v_row xx_disl_gu23_act%rowtype;
-         begin
-            v_row.id := v_id;
-            v_row.act_number := v_number;
-            v_row.act_type := p_data.p_type;
-            v_row.status := p_data.p_status;
-            v_row.dept_id := v_dept_id;
-            v_row.station_id := v_station_id;
-            v_row.st_from_id := v_st_from_id;
-            v_row.st_to_id := v_st_to_id;
-            v_row.cargo_ref := p_data.p_cargo_ref;
-            v_row.reason := p_data.p_reason;
-            v_row.circumstances := p_data.p_circumstances;
-            v_row.start_at := v_start;
-            v_row.end_at := v_end;
-            v_row.dur_days := v_dd;
-            v_row.dur_hours := v_dh;
-            v_row.dur_total_h := v_th;
-            v_row.cal_days := v_cd;
-            v_row.linked_start_id := p_data.p_linked_start_id;
-            v_row.created_at := sysdate;
-            v_row.created_by := p_data.p_user_id;
-            v_row.modified_at := sysdate;
-            v_row.modified_by := p_data.p_user_id;
-            insert_act(v_row);
-         end;
+         insert into xx_disl_gu23_act (
+            id,
+            act_number,
+            act_type,
+            status,
+            dept_id,
+            station_id,
+            st_from_id,
+            st_to_id,
+            cargo_ref,
+            reason,
+            circumstances,
+            start_at,
+            end_at,
+            dur_days,
+            dur_hours,
+            dur_total_h,
+            cal_days,
+            linked_start_id,
+            created_at,
+            created_by,
+            modified_at,
+            modified_by
+         ) values ( v_id,
+                    v_number,
+                    p_data.p_type,
+                    p_data.p_status,
+                    v_dept_id,
+                    v_station_id,
+                    v_st_from_id,
+                    v_st_to_id,
+                    p_data.p_cargo_ref,
+                    p_data.p_reason,
+                    p_data.p_circumstances,
+                    v_start,
+                    v_end,
+                    v_dd,
+                    v_dh,
+                    v_th,
+                    v_cd,
+                    p_data.p_linked_start_id,
+                    sysdate,
+                    p_data.p_user_id,
+                    sysdate,
+                    p_data.p_user_id );
       else
          -- редактировать можно ТОЛЬКО черновик
          begin
@@ -1343,169 +1324,107 @@ create or replace package body xx_disl_gu23_pkg as
          if v_cur_status <> 'draft' then
             return format_error('Действующий/закрытый акт не редактируется — аннулируйте и заведите новый');
          end if;
-
+         
          -- если у черновика ещё нет номера — присваиваем
          if v_number is null then
             v_number := g_next_number(v_dept_id);
          end if;
-         declare
-            v_row xx_disl_gu23_act%rowtype;
-         begin
-            v_row.id := v_id;
-            v_row.act_number := v_number;
-            v_row.act_type := p_data.p_type;
-            v_row.status := p_data.p_status;
-            v_row.dept_id := v_dept_id;
-            v_row.station_id := v_station_id;
-            v_row.st_from_id := v_st_from_id;
-            v_row.st_to_id := v_st_to_id;
-            v_row.cargo_ref := p_data.p_cargo_ref;
-            v_row.reason := p_data.p_reason;
-            v_row.circumstances := p_data.p_circumstances;
-            v_row.start_at := v_start;
-            v_row.end_at := v_end;
-            v_row.dur_days := v_dd;
-            v_row.dur_hours := v_dh;
-            v_row.dur_total_h := v_th;
-            v_row.cal_days := v_cd;
-            v_row.linked_start_id := p_data.p_linked_start_id;
-            v_row.modified_at := sysdate;
-            v_row.modified_by := p_data.p_user_id;
-            update_act(v_row);
-         end;
+         update xx_disl_gu23_act
+            set act_number = v_number,
+                act_type = p_data.p_type,
+                status = p_data.p_status,
+                dept_id = v_dept_id,
+                station_id = v_station_id,
+                st_from_id = v_st_from_id,
+                st_to_id = v_st_to_id,
+                cargo_ref = p_data.p_cargo_ref,
+                reason = p_data.p_reason,
+                circumstances = p_data.p_circumstances,
+                start_at = v_start,
+                end_at = v_end,
+                dur_days = v_dd,
+                dur_hours = v_dh,
+                dur_total_h = v_th,
+                cal_days = v_cd,
+                linked_start_id = p_data.p_linked_start_id,
+                modified_at = sysdate,
+                modified_by = p_data.p_user_id
+          where id = v_id;
 
          delete from xx_disl_gu23_act_row
           where act_id = v_id;
          delete from xx_disl_gu23_signer
           where act_id = v_id;
       end if;
-
+      
       -- разбираем вагоны
-      for w in (
-         select *
-           from table ( parse_wagon_clob(p_data.p_wagons) )
-      ) loop
-         if p_data.p_type in ( 'start',
-                               'other' ) then
+      for w in ( select * from table(parse_wagon_clob(p_data.p_wagons)) ) loop
+         if p_data.p_type in ( 'start', 'other' ) then
             -- данные по вагону из дислокации
             begin
-               select owner,
-                      kind,
-                      st_from,
-                      st_to,
-                      cargo,
-                      weight
-                 into
-                  vw_owner,
-                  vw_kind,
-                  vw_from,
-                  vw_to,
-                  vw_cargo,
-                  vw_weight
-                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
-                  w.wagon_no,
-                  p_data.p_waybill_no
-               ) )
+               select owner, kind, st_from, st_to, cargo, weight
+                 into vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight
+                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(w.wagon_no, p_data.p_waybill_no) )
                 where rownum = 1;
             exception
                when others then
-                  vw_owner := null;
-                  vw_kind := null;
-                  vw_from := null;
-                  vw_to := null;
-                  vw_cargo := null;
-                  vw_weight := null;
+                  vw_owner := null; vw_kind := null; vw_from := null;
+                  vw_to := null;    vw_cargo := null; vw_weight := null;
             end;
          else
             -- для окончания берём данные из акта начала (уже в CLOB)
-            vw_owner := w.owner;
-            vw_kind := w.kind;
-            vw_from := w.st_from;
-            vw_to := w.st_to;
-            vw_cargo := w.cargo;
-            vw_weight := w.weight;
+            vw_owner := w.owner; vw_kind := w.kind;
+            vw_from  := w.st_from; vw_to := w.st_to;
+            vw_cargo := w.cargo;   vw_weight := w.weight;
          end if;
 
          -- запрет дубля открытого простоя
-         if
-            p_data.p_type = 'start'
-            and p_data.p_status = 'active'
-            and nvl(
-               p_data.p_force,
-               'N'
-            ) <> 'Y'
+         if p_data.p_type = 'start' and p_data.p_status = 'active'
+            and nvl(p_data.p_force, 'N') <> 'Y'
          then
             v_dupnum := null;
             begin
-               select a.act_number
-                 into v_dupnum
-                 from xx_disl_gu23_act a,
-                      xx_disl_gu23_act_row r
-                where r.act_id = a.id
-                  and a.act_type = 'start'
-                  and a.status = 'active'
-                  and a.id <> v_id
-                  and r.wagon_no = w.wagon_no
-                  and rownum = 1;
-            exception
-               when no_data_found then
-                  v_dupnum := null;
+               select a.act_number into v_dupnum
+                 from xx_disl_gu23_act a, xx_disl_gu23_act_row r
+                where r.act_id = a.id and a.act_type = 'start'
+                  and a.status = 'active' and a.id <> v_id
+                  and r.wagon_no = w.wagon_no and rownum = 1;
+            exception when no_data_found then v_dupnum := null;
             end;
             if v_dupnum is not null then
                rollback;
                return format_error('Нельзя создать акт «Начало простоя»: по вагону '
-                                   || w.wagon_no
-                                   || ' уже есть открытый цикл в акте ' || v_dupnum);
+                                   || w.wagon_no || ' уже есть открытый цикл в акте ' || v_dupnum);
             end if;
          end if;
 
          -- проверки для акта окончания
-         if
-            p_data.p_type = 'end'
-            and p_data.p_status = 'active'
-         then
-            select count(*)
-              into v_has_start
+         if p_data.p_type = 'end' and p_data.p_status = 'active' then
+            select count(*) into v_has_start
               from xx_disl_gu23_act_row r
-             where r.act_id = p_data.p_linked_start_id
-               and r.wagon_no = w.wagon_no;
+             where r.act_id = p_data.p_linked_start_id and r.wagon_no = w.wagon_no;
             if v_has_start = 0 then
                rollback;
-               return format_error('Вагон '
-                                   || w.wagon_no || ' не относится к выбранному акту начала');
+               return format_error('Вагон ' || w.wagon_no || ' не относится к выбранному акту начала');
             end if;
 
-            select count(*)
-              into v_has_start
-              from xx_disl_gu23_act e,
-                   xx_disl_gu23_act_row er
-             where er.act_id = e.id
-               and e.act_type = 'end'
-               and e.status = 'active'
+            select count(*) into v_has_start
+              from xx_disl_gu23_act e, xx_disl_gu23_act_row er
+             where er.act_id = e.id and e.act_type = 'end' and e.status = 'active'
                and e.linked_start_id = p_data.p_linked_start_id
-               and e.id <> v_id
-               and er.wagon_no = w.wagon_no;
+               and e.id <> v_id and er.wagon_no = w.wagon_no;
             if v_has_start > 0 then
                rollback;
-               return format_error('Вагон '
-                                   || w.wagon_no || ' уже закрыт другим актом окончания');
+               return format_error('Вагон ' || w.wagon_no || ' уже закрыт другим актом окончания');
             end if;
          end if;
 
-         declare
-            v_arow xx_disl_gu23_act_row%rowtype;
-         begin
-            v_arow.id       := xx_disl_gu23_act_row_seq.nextval;
-            v_arow.act_id   := v_id;
-            v_arow.wagon_no := w.wagon_no;
-            v_arow.owner    := vw_owner;
-            v_arow.kind     := vw_kind;
-            v_arow.st_from  := vw_from;
-            v_arow.st_to    := vw_to;
-            v_arow.cargo    := vw_cargo;
-            v_arow.weight   := vw_weight;
-            insert_act_row(v_arow);
-         end;
+         insert into xx_disl_gu23_act_row (
+            id, act_id, wagon_no, owner, kind, st_from, st_to, cargo, weight
+         ) values (
+            xx_disl_gu23_act_row_seq.nextval,
+            v_id, w.wagon_no, vw_owner, vw_kind, vw_from, vw_to, vw_cargo, vw_weight
+         );
          v_wcnt := v_wcnt + 1;
       end loop;
 
@@ -1563,18 +1482,21 @@ create or replace package body xx_disl_gu23_pkg as
             continue;
          end if;
          v_ord := v_ord + 1;
-         declare
-            v_srow xx_disl_gu23_signer%rowtype;
-         begin
-            v_srow.id            := xx_disl_gu23_signer_seq.nextval;
-            v_srow.act_id        := v_id;
-            v_srow.signer_ref_id := vs_ref_id;
-            v_srow.fio           := vs_fio;
-            v_srow.post          := vs_post;
-            v_srow.org           := vs_org;
-            v_srow.ord_no        := v_ord;
-            insert_signer(v_srow);
-         end;
+         insert into xx_disl_gu23_signer (
+            id,
+            act_id,
+            signer_ref_id,
+            fio,
+            post,
+            org,
+            ord_no
+         ) values ( xx_disl_gu23_signer_seq.nextval,
+                    v_id,
+                    vs_ref_id,
+                    vs_fio,
+                    vs_post,
+                    vs_org,
+                    v_ord );
       end loop;
 
       -- закрытие циклов акта начала: частичное/полное
@@ -1636,14 +1558,14 @@ create or replace package body xx_disl_gu23_pkg as
                      when p_data.p_status = 'draft' then
                         'Акт создан (черновик)'
                      else
-                        'Акт создан и оформлен'
+                        'Акт создан и заведён'
                   end
             else
                case
                   when p_data.p_status = 'draft' then
                         'Черновик изменён'
                   else
-                     'Акт изменён / оформлен'
+                     'Акт изменён / заведён'
                end
          end;
 
@@ -1664,8 +1586,6 @@ create or replace package body xx_disl_gu23_pkg as
          rollback;
          return format_error();
    end;
-
-   -- ---- удаление и аннулирование ----
 
    function gu23_del_act (
       p_data in t_gu23_del_act
@@ -1713,7 +1633,7 @@ create or replace package body xx_disl_gu23_pkg as
              modified_at = sysdate,
              modified_by = p_data.p_user_id
        where id = p_data.p_id;
-
+       
       -- при аннулировании акта окончания — снова открываем связанный акт начала
       if
          v_type = 'end'
@@ -1743,8 +1663,9 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end;
 
-   -- ---- поиск станций ----
-
+   -- ----------------------------------------------------------------
+   -- поиск станций
+   -- ----------------------------------------------------------------
    function gu23_search_station (
       p_q in varchar2
    ) return xx_disl_gu23_ref_tab
@@ -1772,6 +1693,120 @@ create or replace package body xx_disl_gu23_pkg as
          pipe row ( l_row );
       end loop;
       return;
+   end;
+   -- ----------------------------------------------------------------
+   -- согласование актов
+   -- ----------------------------------------------------------------
+
+   function gu23_approval_get_name (
+      p_id in number
+   ) return varchar2 is
+   begin
+      return g_user_name(p_id);
+   end;
+
+   function gu23_approval_by_sig (
+      p_sig in varchar2
+   ) return varchar2 is
+      v_status  varchar2(16);
+      v_decided varchar2(20);
+   begin
+      select status,
+             to_char(decided_at, 'DD.MM.YYYY HH24:MI')
+        into v_status,
+             v_decided
+        from xx_disl_gu23_approval
+       where token_sig = p_sig;
+
+      return v_status
+             || c_us
+             || nvl(v_decided, '');
+   exception
+      when no_data_found then
+         return null;
+   end;
+
+   function gu23_approval_request (
+      p_act_id       in number,
+      p_approver_id  in number,
+      p_requested_by in number,
+      p_token_sig    in varchar2
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_approval (
+         id,
+         act_id,
+         approver_id,
+         status,
+         requested_at,
+         requested_by,
+         token_sig
+      ) values (
+         xx_disl_gu23_approval_seq.nextval,
+         p_act_id,
+         p_approver_id,
+         'pending',
+         sysdate,
+         p_requested_by,
+         p_token_sig
+      );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
+   end;
+
+   function gu23_approval_save_decision (
+      p_act_id      in number,
+      p_approver_id in number,
+      p_status      in varchar2,
+      p_comment     in varchar2,
+      p_token_sig   in varchar2
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_approval
+       where token_sig = p_token_sig;
+
+      if v_cnt > 0 then
+         update xx_disl_gu23_approval
+            set status     = p_status,
+                comment    = p_comment,
+                decided_at = sysdate
+          where token_sig = p_token_sig;
+      else
+         insert into xx_disl_gu23_approval (
+            id,
+            act_id,
+            approver_id,
+            status,
+            comment,
+            requested_at,
+            requested_by,
+            decided_at,
+            token_sig
+         ) values (
+            xx_disl_gu23_approval_seq.nextval,
+            p_act_id,
+            p_approver_id,
+            p_status,
+            p_comment,
+            sysdate,
+            p_approver_id,
+            sysdate,
+            p_token_sig
+         );
+      end if;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
    end;
 
 end xx_disl_gu23_pkg;
