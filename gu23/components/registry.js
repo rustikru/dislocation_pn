@@ -18,7 +18,8 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
-  const filterState = { q: '', type: '', status: '', dept: '' }
+  const filterState = { q: '', type: '', status: '', dept: '', page: 1 }
+  const PAGE_SIZE = 50
   let searchTimeout = null
 
   // Создание фильтров
@@ -32,6 +33,7 @@ export function showArchive(container) {
     const $select = $('<select class="inp">' + optionsHtml + '</select>')
     $select.on('change', (e) => {
       filterState[key] = e.target.value
+      filterState.page = 1
       loadArchiveData()
     })
     $('#archive-filters').append($select)
@@ -59,14 +61,17 @@ export function showArchive(container) {
   // Поиск с задержкой
   $('#search-input').on('input', function () {
     filterState.q = $(this).val().trim()
+    filterState.page = 1
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(loadArchiveData, 250)
   })
 
   // Загрузка и отрисовка таблицы
   function loadArchiveData() {
-    sendApiRequest('gu23_get_acts', filterState).done((list) => {
-      const acts = list || []
+    sendApiRequest('gu23_get_acts', filterState).done((resp) => {
+      const acts = (resp && resp.acts) ? resp.acts : (Array.isArray(resp) ? resp : [])
+      const total = (resp && resp.total) ? resp.total : acts.length
+      const page  = (resp && resp.page)  ? resp.page  : 1
 
       // Построение дерева связей
       const rootActs = []
@@ -164,6 +169,18 @@ export function showArchive(container) {
           '<tr><td colspan="9" class="muted" style="padding:24px;text-align:center">Актов не найдено</td></tr>'
       }
 
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+      const pagerBtns = []
+      if (page > 1) pagerBtns.push('<button class="btn sm ghost pager-btn" data-p="' + (page - 1) + '">←</button>')
+      for (let p = 1; p <= totalPages; p++) {
+        if (totalPages <= 7 || Math.abs(p - page) <= 2 || p === 1 || p === totalPages) {
+          pagerBtns.push('<button class="btn sm' + (p === page ? '' : ' ghost') + ' pager-btn" data-p="' + p + '">' + p + '</button>')
+        } else if (pagerBtns[pagerBtns.length - 1] !== '…') {
+          pagerBtns.push('…')
+        }
+      }
+      if (page < totalPages) pagerBtns.push('<button class="btn sm ghost pager-btn" data-p="' + (page + 1) + '">→</button>')
+
       const tableHtml =
         '<div style="overflow:auto">' +
         '<table class="tbl" id="archive-tree-table">' +
@@ -185,13 +202,18 @@ export function showArchive(container) {
         '</tbody>' +
         '</table>' +
         '</div>' +
-        '<div class="cardpad muted" style="border-top:1px solid var(--line);font-size:12px">' +
-        'Найдено актов: ' +
-        acts.length +
-        '' +
+        '<div class="cardpad" style="border-top:1px solid var(--line);font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+        '<span class="muted">Всего: ' + total + '</span>' +
+        '<div style="flex:1"></div>' +
+        pagerBtns.join('') +
         '</div>'
 
       $('#acts-table-container').html(tableHtml)
+
+      $('#acts-table-container').off('click', '.pager-btn').on('click', '.pager-btn', function () {
+        filterState.page = parseInt($(this).data('p'))
+        loadArchiveData()
+      })
 
       $('#archive-tree-table tbody').on('click', 'tr', function (e) {
         const $tr = $(this)

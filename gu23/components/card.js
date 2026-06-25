@@ -291,13 +291,15 @@ function showAttachmentsBlock(act, files) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
   const addBtn = isAnnulled ? '' : `
-    <div style="display:flex;gap:6px">
-      <label class="btn sm ghost" style="cursor:pointer;font-size:12px">
-        ＋ Общий
+    <div style="display:flex;gap:4px">
+      <label title="Прикрепить общий файл" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--ink2);line-height:1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        Общий
         <input type="file" multiple class="file-cat-input" data-cat="general" style="display:none" accept="${accept}">
       </label>
-      <label class="btn sm ghost" style="cursor:pointer;font-size:12px">
-        ＋ Подписанный
+      <label title="Прикрепить подписанный файл" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--ink2);line-height:1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Подписан.
         <input type="file" multiple class="file-cat-input" data-cat="signed" style="display:none" accept="${accept}">
       </label>
     </div>
