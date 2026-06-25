@@ -60,6 +60,7 @@ if ($auth->isAuth()) {
         exit();
     }
 } else {
+    $_SESSION['redirect_after_login'] = '/gu23/index.php';
     header("location: /index.php");
     exit();
 }

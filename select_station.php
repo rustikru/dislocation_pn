@@ -9,7 +9,9 @@
             $auth->setStation(filter_input(INPUT_POST,'station_id'), filter_input(INPUT_POST,'station'));
         }
         if ($auth->getStationId() !== null){
-            header("location: /main.php");
+            $redirect = $_SESSION['redirect_after_login'] ?? '/main.php';
+            unset($_SESSION['redirect_after_login']);
+            header("location: " . $redirect);
             exit();
         } else {
             $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
