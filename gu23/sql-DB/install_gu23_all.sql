@@ -13,6 +13,11 @@ begin
             'XX_DISL_GU23_SIGNER',
             'XX_DISL_GU23_COUNTER',
             ---
+            'xx_disl_gu23_roles',
+            'xx_disl_gu23_permissions',
+            'xx_disl_gu23_user_roles',
+            'xx_disl_gu23_role_permissions',
+            ---
             'XX_DISL_GU23_REF_REASON',
             'XX_DISL_GU23_REF_SIGNER'
          ) )
@@ -28,6 +33,10 @@ begin
             'XX_DISL_GU23_HIST_SEQ',
             'XX_DISL_GU23_SIGNER_SEQ',
             'XX_DISL_GU23_COUNTER_SEQ',
+            ---
+            'xx_disl_gu23_roles_seq',
+            'xx_disl_gu23_permissions_seq',
+
             ----
             'XX_DISL_GU23_REF_SIGNER_SEQ',
             'XX_DISL_GU23_REF_REASON_SEQ'
@@ -288,6 +297,115 @@ create or replace force editionable view "XX_ETW"."XX_DISL_GU23_ACT_V" (
    on sst.st_code = a.st_to_id
      left join xx_disl_gu23_ref_reason grr
    on a.reason = to_char(grr.id);
+
+-- =====================================================================
+--  Права и доступы
+-- =====================================================================
+
+-- =====================================================================
+-- 1. Таблица ROLES (Справочник ролей)
+-- =====================================================================
+create table xx_disl_gu23_roles (
+   role_id   number not null,
+   role_code varchar2(50) not null,
+   role_name varchar2(100) not null,
+   constraint xx_gu23_roles_pk primary key ( role_id ),
+   constraint xx_gu23_roles_uk unique ( role_code )
+);
+
+comment on table xx_disl_gu23_roles is
+   'Справочник ролей системы';
+comment on column xx_disl_gu23_roles.role_code is
+   'Уникальный код роли (например, SYS_ADMIN, SHOP_USER)';
+
+-- Sequence: XX_DISL_GU23_ROLES_SEQ
+create sequence xx_disl_gu23_roles_seq start with 1 increment by 1;
+
+create or replace trigger xx_disl_gu23_roles_trg before
+   insert on xx_disl_gu23_roles
+   for each row
+begin
+   if :new.role_id is null then
+      select xx_disl_gu23_roles_seq.nextval
+        into :new.role_id
+        from dual;
+   end if;
+end;
+
+
+-- =====================================================================
+-- 2. Таблица PERMISSIONS (Справочник атомарных прав)
+-- =====================================================================
+create table xx_disl_gu23_permissions (
+   perm_id     number not null,
+   perm_code   varchar2(50) not null,
+   description varchar2(255),
+   constraint xx_gu23_perm_pk primary key ( perm_id ),
+   constraint xx_gu23_perm_uk unique ( perm_code )
+);
+
+comment on table xx_disl_gu23_permissions is
+   'Справочник атомарных действий/прав';
+comment on column xx_disl_gu23_permissions.perm_code is
+   'Код действия (например, CREATE_ACT, SIGN_ACT)';
+
+-- Sequence: XX_DISL_GU23_PERMISSIONS_SEQ
+create sequence xx_disl_gu23_permissions_seq start with 1 increment by 1;
+
+create or replace trigger xx_disl_gu23_permissions_trg before
+   insert on xx_disl_gu23_permissions
+   for each row
+begin
+   if :new.perm_id is null then
+      select xx_disl_gu23_permissions_seq.nextval
+        into :new.perm_id
+        from dual;
+   end if;
+end;
+/
+
+-- =====================================================================
+-- 3. Таблица USER_ROLES (Привязка пользователей к ролям)
+-- =====================================================================
+-- SEQUENCE НЕ ТРЕБУЕТСЯ: используется составной PK (user_id, role_id)
+create table xx_disl_gu23_user_roles (
+   user_id number not null,
+   role_id number not null,
+   constraint xx_gu23_usr_rol_pk primary key ( user_id,
+                                               role_id ),
+   constraint xx_gu23_ur_rol_fk foreign key ( role_id )
+      references xx_disl_gu23_roles ( role_id )
+         on delete cascade
+    
+    -- ВАЖНО: Раскомментируйте и укажите вашу таблицу пользователей
+         ,
+   constraint xx_gu23_ur_usr_fk foreign key ( user_id )
+      references xx_disl_users ( id )
+         on delete cascade
+);
+
+comment on table xx_disl_gu23_user_roles is
+   'Связь многие-ко-многим: Пользователи и их Роли';
+
+-- =====================================================================
+-- 4. Таблица ROLE_PERMISSIONS (Матрица доступа: Роли и Права)
+-- =====================================================================
+-- SEQUENCE НЕ ТРЕБУЕТСЯ: используется составной PK (role_id, perm_id)
+create table xx_disl_gu23_role_permissions (
+   role_id number not null,
+   perm_id number not null,
+   constraint xx_gu23_rol_prm_pk primary key ( role_id,
+                                               perm_id ),
+   constraint xx_gu23_rp_rol_fk foreign key ( role_id )
+      references xx_disl_gu23_roles ( role_id )
+         on delete cascade,
+   constraint xx_gu23_rp_prm_fk foreign key ( perm_id )
+      references xx_disl_gu23_permissions ( perm_id )
+         on delete cascade
+);
+
+comment on table xx_disl_gu23_role_permissions is
+   'Связь многие-ко-многим: Роли и разрешенные им действия';
 
 -- =====================================================================
 --  КОММЕНТАРИИ К ТАБЛИЦАМ И ПОЛЯМ

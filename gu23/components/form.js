@@ -99,6 +99,12 @@ function showFormFields() {
       `<input class="inp datetime-inp" id="inp-endAt" placeholder="ддммгг ччмм" value="${activeDraft.endAt}">`,
       true,
     )
+  } else if (activeDraft.type === 'other') {
+    dateRowHtml = showFormField(
+      'Дата и время составления простоя',
+      `<input class="inp datetime-inp" id="inp-startAt" placeholder="ддммгг ччмм" value="${activeDraft.startAt}">`,
+      true,
+    )
   }
 
   if (dateRowHtml) {
@@ -665,7 +671,7 @@ function showSignersFields() {
   //const ownFiltered = references.signersOwnList || []
   const ownFiltered = (references.signersOwnList || []).filter(
     // Фильтрация по цеху составления
-    (s) => !cex || !s.UNIT || s.UNIT.includes(cex),
+    (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
   )
 
   for (let i = 0; i < countNeeded; i++) {
@@ -819,6 +825,8 @@ function validateForm(checkSigners) {
 
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
+  if (activeDraft.type === 'others' && !activeDraft.startAt)
+    errors.push('Не указана дата составления простоя')
   if (activeDraft.type === 'end') {
     if (!activeDraft.linkedStartId)
       errors.push('Не выбран открытый акт начала простоя')
@@ -832,7 +840,7 @@ function validateForm(checkSigners) {
       errors.push('Дата окончания меньше даты начала')
     }
   }
-
+  // Проверка подписантов
   if (checkSigners) {
     const needed = activeDraft.type === 'other' ? 2 : 3
     const filled = activeDraft.signers.filter((s) => {
@@ -845,7 +853,7 @@ function validateForm(checkSigners) {
   }
   return errors
 }
-
+// Созраняем акт в БД
 function saveActToServer(status, skipWarning = false) {
   const errors =
     status === 'active'
@@ -855,6 +863,7 @@ function saveActToServer(status, skipWarning = false) {
         : ['Не указан цех']
   if (errors.length) return showToast(errors[0], 'err')
 
+  // Карточка Акта со всякими атрибутами и конфигами
   const payload = {
     id: activeDraft.id || 0,
     type: activeDraft.type,
