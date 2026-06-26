@@ -30,10 +30,12 @@ class GuActRepository
             return false;
         }
         $st = oci_parse($conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_can_access(:uid); END;');
+        if (!$st) { return false; }
         $result = null;
         oci_bind_by_name($st, ':r', $result, 2);
         oci_bind_by_name($st, ':uid', $userId);
-        oci_execute($st);
+        $ok = @oci_execute($st);
+        if (!$ok) { return false; }
         return $result === 'Y';
     }
 
