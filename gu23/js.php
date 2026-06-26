@@ -19,11 +19,12 @@ $files = [
 
 foreach ($files as $file) {
     $lines = file($file, FILE_IGNORE_NEW_LINES);
+    $output = [];
     $inImport = false;
     foreach ($lines as $line) {
         $trimmed = ltrim($line);
         if ($inImport) {
-            if (strpos($line, '} from') !== false || strpos($line, "} from") !== false) {
+            if (strpos($line, '} from') !== false) {
                 $inImport = false;
             }
             continue;
@@ -35,7 +36,10 @@ foreach ($files as $file) {
             continue;
         }
         $line = preg_replace('/\bexport\s+(function|const|let|var|class)\b/', '$1', $line);
-        echo $line . "\n";
+        $output[] = $line;
     }
-    echo "\n";
+    // Оборачиваем в IIFE — изолируем const/let от других файлов
+    echo ";(function(){\n";
+    echo implode("\n", $output);
+    echo "\n})();\n\n";
 }
