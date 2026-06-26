@@ -495,11 +495,11 @@ class GuActRepository
 
         $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
         $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org', 'stype']); // field 5 = stype
-        Gu23Logger::debug('signer_clob', [
+        /*Gu23Logger::debug('signer_clob', [
             'count' => count($signers),
             'stypes' => array_map(fn($s) => $s['stype'] ?? '(no stype)', $signers),
             'clob' => substr($signerClob, 0, 400),
-        ]);
+        ]);*/
 
         $id = (int) filter_input(INPUT_POST, 'id');
         $type = filter_input(INPUT_POST, 'type');
