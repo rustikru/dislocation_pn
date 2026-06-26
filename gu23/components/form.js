@@ -674,6 +674,22 @@ function showSignersFields() {
     (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
   )
 
+  // Автоподстановка: для нового акта слот 0 заполняем текущим пользователем
+  if (!activeDraft.id && !activeDraft.signers[0]) {
+    const myId = (window.GU23_SESSION || {}).user_id
+    const me = myId ? ownFiltered.find((s) => String(s.ID) === String(myId)) : null
+    if (me) {
+      activeDraft.signers[0] = {
+        id: me.ID,
+        fio: me.FIO,
+        post: me.POST,
+        org: me.ORG,
+        manual: false,
+        stype: 'own',
+      }
+    }
+  }
+
   for (let i = 0; i < countNeeded; i++) {
     let signersList = []
     let helpText = ''
@@ -690,6 +706,11 @@ function showSignersFields() {
         helpText = 'Работник станции ОАО «РЖД»'
       }
     }
+
+    // ID подписантов, уже выбранных в других слотах (чтобы исключить дубли)
+    const usedIds = activeDraft.signers
+      .map((s, idx) => (idx !== i && s && !s.manual ? String(s.id) : null))
+      .filter(Boolean)
 
     const signer = activeDraft.signers[i]
     const isManual = signer && signer.manual === true
@@ -712,6 +733,7 @@ function showSignersFields() {
       `
     } else {
       const optionsHtml = signersList
+        .filter((s) => !usedIds.includes(String(s.ID)) || (signer && String(signer.id) === String(s.ID)))
         .map(
           (s) =>
             `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
@@ -772,6 +794,8 @@ function showSignersFields() {
           stype: stype,
         }
       : null
+    // перерисовываем, чтобы обновить доступные варианты в других слотах
+    showSignersFields()
   })
 
   $('.signer-fio, .signer-post, .signer-org').on('input', function () {
