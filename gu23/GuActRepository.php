@@ -7,10 +7,16 @@
 
 // Fallback для серверов без mbstring
 if (!function_exists('mb_strtoupper')) {
-    function mb_strtoupper(string $s, ?string $enc = null): string { return strtoupper($s); }
+    function mb_strtoupper(string $s, ?string $enc = null): string
+    {
+        return strtoupper($s);
+    }
 }
 if (!function_exists('mb_strlen')) {
-    function mb_strlen(string $s, ?string $enc = null): int { return strlen($s); }
+    function mb_strlen(string $s, ?string $enc = null): int
+    {
+        return strlen($s);
+    }
 }
 
 require_once __DIR__ . '/Gu23Logger.php';
@@ -45,12 +51,16 @@ class GuActRepository
             return false;
         }
         $st = oci_parse($conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_can_access(:uid); END;');
-        if (!$st) { return false; }
+        if (!$st) {
+            return false;
+        }
         $result = null;
         oci_bind_by_name($st, ':r', $result, 2);
         oci_bind_by_name($st, ':uid', $userId);
         $ok = @oci_execute($st);
-        if (!$ok) { return false; }
+        if (!$ok) {
+            return false;
+        }
         return $result === 'Y';
     }
 
@@ -100,9 +110,9 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
-        ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
+        ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
         ob_start();
-        Gu23Logger::info('action', ['action' => $action]);
+        //Gu23Logger::info('action', ['action' => $action]);
         try {
             switch ($action) {
                 case 'gu23_get_refs':
@@ -456,9 +466,9 @@ class GuActRepository
         $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
         $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org', 'stype']); // field 5 = stype
         Gu23Logger::debug('signer_clob', [
-            'count'  => count($signers),
+            'count' => count($signers),
             'stypes' => array_map(fn($s) => $s['stype'] ?? '(no stype)', $signers),
-            'clob'   => substr($signerClob, 0, 400),
+            'clob' => substr($signerClob, 0, 400),
         ]);
 
         $id = (int) filter_input(INPUT_POST, 'id');
@@ -1071,9 +1081,9 @@ end;';
             return;
         }
 
-        $search  = trim((string) (filter_input(INPUT_POST, 'search') ?? '')) ?: null;
-        $page    = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
-        $limit   = 20;
+        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? '')) ?: null;
+        $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit = 20;
 
         $rows = $this->pipe(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_users_roles_get(:b1))',
@@ -1086,32 +1096,32 @@ end;';
             $uid = $row['USER_ID'];
             if (!isset($usersMap[$uid])) {
                 $usersMap[$uid] = [
-                    'id'        => $uid,
-                    'login'     => $row['LOGIN'],
+                    'id' => $uid,
+                    'login' => $row['LOGIN'],
                     'full_name' => $row['FULL_NAME'],
-                    'roles'     => [],
+                    'roles' => [],
                 ];
             }
             if ($row['ROLE_ID']) {
                 $usersMap[$uid]['roles'][] = [
-                    'role_id'   => $row['ROLE_ID'],
+                    'role_id' => $row['ROLE_ID'],
                     'role_code' => $row['ROLE_CODE'],
                     'role_name' => $row['ROLE_NAME'],
                 ];
             }
         }
 
-        $all    = array_values($usersMap);
-        $total  = count($all);
-        $users  = array_slice($all, ($page - 1) * $limit, $limit);
-        $roles  = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
+        $all = array_values($usersMap);
+        $total = count($all);
+        $users = array_slice($all, ($page - 1) * $limit, $limit);
+        $roles = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
 
         echo json_encode([
-            'ok'        => true,
-            'users'     => $users,
-            'roles'     => $roles,
-            'total'     => $total,
-            'page'      => $page,
+            'ok' => true,
+            'users' => $users,
+            'roles' => $roles,
+            'total' => $total,
+            'page' => $page,
             'page_size' => $limit,
         ]);
     }

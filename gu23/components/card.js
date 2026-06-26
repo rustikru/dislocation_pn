@@ -140,7 +140,6 @@ function showDetailsBlock(act) {
     { l: 'Ст. назначения', v: act.ST_TO },
     { l: 'Груз', v: act.CARGO_REF },
     { l: 'Причина', v: act.REASON_NAME },
-    { l: 'Дата составления', v: formatDateTime(act.CREATED_AT) },
   ]
 
   let dlHtml = rows
@@ -151,7 +150,7 @@ function showDetailsBlock(act) {
   if (act.ACT_TYPE !== 'other') {
     dlHtml += `<dt>Начало простоя</dt><dd class="mono">${formatDateTime(act.START_AT)}</dd>`
   }
-  if (act.ACT_TYPE == 'other') {
+  if (act.ACT_TYPE === 'other') {
     dlHtml += `<dt>Начало составления акта</dt><dd class="mono">${formatDateTime(act.START_AT)}</dd>`
   }
   if (act.ACT_TYPE === 'end') {
@@ -166,6 +165,7 @@ function showDetailsBlock(act) {
   }
 
   dlHtml += `<dt>Обстоятельства</dt><dd>${escapeHtml(act.CIRCUMSTANCES)}</dd>`
+  dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
   $('#card-left-column')

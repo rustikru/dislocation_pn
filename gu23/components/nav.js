@@ -39,7 +39,7 @@ export function drawNav() {
 
   const $foot = $('<div class="foot"></div>')
 
-  // Показываем текущего пользователя (данные из PHP-сессии)
+  // Показываем текущего пользователя
   const sess = window.GU23_SESSION || {}
   if (sess.login) {
     const $user = $(`
@@ -57,7 +57,7 @@ export function drawNav() {
     <form method="post" action="index.php" style="margin-top:4px">
       <input type="hidden" name="logout" value="1">
       <button type="submit" class="navbtn" style="color:var(--rej);width:100%">
-        <span class="ic">⏏</span>
+        <span class="ic"></span>
         <span>Выход</span>
       </button>
     </form>
