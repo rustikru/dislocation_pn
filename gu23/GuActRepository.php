@@ -115,91 +115,100 @@ class GuActRepository
         //Gu23Logger::info('action', ['action' => $action]);
         try {
             switch ($action) {
-                case 'gu23_get_refs':
+
+                // --- чтение: форма создания акта ---
+                case 'gu23_get_refs':           // справочники для формы (цеха, станции, подписанты, причины)
                     $this->getRefs();
                     break;
-                case 'gu23_get_acts':
+                case 'gu23_get_acts':           // реестр актов с фильтрами
                     $this->getActs();
                     break;
-                case 'gu23_get_act':
+                case 'gu23_get_act':            // карточка одного акта
                     $this->getActCard();
                     break;
-                case 'gu23_get_open_starts':
+                case 'gu23_get_open_starts':    // открытые акты начала (для выбора в акте окончания)
                     $this->getOpenStarts();
                     break;
-                case 'gu23_get_by_wagon':
+                case 'gu23_get_by_wagon':       // акты по номеру вагона
                     $this->getByWagon();
                     break;
-                case 'gu23_get_wagon_info':
+                case 'gu23_get_wagon_info':     // данные вагонов из внешней дислокации
                     $this->getWagonInfo();
                     break;
-                case 'gu23_save_act':
-                    $this->saveAct();
-                    break;
-                case 'gu23_del_act':
-                    $this->delAct();
-                    break;
-                case 'gu23_annul_act':
-                    $this->annulAct();
-                    break;
-                case 'gu23_upload_file':
-                    $this->uploadFile();
-                    break;
-                case 'gu23_del_file':
-                    $this->delFile();
-                    break;
-                case 'gu23_search_station':
+                case 'gu23_search_station':     // поиск станции (autocomplete, мин. 3 символа)
                     $this->searchStation();
                     break;
-                case 'gu23_send_approval':
-                    $this->sendApproval();
+
+                // --- запись: акты ---
+                case 'gu23_save_act':           // создание / правка акта (вместе с вагонами и подписантами)
+                    $this->saveAct();
                     break;
-                case 'gu23_approve_in_app':
-                    $this->approveInApp();
+                case 'gu23_del_act':            // удаление черновика
+                    $this->delAct();
                     break;
-                case 'gu23_close_act':
+                case 'gu23_annul_act':          // аннулирование акта (с каскадом на связанный)
+                    $this->annulAct();
+                    break;
+                case 'gu23_close_act':          // закрытие акта типа 'end'
                     $this->closeAct();
                     break;
-                // начало - Справочники
-                case 'gu23_resend_approval':
+
+                // --- файлы ---
+                case 'gu23_upload_file':        // загрузка вложения к акту
+                    $this->uploadFile();
+                    break;
+                case 'gu23_del_file':           // удаление вложения
+                    $this->delFile();
+                    break;
+
+                // --- согласование ---
+                case 'gu23_send_approval':      // отправка запросов на согласование всем подписантам
+                    $this->sendApproval();
+                    break;
+                case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
                     $this->resendApproval();
                     break;
-                case 'gu23_refs_get_all':
+                case 'gu23_approve_in_app':     // подписание/отклонение прямо из интерфейса
+                    $this->approveInApp();
+                    break;
+
+                // --- справочники (администрирование) ---
+                case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском и пагинацией
                     $this->refsGetAll();
                     break;
-                case 'gu23_ref_signer_save':
+                case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
                     $this->refSignerSave();
                     break;
-                case 'gu23_ref_signer_toggle':
+                case 'gu23_ref_signer_toggle':  // включить / отключить подписанта РЖД
                     $this->refSignerToggle();
                     break;
-                case 'gu23_ref_reason_save':
+                case 'gu23_ref_reason_save':    // создать / обновить причину
                     $this->refReasonSave();
                     break;
-                case 'gu23_ref_reason_toggle':
+                case 'gu23_ref_reason_toggle':  // включить / отключить причину
                     $this->refReasonToggle();
                     break;
-                // конец - Справочники
-                // Роли
-                case 'gu23_roles_users':
+
+                // --- роли и полномочия ---
+                case 'gu23_roles_users':        // пользователи с назначенными ролями (пагинация)
                     $this->rolesUsers();
                     break;
-                case 'gu23_role_assign':
+                case 'gu23_role_assign':        // назначить роль пользователю
                     $this->roleAssign();
                     break;
-                case 'gu23_role_revoke':
+                case 'gu23_role_revoke':        // отозвать роль у пользователя
                     $this->roleRevoke();
                     break;
-                case 'gu23_role_perms':
+                case 'gu23_role_perms':         // матрица полномочий всех ролей
                     $this->rolePerms();
                     break;
-                case 'gu23_perm_assign':
+                case 'gu23_perm_assign':        // добавить полномочие роли
                     $this->permAssign();
                     break;
-                case 'gu23_perm_revoke':
+                case 'gu23_perm_revoke':        // убрать полномочие у роли
                     $this->permRevoke();
                     break;
-                // конец - Роли
+
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -297,6 +306,8 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* справочники                                                        */
     /* ----------------------------------------------------------------- */
+
+    /** Все справочники для формы: цеха, станции, причины, подписанты, флаг isAdmin. */
     private function getRefs(): void
     {
         echo json_encode([
@@ -316,6 +327,8 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* акты — чтение                                                      */
     /* ----------------------------------------------------------------- */
+
+    /** Реестр актов с фильтрами; пагинация на стороне PHP. */
     private function getActs(): void
     {
         $q = filter_input(INPUT_POST, 'q') ?: null;
@@ -344,6 +357,7 @@ class GuActRepository
         echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
     }
 
+    /** Карточка одного акта: реквизиты, вагоны, файлы, подписанты, история, статус согласования. */
     private function getActCard(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
@@ -385,6 +399,7 @@ class GuActRepository
         ]);
     }
 
+    /** Открытые акты начала простоя с ещё не закрытыми вагонами. */
     private function getOpenStarts(): void
     {
         $acts = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_open_starts())');
@@ -398,6 +413,7 @@ class GuActRepository
         echo json_encode($acts);
     }
 
+    /** Все акты по номеру вагона. */
     private function getByWagon(): void
     {
         $wagon = trim((string) filter_input(INPUT_POST, 'wagon'));
@@ -410,6 +426,8 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* Грузим данные из внешней дислокации в таблицу                     */
     /* ----------------------------------------------------------------- */
+
+    /** Данные вагонов из внешней дислокации (номер, собственник, маршрут, груз). */
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
@@ -437,6 +455,7 @@ class GuActRepository
         echo json_encode($rows);
     }
 
+    /** Поиск станции по вхождению подстроки (autocomplete, мин. 3 символа). */
     private function searchStation(): void
     {
         $q = (string) filter_input(INPUT_POST, 'q');
@@ -453,6 +472,8 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* акты — запись                                                      */
     /* ----------------------------------------------------------------- */
+
+    /** Создание или обновление акта. Вагоны и подписанты передаются CLOB-ом через packRows. */
     private function saveAct(): void
     {
         if (!$this->hasPerm('CREATE_ACT')) {
@@ -540,6 +561,7 @@ class GuActRepository
         $this->emitResult($res);
     }
 
+    /** Удаление черновика. Зарегистрированные акты удалить нельзя. */
     private function delAct(): void
     {
         if (!$this->hasPerm('DELETE_ACT')) {
@@ -564,6 +586,7 @@ class GuActRepository
         $this->emitResult($res);
     }
 
+    /** Аннулирование с каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
     private function annulAct(): void
     {
         if (!$this->hasPerm('ANNUL_ACT')) {
@@ -594,6 +617,8 @@ end;';
     /* ----------------------------------------------------------------- */
     /* файлы                                                              */
     /* ----------------------------------------------------------------- */
+
+    /** Загрузка файлов-вложений. Физически кладёт файл в request_data/{type}/{act_id}/, регистрирует в БД. */
     private function uploadFile(): void
     {
         $actId = (int) filter_input(INPUT_POST, 'act_id');
@@ -676,6 +701,7 @@ end;';
         echo json_encode(['ok' => empty($errors), 'saved' => $saved, 'errors' => $errors]);
     }
 
+    /** Удаление вложения: сначала физический файл, потом запись в БД через пакет. */
     private function delFile(): void
     {
         $fileId = (int) filter_input(INPUT_POST, 'file_id');
@@ -715,6 +741,8 @@ end;';
     /* ----------------------------------------------------------------- */
     /* подписание акта прямо из интерфейса (без email-ссылки)             */
     /* ----------------------------------------------------------------- */
+
+    /** Подписание или отклонение акта прямо из интерфейса (без перехода по HMAC-ссылке). */
     private function approveInApp(): void
     {
         if (!$this->hasPerm('SIGN_ACT')) {
@@ -749,6 +777,7 @@ end;';
         }
     }
 
+    /** Закрытие акта типа 'end' (active → closed). Только администратор. */
     private function closeAct(): void
     {
         if (!$this->hasPerm('CLOSE_ACT')) {
@@ -766,8 +795,11 @@ end;';
         }
     }
 
-    /* отправка согласования подписантам                                  */
     /* ----------------------------------------------------------------- */
+    /* согласование актов                                                 */
+    /* ----------------------------------------------------------------- */
+
+    /** Инициализация согласования: создаёт pending-записи и рассылает HMAC-ссылки подписантам. */
     private function sendApproval(): void
     {
         if (!$this->hasPerm('SEND_APPROVAL')) {
@@ -846,6 +878,55 @@ end;';
         }
     }
 
+    /** Переотправка ссылки одному конкретному подписанту (обновляет token_sig). */
+    private function resendApproval(): void
+    {
+        if (!$this->hasPerm('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $userId = (int) filter_input(INPUT_POST, 'user_id');
+        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+
+        if (!$actId || !$userId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
+            return;
+        }
+
+        $signers = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :user_id',
+            [':act_id' => $actId, ':user_id' => $userId]
+        );
+
+        if (empty($signers)) {
+            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']);
+            return;
+        }
+
+        $mailer     = $this->loadMailer();
+        $signer     = $signers[0];
+        $approverId = (int) $signer['APPROVER_ID'];
+        $email      = $signer['FAKE_EMAIL'];
+        $fullName   = $signer['FULL_NAME'] ?? '';
+
+        $links = $mailer->generateLinks($actId, $approverId);
+
+        $this->pipe(
+            'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
+            [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
+        );
+        oci_commit($this->conn);
+
+        $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
+        $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+
+        echo json_encode($ok
+            ? ['ok' => true,  'msg' => "Ссылка отправлена: {$email}"]
+            : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
+    }
+
     /* ----------------------------------------------------------------- */
     /* создать ApprovalMailer с нужными настройками                      */
     /* ----------------------------------------------------------------- */
@@ -889,72 +970,50 @@ end;';
     /* Справочники (администрирование)                                    */
     /* ----------------------------------------------------------------- */
 
+    /** Список подписантов РЖД или причин для страницы администрирования справочников. */
     private function refsGetAll(): void
     {
         if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
+        $tab    = filter_input(INPUT_POST, 'tab') ?: 'signers';
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
-        $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
-        $limit = 20;
-        $offset = ($page - 1) * $limit;
-        $srch = '%' . mb_strtoupper($search) . '%';
+        $page   = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit  = 20;
 
         if ($tab === 'signers') {
-            $total = (int) ($this->pipe(
-                'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_signer
-                  WHERE (UPPER(FIO) LIKE :s1 OR UPPER(POST) LIKE :s2
-                      OR UPPER(ORG) LIKE :s3 OR UPPER(UNIT) LIKE :s4)',
-                [':s1' => $srch, ':s2' => $srch, ':s3' => $srch, ':s4' => $srch]
-            )[0]['CNT'] ?? 0);
-            $items = $this->pipe(
-                'SELECT * FROM (
-                   SELECT s.*, ROWNUM rn FROM (
-                     SELECT ID, FIO, POST, ORG, UNIT, ACTIVE
-                       FROM xx_disl_gu23_ref_signer
-                      WHERE (UPPER(FIO) LIKE :s1 OR UPPER(POST) LIKE :s2
-                          OR UPPER(ORG) LIKE :s3 OR UPPER(UNIT) LIKE :s4)
-                      ORDER BY DECODE(ACTIVE,\'Y\',0,1), FIO
-                   ) s WHERE ROWNUM <= :top_rn
-                 ) WHERE rn > :off_rn',
-                [
-                    ':s1' => $srch,
-                    ':s2' => $srch,
-                    ':s3' => $srch,
-                    ':s4' => $srch,
-                    ':top_rn' => $offset + $limit,
-                    ':off_rn' => $offset
-                ]
-            );
+            $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_signers_all())');
+            if ($search !== '') {
+                $s = mb_strtoupper($search);
+                $all = array_values(array_filter($all, fn($r) =>
+                    str_contains(mb_strtoupper((string) ($r['FIO']  ?? '')), $s) ||
+                    str_contains(mb_strtoupper((string) ($r['POST'] ?? '')), $s) ||
+                    str_contains(mb_strtoupper((string) ($r['ORG']  ?? '')), $s) ||
+                    str_contains(mb_strtoupper((string) ($r['UNIT'] ?? '')), $s)
+                ));
+            }
         } else {
-            $total = (int) ($this->pipe(
-                'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_reason WHERE UPPER(NAME) LIKE :s1',
-                [':s1' => $srch]
-            )[0]['CNT'] ?? 0);
-            $items = $this->pipe(
-                'SELECT * FROM (
-                   SELECT s.*, ROWNUM rn FROM (
-                     SELECT ID, NAME, ACT_KIND, ACTIVE
-                       FROM xx_disl_gu23_ref_reason
-                      WHERE UPPER(NAME) LIKE :s1
-                      ORDER BY DECODE(ACTIVE,\'Y\',0,1), NAME
-                   ) s WHERE ROWNUM <= :top_rn
-                 ) WHERE rn > :off_rn',
-                [':s1' => $srch, ':top_rn' => $offset + $limit, ':off_rn' => $offset]
-            );
+            $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
+            if ($search !== '') {
+                $s = mb_strtoupper($search);
+                $all = array_values(array_filter($all, fn($r) =>
+                    str_contains(mb_strtoupper((string) ($r['NAME'] ?? '')), $s)
+                ));
+            }
         }
+
         echo json_encode([
-            'ok' => true,
-            'tab' => $tab,
-            'items' => $items,
-            'total' => $total,
-            'page' => $page,
+            'ok'        => true,
+            'tab'       => $tab,
+            'items'     => array_slice($all, ($page - 1) * $limit, $limit),
+            'total'     => count($all),
+            'page'      => $page,
             'page_size' => $limit,
         ]);
     }
 
+    /** Создать нового или обновить существующего подписанта РЖД (id=0 — новый). */
     private function refSignerSave(): void
     {
         if (!$this->hasPerm('MANAGE_REFS')) {
@@ -975,6 +1034,7 @@ end;';
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
+    /** Переключить флаг active у подписанта РЖД (Y → N или N → Y). */
     private function refSignerToggle(): void
     {
         if (!$this->hasPerm('MANAGE_REFS')) {
@@ -988,6 +1048,7 @@ end;';
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
+    /** Создать новую или обновить существующую причину (id=0 — новая). */
     private function refReasonSave(): void
     {
         if (!$this->hasPerm('MANAGE_REFS')) {
@@ -1006,6 +1067,7 @@ end;';
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
+    /** Переключить флаг active у причины. */
     private function refReasonToggle(): void
     {
         if (!$this->hasPerm('MANAGE_REFS')) {
@@ -1020,60 +1082,10 @@ end;';
     }
 
     /* ----------------------------------------------------------------- */
-    /* переотправка ссылки конкретному подписанту                         */
-    /* ----------------------------------------------------------------- */
-    private function resendApproval(): void
-    {
-        if (!$this->hasPerm('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-
-        $actId = (int) filter_input(INPUT_POST, 'act_id');
-        $userId = (int) filter_input(INPUT_POST, 'user_id');
-        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file';
-
-        if (!$actId || !$userId) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
-            return;
-        }
-
-        $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :user_id',
-            [':act_id' => $actId, ':user_id' => $userId]
-        );
-
-        if (empty($signers)) {
-            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']);
-            return;
-        }
-
-        $mailer = $this->loadMailer();
-        $signer = $signers[0];
-        $approverId = (int) $signer['APPROVER_ID'];
-        $email = $signer['FAKE_EMAIL'];
-        $fullName = $signer['FULL_NAME'] ?? '';
-
-        $links = $mailer->generateLinks($actId, $approverId);
-
-        $this->pipe(
-            'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
-            [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
-        );
-        oci_commit($this->conn);
-
-        $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-        $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
-
-        echo json_encode($ok
-            ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
-            : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
-    }
-
-    /* ----------------------------------------------------------------- */
     /* Управление ролями                                                   */
     /* ----------------------------------------------------------------- */
 
+    /** Список пользователей с их ролями; группировка на PHP, пагинация тоже на PHP. */
     private function rolesUsers(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
@@ -1126,6 +1138,7 @@ end;';
         ]);
     }
 
+    /** Матрица полномочий: все пары роль × полномочие с флагом has_perm. */
     private function rolePerms(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
@@ -1136,6 +1149,7 @@ end;';
         echo json_encode(['ok' => true, 'rows' => $rows]);
     }
 
+    /** Добавить полномочие роли. */
     private function permAssign(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
@@ -1157,6 +1171,7 @@ end;';
         }
     }
 
+    /** Убрать полномочие у роли. */
     private function permRevoke(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
@@ -1178,6 +1193,7 @@ end;';
         }
     }
 
+    /** Назначить роль пользователю. */
     private function roleAssign(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
@@ -1200,6 +1216,7 @@ end;';
         }
     }
 
+    /** Отозвать роль у пользователя. */
     private function roleRevoke(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
