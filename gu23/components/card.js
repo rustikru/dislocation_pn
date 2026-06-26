@@ -225,11 +225,11 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
 
   const statusPill = (status) => {
     if (status === 'approved')
-      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47">✓ Подписано</span>'
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47"> Подписано</span>'
     if (status === 'rejected')
-      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030">✕ Отклонено</span>'
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030"> Отклонено</span>'
     if (status === 'pending')
-      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900">⏳ Ожидает</span>'
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> Ожидает</span>'
     return ''
   }
 
@@ -239,9 +239,10 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
     const cv = act.CONTENT_VERSION
     if (!sv || !cv) return ''
     const match = String(sv) === String(cv)
+    return ''
     return match
-      ? `<span title="Подписано версию ${sv}, текущая версия ${cv}" style="font-size:10px;color:#2d7a47;margin-left:4px">v${sv} ✓</span>`
-      : `<span title="Подписано версию ${sv}, но документ изменён (текущая v${cv})" style="font-size:10px;color:#b45309;margin-left:4px;font-weight:600">v${sv} ⚠</span>`
+      ? `<span title="Подписано версию ${sv}, текущая версия ${cv}" style="font-size:10px;color:#2d7a47;margin-left:4px">v${sv}</span>`
+      : `<span title="Подписано версию ${sv}, но документ изменён (текущая v${cv})" style="font-size:10px;color:#b45309;margin-left:4px;font-weight:600">v${sv} </span>`
   }
 
   const listHtml = signers.length

@@ -18,15 +18,15 @@ if (!defined('HMAC_SECRET')) {
     define('HMAC_SECRET', 'change-me-in-production');
 }
 
-$hmac   = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+$hmac = new HmacApproval(HMAC_SECRET, ttlDays: 7);
 $params = $_GET + $_POST;
 $verify = $hmac->verify($params);
 
-$actId      = (int)($params['act']    ?? 0);
-$approverId = (int)($params['uid']    ?? 0);
-$action     = $params['action']       ?? '';
-$sig        = $params['sig']          ?? '';
-$signerIp   = $_SERVER['HTTP_X_FORWARDED_FOR']
+$actId = (int) ($params['act'] ?? 0);
+$approverId = (int) ($params['uid'] ?? 0);
+$action = $params['action'] ?? '';
+$sig = $params['sig'] ?? '';
+$signerIp = $_SERVER['HTTP_X_FORWARDED_FOR']
     ? trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0])
     : ($_SERVER['REMOTE_ADDR'] ?? '');
 
@@ -39,7 +39,7 @@ if (!$verify['ok']) {
 }
 
 $repo = new ApprovalRepository($conn1);
-$act  = $repo->getAct($actId);
+$act = $repo->getAct($actId);
 $name = $repo->getApproverName($approverId);
 
 if (!$act) {
@@ -55,10 +55,10 @@ $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? '#' . $actId);
 $existing = $repo->getStatusByIds($actId, $approverId);
 if ($existing && $existing['STATUS'] !== 'pending') {
     $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
-    $decidedAt   = $existing['DECIDED_AT'] ?? '';
+    $decidedAt = $existing['DECIDED_AT'] ?? '';
     renderPage('Уже обработано', "
         <p>Вы уже дали решение по акту <b>{$actNumber}</b>.</p>
-        <p>Статус: <b>{$statusLabel}</b>" . ($decidedAt ? " ({$decidedAt})" : '') . "</p>
+        <p style=\"margin-top: 12px;\">Статус: <span class=\"status-badge\">{$statusLabel}</span>" . ($decidedAt ? " <span class=\"muted\">({$decidedAt})</span>" : '') . "</p>
     ");
     exit;
 }
@@ -67,7 +67,7 @@ if ($existing && $existing['STATUS'] !== 'pending') {
 // POST: подтверждение отклонения с причиной
 // -------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
-    $comment = trim((string)($_POST['comment'] ?? ''));
+    $comment = trim((string) ($_POST['comment'] ?? ''));
     if ($comment === '') {
         showRejectForm($actNumber, $name, $actId, $approverId, $sig, 'Укажите причину отклонения');
         exit;
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
     if ($ok) {
         renderPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
-            <p class=\"muted\">Причина: " . htmlspecialchars($comment) . "</p>
+            <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
             <p class=\"ok\">Решение записано.</p>
         ");
     } else {
@@ -93,7 +93,7 @@ if ($action === 'approve') {
     if ($ok) {
         renderPage('Акт согласован', "
             <p>Вы согласовали акт <b>{$actNumber}</b>.</p>
-            <p class=\"ok\">✓ Решение записано. Спасибо!</p>
+            <p class=\"ok\" style=\"margin-top: 15px;\">Решение успешно записано. Спасибо!</p>
         ");
     } else {
         renderPage('Ошибка', '<p class="err">Не удалось сохранить решение. Попробуйте ещё раз.</p>');
@@ -118,20 +118,21 @@ renderPage('Неизвестное действие', '<p class="err">Недоп
 function showRejectForm(string $actNumber, string $name, int $actId, int $approverId, string $sig, string $error = ''): void
 {
     // Передаём все оригинальные GET-параметры чтобы сохранить ts и sig для проверки HMAC при POST
-    $qs        = http_build_query(array_filter($_GET, fn($k) => in_array($k, ['act','uid','action','ts','sig']), ARRAY_FILTER_USE_KEY));
-    $errorHtml = $error ? "<p class=\"err\">{$error}</p>" : '';
+    $qs = http_build_query(array_filter($_GET, fn($k) => in_array($k, ['act', 'uid', 'action', 'ts', 'sig']), ARRAY_FILTER_USE_KEY));
+    $errorHtml = $error ? "<p class=\"err\" style=\"margin-bottom: 15px;\">{$error}</p>" : '';
     renderPage('Отклонение акта', "
         {$errorHtml}
-        <p>Акт <b>{$actNumber}</b></p>
+        <p style=\"margin-bottom: 20px;\">Вы собираетесь отклонить акт <b>{$actNumber}</b></p>
         <form method=\"post\" action=\"/gu23/approve.php?{$qs}\">
-            <label style=\"display:block;margin-bottom:6px\">Укажите причину отклонения:</label>
+            <label style=\"display:block; margin-bottom:8px; color:#5f6368; font-size:13px; font-weight:600;\">УКАЖИТЕ ПРИЧИНУ ОТКЛОНЕНИЯ:</label>
             <textarea name=\"comment\" rows=\"4\"
-                style=\"width:100%;max-width:500px;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:inherit\"
+                style=\"width:100%; box-sizing:border-box; max-width:100%; padding:12px; border:1px solid #dadce0; border-radius:4px; font-size:14px; font-family:inherit; color:#202124; outline:none;\"
+                placeholder=\"Например: неверно указано время простоя...\"
                 required></textarea>
             <br><br>
             <button type=\"submit\"
-                style=\"background:#c0392b;color:#fff;padding:10px 28px;border:none;border-radius:6px;font-size:15px;cursor:pointer\">
-                ✗ Подтвердить отклонение
+                style=\"background:#5f6368; color:#ffffff; padding:10px 24px; border:none; border-radius:4px; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;\">
+                Подтвердить отклонение
             </button>
         </form>
     ");
@@ -147,17 +148,79 @@ function renderPage(string $title, string $body): void
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{$title} — ГУ-23</title>
 <style>
-  body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; color: #222; }
-  h2   { color: #1a5fa8; }
-  .ok  { color: #22863a; font-weight: 600; }
-  .err { color: #c0392b; font-weight: 600; }
-  .muted { color: #666; font-size: 13px; }
+  body { 
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif; 
+    background-color: #f8f9fa; 
+    margin: 0; 
+    padding: 40px 20px; 
+    color: #202124; 
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background-color: #ffffff;
+    max-width: 550px;
+    width: 100%;
+    padding: 30px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+  }
+  .system-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: #80868b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #dadce0;
+    padding-bottom: 10px;
+  }
+  h3 { 
+    font-size: 20px; 
+    font-weight: 600; 
+    color: #202124; 
+    margin: 0 0 20px 0;
+  }
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #3c4043;
+    margin: 0 0 10px 0;
+  }
+  .ok { 
+    color: #137333; 
+    background-color: #e6f4ea;
+    padding: 10px 14px;
+    border-radius: 4px;
+    display: inline-block;
+    font-weight: 500;
+  }
+  .err { 
+    color: #c5221f; 
+    background-color: #fce8e6;
+    padding: 10px 14px;
+    border-radius: 4px;
+    display: inline-block;
+    font-weight: 500;
+  }
+  .status-badge {
+    background-color: #e8eaed;
+    color: #3c4043;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .muted { color: #80868b; font-size: 13px; }
 </style>
 </head>
 <body>
-  <h2>ГУ-23 · Акты общей формы</h2>
-  <h3>{$title}</h3>
-  {$body}
+  <div class="card">
+    <div class="system-header">Согласование актов ГУ-23</div>
+    <h3>{$title}</h3>
+    {$body}
+  </div>
 </body>
 </html>
 HTML;
