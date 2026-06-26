@@ -2,7 +2,7 @@ import { sendApiRequest } from '../api.js'
 import { escapeHtml } from '../utils.js'
 import { showToast, showConfirmBox } from './ui.js'
 
-const PAGE_SIZE = 20
+const ROLES_PAGE_SIZE = 20
 
 let searchTimeout = null
 let currentSearch = ''
@@ -214,7 +214,7 @@ function loadUsers() {
       )
       return
     }
-    renderUsers(resp.users || [], resp.roles || [], resp.total || 0, resp.page || 1, resp.page_size || PAGE_SIZE)
+    renderUsers(resp.users || [], resp.roles || [], resp.total || 0, resp.page || 1, resp.page_size || ROLES_PAGE_SIZE)
   })
 }
 

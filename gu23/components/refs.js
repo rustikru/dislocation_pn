@@ -8,7 +8,7 @@ let currentPage = 1
 let currentItems = []
 let searchTimer = null
 
-const PAGE_SIZE = 20
+const REFS_PAGE_SIZE = 20
 
 export function showRefs(container) {
   currentSearch = ''
@@ -89,7 +89,7 @@ function tabStyle(active) {
 }
 
 function renderPager(total, page) {
-  const pages = Math.ceil(total / PAGE_SIZE)
+  const pages = Math.ceil(total / REFS_PAGE_SIZE)
   if (pages <= 1) return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
   let html = '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;flex-wrap:wrap">'
   html += `<button class="btn ghost pager-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} style="padding:3px 8px;font-size:12px">←</button>`
