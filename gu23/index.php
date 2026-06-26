@@ -65,12 +65,14 @@ if ($auth->isAuth()) {
         ?>
         <!DOCTYPE html>
         <html lang="ru">
+
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Нет доступа · ГУ-23</title>
             <link rel="stylesheet" href="gu23.css" type="text/css">
         </head>
+
         <body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg,#f3f3f1)">
             <div class="card cardpad" style="max-width:420px;width:100%;text-align:center;padding:40px 32px">
                 <div style="font-size:40px;margin-bottom:16px">🔒</div>
@@ -80,9 +82,10 @@ if ($auth->isAuth()) {
                     нет роли в модуле ГУ-23.<br>
                     Обратитесь к администратору.
                 </p>
-                <a href="/index.php" style="color:var(--info,#566b86);font-size:13px">← На главную</a>
+                <!-- <a href="/index.php" style="color:var(--info,#566b86);font-size:13px">← На главную</a> -->
             </div>
         </body>
+
         </html>
         <?php
         exit();

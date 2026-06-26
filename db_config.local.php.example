@@ -44,9 +44,5 @@ if (empty($_SESSION['is_auth'])) {
     $_SESSION['enterprise']      = 'DEV';
     $_SESSION['flag_change_pwd'] = 'N';
     $_SESSION['administrator']   = 'Y';
-    $_SESSION['gu23_add']        = 'Y';
-    $_SESSION['gu23_view']       = 'Y';
-    // ОБЯЗАТЕЛЬНО: без station_id select_station.php уходит в Oracle и падает
-    $_SESSION['station_id']      = 1;
-    $_SESSION['station']         = 'DEV';
+    localhost:8080/gu23/
 }
