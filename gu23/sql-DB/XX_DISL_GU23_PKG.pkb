@@ -1324,6 +1324,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       vs_post      varchar2(256);
       vs_org       varchar2(256);
       vs_stype     varchar2(16);
+      l_sig        xx_disl_gu23_signer%rowtype;
       v_dupnum     varchar2(64);
       v_has_start  number;
       v_tot        number;
@@ -1757,26 +1758,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             continue;
          end if;
          v_ord := v_ord + 1;
-         insert into xx_disl_gu23_signer (
-            id,
-            act_id,
-            signer_ref_id,
-            fio,
-            post,
-            org,
-            ord_no,
-            stype
-         ) values ( xx_disl_gu23_signer_seq.nextval,
-                    v_id,
-                    vs_ref_id,
-                    vs_fio,
-                    vs_post,
-                    vs_org,
-                    v_ord,
-                    nullif(
-                       vs_stype,
-                       ''
-                    ) );
+         l_sig.id            := xx_disl_gu23_signer_seq.nextval;
+         l_sig.act_id        := v_id;
+         l_sig.signer_ref_id := vs_ref_id;
+         l_sig.fio           := vs_fio;
+         l_sig.post          := vs_post;
+         l_sig.org           := vs_org;
+         l_sig.ord_no        := v_ord;
+         l_sig.stype         := nullif(vs_stype, '');
+         insert_signer(l_sig);
       end loop;
 
         -- закрытие циклов акта начала: частичное/полное
