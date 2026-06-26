@@ -6,6 +6,7 @@ import { showForm } from './components/form.js'
 import { showCard } from './components/card.js'
 import { showWagonSearch } from './components/wagonSearch.js'
 import { showRefs } from './components/refs.js'
+import { showRoles } from './components/roles.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
@@ -29,7 +30,8 @@ export function showApplication() {
     new: showForm,
     card: showCard,
     wsearch: showWagonSearch,
-    refs: showRefs,
+    refs: showRefs, // Справочники
+    roles: showRoles, // Роли и бла бла
   }
 
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive

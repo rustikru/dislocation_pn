@@ -7,7 +7,13 @@ export function drawNav() {
     { page: 'archive', icon: '', label: 'Реестр актов' },
   ]
   if (applicationState.isAdmin) {
+    // Справочники
     navigationItems.push({ page: 'refs', icon: '', label: 'Справочники' })
+  }
+
+  if (applicationState.isAdmin) {
+    // Роли
+    navigationItems.push({ page: 'roles', icon: '', label: 'Роли' })
   }
 
   const $nav = $('#nav').empty()
