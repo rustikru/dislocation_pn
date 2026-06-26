@@ -19,6 +19,30 @@ class GuActRepository
         $this->auth = $auth;
     }
 
+    /** Проверить: является ли текущий пользователь администратором ГУ-23. */
+    private function isGu23Admin(): bool
+    {
+        if ($this->isGu23Admin()) {
+            return true;
+        }
+        $userId = $this->auth->getUserId();
+        if (!$userId) {
+            return false;
+        }
+        try {
+            $rows = $this->pipe(
+                "SELECT 1 cnt FROM xx_disl_gu23_user_roles ur
+                  JOIN xx_disl_gu23_roles r ON r.role_id = ur.role_id
+                 WHERE ur.user_id = :uid AND r.role_code = 'GU23_ADMIN'
+                   AND ROWNUM = 1",
+                [':uid' => $userId]
+            );
+            return !empty($rows);
+        } catch (\RuntimeException $e) {
+            return false;
+        }
+    }
+
     public function handle(string $action, array $post): void
     {
         ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
@@ -90,6 +114,17 @@ class GuActRepository
                     $this->refReasonToggle();
                     break;
                 // конец - Справочники
+                // Роли
+                case 'gu23_roles_users':
+                    $this->rolesUsers();
+                    break;
+                case 'gu23_role_assign':
+                    $this->roleAssign();
+                    break;
+                case 'gu23_role_revoke':
+                    $this->roleRevoke();
+                    break;
+                // конец - Роли
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -190,7 +225,7 @@ class GuActRepository
             'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
             'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
             'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
-            'isAdmin' => $this->auth->isAuthAdmin() ? true : false,
+            'isAdmin' => $this->isGu23Admin() ? true : false,
         ]);
     }
 
@@ -257,7 +292,7 @@ class GuActRepository
             'currentUserId' => (int) $userId,
             'myApproval' => $myStatus ?: 'none',
             'isUserSigner' => $isUserSignerCnt > 0,
-            'isAdmin' => $this->auth->isAuthAdmin() ? true : false,
+            'isAdmin' => $this->isGu23Admin() ? true : false,
             'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
             'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
@@ -611,7 +646,7 @@ end;';
 
     private function closeAct(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -747,7 +782,7 @@ end;';
 
     private function refsGetAll(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -813,7 +848,7 @@ end;';
 
     private function refSignerSave(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -833,7 +868,7 @@ end;';
 
     private function refSignerToggle(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -846,7 +881,7 @@ end;';
 
     private function refReasonSave(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -864,7 +899,7 @@ end;';
 
     private function refReasonToggle(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -880,7 +915,7 @@ end;';
     /* ----------------------------------------------------------------- */
     private function resendApproval(): void
     {
-        if (!$this->auth->isAuthAdmin()) {
+        if (!$this->isGu23Admin()) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -924,5 +959,104 @@ end;';
         echo json_encode($ok
             ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
             : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Управление ролями                                                   */
+    /* ----------------------------------------------------------------- */
+
+    private function rolesUsers(): void
+    {
+        if (!$this->isGu23Admin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
+        $srch   = '%' . mb_strtoupper($search) . '%';
+
+        $rows = $this->pipe(
+            "SELECT u.id, u.login, u.full_name,
+                    r.role_id, r.role_code, r.role_name
+               FROM xx_disl_users u
+               LEFT JOIN xx_disl_gu23_user_roles ur ON ur.user_id = u.id
+               LEFT JOIN xx_disl_gu23_roles r ON r.role_id = ur.role_id
+              WHERE (UPPER(u.full_name) LIKE :s1 OR UPPER(u.login) LIKE :s2)
+              ORDER BY u.full_name, r.role_name",
+            [':s1' => $srch, ':s2' => $srch]
+        );
+
+        // Группируем по пользователю
+        $users = [];
+        foreach ($rows as $row) {
+            $uid = $row['ID'];
+            if (!isset($users[$uid])) {
+                $users[$uid] = [
+                    'id'        => $uid,
+                    'login'     => $row['LOGIN'],
+                    'full_name' => $row['FULL_NAME'],
+                    'roles'     => [],
+                ];
+            }
+            if ($row['ROLE_ID']) {
+                $users[$uid]['roles'][] = [
+                    'role_id'   => $row['ROLE_ID'],
+                    'role_code' => $row['ROLE_CODE'],
+                    'role_name' => $row['ROLE_NAME'],
+                ];
+            }
+        }
+
+        $roles = $this->pipe(
+            'SELECT role_id, role_code, role_name FROM xx_disl_gu23_roles ORDER BY role_name'
+        );
+
+        echo json_encode(['ok' => true, 'users' => array_values($users), 'roles' => $roles]);
+    }
+
+    private function roleAssign(): void
+    {
+        if (!$this->isGu23Admin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $userId = (int) filter_input(INPUT_POST, 'user_id');
+        $roleId = (int) filter_input(INPUT_POST, 'role_id');
+
+        if (!$userId || !$roleId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
+            return;
+        }
+        try {
+            $this->pipe(
+                'INSERT INTO xx_disl_gu23_user_roles (user_id, role_id) VALUES (:uid, :rid)',
+                [':uid' => $userId, ':rid' => $roleId]
+            );
+            oci_commit($this->conn);
+        } catch (\RuntimeException $e) {
+            // Если уже назначена — игнорируем (unique constraint)
+        }
+        echo json_encode(['ok' => true]);
+    }
+
+    private function roleRevoke(): void
+    {
+        if (!$this->isGu23Admin()) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $userId = (int) filter_input(INPUT_POST, 'user_id');
+        $roleId = (int) filter_input(INPUT_POST, 'role_id');
+
+        if (!$userId || !$roleId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
+            return;
+        }
+        $this->pipe(
+            'DELETE FROM xx_disl_gu23_user_roles WHERE user_id = :uid AND role_id = :rid',
+            [':uid' => $userId, ':rid' => $roleId]
+        );
+        oci_commit($this->conn);
+        echo json_encode(['ok' => true]);
     }
 }

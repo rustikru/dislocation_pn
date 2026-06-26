@@ -9,10 +9,19 @@ if (isset($_POST["logout"])) {
 }
 
 if ($auth->isAuth()) {
-    // доступ: администратор или право на модуль ГУ-23 
-    $allowed = $auth->isAuthAdmin()
-        || (isset($_SESSION['gu23_add']) && $_SESSION['gu23_add'] === 'Y')
-        || (isset($_SESSION['gu23_view']) && $_SESSION['gu23_view'] === 'Y');
+    // Доступ: глобальный администратор или хотя бы одна роль в ГУ-23
+    $allowed = $auth->isAuthAdmin();
+    if (!$allowed) {
+        $userId = $auth->getUserId();
+        if ($userId) {
+            $st = oci_parse($conn1,
+                'SELECT COUNT(*) cnt FROM xx_disl_gu23_user_roles WHERE user_id = :uid');
+            oci_bind_by_name($st, ':uid', $userId);
+            oci_execute($st);
+            $row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
+            $allowed = (($row['CNT'] ?? 0) > 0);
+        }
+    }
     if ($allowed) {
         ?>
         <!DOCTYPE html>
