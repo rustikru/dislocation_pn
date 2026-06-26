@@ -38,8 +38,23 @@ export function drawNav() {
   })
 
   const $foot = $('<div class="foot"></div>')
+
+  // Показываем текущего пользователя (данные из PHP-сессии)
+  const sess = window.GU23_SESSION || {}
+  if (sess.login) {
+    const $user = $(`
+      <div style="padding:8px 11px 4px;border-top:1px solid var(--line);margin-top:6px">
+        <div style="font-size:11px;color:var(--muted);line-height:1.4">
+          <div style="font-weight:600;color:var(--ink2);font-size:12px">${sess.full_name || sess.login}</div>
+          <div style="font-family:var(--mono);font-size:10.5px">${sess.login}${sess.is_admin ? ' · admin' : ''}</div>
+        </div>
+      </div>
+    `)
+    $foot.append($user)
+  }
+
   const $logout = $(`
-    <form method="post" action="index.php" style="margin-top:8px">
+    <form method="post" action="index.php" style="margin-top:4px">
       <input type="hidden" name="logout" value="1">
       <button type="submit" class="navbtn" style="color:var(--rej);width:100%">
         <span class="ic">⏏</span>

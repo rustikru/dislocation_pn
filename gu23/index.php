@@ -31,6 +31,13 @@ if ($auth->isAuth()) {
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
             <script type="module" src="app.js"></script>
             <script src="js.php?v=3" type="text/javascript"></script>
+            <script>
+            window.GU23_SESSION = {
+                login:     <?= json_encode($_SESSION['login']     ?? '') ?>,
+                full_name: <?= json_encode($_SESSION['full_name'] ?? '') ?>,
+                is_admin:  <?= json_encode(!empty($_SESSION['is_auth_admin'])) ?>
+            };
+            </script>
         </head>
 
         <body>
