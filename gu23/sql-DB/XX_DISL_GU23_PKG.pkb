@@ -2235,13 +2235,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return;
       end if;
 
-        -- число подписантов предприятия (stype != 'rzd') с user_id ? обязаны подписать
+        -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id — обязаны подписать
       select count(*)
         into v_total
         from xx_disl_gu23_signer
        where act_id = p_act_id
-         and stype != 'rzd'
-         and user_id is not null;
+         and stype = 'own'
+         and signer_ref_id is not null;
 
       if v_total = 0 then
          return;
@@ -2252,11 +2252,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_approved
         from xx_disl_gu23_approval a
         join xx_disl_gu23_signer s
-      on s.user_id = a.approver_id
+      on s.signer_ref_id = a.approver_id
          and s.act_id = a.act_id
        where a.act_id = p_act_id
          and a.status = 'approved'
-         and s.stype != 'rzd';
+         and s.stype = 'own';
 
       if v_approved >= v_total then
          update xx_disl_gu23_act
