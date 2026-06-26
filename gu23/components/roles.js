@@ -6,15 +6,15 @@ const ROLES_PAGE_SIZE = 20
 
 let searchTimeout = null
 let rolesSearch = ''
-let rolesPage   = 1
+let rolesPage = 1
 
 // Данные, загруженные один раз
-let matrixData = null  // { roles, perms, cells: {perm_id: {role_id: 'Y'/'N'}} }
+let matrixData = null // { roles, perms, cells: {perm_id: {role_id: 'Y'/'N'}} }
 
 export function showRoles(container) {
   rolesSearch = ''
-  rolesPage   = 1
-  matrixData    = null
+  rolesPage = 1
+  matrixData = null
 
   $(container).html(`
     <div class="phead">
@@ -33,7 +33,9 @@ export function showRoles(container) {
    ══════════════════════════════════════════════════════════ */
 
 function loadMatrix() {
-  $('#roles-matrix-wrap').html('<div class="muted" style="font-size:13px">Загрузка матрицы…</div>')
+  $('#roles-matrix-wrap').html(
+    '<div class="muted" style="font-size:13px">Загрузка матрицы…</div>',
+  )
   sendApiRequest('gu23_role_perms', {}).done((resp) => {
     if (!resp || !resp.ok) {
       $('#roles-matrix-wrap').html(
@@ -49,11 +51,15 @@ function loadMatrix() {
 function buildMatrixData(rows) {
   const rolesMap = {}
   const permsMap = {}
-  const cells = {}   // cells[perm_id][role_id] = 'Y'/'N'
+  const cells = {} // cells[perm_id][role_id] = 'Y'/'N'
 
   rows.forEach((r) => {
     if (!rolesMap[r.ROLE_ID]) {
-      rolesMap[r.ROLE_ID] = { id: r.ROLE_ID, code: r.ROLE_CODE, name: r.ROLE_NAME }
+      rolesMap[r.ROLE_ID] = {
+        id: r.ROLE_ID,
+        code: r.ROLE_CODE,
+        name: r.ROLE_NAME,
+      }
     }
     if (!permsMap[r.PERM_ID]) {
       permsMap[r.PERM_ID] = { id: r.PERM_ID, code: r.PERM_CODE, descr: r.DESCR }
@@ -114,10 +120,10 @@ function renderMatrix() {
   $('#roles-matrix-wrap').html(`
     <div class="card">
       <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;cursor:pointer" id="matrix-toggle">
-        <b style="font-size:13px">Матрица полномочий</b>
+        <b style="font-size:13px">Полномочия</b>
         <span class="muted" style="margin-left:8px;font-size:12px">${roles.length} роли · ${perms.length} полномочий</span>
-        <span class="muted" style="margin-left:auto;font-size:11px">Нажмите ячейку, чтобы изменить</span>
-        <span id="matrix-arrow" style="margin-left:12px;color:var(--muted);font-size:12px">▼</span>
+        <span class="muted" style="margin-left:auto;font-size:11px">Нажмите, чтобы свернуть</span>
+        <span id="matrix-arrow" style="margin-left:12px;color:var(--muted);font-size:12px"></span>
       </div>
       <div id="matrix-body" style="overflow:auto">
         <table class="tbl perm-matrix" style="min-width:500px">
@@ -148,9 +154,9 @@ function renderMatrix() {
 
   // Чекбоксы матрицы
   $('#roles-matrix-wrap').on('change', '.perm-cb', function () {
-    const cb    = this
-    const rid   = $(cb).data('rid')
-    const pid   = $(cb).data('pid')
+    const cb = this
+    const rid = $(cb).data('rid')
+    const pid = $(cb).data('pid')
     const rname = $(cb).data('rname')
     const pname = $(cb).data('pname')
     const assign = cb.checked
@@ -181,7 +187,10 @@ function doPermAssign(rid, pid, cb) {
         cb.checked = false
       }
     })
-    .fail(() => { showToast('Ошибка сети', 'err'); cb.checked = false })
+    .fail(() => {
+      showToast('Ошибка сети', 'err')
+      cb.checked = false
+    })
     .always(() => $(cb).prop('disabled', false))
 }
 
@@ -198,7 +207,10 @@ function doPermRevoke(rid, pid, cb) {
         cb.checked = true
       }
     })
-    .fail(() => { showToast('Ошибка сети', 'err'); cb.checked = true })
+    .fail(() => {
+      showToast('Ошибка сети', 'err')
+      cb.checked = true
+    })
     .always(() => $(cb).prop('disabled', false))
 }
 
@@ -207,14 +219,23 @@ function doPermRevoke(rid, pid, cb) {
    ══════════════════════════════════════════════════════════ */
 
 function loadUsers() {
-  sendApiRequest('gu23_roles_users', { search: rolesSearch, page: rolesPage }).done((resp) => {
+  sendApiRequest('gu23_roles_users', {
+    search: rolesSearch,
+    page: rolesPage,
+  }).done((resp) => {
     if (!resp || !resp.ok) {
       $('#roles-users-wrap').html(
         '<div class="card cardpad" style="color:var(--rej)">Нет доступа или ошибка загрузки.</div>',
       )
       return
     }
-    renderUsers(resp.users || [], resp.roles || [], resp.total || 0, resp.page || 1, resp.page_size || ROLES_PAGE_SIZE)
+    renderUsers(
+      resp.users || [],
+      resp.roles || [],
+      resp.total || 0,
+      resp.page || 1,
+      resp.page_size || ROLES_PAGE_SIZE,
+    )
   })
 }
 
@@ -269,7 +290,7 @@ function renderUsers(users, roles, total, page, pageSize) {
   // Поиск
   $('#roles-search').on('input', function () {
     rolesSearch = $(this).val().trim()
-    rolesPage   = 1
+    rolesPage = 1
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(loadUsers, 250)
   })
@@ -284,9 +305,9 @@ function renderUsers(users, roles, total, page, pageSize) {
 
   // Чекбоксы ролей
   $('#roles-table').on('change', '.role-cb', function () {
-    const cb    = this
-    const uid   = $(cb).data('uid')
-    const rid   = $(cb).data('rid')
+    const cb = this
+    const uid = $(cb).data('uid')
+    const rid = $(cb).data('rid')
     const rname = $(cb).data('rname')
     const uname = $(cb).data('uname')
 
@@ -356,10 +377,17 @@ function doAssign(uid, rid, cb) {
   $(cb).prop('disabled', true)
   sendApiRequest('gu23_role_assign', { user_id: uid, role_id: rid })
     .done((r) => {
-      if (r && r.ok) { showToast('Роль назначена', 'ok') }
-      else { showToast(r?.msg || 'Ошибка', 'err'); cb.checked = false }
+      if (r && r.ok) {
+        showToast('Роль назначена', 'ok')
+      } else {
+        showToast(r?.msg || 'Ошибка', 'err')
+        cb.checked = false
+      }
     })
-    .fail(() => { showToast('Ошибка сети', 'err'); cb.checked = false })
+    .fail(() => {
+      showToast('Ошибка сети', 'err')
+      cb.checked = false
+    })
     .always(() => $(cb).prop('disabled', false))
 }
 
@@ -368,9 +396,16 @@ function doRevoke(uid, rid, cb) {
   $(cb).prop('disabled', true)
   sendApiRequest('gu23_role_revoke', { user_id: uid, role_id: rid })
     .done((r) => {
-      if (r && r.ok) { showToast('Роль отозвана', 'ok') }
-      else { showToast(r?.msg || 'Ошибка', 'err'); cb.checked = true }
+      if (r && r.ok) {
+        showToast('Роль отозвана', 'ok')
+      } else {
+        showToast(r?.msg || 'Ошибка', 'err')
+        cb.checked = true
+      }
     })
-    .fail(() => { showToast('Ошибка сети', 'err'); cb.checked = true })
+    .fail(() => {
+      showToast('Ошибка сети', 'err')
+      cb.checked = true
+    })
     .always(() => $(cb).prop('disabled', false))
 }
