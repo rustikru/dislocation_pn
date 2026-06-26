@@ -5,6 +5,10 @@
     $auth = new AuthClass();
   
     if ($auth->isAuth()){
+        // DEV-обход: если есть локальный конфиг — не идём в Oracle за станциями
+        if (file_exists(__DIR__ . '/db_config.local.php') && $auth->getStationId() === null) {
+            $auth->setStation(1, 'DEV');
+        }
         if (isset($_POST["submit"])) {
             $auth->setStation(filter_input(INPUT_POST,'station_id'), filter_input(INPUT_POST,'station'));
         }
