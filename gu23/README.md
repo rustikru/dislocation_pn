@@ -23,7 +23,9 @@ gu23/
 │   ├── form.js                # Форма создания / редактирования акта
 │   ├── card.js                # Карточка просмотра акта
 │   ├── registry.js            # Реестр актов (список + фильтры)
-│   ├── nav.js                 # Навигационная панель
+│   ├── nav.js                 # Навигационная панель (+ кнопка Выход, текущий пользователь)
+│   ├── refs.js                # Страница справочников (подписанты, причины)
+│   ├── roles.js               # Страница ролей и полномочий
 │   ├── ui.js                  # Общие UI-компоненты (toast, confirm, chips…)
 │   └── wagonSearch.js         # Поиск актов по номеру вагона
 │
@@ -32,13 +34,16 @@ gu23/
 │   └── GuActDocxReport.php    # Класс генерации отчёта
 │
 └── sql-DB/
-    ├── install_gu23_all.sql   # DDL: таблицы, представление, последовательности
-    ├── install_approval.sql   # DDL: таблица xx_disl_gu23_approval + индексы
-    ├── alter_ref_signer_user_id.sql  # Миграция: поле user_id в xx_disl_gu23_ref_signer
-    ├── migrate_signer_stype.sql      # Миграция: поле stype в xx_disl_gu23_signer
-    ├── XX_DISL_GU23_PKG.pks   # Спецификация Oracle-пакета
-    ├── XX_DISL_GU23_PKG.pkb   # Тело Oracle-пакета
-    └── fill_gu23_data.sql     # Тестовые данные (причины, справочники)
+    ├── install_gu23_all.sql         # DDL: таблицы, представление, последовательности
+    ├── install_approval.sql         # DDL: таблица xx_disl_gu23_approval + индексы
+    ├── install_roles.sql            # DDL: таблицы ролей и полномочий
+    ├── alter_ref_signer_user_id.sql # Миграция: поле user_id в xx_disl_gu23_ref_signer
+    ├── migrate_signer_stype.sql     # Миграция: поле stype в xx_disl_gu23_signer
+    ├── XX_DISL_GU23_PKG.pks        # Спецификация Oracle-пакета
+    ├── XX_DISL_GU23_PKG.pkb        # Тело Oracle-пакета
+    ├── fill_roles.sql               # Начальные данные: 4 роли
+    ├── fill_permissions.sql         # Начальные данные: 10 полномочий + матрица ролей
+    └── fill_gu23_data.sql           # Тестовые данные (причины, справочники)
 ```
 
 ---
@@ -63,6 +68,29 @@ gu23/
 | ------------------------- | ------------------------------------- |
 | `xx_disl_gu23_ref_reason` | Причины составления акта              |
 | `xx_disl_gu23_ref_signer` | Справочник подписантов от стороны РЖД |
+
+### Роли и полномочия
+
+| Таблица                          | Назначение                                     |
+| -------------------------------- | ---------------------------------------------- |
+| `xx_disl_gu23_roles`             | Список ролей (GU23_ADMIN, GU23_USER, …)        |
+| `xx_disl_gu23_user_roles`        | Назначение ролей пользователям                 |
+| `xx_disl_gu23_permissions`       | Справочник кодов полномочий (CREATE_ACT, …)    |
+| `xx_disl_gu23_role_permissions`  | Матрица: какие полномочия у какой роли         |
+
+**Роли:**
+
+| Код           | Название             | Полномочия                                       |
+| ------------- | -------------------- | ------------------------------------------------ |
+| `GU23_ADMIN`  | Администратор ГУ-23  | Все (10 из 10)                                   |
+| `GU23_USER`   | Пользователь цеха    | CREATE_ACT, EDIT_OWN_ACT, SEND_APPROVAL          |
+| `GU23_SIGNER` | Подписант            | SIGN_ACT                                         |
+| `GU23_VIEWER` | Просмотр архива      | VIEW_ALL_ACTS                                    |
+
+**Полномочия (permission codes):**
+
+`CREATE_ACT`, `EDIT_OWN_ACT`, `EDIT_ALL_ACTS`, `DELETE_ACT`, `ANNUL_ACT`,
+`SIGN_ACT`, `SEND_APPROVAL`, `CLOSE_ACT`, `VIEW_ALL_ACTS`, `MANAGE_REFS`, `MANAGE_ROLES`
 
 > **Подписанты от предприятия** хранятся в `xx_disl_users`.  
 > **Подписанты от РЖД** хранятся в `xx_disl_gu23_ref_signer` (не имеют учётных записей и не подписывают электронно).
@@ -194,15 +222,21 @@ const APPROVAL_MODE = 'send_file'
 
 ## Права доступа
 
-| Действие                          | Кто                              |
-| --------------------------------- | -------------------------------- |
-| Просмотр актов, реестр            | Все авторизованные               |
-| Создание / редактирование Проекта | Все авторизованные               |
-| Регистрация (draft → active)      | Все авторизованные               |
-| Подписание / отклонение           | Подписант акта (`isUserSigner`)  |
-| Закрытие акта (`end`)             | Только администратор             |
-| Аннулирование                     | Только администратор             |
-| Скачать DOCX                      | Все (кроме аннулированных актов) |
+Проверка идёт через `hasPerm($code)` в `GuActRepository` → пакетная функция `gu23_has_perm(p_user_id, p_perm_code)`. Глобальный администратор системы (`isAuthAdmin`) обходит все проверки.
+
+| Действие                          | Полномочие          |
+| --------------------------------- | ------------------- |
+| Создание акта                     | `CREATE_ACT`        |
+| Редактирование своего акта        | `EDIT_OWN_ACT`      |
+| Редактирование любого акта        | `EDIT_ALL_ACTS`     |
+| Удаление проекта                  | `DELETE_ACT`        |
+| Аннулирование                     | `ANNUL_ACT`         |
+| Подписание / отклонение           | `SIGN_ACT`          |
+| Отправка на согласование          | `SEND_APPROVAL`     |
+| Закрытие акта (`end`)             | `CLOSE_ACT`         |
+| Просмотр всех актов               | `VIEW_ALL_ACTS`     |
+| Редактирование справочников       | `MANAGE_REFS`       |
+| Управление ролями пользователей   | `MANAGE_ROLES`      |
 
 ---
 
@@ -228,6 +262,19 @@ const APPROVAL_MODE = 'send_file'
 
 ---
 
+## Ajax API — Роли и полномочия (`router.php`)
+
+| `ajax_action`      | Метод PHP        | Описание                                  |
+| ------------------ | ---------------- | ----------------------------------------- |
+| `gu23_roles_users` | `rolesUsers()`   | Список пользователей с ролями (пагинация) |
+| `gu23_role_assign` | `roleAssign()`   | Назначить роль пользователю               |
+| `gu23_role_revoke` | `roleRevoke()`   | Отозвать роль у пользователя              |
+| `gu23_role_perms`  | `rolePerms()`    | Матрица полномочий всех ролей             |
+| `gu23_perm_assign` | `permAssign()`   | Добавить полномочие роли                  |
+| `gu23_perm_revoke` | `permRevoke()`   | Убрать полномочие у роли                  |
+
+---
+
 ## Установка и миграции
 
 ### Первичная установка
@@ -239,9 +286,16 @@ const APPROVAL_MODE = 'send_file'
 -- 2. DDL таблицы согласований
 @sql-DB/install_approval.sql
 
--- 3. Компиляция пакета
+-- 3. DDL таблиц ролей и полномочий
+@sql-DB/install_roles.sql
+
+-- 4. Компиляция пакета
 @sql-DB/XX_DISL_GU23_PKG.pks
 @sql-DB/XX_DISL_GU23_PKG.pkb
+
+-- 5. Начальные данные
+@sql-DB/fill_roles.sql
+@sql-DB/fill_permissions.sql
 ```
 
 ### Миграции (обновление существующей базы)
@@ -270,3 +324,19 @@ const APPROVAL_MODE = 'send_file'
 - `test/` — вспомогательные тестовые скрипты
 
 Для отключения рассылки при разработке установить `APPROVAL_MODE = false` в `form.js`.
+
+### Обход авторизации локально
+
+Скопируйте шаблон:
+
+```bash
+cp db_config.local.php.example db_config.local.php
+```
+
+Файл задаёт фейковую сессию (логин `dev`, `user_id = 1`, роль администратора) и параметры подключения к локальному Oracle. Откройте модуль напрямую:
+
+```
+http://localhost/gu23/index.php
+```
+
+`db_config.local.php` в `.gitignore` — на прод не попадает.
