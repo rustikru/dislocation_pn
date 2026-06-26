@@ -497,31 +497,43 @@ function loadWagonsDataFromDislocation() {
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
-    //activeDraft.wagons = []
+    let addedCount = 0
+
+    // Получаем существующие номера вагонов для проверки
+    const existingNumbers = new Set(activeDraft.wagons.map((w) => w.n))
+
     records.forEach((row) => {
       if (String(row.FOUND) === '1') {
         foundCount++
-        activeDraft.wagons.push({
-          n: String(row.WAGON_NO),
-          owner: row.OWNER,
-          kind: row.KIND,
-          from: row.ST_FROM,
-          to: row.ST_TO,
-          cargo: row.CARGO,
-          weight: row.WEIGHT,
-        })
+        const wagonNumber = String(row.WAGON_NO)
+
+        // Добавляем только если вагона еще нет в списке
+        if (!existingNumbers.has(wagonNumber)) {
+          activeDraft.wagons.push({
+            n: wagonNumber,
+            owner: row.OWNER,
+            kind: row.KIND,
+            from: row.ST_FROM,
+            to: row.ST_TO,
+            cargo: row.CARGO,
+            weight: row.WEIGHT,
+          })
+          existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
+          addedCount++
+        }
       }
     })
 
     activeDraft._summary = {
       req: inputNums.length,
       found: foundCount,
-      text: `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}.`,
+      added: addedCount,
+      text: `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.`,
     }
 
     showToast(
-      `Получено ${foundCount} из ${inputNums.length}`,
-      foundCount ? 'ok' : 'err',
+      `Добавлено ${addedCount} новых вагонов из ${foundCount} найденных`,
+      addedCount ? 'ok' : 'info',
     )
     $('#txt-wagons').val('')
     showForm($('#view')[0])

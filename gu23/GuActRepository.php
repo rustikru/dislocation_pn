@@ -70,6 +70,7 @@ class GuActRepository
                 case 'gu23_close_act':
                     $this->closeAct();
                     break;
+                // начало - Справочники
                 case 'gu23_resend_approval':
                     $this->resendApproval();
                     break;
@@ -88,6 +89,7 @@ class GuActRepository
                 case 'gu23_ref_reason_toggle':
                     $this->refReasonToggle();
                     break;
+                // конец - Справочники
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
@@ -147,7 +149,7 @@ class GuActRepository
     private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
     {
         $sql = 'BEGIN :ret_val := ' . $expr . '; END;';
-        $st  = @oci_parse($this->conn, $sql);
+        $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
             throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
@@ -188,7 +190,7 @@ class GuActRepository
             'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
             'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
             'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
-            'isAdmin'    => $this->auth->isAuthAdmin() ? true : false,
+            'isAdmin' => $this->auth->isAuthAdmin() ? true : false,
         ]);
     }
 
@@ -197,22 +199,28 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function getActs(): void
     {
-        $q         = filter_input(INPUT_POST, 'q')         ?: null;
-        $type      = filter_input(INPUT_POST, 'type')      ?: null;
-        $status    = filter_input(INPUT_POST, 'status')    ?: null;
-        $dept      = filter_input(INPUT_POST, 'dept')      ?: null;
-        $dateFrom  = filter_input(INPUT_POST, 'date_from') ?: null;
-        $dateTo    = filter_input(INPUT_POST, 'date_to')   ?: null;
-        $page      = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
-        $limit     = 50;
+        $q = filter_input(INPUT_POST, 'q') ?: null;
+        $type = filter_input(INPUT_POST, 'type') ?: null;
+        $status = filter_input(INPUT_POST, 'status') ?: null;
+        $dept = filter_input(INPUT_POST, 'dept') ?: null;
+        $dateFrom = filter_input(INPUT_POST, 'date_from') ?: null;
+        $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
+        $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit = 50;
 
         $all = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6))',
-            [':b1' => $q, ':b2' => $type, ':b3' => $status, ':b4' => $dept,
-             ':b5' => $dateFrom, ':b6' => $dateTo]
+            [
+                ':b1' => $q,
+                ':b2' => $type,
+                ':b3' => $status,
+                ':b4' => $dept,
+                ':b5' => $dateFrom,
+                ':b6' => $dateTo
+            ]
         );
         $total = count($all);
-        $acts  = array_slice($all, ($page - 1) * $limit, $limit);
+        $acts = array_slice($all, ($page - 1) * $limit, $limit);
 
         echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
     }
@@ -225,7 +233,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
-        $userId   = $this->auth->getUserId();
+        $userId = $this->auth->getUserId();
         $myStatus = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid)',
             [':act' => $id, ':uid' => $userId],
@@ -244,17 +252,17 @@ class GuActRepository
         $isUserSignerCnt = (int) ($signerCheck[0]['CNT'] ?? 0);
 
         echo json_encode([
-            'ok'            => true,
-            'act'           => $act[0],
+            'ok' => true,
+            'act' => $act[0],
             'currentUserId' => (int) $userId,
-            'myApproval'    => $myStatus ?: 'none',
-            'isUserSigner'  => $isUserSignerCnt > 0,
-            'isAdmin'       => $this->auth->isAuthAdmin() ? true : false,
-            'wagons'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
-            'files'         => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
-            'signers'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
-            'history'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
-            'approvals'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
+            'myApproval' => $myStatus ?: 'none',
+            'isUserSigner' => $isUserSignerCnt > 0,
+            'isAdmin' => $this->auth->isAuthAdmin() ? true : false,
+            'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
+            'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
+            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
+            'history' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'approvals' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
         ]);
     }
 
@@ -452,10 +460,11 @@ end;';
     /* ----------------------------------------------------------------- */
     private function uploadFile(): void
     {
-        $actId    = (int) filter_input(INPUT_POST, 'act_id');
-        $userId   = $this->auth->getUserId();
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
+        $userId = $this->auth->getUserId();
         $category = filter_input(INPUT_POST, 'file_category') ?: 'general';
-        if (!in_array($category, ['general', 'signed'], true)) $category = 'general';
+        if (!in_array($category, ['general', 'signed'], true))
+            $category = 'general';
 
         // Сначала определяем тип акта для формирования корректного пути
         $actType = 'other'; // значение по умолчанию
@@ -572,10 +581,10 @@ end;';
     /* ----------------------------------------------------------------- */
     private function approveInApp(): void
     {
-        $actId    = (int) filter_input(INPUT_POST, 'act_id');
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
         $decision = filter_input(INPUT_POST, 'decision') ?: '';
-        $comment  = trim((string) filter_input(INPUT_POST, 'comment'));
-        $userId   = $this->auth->getUserId();
+        $comment = trim((string) filter_input(INPUT_POST, 'comment'));
+        $userId = $this->auth->getUserId();
 
         if (!$actId || !in_array($decision, ['approved', 'rejected'], true)) {
             echo json_encode(['ok' => false, 'msg' => 'Некорректные параметры']);
@@ -606,7 +615,7 @@ end;';
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        $id     = (int) filter_input(INPUT_POST, 'id');
+        $id = (int) filter_input(INPUT_POST, 'id');
         $userId = $this->auth->getUserId();
         $result = $this->callFunc('xx_disl_gu23_pkg.gu23_close_act(:id, :uid)', [':id' => $id, ':uid' => $userId]);
         if (str_starts_with((string) $result, 'ERR')) {
@@ -621,9 +630,9 @@ end;';
     /* ----------------------------------------------------------------- */
     private function sendApproval(): void
     {
-        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
-        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
+        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
 
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
@@ -655,13 +664,13 @@ end;';
         }
 
         $mailer = $this->loadMailer();
-        $sent   = 0;
+        $sent = 0;
         $errors = [];
 
         foreach ($signers as $signer) {
             $approverId = (int) $signer['APPROVER_ID'];
-            $email      = $signer['FAKE_EMAIL'];
-            $fullName   = $signer['FULL_NAME'] ?? '';
+            $email = $signer['FAKE_EMAIL'];
+            $fullName = $signer['FULL_NAME'] ?? '';
 
             $links = $mailer->generateLinks($actId, $approverId);
 
@@ -672,7 +681,7 @@ end;';
             oci_commit($this->conn);
 
             $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-            $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+            $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
 
             if ($ok) {
                 $sent++;
@@ -682,8 +691,12 @@ end;';
         }
 
         if ($sent > 0) {
-            echo json_encode(['ok' => true, 'sent' => $sent, 'errors' => $errors,
-                'msg' => "Отправлено писем: {$sent}" . ($errors ? '. Ошибки: ' . implode(', ', $errors) : '')]);
+            echo json_encode([
+                'ok' => true,
+                'sent' => $sent,
+                'errors' => $errors,
+                'msg' => "Отправлено писем: {$sent}" . ($errors ? '. Ошибки: ' . implode(', ', $errors) : '')
+            ]);
         } else {
             echo json_encode(['ok' => false, 'msg' => 'Не удалось отправить ни одного письма: ' . implode(', ', $errors)]);
         }
@@ -707,7 +720,7 @@ end;';
         }
 
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-                 . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
         return new ApprovalMailer(HMAC_SECRET, $baseUrl);
     }
@@ -735,17 +748,18 @@ end;';
     private function refsGetAll(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
-        $tab    = filter_input(INPUT_POST, 'tab') ?: 'signers';
-        $search = trim((string)(filter_input(INPUT_POST, 'search') ?? ''));
-        $page   = max(1, (int)(filter_input(INPUT_POST, 'page') ?? 1));
-        $limit  = 20;
+        $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
+        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
+        $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit = 20;
         $offset = ($page - 1) * $limit;
-        $srch   = '%' . mb_strtoupper($search) . '%';
+        $srch = '%' . mb_strtoupper($search) . '%';
 
         if ($tab === 'signers') {
-            $total = (int)($this->pipe(
+            $total = (int) ($this->pipe(
                 'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_signer
                   WHERE (UPPER(FIO) LIKE :s1 OR UPPER(POST) LIKE :s2
                       OR UPPER(ORG) LIKE :s3 OR UPPER(UNIT) LIKE :s4)',
@@ -761,11 +775,17 @@ end;';
                       ORDER BY DECODE(ACTIVE,\'Y\',0,1), FIO
                    ) s WHERE ROWNUM <= :top_rn
                  ) WHERE rn > :off_rn',
-                [':s1' => $srch, ':s2' => $srch, ':s3' => $srch, ':s4' => $srch,
-                 ':top_rn' => $offset + $limit, ':off_rn' => $offset]
+                [
+                    ':s1' => $srch,
+                    ':s2' => $srch,
+                    ':s3' => $srch,
+                    ':s4' => $srch,
+                    ':top_rn' => $offset + $limit,
+                    ':off_rn' => $offset
+                ]
             );
         } else {
-            $total = (int)($this->pipe(
+            $total = (int) ($this->pipe(
                 'SELECT COUNT(*) CNT FROM xx_disl_gu23_ref_reason WHERE UPPER(NAME) LIKE :s1',
                 [':s1' => $srch]
             )[0]['CNT'] ?? 0);
@@ -782,11 +802,11 @@ end;';
             );
         }
         echo json_encode([
-            'ok'        => true,
-            'tab'       => $tab,
-            'items'     => $items,
-            'total'     => $total,
-            'page'      => $page,
+            'ok' => true,
+            'tab' => $tab,
+            'items' => $items,
+            'total' => $total,
+            'page' => $page,
             'page_size' => $limit,
         ]);
     }
@@ -794,61 +814,65 @@ end;';
     private function refSignerSave(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
-        $id   = (int)   filter_input(INPUT_POST, 'id');
-        $fio  = (string) filter_input(INPUT_POST, 'fio');
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $fio = (string) filter_input(INPUT_POST, 'fio');
         $post = (string) filter_input(INPUT_POST, 'post');
-        $org  = (string) filter_input(INPUT_POST, 'org');
+        $org = (string) filter_input(INPUT_POST, 'org');
         $unit = (string) filter_input(INPUT_POST, 'unit');
-        $res  = $this->callFunc(
+        $res = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
             [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
         );
-        echo json_encode(str_starts_with((string)$res, 'OK')
+        echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     private function refSignerToggle(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
-        $id  = (int) filter_input(INPUT_POST, 'id');
+        $id = (int) filter_input(INPUT_POST, 'id');
         $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_signer_toggle(:id)', [':id' => $id]);
-        echo json_encode(str_starts_with((string)$res, 'OK')
+        echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     private function refReasonSave(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
-        $id      = (int)    filter_input(INPUT_POST, 'id');
-        $name    = (string)  filter_input(INPUT_POST, 'name');
-        $actKind = (string)  filter_input(INPUT_POST, 'act_kind');
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $name = (string) filter_input(INPUT_POST, 'name');
+        $actKind = (string) filter_input(INPUT_POST, 'act_kind');
         $res = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',
             [':id' => $id, ':name' => $name, ':kind' => $actKind]
         );
-        echo json_encode(str_starts_with((string)$res, 'OK')
+        echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     private function refReasonToggle(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
-        $id  = (int) filter_input(INPUT_POST, 'id');
+        $id = (int) filter_input(INPUT_POST, 'id');
         $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
-        echo json_encode(str_starts_with((string)$res, 'OK')
+        echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string)$res)[1] ?? 'Ошибка']);
+            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     /* ----------------------------------------------------------------- */
@@ -857,15 +881,17 @@ end;';
     private function resendApproval(): void
     {
         if (!$this->auth->isAuthAdmin()) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
         }
 
-        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = (int) filter_input(INPUT_POST, 'user_id');
-        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file';
 
         if (!$actId || !$userId) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
+            return;
         }
 
         $signers = $this->pipe(
@@ -874,14 +900,15 @@ end;';
         );
 
         if (empty($signers)) {
-            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']); return;
+            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']);
+            return;
         }
 
-        $mailer     = $this->loadMailer();
-        $signer     = $signers[0];
+        $mailer = $this->loadMailer();
+        $signer = $signers[0];
         $approverId = (int) $signer['APPROVER_ID'];
-        $email      = $signer['FAKE_EMAIL'];
-        $fullName   = $signer['FULL_NAME'] ?? '';
+        $email = $signer['FAKE_EMAIL'];
+        $fullName = $signer['FULL_NAME'] ?? '';
 
         $links = $mailer->generateLinks($actId, $approverId);
 
@@ -892,7 +919,7 @@ end;';
         oci_commit($this->conn);
 
         $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-        $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+        $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
 
         echo json_encode($ok
             ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]

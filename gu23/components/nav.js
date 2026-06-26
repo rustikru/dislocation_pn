@@ -7,7 +7,7 @@ export function drawNav() {
     { page: 'archive', icon: '', label: 'Реестр актов' },
   ]
   if (applicationState.isAdmin) {
-    navigationItems.push({ page: 'refs', icon: '⚙', label: 'Справочники' })
+    navigationItems.push({ page: 'refs', icon: '', label: 'Справочники' })
   }
 
   const $nav = $('#nav').empty()
