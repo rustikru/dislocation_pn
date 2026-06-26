@@ -315,8 +315,6 @@ class GuActRepository
             'reasons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
             'stations' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
             'stations_from' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
-            /* 'owners'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_owner())'),
-            'kinds'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'), */
             'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
             'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
             'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
@@ -328,7 +326,7 @@ class GuActRepository
     /* акты — чтение                                                      */
     /* ----------------------------------------------------------------- */
 
-    /** Реестр актов с фильтрами; пагинация на стороне PHP. */
+    /** Реестр актов с фильтрами*/
     private function getActs(): void
     {
         $q = filter_input(INPUT_POST, 'q') ?: null;
@@ -427,7 +425,7 @@ class GuActRepository
     /* Грузим данные из внешней дислокации в таблицу                     */
     /* ----------------------------------------------------------------- */
 
-    /** Данные вагонов из внешней дислокации (номер, собственник, маршрут, груз). */
+    /** Данные вагонов из внешней дислокации (номер, собственник, маршрут, груз, вес). */
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons');
@@ -597,13 +595,13 @@ class GuActRepository
         $reason = filter_input(INPUT_POST, 'reason');
         $uid = $this->auth->getUserId();
         $sql = 'declare
-  v_d xx_etw.xx_disl_gu23_pkg.t_gu23_annul_act;
-begin
-  v_d.p_id      := :id;
-  v_d.p_user_id := :uid;
-  v_d.p_reason  := :reason;
-  :res := xx_etw.xx_disl_gu23_pkg.gu23_annul_act(v_d);
-end;';
+                    v_d xx_etw.xx_disl_gu23_pkg.t_gu23_annul_act;
+                    begin
+                    v_d.p_id      := :id;
+                    v_d.p_user_id := :uid;
+                    v_d.p_reason  := :reason;
+                    :res := xx_etw.xx_disl_gu23_pkg.gu23_annul_act(v_d);
+                    end;';
         $st = oci_parse($this->conn, $sql);
         $res = '';
         oci_bind_by_name($st, ':res', $res, 4000);
@@ -618,7 +616,7 @@ end;';
     /* файлы                                                              */
     /* ----------------------------------------------------------------- */
 
-    /** Загрузка файлов-вложений. Физически кладёт файл в request_data/{type}/{act_id}/, регистрирует в БД. */
+    /** Загрузка файлов-вложений в act_data/{type}/{act_id}/ */
     private function uploadFile(): void
     {
         $actId = (int) filter_input(INPUT_POST, 'act_id');
@@ -637,7 +635,7 @@ end;';
         }
 
         // Файлы хранятся в разрезе типа акта с ID записи из таблицы
-        $baseDir = __DIR__ . '/request_data/' . $actType . '/' . $actId . '/';
+        $baseDir = __DIR__ . '/act_data/' . $actType . '/' . $actId . '/';
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
@@ -742,7 +740,7 @@ end;';
     /* подписание акта прямо из интерфейса (без email-ссылки)             */
     /* ----------------------------------------------------------------- */
 
-    /** Подписание или отклонение акта прямо из интерфейса (без перехода по HMAC-ссылке). */
+    /** Подписание или отклонение акта прямо из интерфейса  */
     private function approveInApp(): void
     {
         if (!$this->hasPerm('SIGN_ACT')) {
@@ -886,9 +884,9 @@ end;';
             return;
         }
 
-        $actId  = (int) filter_input(INPUT_POST, 'act_id');
+        $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = (int) filter_input(INPUT_POST, 'user_id');
-        $mode   = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file';
 
         if (!$actId || !$userId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
@@ -905,11 +903,11 @@ end;';
             return;
         }
 
-        $mailer     = $this->loadMailer();
-        $signer     = $signers[0];
+        $mailer = $this->loadMailer();
+        $signer = $signers[0];
         $approverId = (int) $signer['APPROVER_ID'];
-        $email      = $signer['FAKE_EMAIL'];
-        $fullName   = $signer['FULL_NAME'] ?? '';
+        $email = $signer['FAKE_EMAIL'];
+        $fullName = $signer['FULL_NAME'] ?? '';
 
         $links = $mailer->generateLinks($actId, $approverId);
 
@@ -920,10 +918,10 @@ end;';
         oci_commit($this->conn);
 
         $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-        $ok   = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+        $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
 
         echo json_encode($ok
-            ? ['ok' => true,  'msg' => "Ссылка отправлена: {$email}"]
+            ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
             : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
     }
 
@@ -977,19 +975,21 @@ end;';
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        $tab    = filter_input(INPUT_POST, 'tab') ?: 'signers';
+        $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
-        $page   = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
-        $limit  = 20;
+        $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit = 20;
 
         if ($tab === 'signers') {
             $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_signers_all())');
             if ($search !== '') {
                 $s = mb_strtoupper($search);
-                $all = array_values(array_filter($all, fn($r) =>
-                    str_contains(mb_strtoupper((string) ($r['FIO']  ?? '')), $s) ||
+                $all = array_values(array_filter(
+                    $all,
+                    fn($r) =>
+                    str_contains(mb_strtoupper((string) ($r['FIO'] ?? '')), $s) ||
                     str_contains(mb_strtoupper((string) ($r['POST'] ?? '')), $s) ||
-                    str_contains(mb_strtoupper((string) ($r['ORG']  ?? '')), $s) ||
+                    str_contains(mb_strtoupper((string) ($r['ORG'] ?? '')), $s) ||
                     str_contains(mb_strtoupper((string) ($r['UNIT'] ?? '')), $s)
                 ));
             }
@@ -997,18 +997,20 @@ end;';
             $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
             if ($search !== '') {
                 $s = mb_strtoupper($search);
-                $all = array_values(array_filter($all, fn($r) =>
+                $all = array_values(array_filter(
+                    $all,
+                    fn($r) =>
                     str_contains(mb_strtoupper((string) ($r['NAME'] ?? '')), $s)
                 ));
             }
         }
 
         echo json_encode([
-            'ok'        => true,
-            'tab'       => $tab,
-            'items'     => array_slice($all, ($page - 1) * $limit, $limit),
-            'total'     => count($all),
-            'page'      => $page,
+            'ok' => true,
+            'tab' => $tab,
+            'items' => array_slice($all, ($page - 1) * $limit, $limit),
+            'total' => count($all),
+            'page' => $page,
             'page_size' => $limit,
         ]);
     }
