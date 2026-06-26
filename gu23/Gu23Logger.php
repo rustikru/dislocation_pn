@@ -1,10 +1,9 @@
 <?php
 /**
- * Gu23Logger — файловый логгер модуля ГУ-23.
+ * Gu23Logger
  *
  * Пишет в gu23/log/gu23-YYYY-MM-DD.log
- * Ротация: один файл на день; старые файлы не удаляются автоматически.
- *
+ * 
  * Уровни: ERROR, WARN, INFO, DEBUG
  */
 class Gu23Logger
@@ -26,14 +25,14 @@ class Gu23Logger
     {
         $dir = self::dir();
         if (!is_dir($dir)) {
-            return; // не смогли создать директорию — молча выходим
+            return; //
         }
 
         $file = $dir . '/gu23-' . date('Y-m-d') . '.log';
-        $ts   = date('Y-m-d H:i:s');
+        $ts = date('Y-m-d H:i:s');
         $user = $_SESSION['login'] ?? '-';
-        $ip   = $_SERVER['REMOTE_ADDR'] ?? '-';
-        $uri  = $_SERVER['REQUEST_URI'] ?? '-';
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '-';
+        $uri = $_SERVER['REQUEST_URI'] ?? '-';
 
         $line = "[{$ts}] [{$level}] user={$user} ip={$ip} uri={$uri} | {$message}";
 
@@ -69,30 +68,31 @@ class Gu23Logger
     {
         self::write('ERROR', get_class($e) . ': ' . $e->getMessage(), [
             'action' => $action,
-            'file'   => $e->getFile() . ':' . $e->getLine(),
-            'trace'  => self::shortTrace($e),
-            'post'   => self::safePost(),
+            'file' => $e->getFile() . ':' . $e->getLine(),
+            'trace' => self::shortTrace($e),
+            'post' => self::safePost(),
         ]);
     }
 
-    /** Первые 5 строк трейса без vendor-мусора. */
+
     private static function shortTrace(\Throwable $e): array
     {
         $frames = [];
         foreach ($e->getTrace() as $i => $f) {
-            if ($i >= 5) break;
+            if ($i >= 5)
+                break;
             $loc = ($f['file'] ?? '') . ':' . ($f['line'] ?? '');
-            $fn  = ($f['class'] ?? '') . ($f['type'] ?? '') . ($f['function'] ?? '');
+            $fn = ($f['class'] ?? '') . ($f['type'] ?? '') . ($f['function'] ?? '');
             $frames[] = "{$loc} {$fn}()";
         }
         return $frames;
     }
 
-    /** $_POST без чувствительных полей. */
+    /** $_POST полей. */
     private static function safePost(): array
     {
         $skip = ['password', 'pwd', 'token', 'token_sig', 'secret'];
-        $out  = [];
+        $out = [];
         foreach ($_POST as $k => $v) {
             $out[$k] = in_array(strtolower($k), $skip, true) ? '***' : (is_string($v) ? mb_substr($v, 0, 200) : $v);
         }
