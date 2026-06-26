@@ -660,8 +660,12 @@ function showSignersFields() {
   const countNeeded = activeDraft.type === 'other' ? 2 : 3
 
   const dept = activeDraft.departmentCode
+  // Временно отключаем фильтрацию по цеху
+
+  //const ownFiltered = references.signersOwnList || []
   const ownFiltered = (references.signersOwnList || []).filter(
-    (s) => !dept || !s.UNIT || s.UNIT === dept,
+    // Фильтрация по цеху составления
+    (s) => !cex || !s.UNIT || s.UNIT.includes(cex),
   )
 
   for (let i = 0; i < countNeeded; i++) {
