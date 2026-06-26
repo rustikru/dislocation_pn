@@ -56,4 +56,7 @@ return [
     // ------------------------------------------------------------------
     // ГУ-23 · Роли и полномочия (администрирование)
     // ------------------------------------------------------------------
+    'gu23_roles_users'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_role_assign'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_role_revoke'  => ['gu23/GuActRepository.php', 'GuActRepository'],
 ];
