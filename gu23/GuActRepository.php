@@ -158,6 +158,15 @@ class GuActRepository
                 case 'gu23_role_revoke':
                     $this->roleRevoke();
                     break;
+                case 'gu23_role_perms':
+                    $this->rolePerms();
+                    break;
+                case 'gu23_perm_assign':
+                    $this->permAssign();
+                    break;
+                case 'gu23_perm_revoke':
+                    $this->permRevoke();
+                    break;
                 // конец - Роли
                 default:
                     http_response_code(400);
@@ -1026,7 +1035,9 @@ end;';
             return;
         }
 
-        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? '')) ?: null;
+        $search  = trim((string) (filter_input(INPUT_POST, 'search') ?? '')) ?: null;
+        $page    = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
+        $limit   = 20;
 
         $rows = $this->pipe(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_users_roles_get(:b1))',
@@ -1034,11 +1045,11 @@ end;';
         );
 
         // Группируем по пользователю
-        $users = [];
+        $usersMap = [];
         foreach ($rows as $row) {
             $uid = $row['USER_ID'];
-            if (!isset($users[$uid])) {
-                $users[$uid] = [
+            if (!isset($usersMap[$uid])) {
+                $usersMap[$uid] = [
                     'id'        => $uid,
                     'login'     => $row['LOGIN'],
                     'full_name' => $row['FULL_NAME'],
@@ -1046,7 +1057,7 @@ end;';
                 ];
             }
             if ($row['ROLE_ID']) {
-                $users[$uid]['roles'][] = [
+                $usersMap[$uid]['roles'][] = [
                     'role_id'   => $row['ROLE_ID'],
                     'role_code' => $row['ROLE_CODE'],
                     'role_name' => $row['ROLE_NAME'],
@@ -1054,9 +1065,71 @@ end;';
             }
         }
 
-        $roles = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
+        $all    = array_values($usersMap);
+        $total  = count($all);
+        $users  = array_slice($all, ($page - 1) * $limit, $limit);
+        $roles  = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
 
-        echo json_encode(['ok' => true, 'users' => array_values($users), 'roles' => $roles]);
+        echo json_encode([
+            'ok'        => true,
+            'users'     => $users,
+            'roles'     => $roles,
+            'total'     => $total,
+            'page'      => $page,
+            'page_size' => $limit,
+        ]);
+    }
+
+    private function rolePerms(): void
+    {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $rows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_role_perms_get())');
+        echo json_encode(['ok' => true, 'rows' => $rows]);
+    }
+
+    private function permAssign(): void
+    {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $roleId = (int) filter_input(INPUT_POST, 'role_id');
+        $permId = (int) filter_input(INPUT_POST, 'perm_id');
+        if (!$roleId || !$permId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны role_id или perm_id']);
+            return;
+        }
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_perm_assign(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
+        if (str_starts_with((string) $res, 'ERR')) {
+            $parts = explode(self::US, (string) $res, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true]);
+        }
+    }
+
+    private function permRevoke(): void
+    {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        $roleId = (int) filter_input(INPUT_POST, 'role_id');
+        $permId = (int) filter_input(INPUT_POST, 'perm_id');
+        if (!$roleId || !$permId) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указаны role_id или perm_id']);
+            return;
+        }
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_perm_revoke(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
+        if (str_starts_with((string) $res, 'ERR')) {
+            $parts = explode(self::US, (string) $res, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true]);
+        }
     }
 
     private function roleAssign(): void

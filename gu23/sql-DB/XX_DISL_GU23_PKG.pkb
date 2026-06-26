@@ -2575,6 +2575,72 @@ create or replace package body xx_disl_gu23_pkg as
       when others then return 'N';
    end gu23_has_perm;
 
+   function gu23_role_perms_get return t_gu23_role_perm_tab
+      pipelined
+   is
+      l_row t_gu23_role_perm_row;
+   begin
+      for r in (
+         select p.perm_id,
+                p.perm_code,
+                p.description as descr,
+                ro.role_id,
+                ro.role_code,
+                ro.role_name,
+                case when rp.perm_id is not null then 'Y' else 'N' end as has_perm
+           from xx_disl_gu23_permissions p
+          cross join xx_disl_gu23_roles ro
+           left join xx_disl_gu23_role_permissions rp
+                  on rp.role_id = ro.role_id
+                 and rp.perm_id = p.perm_id
+          order by p.perm_id,
+                   ro.role_id
+      ) loop
+         l_row.perm_id := r.perm_id;
+         l_row.perm_code := r.perm_code;
+         l_row.descr := r.descr;
+         l_row.role_id := r.role_id;
+         l_row.role_code := r.role_code;
+         l_row.role_name := r.role_name;
+         l_row.has_perm := r.has_perm;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end gu23_role_perms_get;
+
+   function gu23_perm_assign (
+      p_role_id in number,
+      p_perm_id in number
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_role_permissions ( role_id, perm_id )
+           values ( p_role_id, p_perm_id );
+      commit;
+      return 'OK';
+   exception
+      when dup_val_on_index then
+         return 'OK';
+      when others then
+         rollback;
+         return format_error();
+   end gu23_perm_assign;
+
+   function gu23_perm_revoke (
+      p_role_id in number,
+      p_perm_id in number
+   ) return varchar2 is
+   begin
+      delete from xx_disl_gu23_role_permissions
+       where role_id = p_role_id
+         and perm_id = p_perm_id;
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_perm_revoke;
+
    -- ----------------------------------------------------------------
    -- Администрирование справочников
    -- ----------------------------------------------------------------

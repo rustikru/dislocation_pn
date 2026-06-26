@@ -59,4 +59,7 @@ return [
     'gu23_roles_users'  => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_role_assign'  => ['gu23/GuActRepository.php', 'GuActRepository'],
     'gu23_role_revoke'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_role_perms'   => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_perm_assign'  => ['gu23/GuActRepository.php', 'GuActRepository'],
+    'gu23_perm_revoke'  => ['gu23/GuActRepository.php', 'GuActRepository'],
 ];

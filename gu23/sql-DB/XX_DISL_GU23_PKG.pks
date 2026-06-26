@@ -485,6 +485,34 @@ create or replace package xx_disl_gu23_pkg as
       p_perm_code in varchar2
    ) return varchar2;
 
+   -- Матрица роль × полномочие (все строки perm_id × role_id)
+   type t_gu23_role_perm_row is record (
+         perm_id   number,
+         perm_code varchar2(50),
+         descr     varchar2(200),
+         role_id   number,
+         role_code varchar2(50),
+         role_name varchar2(100),
+         has_perm  varchar2(1)
+   );
+   type t_gu23_role_perm_tab is
+      table of t_gu23_role_perm_row;
+
+   function gu23_role_perms_get return t_gu23_role_perm_tab
+      pipelined;
+
+   -- Назначить полномочие роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_perm_assign (
+      p_role_id in number,
+      p_perm_id in number
+   ) return varchar2;
+
+   -- Отозвать полномочие у роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_perm_revoke (
+      p_role_id in number,
+      p_perm_id in number
+   ) return varchar2;
+
    -- ---- Администрирование справочников ----
 
    type t_gu23_ref_signer_row is record (
