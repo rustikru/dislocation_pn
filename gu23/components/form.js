@@ -785,7 +785,7 @@ function showSignersFields() {
 function showFormButtons() {
   $('#form-footer').html(`
     <button class="btn ghost" id="btn-cancel">Отмена</button>
-    <button class="btn" id="btn-saveDraft">Сохранить черновик</button>
+    <button class="btn" id="btn-saveDraft">Сохранить Проект</button>
     <button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>
   `)
 
@@ -895,7 +895,7 @@ function saveActToServer(status, skipWarning = false) {
         const msg =
           status === 'active'
             ? `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`
-            : 'Черновик сохранён'
+            : 'Проект сохранён'
         showToast(msg, 'ok')
         navigateTo('card', response.id)
       }

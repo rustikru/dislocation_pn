@@ -18,7 +18,15 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
-  const filterState = { q: '', type: '', status: '', dept: '', date_from: '', date_to: '', page: 1 }
+  const filterState = {
+    q: '',
+    type: '',
+    status: '',
+    dept: '',
+    date_from: '',
+    date_to: '',
+    page: 1,
+  }
   const PAGE_SIZE = 50
   let searchTimeout = null
 
@@ -47,7 +55,15 @@ export function showArchive(container) {
   )
   createSelectFilter(
     ['', 'draft', 'active', 'closed', 'annulled', 'signed', 'rejected'],
-    ['Все статусы', 'Черновик', 'Открыт', 'Закрыт', 'Аннулирован', 'Подписан', 'Отклонён'],
+    [
+      'Все статусы',
+      'Проект',
+      'Открыт',
+      'Закрыт',
+      'Аннулирован',
+      'Подписан',
+      'Отклонён',
+    ],
     'status',
   )
 
@@ -60,14 +76,18 @@ export function showArchive(container) {
 
   // Фильтр по дате
   const $dateFrom = $('<input type="date" class="inp" title="Дата с">')
-  const $dateTo   = $('<input type="date" class="inp" title="Дата по">')
+  const $dateTo = $('<input type="date" class="inp" title="Дата по">')
   $dateFrom.on('change', (e) => {
-    filterState.date_from = e.target.value ? e.target.value.split('-').reverse().join('.') : ''
+    filterState.date_from = e.target.value
+      ? e.target.value.split('-').reverse().join('.')
+      : ''
     filterState.page = 1
     loadArchiveData()
   })
   $dateTo.on('change', (e) => {
-    filterState.date_to = e.target.value ? e.target.value.split('-').reverse().join('.') : ''
+    filterState.date_to = e.target.value
+      ? e.target.value.split('-').reverse().join('.')
+      : ''
     filterState.page = 1
     loadArchiveData()
   })
@@ -84,9 +104,10 @@ export function showArchive(container) {
   // Загрузка и отрисовка таблицы
   function loadArchiveData() {
     sendApiRequest('gu23_get_acts', filterState).done((resp) => {
-      const acts = (resp && resp.acts) ? resp.acts : (Array.isArray(resp) ? resp : [])
-      const total = (resp && resp.total) ? resp.total : acts.length
-      const page  = (resp && resp.page)  ? resp.page  : 1
+      const acts =
+        resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []
+      const total = resp && resp.total ? resp.total : acts.length
+      const page = resp && resp.page ? resp.page : 1
 
       // Построение дерева связей
       const rootActs = []
@@ -186,15 +207,38 @@ export function showArchive(container) {
 
       const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
       const pagerBtns = []
-      if (page > 1) pagerBtns.push('<button class="btn sm ghost pager-btn" data-p="' + (page - 1) + '">←</button>')
+      if (page > 1)
+        pagerBtns.push(
+          '<button class="btn sm ghost pager-btn" data-p="' +
+            (page - 1) +
+            '">←</button>',
+        )
       for (let p = 1; p <= totalPages; p++) {
-        if (totalPages <= 7 || Math.abs(p - page) <= 2 || p === 1 || p === totalPages) {
-          pagerBtns.push('<button class="btn sm' + (p === page ? '' : ' ghost') + ' pager-btn" data-p="' + p + '">' + p + '</button>')
+        if (
+          totalPages <= 7 ||
+          Math.abs(p - page) <= 2 ||
+          p === 1 ||
+          p === totalPages
+        ) {
+          pagerBtns.push(
+            '<button class="btn sm' +
+              (p === page ? '' : ' ghost') +
+              ' pager-btn" data-p="' +
+              p +
+              '">' +
+              p +
+              '</button>',
+          )
         } else if (pagerBtns[pagerBtns.length - 1] !== '…') {
           pagerBtns.push('…')
         }
       }
-      if (page < totalPages) pagerBtns.push('<button class="btn sm ghost pager-btn" data-p="' + (page + 1) + '">→</button>')
+      if (page < totalPages)
+        pagerBtns.push(
+          '<button class="btn sm ghost pager-btn" data-p="' +
+            (page + 1) +
+            '">→</button>',
+        )
 
       const tableHtml =
         '<div style="overflow:auto">' +
@@ -218,17 +262,21 @@ export function showArchive(container) {
         '</table>' +
         '</div>' +
         '<div class="cardpad" style="border-top:1px solid var(--line);font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-        '<span class="muted">Всего: ' + total + '</span>' +
+        '<span class="muted">Всего: ' +
+        total +
+        '</span>' +
         '<div style="flex:1"></div>' +
         pagerBtns.join('') +
         '</div>'
 
       $('#acts-table-container').html(tableHtml)
 
-      $('#acts-table-container').off('click', '.pager-btn').on('click', '.pager-btn', function () {
-        filterState.page = parseInt($(this).data('p'))
-        loadArchiveData()
-      })
+      $('#acts-table-container')
+        .off('click', '.pager-btn')
+        .on('click', '.pager-btn', function () {
+          filterState.page = parseInt($(this).data('p'))
+          loadArchiveData()
+        })
 
       $('#archive-tree-table tbody').on('click', 'tr', function (e) {
         const $tr = $(this)

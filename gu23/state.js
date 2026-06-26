@@ -18,7 +18,7 @@ export const applicationState = {
   isAdmin: false,
 }
 
-// Активный черновик
+// Активный Проект
 export let activeDraft = null
 
 export function setActiveDraft(value) {

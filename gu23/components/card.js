@@ -63,7 +63,7 @@ function showToolbarButtons(act, data) {
 
   if (act.STATUS === 'draft') {
     const $editBtn = $('<button class="btn primary">Редактировать</button>')
-    const $delBtn = $('<button class="btn danger">Удалить черновик</button>')
+    const $delBtn = $('<button class="btn danger">Удалить Проект</button>')
 
     $editBtn.on('click', () => editDraftAct(data))
     $delBtn.on('click', () => deleteDraftAct(act))
@@ -477,11 +477,11 @@ function editDraftAct(data) {
 function deleteDraftAct(act) {
   showConfirmBox(
     'Удаление черновика',
-    `Удалить черновик ${act.ACT_NUMBER}? Действие необратимо.`,
+    `Удалить Проект ${act.ACT_NUMBER}? Действие необратимо.`,
     () => {
       sendApiRequest('gu23_del_act', { id: act.ID }).done((response) => {
         if (response && response.ok) {
-          showToast('Черновик удалён', 'ok')
+          showToast('Проект удалён', 'ok')
           navigateTo('archive')
         } else {
           showToast((response && response.msg) || 'Ошибка удаления', 'err')

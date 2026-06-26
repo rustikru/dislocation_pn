@@ -313,7 +313,7 @@ create or replace package xx_disl_gu23_pkg as
       p_data in t_gu23_del_file
    ) return varchar2;
 
-    -- Сохранение акта (создание/правка черновика) вместе со строками и подписантами.
+    -- Сохранение акта (создание/правка Проекта) вместе со строками и подписантами.
     -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
    function gu23_save_act (
       p_data in t_gu23_save_act
@@ -338,9 +338,9 @@ create or replace package xx_disl_gu23_pkg as
 
     -- Строка результата gu23_approval_get_signers
    type t_gu23_approval_signer_row is record (
-      approver_id number,
-      full_name   varchar2(256),
-      fake_email  varchar2(256)
+         approver_id number,
+         full_name   varchar2(256),
+         fake_email  varchar2(256)
    );
    type t_gu23_approval_signer_tab is
       table of t_gu23_approval_signer_row;
@@ -395,23 +395,22 @@ create or replace package xx_disl_gu23_pkg as
     -- Текущий статус согласования одного пользователя по акту
     -- Возвращает: 'none' | 'pending' | 'approved' | 'rejected'
    function gu23_approval_my_status (
-      p_act_id    in number,
-      p_user_id   in number
+      p_act_id  in number,
+      p_user_id in number
    ) return varchar2;
 
     -- Все записи согласования по акту (для отображения статусов в карточке)
    type t_gu23_approval_row is record (
-      approver_id     number,
-      full_name       varchar2(256),
-      status          varchar2(16),
-      decided_at      varchar2(20),
-      comment_txt     varchar2(1000),
-      signed_version  number,
-      signer_ip       varchar2(64)
+         approver_id    number,
+         full_name      varchar2(256),
+         status         varchar2(16),
+         decided_at     varchar2(20),
+         comment_txt    varchar2(1000),
+         signed_version number,
+         signer_ip      varchar2(64)
    );
    type t_gu23_approval_tab is
       table of t_gu23_approval_row;
-
    function gu23_get_approvals (
       p_act_id in number
    ) return t_gu23_approval_tab
@@ -430,25 +429,27 @@ create or replace package xx_disl_gu23_pkg as
    -- ---- Администрирование справочников ----
 
    type t_gu23_ref_signer_row is record (
-      id     number,
-      fio    varchar2(256),
-      post   varchar2(256),
-      org    varchar2(256),
-      unit   varchar2(256),
-      active char(1)
+         id     number,
+         fio    varchar2(256),
+         post   varchar2(256),
+         org    varchar2(256),
+         unit   varchar2(256),
+         active char(1)
    );
-   type t_gu23_ref_signer_tab is table of t_gu23_ref_signer_row;
-
+   type t_gu23_ref_signer_tab is
+      table of t_gu23_ref_signer_row;
    type t_gu23_ref_reason_row is record (
-      id       number,
-      name     varchar2(512),
-      act_kind varchar2(16),
-      active   char(1)
+         id       number,
+         name     varchar2(512),
+         act_kind varchar2(16),
+         active   char(1)
    );
-   type t_gu23_ref_reason_tab is table of t_gu23_ref_reason_row;
-
-   function gu23_ref_signers_all return t_gu23_ref_signer_tab pipelined;
-   function gu23_ref_reasons_all return t_gu23_ref_reason_tab pipelined;
+   type t_gu23_ref_reason_tab is
+      table of t_gu23_ref_reason_row;
+   function gu23_ref_signers_all return t_gu23_ref_signer_tab
+      pipelined;
+   function gu23_ref_reasons_all return t_gu23_ref_reason_tab
+      pipelined;
 
    function gu23_ref_signer_save (
       p_id   in number,
@@ -458,7 +459,9 @@ create or replace package xx_disl_gu23_pkg as
       p_unit in varchar2
    ) return varchar2;
 
-   function gu23_ref_signer_toggle (p_id in number) return varchar2;
+   function gu23_ref_signer_toggle (
+      p_id in number
+   ) return varchar2;
 
    function gu23_ref_reason_save (
       p_id       in number,
@@ -466,6 +469,8 @@ create or replace package xx_disl_gu23_pkg as
       p_act_kind in varchar2
    ) return varchar2;
 
-   function gu23_ref_reason_toggle (p_id in number) return varchar2;
+   function gu23_ref_reason_toggle (
+      p_id in number
+   ) return varchar2;
 
 end xx_disl_gu23_pkg;
