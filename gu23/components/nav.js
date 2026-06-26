@@ -37,5 +37,16 @@ export function drawNav() {
     $nav.append($button)
   })
 
-  $nav.append('<div class="foot"></div>')
+  const $foot = $('<div class="foot"></div>')
+  const $logout = $(`
+    <form method="post" action="index.php" style="margin-top:8px">
+      <input type="hidden" name="logout" value="1">
+      <button type="submit" class="navbtn" style="color:var(--rej);width:100%">
+        <span class="ic">⏏</span>
+        <span>Выход</span>
+      </button>
+    </form>
+  `)
+  $foot.append($logout)
+  $nav.append($foot)
 }
