@@ -35,13 +35,17 @@ if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
 if (empty($_SESSION['is_auth'])) {
-    $_SESSION['is_auth'] = true;
-    $_SESSION['is_auth_admin'] = true;
-    $_SESSION['login'] = 'BEKMANSUROVRR';
-    $_SESSION['user_id'] = 281;
-    $_SESSION['full_name'] = 'Локальный разработчик';
-    $_SESSION['enterprise'] = 'DEV';
+    $_SESSION['is_auth']         = true;
+    $_SESSION['is_auth_admin']   = true;   // даёт полный доступ без проверки ролей Oracle
+    $_SESSION['login']           = 'BEKMANSUROVRR';
+    $_SESSION['user_id']         = 281;
+    $_SESSION['full_name']       = 'Локальный разработчик';
+    $_SESSION['enterprise']      = 'DEV';
     $_SESSION['flag_change_pwd'] = 'N';
-    // права (на всякий случай — если страница их проверяет)
-    $_SESSION['administrator'] = 'N';
+    $_SESSION['administrator']   = 'Y';
+    $_SESSION['gu23_add']        = 'Y';
+    $_SESSION['gu23_view']       = 'Y';
+    // ОБЯЗАТЕЛЬНО: без station_id select_station.php уходит в Oracle и падает
+    $_SESSION['station_id']      = 1;
+    $_SESSION['station']         = 'DEV';
 }
