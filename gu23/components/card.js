@@ -470,6 +470,7 @@ function editDraftAct(data) {
       post: s.POST,
       org: s.ORG,
       manual: !s.SIGNER_REF_ID,
+      stype: s.STYPE || null,
     })),
     _summary: null,
     _openStarts: null,
