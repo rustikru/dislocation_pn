@@ -1,7 +1,7 @@
 import { sendApiRequest } from '../api.js'
 
 // 'send_mail' — реальная отправка email, 'send_file' — сохранить письмо в папку mail/, false — не отправлять
-const APPROVAL_MODE = 'false'
+const APPROVAL_MODE = 'send_file'
 import {
   references,
   activeDraft,

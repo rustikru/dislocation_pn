@@ -151,6 +151,9 @@ function showDetailsBlock(act) {
   if (act.ACT_TYPE !== 'other') {
     dlHtml += `<dt>Начало простоя</dt><dd class="mono">${formatDateTime(act.START_AT)}</dd>`
   }
+  if (act.ACT_TYPE == 'other') {
+    dlHtml += `<dt>Начало составления акта</dt><dd class="mono">${formatDateTime(act.START_AT)}</dd>`
+  }
   if (act.ACT_TYPE === 'end') {
     dlHtml += `
       <dt>Окончание простоя</dt><dd class="mono">${formatDateTime(act.END_AT)}</dd>
