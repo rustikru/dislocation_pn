@@ -622,6 +622,10 @@ function resendApprovalLinks(act, signers, approvals) {
 }
 
 function sendForApproval(act) {
+  if (!(act.WAGON_CNT > 0)) {
+    showToast('Нельзя отправить на согласование: в акте нет вагонов', 'err')
+    return
+  }
   showConfirmBox(
     'Отправить на согласование',
     'Запросить электронное согласование у подписантов акта?',
