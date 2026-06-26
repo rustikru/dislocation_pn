@@ -5,15 +5,15 @@ import { showToast, showConfirmBox } from './ui.js'
 const ROLES_PAGE_SIZE = 20
 
 let searchTimeout = null
-let currentSearch = ''
-let currentPage   = 1
+let rolesSearch = ''
+let rolesPage   = 1
 
 // Данные, загруженные один раз
 let matrixData = null  // { roles, perms, cells: {perm_id: {role_id: 'Y'/'N'}} }
 
 export function showRoles(container) {
-  currentSearch = ''
-  currentPage   = 1
+  rolesSearch = ''
+  rolesPage   = 1
   matrixData    = null
 
   $(container).html(`
@@ -207,7 +207,7 @@ function doPermRevoke(rid, pid, cb) {
    ══════════════════════════════════════════════════════════ */
 
 function loadUsers() {
-  sendApiRequest('gu23_roles_users', { search: currentSearch, page: currentPage }).done((resp) => {
+  sendApiRequest('gu23_roles_users', { search: rolesSearch, page: rolesPage }).done((resp) => {
     if (!resp || !resp.ok) {
       $('#roles-users-wrap').html(
         '<div class="card cardpad" style="color:var(--rej)">Нет доступа или ошибка загрузки.</div>',
@@ -245,7 +245,7 @@ function renderUsers(users, roles, total, page, pageSize) {
         <div class="searchbox" style="flex:1;max-width:340px">
           <input type="text" class="inp" id="roles-search"
                  placeholder="Поиск по имени или логину…"
-                 value="${escapeHtml(currentSearch)}"
+                 value="${escapeHtml(rolesSearch)}"
                  style="height:34px;font-size:13px">
         </div>
         <span class="muted" style="margin-left:auto;font-size:12px">Всего: ${total}</span>
@@ -268,8 +268,8 @@ function renderUsers(users, roles, total, page, pageSize) {
 
   // Поиск
   $('#roles-search').on('input', function () {
-    currentSearch = $(this).val().trim()
-    currentPage   = 1
+    rolesSearch = $(this).val().trim()
+    rolesPage   = 1
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(loadUsers, 250)
   })
@@ -277,8 +277,8 @@ function renderUsers(users, roles, total, page, pageSize) {
   // Пагинация
   $('#roles-users-wrap').on('click', '.page-btn', function () {
     const p = parseInt($(this).data('page'), 10)
-    if (!p || p === currentPage) return
-    currentPage = p
+    if (!p || p === rolesPage) return
+    rolesPage = p
     loadUsers()
   })
 

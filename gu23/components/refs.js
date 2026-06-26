@@ -2,17 +2,17 @@ import { sendApiRequest } from '../api.js'
 import { escapeHtml } from '../utils.js'
 import { showToast, showConfirmBox } from './ui.js'
 
-let currentTab = 'signers'
-let currentSearch = ''
-let currentPage = 1
+let refsTab = 'signers'
+let refsSearch = ''
+let refsPage = 1
 let currentItems = []
 let searchTimer = null
 
 const REFS_PAGE_SIZE = 20
 
 export function showRefs(container) {
-  currentSearch = ''
-  currentPage = 1
+  refsSearch = ''
+  refsPage = 1
   currentItems = []
 
   $(container).html(`
@@ -32,13 +32,13 @@ export function showRefs(container) {
 
   $(container).on('click', '.refs-tab', function () {
     const tab = $(this).data('tab')
-    if (tab === currentTab) return
-    currentTab = tab
-    currentSearch = ''
-    currentPage = 1
+    if (tab === refsTab) return
+    refsTab = tab
+    refsSearch = ''
+    refsPage = 1
     $('#refs-search').val('')
     $('.refs-tab').each(function () {
-      $(this).attr('style', tabStyle($(this).data('tab') === currentTab))
+      $(this).attr('style', tabStyle($(this).data('tab') === refsTab))
     })
     fetchTab()
   })
@@ -47,14 +47,14 @@ export function showRefs(container) {
     clearTimeout(searchTimer)
     const val = $(this).val()
     searchTimer = setTimeout(() => {
-      currentSearch = val
-      currentPage = 1
+      refsSearch = val
+      refsPage = 1
       fetchTab()
     }, 400)
   })
 
   $(container).on('click', '#btn-add-ref', () => {
-    if (currentTab === 'signers') showSignerForm(null)
+    if (refsTab === 'signers') showSignerForm(null)
     else showReasonForm(null)
   })
 
@@ -64,16 +64,16 @@ export function showRefs(container) {
 function fetchTab() {
   $('#refs-body').html('<div class="muted" style="font-size:13px">Загрузка…</div>')
   sendApiRequest('gu23_refs_get_all', {
-    tab:    currentTab,
-    search: currentSearch,
-    page:   currentPage,
+    tab:    refsTab,
+    search: refsSearch,
+    page:   refsPage,
   }).done((data) => {
     if (!data || !data.ok) {
       $('#refs-body').html('<div class="muted" style="font-size:13px">Ошибка загрузки данных</div>')
       return
     }
     currentItems = data.items || []
-    if (currentTab === 'signers') renderSigners(currentItems, data.total, data.page)
+    if (refsTab === 'signers') renderSigners(currentItems, data.total, data.page)
     else renderReasons(currentItems, data.total, data.page)
   })
 }
@@ -155,8 +155,8 @@ function renderSigners(items, total, page) {
 
   $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
     const p = parseInt($(this).data('page'))
-    if (!p || p === currentPage) return
-    currentPage = p
+    if (!p || p === refsPage) return
+    refsPage = p
     fetchTab()
   })
 }
@@ -283,8 +283,8 @@ function renderReasons(items, total, page) {
 
   $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
     const p = parseInt($(this).data('page'))
-    if (!p || p === currentPage) return
-    currentPage = p
+    if (!p || p === refsPage) return
+    refsPage = p
     fetchTab()
   })
 }

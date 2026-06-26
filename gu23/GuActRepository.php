@@ -4,6 +4,14 @@
  *
  * Репозиторий модуля "ГУ-23 · Акты общей формы".
  */
+
+// Fallback для серверов без mbstring
+if (!function_exists('mb_strtoupper')) {
+    function mb_strtoupper(string $s, ?string $enc = null): string { return strtoupper($s); }
+}
+if (!function_exists('mb_strlen')) {
+    function mb_strlen(string $s, ?string $enc = null): int { return strlen($s); }
+}
 class GuActRepository
 {
     /** Разделители . */
