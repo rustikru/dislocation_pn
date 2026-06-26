@@ -12,7 +12,15 @@ create or replace package xx_disl_gu23_pkg as
                                               справочник грузов.
  ******************************************************************************/
 
-    /* ************* Begin Типы ************************* */
+    /* ---- Переменные пакета ---- */
+   g_client_ip varchar2(64);   -- IP клиента, устанавливается PHP перед вызовом процедур
+
+   /* ---- Установить IP клиента (вызывается из PHP в начале каждого запроса) ---- */
+   procedure gu23_set_client_ip (
+      p_ip in varchar2
+   );
+
+   /* ************* Begin Типы ************************* */
 
    type xx_disl_gu23_ref_row is record (
          id   number,
@@ -101,7 +109,8 @@ create or replace package xx_disl_gu23_pkg as
          act_id number,
          ts     varchar2(20),
          usr    varchar2(256),
-         txt    varchar2(1000)
+         txt    varchar2(1000),
+         ip     varchar2(64)
    );
    type xx_disl_gu23_hist_tab is
       table of xx_disl_gu23_hist_row;

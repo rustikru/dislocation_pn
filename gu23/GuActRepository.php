@@ -114,6 +114,17 @@ class GuActRepository
         ob_start();
         //Gu23Logger::info('action', ['action' => $action]);
         try {
+            // Передаём IP клиента в пакет — используется в log_act_history
+            $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR']
+                ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
+                : ($_SERVER['REMOTE_ADDR'] ?? '');
+            $clientIp = trim($clientIp);
+            $st = oci_parse($this->conn, 'BEGIN xx_disl_gu23_pkg.gu23_set_client_ip(:ip); END;');
+            if ($st) {
+                oci_bind_by_name($st, ':ip', $clientIp, 64);
+                @oci_execute($st);
+            }
+
             switch ($action) {
 
                 // --- чтение: форма создания акта ---

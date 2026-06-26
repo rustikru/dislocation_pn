@@ -12,10 +12,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                                раздельные справочники станций и подписантов;
                                                справочник грузов.
   ******************************************************************************/
-   c_package constant varchar2(30) := 'xx_disl_gu23_pkg';
-   c_dtf     constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us      constant char(1) := chr(31);            -- разделитель полей
-   c_rs      constant char(1) := chr(30);          -- разделитель записей
+   c_package   constant varchar2(30) := 'xx_disl_gu23_pkg';
+   c_dtf       constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
+   c_us        constant char(1) := chr(31);            -- разделитель полей
+   c_rs        constant char(1) := chr(30);          -- разделитель записей
+   g_client_ip varchar2(64) := null;                  -- IP клиента текущего запроса
+
+   procedure gu23_set_client_ip (
+      p_ip in varchar2
+   ) is
+   begin
+      g_client_ip := p_ip;
+   end;
 
    procedure log_act_history (
       p_act_id  in number,
@@ -28,12 +36,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          act_id,
          ts,
          usr,
-         txt
+         txt,
+         ip
       ) values ( xx_disl_gu23_hist_seq.nextval,
                  p_act_id,
                  sysdate,
                  p_user_id,
-                 p_text );
+                 p_text,
+                 g_client_ip );
    end;
 
     -- Возврат ответа для php или другим системам
@@ -884,6 +894,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          );
          l_row.usr := g_user_name(h.usr);
          l_row.txt := h.txt;
+         l_row.ip := h.ip;
          pipe row ( l_row );
       end loop;
 
