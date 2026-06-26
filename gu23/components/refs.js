@@ -62,18 +62,23 @@ export function showRefs(container) {
 }
 
 function fetchTab() {
-  $('#refs-body').html('<div class="muted" style="font-size:13px">Загрузка…</div>')
+  $('#refs-body').html(
+    '<div class="muted" style="font-size:13px">Загрузка…</div>',
+  )
   sendApiRequest('gu23_refs_get_all', {
-    tab:    refsTab,
+    tab: refsTab,
     search: refsSearch,
-    page:   refsPage,
+    page: refsPage,
   }).done((data) => {
     if (!data || !data.ok) {
-      $('#refs-body').html('<div class="muted" style="font-size:13px">Ошибка загрузки данных</div>')
+      $('#refs-body').html(
+        '<div class="muted" style="font-size:13px">Ошибка загрузки данных</div>',
+      )
       return
     }
     currentItems = data.items || []
-    if (refsTab === 'signers') renderSigners(currentItems, data.total, data.page)
+    if (refsTab === 'signers')
+      renderSigners(currentItems, data.total, data.page)
     else renderReasons(currentItems, data.total, data.page)
   })
 }
@@ -90,8 +95,10 @@ function tabStyle(active) {
 
 function renderPager(total, page) {
   const pages = Math.ceil(total / REFS_PAGE_SIZE)
-  if (pages <= 1) return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
-  let html = '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;flex-wrap:wrap">'
+  if (pages <= 1)
+    return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
+  let html =
+    '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;flex-wrap:wrap">'
   html += `<button class="btn ghost pager-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} style="padding:3px 8px;font-size:12px">←</button>`
   const start = Math.max(1, page - 2)
   const end = Math.min(pages, start + 4)
@@ -109,9 +116,10 @@ function renderPager(total, page) {
 // ─────────────────────────────────────────────
 
 function renderSigners(items, total, page) {
-  const rows = items.map((s) => {
-    const active = s.ACTIVE === 'Y'
-    return `
+  const rows = items
+    .map((s) => {
+      const active = s.ACTIVE === 'Y'
+      return `
       <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
         <td style="padding:5px 8px">${escapeHtml(s.FIO || '')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.POST || '—')}</td>
@@ -120,12 +128,13 @@ function renderSigners(items, total, page) {
         <td style="padding:5px 8px">
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
-            <span style="width:6px;height:6px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
             ${active ? 'Активен' : 'Неактивен'}
           </span>
         </td>
       </tr>`
-  }).join('')
+    })
+    .join('')
 
   $('#refs-body').html(`
     <div class="card">
@@ -147,18 +156,22 @@ function renderSigners(items, total, page) {
     ${renderPager(total, page)}
   `)
 
-  $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
-    const id = $(this).data('id')
-    const signer = currentItems.find((s) => String(s.ID) === String(id))
-    if (signer) showSignerForm(signer)
-  })
+  $('#refs-body')
+    .off('click', 'tbody tr')
+    .on('click', 'tbody tr', function () {
+      const id = $(this).data('id')
+      const signer = currentItems.find((s) => String(s.ID) === String(id))
+      if (signer) showSignerForm(signer)
+    })
 
-  $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
-    const p = parseInt($(this).data('page'))
-    if (!p || p === refsPage) return
-    refsPage = p
-    fetchTab()
-  })
+  $('#refs-body')
+    .off('click', '.pager-btn')
+    .on('click', '.pager-btn', function () {
+      const p = parseInt($(this).data('page'))
+      if (!p || p === refsPage) return
+      refsPage = p
+      fetchTab()
+    })
 }
 
 function showSignerForm(signer) {
@@ -201,26 +214,36 @@ function showSignerForm(signer) {
   const close = () => $modal.remove()
 
   $modal.find('.sf-close, .sf-cancel').on('click', close)
-  $modal.on('click', (e) => { if ($(e.target).is($modal)) close() })
+  $modal.on('click', (e) => {
+    if ($(e.target).is($modal)) close()
+  })
 
   $modal.find('.sf-toggle').on('click', () => {
-    const msg = signer?.ACTIVE === 'Y' ? 'Деактивировать подписанта?' : 'Активировать подписанта?'
+    const msg =
+      signer?.ACTIVE === 'Y'
+        ? 'Деактивировать подписанта?'
+        : 'Активировать подписанта?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
-        if (r && r.ok) { close(); reloadRefs() }
-        else showToast((r && r.msg) || 'Ошибка', 'err')
+        if (r && r.ok) {
+          close()
+          reloadRefs()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
       })
     })
   })
 
   $modal.find('.sf-save').on('click', () => {
     const fio = $modal.find('.sf-fio').val().trim()
-    if (!fio) { showToast('ФИО обязательно', 'err'); return }
+    if (!fio) {
+      showToast('ФИО обязательно', 'err')
+      return
+    }
     sendApiRequest('gu23_ref_signer_save', {
-      id:   signer?.ID || 0,
+      id: signer?.ID || 0,
       fio,
       post: $modal.find('.sf-post').val().trim(),
-      org:  $modal.find('.sf-org').val().trim(),
+      org: $modal.find('.sf-org').val().trim(),
       unit: $modal.find('.sf-unit').val().trim(),
     }).done((r) => {
       if (r && r.ok) {
@@ -238,24 +261,31 @@ function showSignerForm(signer) {
 // Причины составления
 // ─────────────────────────────────────────────
 
-const KIND_LABELS = { start: 'Начало', end: 'Окончание', other: 'Прочий', any: 'Любой' }
+const KIND_LABELS = {
+  start: 'Начало',
+  end: 'Окончание',
+  other: 'Прочий',
+  any: 'Любой',
+}
 
 function renderReasons(items, total, page) {
-  const rows = items.map((r) => {
-    const active = r.ACTIVE === 'Y'
-    return `
+  const rows = items
+    .map((r) => {
+      const active = r.ACTIVE === 'Y'
+      return `
       <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
         <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
         <td style="padding:5px 8px" class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
         <td style="padding:5px 8px">
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
-            <span style="width:6px;height:6px;border-radius:50%;background:${active ? '#2d7a47' : '#aaa'}"></span>
+            <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
             ${active ? 'Активна' : 'Неактивна'}
           </span>
         </td>
       </tr>`
-  }).join('')
+    })
+    .join('')
 
   $('#refs-body').html(`
     <div class="card">
@@ -275,25 +305,32 @@ function renderReasons(items, total, page) {
     ${renderPager(total, page)}
   `)
 
-  $('#refs-body').off('click', 'tbody tr').on('click', 'tbody tr', function () {
-    const id = $(this).data('id')
-    const reason = currentItems.find((r) => String(r.ID) === String(id))
-    if (reason) showReasonForm(reason)
-  })
+  $('#refs-body')
+    .off('click', 'tbody tr')
+    .on('click', 'tbody tr', function () {
+      const id = $(this).data('id')
+      const reason = currentItems.find((r) => String(r.ID) === String(id))
+      if (reason) showReasonForm(reason)
+    })
 
-  $('#refs-body').off('click', '.pager-btn').on('click', '.pager-btn', function () {
-    const p = parseInt($(this).data('page'))
-    if (!p || p === refsPage) return
-    refsPage = p
-    fetchTab()
-  })
+  $('#refs-body')
+    .off('click', '.pager-btn')
+    .on('click', '.pager-btn', function () {
+      const p = parseInt($(this).data('page'))
+      if (!p || p === refsPage) return
+      refsPage = p
+      fetchTab()
+    })
 }
 
 function showReasonForm(reason) {
   const isNew = !reason
-  const kindOptions = Object.entries(KIND_LABELS).map(([val, label]) =>
-    `<option value="${val}" ${reason?.ACT_KIND === val ? 'selected' : ''}>${label}</option>`
-  ).join('')
+  const kindOptions = Object.entries(KIND_LABELS)
+    .map(
+      ([val, label]) =>
+        `<option value="${val}" ${reason?.ACT_KIND === val ? 'selected' : ''}>${label}</option>`,
+    )
+    .join('')
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
@@ -325,23 +362,33 @@ function showReasonForm(reason) {
   const close = () => $modal.remove()
 
   $modal.find('.rf-close, .rf-cancel').on('click', close)
-  $modal.on('click', (e) => { if ($(e.target).is($modal)) close() })
+  $modal.on('click', (e) => {
+    if ($(e.target).is($modal)) close()
+  })
 
   $modal.find('.rf-toggle').on('click', () => {
-    const msg = reason?.ACTIVE === 'Y' ? 'Деактивировать причину?' : 'Активировать причину?'
+    const msg =
+      reason?.ACTIVE === 'Y'
+        ? 'Деактивировать причину?'
+        : 'Активировать причину?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
-        if (r && r.ok) { close(); reloadRefs() }
-        else showToast((r && r.msg) || 'Ошибка', 'err')
+        if (r && r.ok) {
+          close()
+          reloadRefs()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
       })
     })
   })
 
   $modal.find('.rf-save').on('click', () => {
     const name = $modal.find('.rf-name').val().trim()
-    if (!name) { showToast('Название обязательно', 'err'); return }
+    if (!name) {
+      showToast('Название обязательно', 'err')
+      return
+    }
     sendApiRequest('gu23_ref_reason_save', {
-      id:       reason?.ID || 0,
+      id: reason?.ID || 0,
       name,
       act_kind: $modal.find('.rf-kind').val(),
     }).done((r) => {
