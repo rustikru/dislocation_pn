@@ -25,6 +25,10 @@ class GuActRepository
         if ($auth->isAuthAdmin()) {
             return true;
         }
+        // DEV: если есть локальный конфиг — пропускаем без Oracle
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
+            return true;
+        }
         $userId = $auth->getUserId();
         if (!$userId) {
             return false;
@@ -61,6 +65,10 @@ class GuActRepository
     private function hasPerm(string $permCode): bool
     {
         if ($this->auth->isAuthAdmin()) {
+            return true;
+        }
+        // DEV: локальный конфиг — все полномочия открыты
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return true;
         }
         $userId = $this->auth->getUserId();
