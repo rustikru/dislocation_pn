@@ -2986,5 +2986,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       when others then
          return format_error();
    end;
+   /* ------------------------------------------------------------------ */
+   procedure gu23_send_mail (
+      p_to      in varchar2,
+      p_subject in varchar2,
+      p_body    in clob,
+      p_from    in varchar2 default 'noreply@company.ru'
+   ) is
+   begin
+      -- Вызвать корпоративный пакет отправки почты, например:
+      -- corp_mail_pkg.send_html(p_to => p_to, p_subject => p_subject, p_body => p_body, p_from => p_from);
+      null;
+   end gu23_send_mail;
+
 end xx_disl_gu23_pkg;
 /

@@ -858,6 +858,10 @@ class GuActRepository
             return;
         }
 
+        // 3. Полный список подписантов и текущих статусов согласования — для тела письма
+        $allSigners   = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))',  [':id' => $actId]);
+        $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
+
         $mailer = $this->loadMailer();
         $sent = 0;
         $errors = [];
@@ -875,8 +879,15 @@ class GuActRepository
             );
             oci_commit($this->conn);
 
-            $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-            $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+            $html = $mailer->buildHtml(
+                $fullName, $actId,
+                $links['approve_link'], $links['reject_link'],
+                $actRows[0] ?? [], $allSigners, $approvalRows
+            );
+            $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+            $ok = $mode === 'send_mail'
+                ? $this->sendMailViaOracle($email, $subject, $html)
+                : $mailer->send($email, $subject, $html, $mode);
 
             if ($ok) {
                 $sent++;
@@ -938,12 +949,56 @@ class GuActRepository
         );
         oci_commit($this->conn);
 
-        $html = $mailer->buildHtml($fullName, $actId, $links['approve_link'], $links['reject_link']);
-        $ok = $mailer->send($email, 'Требуется согласование акта ГУ-23', $html, $mode);
+        $actRows      = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))',      [':id' => $actId]);
+        $allSigners   = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))',  [':id' => $actId]);
+        $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
+
+        $html    = $mailer->buildHtml(
+            $fullName, $actId,
+            $links['approve_link'], $links['reject_link'],
+            $actRows[0] ?? [], $allSigners, $approvalRows
+        );
+        $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+        $ok = $mode === 'send_mail'
+            ? $this->sendMailViaOracle($email, $subject, $html)
+            : $mailer->send($email, $subject, $html, $mode);
 
         echo json_encode($ok
             ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
             : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* отправка письма через Oracle UTL_MAIL                             */
+    /* ----------------------------------------------------------------- */
+    private function sendMailViaOracle(string $to, string $subject, string $html): bool
+    {
+        $st = @oci_parse($this->conn,
+            'BEGIN xx_disl_gu23_pkg.gu23_send_mail(:to, :subj, :body); END;');
+        if (!$st) {
+            Gu23Logger::error('sendMailViaOracle: oci_parse failed', ['to' => $to]);
+            return false;
+        }
+
+        $clob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
+        if (!$clob) {
+            Gu23Logger::error('sendMailViaOracle: oci_new_descriptor failed', ['to' => $to]);
+            return false;
+        }
+
+        oci_bind_by_name($st, ':to',   $to,      256);
+        oci_bind_by_name($st, ':subj', $subject, 512);
+        oci_bind_by_name($st, ':body', $clob, -1, OCI_B_CLOB);
+        $clob->writeTemporary($html, OCI_TEMP_CLOB);
+
+        $ok = @oci_execute($st);
+        $clob->free();
+
+        if (!$ok) {
+            $e = oci_error($st);
+            Gu23Logger::error('sendMailViaOracle: execute failed', ['to' => $to, 'err' => $e['message'] ?? '?']);
+        }
+        return (bool) $ok;
     }
 
     /* ----------------------------------------------------------------- */

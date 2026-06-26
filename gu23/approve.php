@@ -18,7 +18,7 @@ if (!defined('HMAC_SECRET')) {
     define('HMAC_SECRET', 'change-me-in-production');
 }
 
-$hmac = new HmacApproval(HMAC_SECRET, ttlDays: 7);
+$hmac = new HmacApproval(HMAC_SECRET, ttlDays: 1);
 $params = $_GET + $_POST;
 $verify = $hmac->verify($params);
 

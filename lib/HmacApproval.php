@@ -7,7 +7,7 @@ class HmacApproval
     private string $secret;
     private int    $ttl;
 
-    public function __construct(string $secret, int $ttlDays = 7)
+    public function __construct(string $secret, int $ttlDays = 1)
     {
         $this->secret = $secret;
         $this->ttl    = $ttlDays * 86400;

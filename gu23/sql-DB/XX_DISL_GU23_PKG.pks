@@ -17,6 +17,14 @@ create or replace package xx_disl_gu23_pkg as
       p_ip in varchar2
    );
 
+   /* ---- Отправить HTML-письмо (делегирует в корпоративный пакет отправки почты) ---- */
+   procedure gu23_send_mail (
+      p_to      in varchar2,
+      p_subject in varchar2,
+      p_body    in clob,
+      p_from    in varchar2 default 'noreply@company.ru'
+   );
+
    /* ************* Begin Типы ************************* */
 
    type xx_disl_gu23_ref_row is record (
