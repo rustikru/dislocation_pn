@@ -19,10 +19,27 @@ class GuActRepository
         $this->auth = $auth;
     }
 
+    /** Есть ли у пользователя хотя бы одна роль в ГУ-23 (доступ к модулю). */
+    public static function canAccess($conn, AuthClass $auth): bool
+    {
+        if ($auth->isAuthAdmin()) {
+            return true;
+        }
+        $userId = $auth->getUserId();
+        if (!$userId) {
+            return false;
+        }
+        $st = oci_parse($conn, 'SELECT COUNT(*) cnt FROM xx_disl_gu23_user_roles WHERE user_id = :uid');
+        oci_bind_by_name($st, ':uid', $userId);
+        oci_execute($st);
+        $row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
+        return (($row['CNT'] ?? 0) > 0);
+    }
+
     /** Проверить: является ли текущий пользователь администратором ГУ-23. */
     private function isGu23Admin(): bool
     {
-        if ($this->isGu23Admin()) {
+        if ($this->auth->isAuthAdmin()) {
             return true;
         }
         $userId = $this->auth->getUserId();

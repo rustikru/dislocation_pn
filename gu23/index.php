@@ -8,21 +8,10 @@ if (isset($_POST["logout"])) {
     $auth->out();
 }
 
+require_once __DIR__ . '/GuActRepository.php';
+
 if ($auth->isAuth()) {
-    // Доступ: глобальный администратор или хотя бы одна роль в ГУ-23
-    $allowed = $auth->isAuthAdmin();
-    if (!$allowed) {
-        $userId = $auth->getUserId();
-        if ($userId) {
-            $st = oci_parse($conn1,
-                'SELECT COUNT(*) cnt FROM xx_disl_gu23_user_roles WHERE user_id = :uid');
-            oci_bind_by_name($st, ':uid', $userId);
-            oci_execute($st);
-            $row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
-            $allowed = (($row['CNT'] ?? 0) > 0);
-        }
-    }
-    if ($allowed) {
+    if (GuActRepository::canAccess($conn1, $auth)) {
         ?>
         <!DOCTYPE html>
         <html lang="ru">
