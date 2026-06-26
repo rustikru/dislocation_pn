@@ -824,6 +824,16 @@ class GuActRepository
             return;
         }
 
+        // Проверяем, что в акте есть вагоны
+        $actRows = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))',
+            [':id' => $actId]
+        );
+        if (empty($actRows) || (int) ($actRows[0]['WAGON_CNT'] ?? 0) === 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Нельзя отправить на согласование: в акте нет вагонов']);
+            return;
+        }
+
         // 1. Создаём pending-записи в xx_disl_gu23_approval (через пакет)
         $initResult = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
