@@ -36,7 +36,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 if (empty($_SESSION['is_auth'])) {
     $_SESSION['is_auth'] = true;
-    $_SESSION['is_auth_admin'] = true;
+    $_SESSION['is_auth_admin'] = true;   // даёт полный доступ без проверки ролей Oracle
     $_SESSION['login'] = 'BEKMANSUROVRR';
     $_SESSION['user_id'] = 281;
     $_SESSION['full_name'] = 'Локальный разработчик';
@@ -44,11 +44,4 @@ if (empty($_SESSION['is_auth'])) {
     $_SESSION['flag_change_pwd'] = 'N';
     // права (на всякий случай — если страница их проверяет)
     $_SESSION['administrator'] = 'N';
-    $_SESSION['station_id'] = 1;
-    $_SESSION['station'] = 'Вод';
-    $_SESSION['administrator'] = 'Y';   // было 'N' — исправь на 'Y'
-    $_SESSION['gu23_add'] = 'Y';
-    $_SESSION['gu23_view'] = 'Y';
-
-
 }
