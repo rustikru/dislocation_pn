@@ -668,16 +668,18 @@ function showSignersFields() {
   const dept = activeDraft.departmentCode
   // Временно отключаем фильтрацию по цеху
 
-  //const ownFiltered = references.signersOwnList || []
-  const ownFiltered = (references.signersOwnList || []).filter(
+  const ownFiltered = references.signersOwnList || []
+  /*const ownFiltered = (references.signersOwnList || []).filter(
     // Фильтрация по цеху составления
     (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
-  )
+  )*/
 
   // Автоподстановка: для нового акта слот 0 заполняем текущим пользователем
   if (!activeDraft.id && !activeDraft.signers[0]) {
     const myId = (window.GU23_SESSION || {}).user_id
-    const me = myId ? ownFiltered.find((s) => String(s.ID) === String(myId)) : null
+    const me = myId
+      ? ownFiltered.find((s) => String(s.ID) === String(myId))
+      : null
     if (me) {
       activeDraft.signers[0] = {
         id: me.ID,
@@ -733,7 +735,11 @@ function showSignersFields() {
       `
     } else {
       const optionsHtml = signersList
-        .filter((s) => !usedIds.includes(String(s.ID)) || (signer && String(signer.id) === String(s.ID)))
+        .filter(
+          (s) =>
+            !usedIds.includes(String(s.ID)) ||
+            (signer && String(signer.id) === String(s.ID)),
+        )
         .map(
           (s) =>
             `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
