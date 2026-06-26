@@ -2557,6 +2557,24 @@ create or replace package body xx_disl_gu23_pkg as
          return format_error();
    end gu23_role_revoke;
 
+   function gu23_has_perm (
+      p_user_id   in number,
+      p_perm_code in varchar2
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*) into v_cnt
+        from xx_disl_gu23_user_roles    ur
+        join xx_disl_gu23_role_permissions rp on rp.role_id = ur.role_id
+        join xx_disl_gu23_permissions    p  on p.perm_id = rp.perm_id
+       where ur.user_id   = p_user_id
+         and p.perm_code  = p_perm_code
+         and rownum = 1;
+      return case when v_cnt > 0 then 'Y' else 'N' end;
+   exception
+      when others then return 'N';
+   end gu23_has_perm;
+
    -- ----------------------------------------------------------------
    -- Администрирование справочников
    -- ----------------------------------------------------------------

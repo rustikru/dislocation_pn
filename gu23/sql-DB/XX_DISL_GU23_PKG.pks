@@ -479,6 +479,12 @@ create or replace package xx_disl_gu23_pkg as
       p_role_id in number
    ) return varchar2;
 
+   -- Проверить наличие полномочия у пользователя ('Y'/'N')
+   function gu23_has_perm (
+      p_user_id   in number,
+      p_perm_code in varchar2
+   ) return varchar2;
+
    -- ---- Администрирование справочников ----
 
    type t_gu23_ref_signer_row is record (

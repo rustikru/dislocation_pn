@@ -55,6 +55,28 @@ class GuActRepository
         }
     }
 
+    /** Проверить конкретное полномочие пользователя. */
+    private function hasPerm(string $permCode): bool
+    {
+        if ($this->auth->isAuthAdmin()) {
+            return true;
+        }
+        $userId = $this->auth->getUserId();
+        if (!$userId) {
+            return false;
+        }
+        try {
+            $result = $this->callFunc(
+                'xx_disl_gu23_pkg.gu23_has_perm(:uid, :perm)',
+                [':uid' => $userId, ':perm' => $permCode],
+                2
+            );
+            return $result === 'Y';
+        } catch (\RuntimeException $e) {
+            return false;
+        }
+    }
+
     public function handle(string $action, array $post): void
     {
         ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
@@ -383,6 +405,10 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function saveAct(): void
     {
+        if (!$this->hasPerm('CREATE_ACT')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
         $userId = $this->auth->getUserId();
         $wagons = json_decode((string) filter_input(INPUT_POST, 'wagons'), true) ?: [];
         $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
@@ -461,6 +487,10 @@ class GuActRepository
 
     private function delAct(): void
     {
+        if (!$this->hasPerm('DELETE_ACT')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
         $id = (int) filter_input(INPUT_POST, 'id');
         $uid = $this->auth->getUserId();
         $sql = 'declare
@@ -481,6 +511,10 @@ class GuActRepository
 
     private function annulAct(): void
     {
+        if (!$this->hasPerm('ANNUL_ACT')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
         $id = (int) filter_input(INPUT_POST, 'id');
         $reason = filter_input(INPUT_POST, 'reason');
         $uid = $this->auth->getUserId();
@@ -628,6 +662,10 @@ end;';
     /* ----------------------------------------------------------------- */
     private function approveInApp(): void
     {
+        if (!$this->hasPerm('SIGN_ACT')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $decision = filter_input(INPUT_POST, 'decision') ?: '';
         $comment = trim((string) filter_input(INPUT_POST, 'comment'));
@@ -658,7 +696,7 @@ end;';
 
     private function closeAct(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('CLOSE_ACT')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -677,6 +715,10 @@ end;';
     /* ----------------------------------------------------------------- */
     private function sendApproval(): void
     {
+        if (!$this->hasPerm('SEND_APPROVAL')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
         $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
@@ -794,7 +836,7 @@ end;';
 
     private function refsGetAll(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -860,7 +902,7 @@ end;';
 
     private function refSignerSave(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -880,7 +922,7 @@ end;';
 
     private function refSignerToggle(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -893,7 +935,7 @@ end;';
 
     private function refReasonSave(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -911,7 +953,7 @@ end;';
 
     private function refReasonToggle(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -927,7 +969,7 @@ end;';
     /* ----------------------------------------------------------------- */
     private function resendApproval(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -979,7 +1021,7 @@ end;';
 
     private function rolesUsers(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1019,7 +1061,7 @@ end;';
 
     private function roleAssign(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1041,7 +1083,7 @@ end;';
 
     private function roleRevoke(): void
     {
-        if (!$this->isGu23Admin()) {
+        if (!$this->hasPerm('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
