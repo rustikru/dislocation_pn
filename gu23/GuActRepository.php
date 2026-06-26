@@ -12,6 +12,9 @@ if (!function_exists('mb_strtoupper')) {
 if (!function_exists('mb_strlen')) {
     function mb_strlen(string $s, ?string $enc = null): int { return strlen($s); }
 }
+
+require_once __DIR__ . '/Gu23Logger.php';
+
 class GuActRepository
 {
     /** Разделители . */
@@ -99,6 +102,7 @@ class GuActRepository
     {
         ini_set('display_errors', '0');  // PHP-варнинги не должны попадать в JSON-ответ
         ob_start();
+        Gu23Logger::info('action', ['action' => $action]);
         try {
             switch ($action) {
                 case 'gu23_get_refs':
@@ -193,6 +197,7 @@ class GuActRepository
             ob_end_flush();
         } catch (\Throwable $e) {
             ob_end_clean(); // сбрасываем любые PHP-предупреждения, не ломаем JSON
+            Gu23Logger::exception($e, $action);
             http_response_code(500);
             echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
         }
@@ -208,14 +213,18 @@ class GuActRepository
         $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
-            throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
+            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
+            Gu23Logger::error($msg, ['binds' => array_keys($binds)]);
+            throw new \RuntimeException($msg);
         }
         foreach ($binds as $name => $val) {
             oci_bind_by_name($st, $name, $binds[$name]);
         }
         if (!@oci_execute($st)) {
             $e = oci_error($st);
-            throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql);
+            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
+            Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
+            throw new \RuntimeException($msg);
         }
         $rows = [];
         while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
@@ -248,7 +257,9 @@ class GuActRepository
         $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
-            throw new \RuntimeException('oci_parse: ' . ($e['message'] ?? '?'));
+            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
+            Gu23Logger::error($msg);
+            throw new \RuntimeException($msg);
         }
         $ret = null;
         oci_bind_by_name($st, ':ret_val', $ret, $retLen);
@@ -257,7 +268,9 @@ class GuActRepository
         }
         if (!@oci_execute($st)) {
             $e = oci_error($st);
-            throw new \RuntimeException('oci_execute: ' . ($e['message'] ?? '?'));
+            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
+            Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
+            throw new \RuntimeException($msg);
         }
         return $ret;
     }
