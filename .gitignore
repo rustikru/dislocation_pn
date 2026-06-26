@@ -5,4 +5,5 @@ phonebook/
 # Локальный dev-конфиг и загруженные файлы модуля ГУ-23
 db_config.local.php
 gu23/request_data/
+gu23/act_data/
 .DS_Store.DS_Store
