@@ -613,21 +613,21 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
-         select du.id,
+         /*select du.id,
                 du.full_name as fio,
                 null as post,
                 null as org,
                 null as unit,
                 'Работник предприятия' as stype
-           from xx_disl_users du
-         /*select du.id,
+           from xx_disl_users du*/
+         select du.id,
                 du.full_name as fio,
                 prv.appoint_name as post,
                 prv.firm_name as org,
                 prv.theme as unit,
                 'Работник предприятия' as stype
            from xx_disl_users du
-           left join xx_scud.prv_emp prv
+           left join prv_emp prv
          on du.card_id = prv.card_id
             and trunc(sysdate) between d_from and d_to
             and trunc(sysdate) between d_in and d_out
@@ -639,7 +639,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             and prv.appoint_name not like 'Советн%'
                 --and  prv.THEME like '%'||p_dept||'%'
                 --and prv.THEME like '%ЖДЦ%'
-          order by fio*/
+          order by fio
       ) loop
          l_row.id := r.id;
          l_row.fio := r.fio;
@@ -1769,14 +1769,17 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             continue;
          end if;
          v_ord := v_ord + 1;
-         l_sig.id            := xx_disl_gu23_signer_seq.nextval;
-         l_sig.act_id        := v_id;
+         l_sig.id := xx_disl_gu23_signer_seq.nextval;
+         l_sig.act_id := v_id;
          l_sig.signer_ref_id := vs_ref_id;
-         l_sig.fio           := vs_fio;
-         l_sig.post          := vs_post;
-         l_sig.org           := vs_org;
-         l_sig.ord_no        := v_ord;
-         l_sig.stype         := nullif(vs_stype, '');
+         l_sig.fio := vs_fio;
+         l_sig.post := vs_post;
+         l_sig.org := vs_org;
+         l_sig.ord_no := v_ord;
+         l_sig.stype := nullif(
+            vs_stype,
+            ''
+         );
          insert_signer(l_sig);
       end loop;
 
