@@ -44,4 +44,11 @@ if (empty($_SESSION['is_auth'])) {
     $_SESSION['flag_change_pwd'] = 'N';
     // права (на всякий случай — если страница их проверяет)
     $_SESSION['administrator'] = 'N';
+    $_SESSION['station_id'] = 1;
+    $_SESSION['station'] = 'Вод';
+    $_SESSION['administrator'] = 'Y';   // было 'N' — исправь на 'Y'
+    $_SESSION['gu23_add'] = 'Y';
+    $_SESSION['gu23_view'] = 'Y';
+
+
 }
