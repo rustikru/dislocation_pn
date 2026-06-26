@@ -438,18 +438,20 @@ create or replace package body xx_disl_gu23_pkg as
       insert into xx_disl_gu23_signer (
          id,
          act_id,
-         signer_ref_id,
+         signer_ref_id,  -- для stype='own': xx_disl_users.id; для stype='rzd': xx_disl_gu23_ref_signer.id
          fio,
          post,
          org,
-         ord_no
+         ord_no,
+         stype           -- 'own' / 'rzd' / NULL (вручную)
       ) values ( p_row.id,
                  p_row.act_id,
                  p_row.signer_ref_id,
                  p_row.fio,
                  p_row.post,
                  p_row.org,
-                 p_row.ord_no );
+                 p_row.ord_no,
+                 p_row.stype );
    end insert_signer;
 
     -- ----------------------------------------------------------------
