@@ -37,13 +37,11 @@ if (session_status() === PHP_SESSION_NONE) {
 if (empty($_SESSION['is_auth'])) {
     $_SESSION['is_auth'] = true;
     $_SESSION['is_auth_admin'] = true;
-    $_SESSION['login'] = 'dev';
-    $_SESSION['user_id'] = 1;
+    $_SESSION['login'] = 'BEKMANSUROVRR';
+    $_SESSION['user_id'] = 281;
     $_SESSION['full_name'] = 'Локальный разработчик';
     $_SESSION['enterprise'] = 'DEV';
     $_SESSION['flag_change_pwd'] = 'N';
     // права (на всякий случай — если страница их проверяет)
-    $_SESSION['administrator'] = 'Y';
-    $_SESSION['gu23_add'] = 'Y';
-    $_SESSION['gu23_view'] = 'Y';
+    $_SESSION['administrator'] = 'N';
 }
