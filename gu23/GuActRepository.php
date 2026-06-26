@@ -29,11 +29,12 @@ class GuActRepository
         if (!$userId) {
             return false;
         }
-        $st = oci_parse($conn, 'SELECT COUNT(*) cnt FROM xx_disl_gu23_user_roles WHERE user_id = :uid');
+        $st = oci_parse($conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_can_access(:uid); END;');
+        $result = null;
+        oci_bind_by_name($st, ':r', $result, 2);
         oci_bind_by_name($st, ':uid', $userId);
         oci_execute($st);
-        $row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
-        return (($row['CNT'] ?? 0) > 0);
+        return $result === 'Y';
     }
 
     /** Проверить: является ли текущий пользователь администратором ГУ-23. */
@@ -47,14 +48,8 @@ class GuActRepository
             return false;
         }
         try {
-            $rows = $this->pipe(
-                "SELECT 1 cnt FROM xx_disl_gu23_user_roles ur
-                  JOIN xx_disl_gu23_roles r ON r.role_id = ur.role_id
-                 WHERE ur.user_id = :uid AND r.role_code = 'GU23_ADMIN'
-                   AND ROWNUM = 1",
-                [':uid' => $userId]
-            );
-            return !empty($rows);
+            $result = $this->callFunc('xx_disl_gu23_pkg.gu23_is_admin(:uid)', [':uid' => $userId], 2);
+            return $result === 'Y';
         } catch (\RuntimeException $e) {
             return false;
         }
@@ -989,24 +984,17 @@ end;';
             return;
         }
 
-        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
-        $srch   = '%' . mb_strtoupper($search) . '%';
+        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? '')) ?: null;
 
         $rows = $this->pipe(
-            "SELECT u.id, u.login, u.full_name,
-                    r.role_id, r.role_code, r.role_name
-               FROM xx_disl_users u
-               LEFT JOIN xx_disl_gu23_user_roles ur ON ur.user_id = u.id
-               LEFT JOIN xx_disl_gu23_roles r ON r.role_id = ur.role_id
-              WHERE (UPPER(u.full_name) LIKE :s1 OR UPPER(u.login) LIKE :s2)
-              ORDER BY u.full_name, r.role_name",
-            [':s1' => $srch, ':s2' => $srch]
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_users_roles_get(:b1))',
+            [':b1' => $search]
         );
 
         // Группируем по пользователю
         $users = [];
         foreach ($rows as $row) {
-            $uid = $row['ID'];
+            $uid = $row['USER_ID'];
             if (!isset($users[$uid])) {
                 $users[$uid] = [
                     'id'        => $uid,
@@ -1024,9 +1012,7 @@ end;';
             }
         }
 
-        $roles = $this->pipe(
-            'SELECT role_id, role_code, role_name FROM xx_disl_gu23_roles ORDER BY role_name'
-        );
+        $roles = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
 
         echo json_encode(['ok' => true, 'users' => array_values($users), 'roles' => $roles]);
     }
@@ -1044,16 +1030,13 @@ end;';
             echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
             return;
         }
-        try {
-            $this->pipe(
-                'INSERT INTO xx_disl_gu23_user_roles (user_id, role_id) VALUES (:uid, :rid)',
-                [':uid' => $userId, ':rid' => $roleId]
-            );
-            oci_commit($this->conn);
-        } catch (\RuntimeException $e) {
-            // Если уже назначена — игнорируем (unique constraint)
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_role_assign(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
+        if (str_starts_with((string) $res, 'ERR')) {
+            $parts = explode(self::US, (string) $res, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true]);
         }
-        echo json_encode(['ok' => true]);
     }
 
     private function roleRevoke(): void
@@ -1069,11 +1052,12 @@ end;';
             echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
             return;
         }
-        $this->pipe(
-            'DELETE FROM xx_disl_gu23_user_roles WHERE user_id = :uid AND role_id = :rid',
-            [':uid' => $userId, ':rid' => $roleId]
-        );
-        oci_commit($this->conn);
-        echo json_encode(['ok' => true]);
+        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_role_revoke(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
+        if (str_starts_with((string) $res, 'ERR')) {
+            $parts = explode(self::US, (string) $res, 2);
+            echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+        } else {
+            echo json_encode(['ok' => true]);
+        }
     }
 }

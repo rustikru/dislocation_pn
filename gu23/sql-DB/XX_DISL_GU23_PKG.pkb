@@ -2403,6 +2403,161 @@ create or replace package body xx_disl_gu23_pkg as
    end;
 
    -- ----------------------------------------------------------------
+   -- Роли и доступ
+   -- ----------------------------------------------------------------
+
+   function gu23_can_access (
+      p_user_id in number
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_user_roles
+       where user_id = p_user_id
+         and rownum = 1;
+
+      return
+         case
+            when v_cnt > 0 then
+               'Y'
+            else
+               'N'
+         end;
+   exception
+      when others then
+         return 'N';
+   end gu23_can_access;
+
+   function gu23_is_admin (
+      p_user_id in number
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_user_roles ur
+        join xx_disl_gu23_roles r
+      on r.role_id = ur.role_id
+       where ur.user_id = p_user_id
+         and r.role_code = 'GU23_ADMIN'
+         and rownum = 1;
+
+      return
+         case
+            when v_cnt > 0 then
+               'Y'
+            else
+               'N'
+         end;
+   exception
+      when others then
+         return 'N';
+   end gu23_is_admin;
+
+   function gu23_roles_get_all return t_gu23_role_tab
+      pipelined
+   is
+      l_row t_gu23_role_row;
+   begin
+      for r in (
+         select role_id,
+                role_code,
+                role_name
+           from xx_disl_gu23_roles
+          order by role_name
+      ) loop
+         l_row.role_id := r.role_id;
+         l_row.role_code := r.role_code;
+         l_row.role_name := r.role_name;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end gu23_roles_get_all;
+
+   function gu23_users_roles_get (
+      p_search in varchar2 default null
+   ) return t_gu23_user_role_tab
+      pipelined
+   is
+      l_row t_gu23_user_role_row;
+      v_srch varchar2(512) := '%'
+                              || upper(nvl(
+         p_search,
+         ''
+      ))
+                              || '%';
+   begin
+      for r in (
+         select u.id as user_id,
+                u.login,
+                u.full_name,
+                ro.role_id,
+                ro.role_code,
+                ro.role_name
+           from xx_disl_users u
+           left join xx_disl_gu23_user_roles ur
+         on ur.user_id = u.id
+           left join xx_disl_gu23_roles ro
+         on ro.role_id = ur.role_id
+          where (
+            upper(u.full_name) like v_srch
+            or upper(u.login) like v_srch
+         )
+          order by u.full_name,
+                   ro.role_name
+      ) loop
+         l_row.user_id := r.user_id;
+         l_row.login := r.login;
+         l_row.full_name := r.full_name;
+         l_row.role_id := r.role_id;
+         l_row.role_code := r.role_code;
+         l_row.role_name := r.role_name;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end gu23_users_roles_get;
+
+   function gu23_role_assign (
+      p_user_id in number,
+      p_role_id in number
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_user_roles (
+         user_id,
+         role_id
+      ) values ( p_user_id,
+                 p_role_id );
+
+      commit;
+      return 'OK';
+   exception
+      when dup_val_on_index then
+         -- роль уже назначена — идемпотентно
+         return 'OK';
+      when others then
+         rollback;
+         return format_error();
+   end gu23_role_assign;
+
+   function gu23_role_revoke (
+      p_user_id in number,
+      p_role_id in number
+   ) return varchar2 is
+   begin
+      delete from xx_disl_gu23_user_roles
+       where user_id = p_user_id
+         and role_id = p_role_id;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_role_revoke;
+
+   -- ----------------------------------------------------------------
    -- Администрирование справочников
    -- ----------------------------------------------------------------
 

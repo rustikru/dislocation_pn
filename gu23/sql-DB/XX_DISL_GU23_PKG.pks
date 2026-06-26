@@ -426,6 +426,59 @@ create or replace package xx_disl_gu23_pkg as
       p_signer_ip in varchar2 default null
    ) return varchar2;
 
+   -- ---- Роли и доступ ----
+
+   -- Есть ли у пользователя хотя бы одна роль в модуле ГУ-23 ('Y'/'N')
+   function gu23_can_access (
+      p_user_id in number
+   ) return varchar2;
+
+   -- Является ли пользователь администратором ГУ-23 (роль GU23_ADMIN) ('Y'/'N')
+   function gu23_is_admin (
+      p_user_id in number
+   ) return varchar2;
+
+   type t_gu23_role_row is record (
+         role_id   number,
+         role_code varchar2(50),
+         role_name varchar2(100)
+   );
+   type t_gu23_role_tab is
+      table of t_gu23_role_row;
+
+   -- Справочник всех ролей
+   function gu23_roles_get_all return t_gu23_role_tab
+      pipelined;
+
+   type t_gu23_user_role_row is record (
+         user_id   number,
+         login     varchar2(100),
+         full_name varchar2(256),
+         role_id   number,
+         role_code varchar2(50),
+         role_name varchar2(100)
+   );
+   type t_gu23_user_role_tab is
+      table of t_gu23_user_role_row;
+
+   -- Пользователи с их ролями (одна строка на пару user+role; нет роли — role_* null)
+   function gu23_users_roles_get (
+      p_search in varchar2 default null
+   ) return t_gu23_user_role_tab
+      pipelined;
+
+   -- Назначить роль пользователю; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_role_assign (
+      p_user_id in number,
+      p_role_id in number
+   ) return varchar2;
+
+   -- Отозвать роль у пользователя; возвращает 'OK' или 'ERR'||CHR(31)||текст
+   function gu23_role_revoke (
+      p_user_id in number,
+      p_role_id in number
+   ) return varchar2;
+
    -- ---- Администрирование справочников ----
 
    type t_gu23_ref_signer_row is record (
