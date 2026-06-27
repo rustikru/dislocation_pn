@@ -173,7 +173,7 @@ export function showArchive(container) {
 
   // Кнопка сброса — возвращает фильтры к значениям по умолчанию (текущий месяц)
   const $reset = $(
-    '<button class="btn sm ghost" id="btn-reset-filters" title="Сбросить фильтры">Сбросить</button>',
+    '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="height:40px;box-sizing:border-box;color:var(--muted)">Сбросить</button>',
   )
   $reset.on('click', () => showArchive(container))
   $('#archive-filters').append($reset)
