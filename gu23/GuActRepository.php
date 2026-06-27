@@ -877,7 +877,7 @@ class GuActRepository
 
         foreach ($signers as $signer) {
             $approverId = (int) $signer['APPROVER_ID'];
-            $email = $signer['FAKE_EMAIL'];
+            $email = $signer['EMAIL'];
             $fullName = $signer['FULL_NAME'] ?? '';
 
             $links = $mailer->generateLinks($actId, $approverId);
@@ -952,7 +952,7 @@ class GuActRepository
         $mailer = $this->loadMailer();
         $signer = $signers[0];
         $approverId = (int) $signer['APPROVER_ID'];
-        $email = $signer['FAKE_EMAIL'];
+        $email = $signer['EMAIL'];
         $fullName = $signer['FULL_NAME'] ?? '';
 
         $links = $mailer->generateLinks($actId, $approverId);

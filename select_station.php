@@ -1,43 +1,49 @@
 <?php
-    session_start(); //Запускаем сессии
-    include_once('login.php');
-    include_once('connection.php');
-    $auth = new AuthClass();
-  
-    if ($auth->isAuth()){
-        // DEV-обход: если есть локальный конфиг — не идём в Oracle за станциями
-        if (file_exists(__DIR__ . '/db_config.local.php') && $auth->getStationId() === null) {
-            $auth->setStation(1, 'DEV');
-        }
-        if (isset($_POST["submit"])) {
-            $auth->setStation(filter_input(INPUT_POST,'station_id'), filter_input(INPUT_POST,'station'));
-        }
-        if ($auth->getStationId() !== null){
-            $redirect = $_SESSION['redirect_after_login'] ?? '/main.php';
-            unset($_SESSION['redirect_after_login']);
-            header("location: " . $redirect);
-            exit();
-        } else {
-            $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-            if (!$conn) {
-                    $e = oci_error();
-                    trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-            }
-			$authLogin = $auth->getLogin();
-            $arrChild = array();
-            $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.getUserStations(:bind1))');
-            OCIBindByName($oci_child, ":bind1", $authLogin);
-            oci_execute($oci_child);
-            while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-                    array_push($arrChild, $tmp);
-            }
+session_start();
+// Сохраняем текущий URL для возможного редиректа после авторизации
+if (!isset($_SESSION['redirect_after_auth']) || $_SERVER['REQUEST_URI'] != '/select_station.php') {
+    $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
+}
 
-            oci_close($conn);
-?>
+include_once('login.php');
+include_once('connection.php');
+$auth = new AuthClass();
+
+if ($auth->isAuth()) {
+    if (isset($_POST["submit"])) {
+        $auth->setStation(filter_input(INPUT_POST, 'station_id'), filter_input(INPUT_POST, 'station'));
+    }
+
+    if ($auth->getStationId() !== null) {
+        // Проверяем, есть ли сохраненный URL для редиректа
+        $redirectUrl = isset($_SESSION['redirect_after_auth']) ? $_SESSION['redirect_after_auth'] : '/main.php';
+
+        // Очищаем сессионную переменную, чтобы она не использовалась повторно
+        unset($_SESSION['redirect_after_auth']);
+
+        header("location: " . $redirectUrl);
+        exit();
+    } else {
+        $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
+        if (!$conn) {
+            $e = oci_error();
+            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+        }
+        $authLogin = $auth->getLogin();
+        $arrChild = array();
+        $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.getUserStations(:bind1))');
+        OCIBindByName($oci_child, ":bind1", $authLogin);
+        oci_execute($oci_child);
+        while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC + OCI_RETURN_NULLS)) {
+            array_push($arrChild, $tmp);
+        }
+        oci_close($conn);
+        ?>
         <!DOCTYPE html>
         <html>
+
         <head>
-            <title></title>
+            <title>Выбор станции</title>
             <meta charset="UTF-8">
             <link rel="stylesheet" href="css/login.css" media="screen" type="text/css" />
             <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
@@ -48,30 +54,35 @@
                 <h1>Выбор станции</h1>
                 <fieldset>
                     <form action="" method="post" name="loginForm">
-                        <input disabled type="text" name="login" required value="<?php echo $auth->getLogin();?>">
-                        <select id="station_id" name="station_id" onchange="$('#station').val($('#station_id option:selected').text())">
-                        <?php 
+                        <input disabled type="text" name="login" required value="<?php echo $auth->getLogin(); ?>">
+                        <select id="station_id" name="station_id"
+                            onchange="$('#station').val($('#station_id option:selected').text())">
+                            <?php
+                            $selectedText = '';
                             foreach ($arrChild as $value) {
                                 $selected = '';
-                                if ($value['DEF']==='Y'){
+                                if ($value['DEF'] === 'Y') {
                                     $selected = 'selected';
-                                    $selectedText = $value['NAME']; 
+                                    $selectedText = $value['NAME'];
                                 }
-                                echo '<option '.$selected.' value="'.$value['ID'].'">'.$value['NAME'].'</option>';
+                                echo '<option ' . $selected . ' value="' . $value['ID'] . '">' . $value['NAME'] . '</option>';
                             }
-                        ?>
+                            ?>
                         </select>
-                        <input type="hidden" id="station" name="station" value="<?php echo $selectedText;?>">
+                        <input type="hidden" id="station" name="station" value="<?php echo $selectedText; ?>">
                         <input autofocus type="submit" name="submit" value="ВОЙТИ">
                     </form>
                 </fieldset>
             </div>
-    <?php 
-        }
-    }else{
-        header("location: /index.php");
-        exit();
+            <?php
+    }
+} else {
+    // Если не авторизован - перенаправляем на страницу входа
+    $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
+    header("location: /index.php");
+    exit();
 }
-?>	
+?>
 </body>
+
 </html>
