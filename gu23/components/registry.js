@@ -9,6 +9,9 @@ export function showArchive(container) {
     '<div class="phead">' +
       '<h1>Реестр актов</h1>' +
       '</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">' +
+      '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="color:var(--muted)">Сбросить</button>' +
+      '</div>' +
       '<div class="filters" id="archive-filters">' +
       '<div class="searchbox">' +
       '<input type="text" class="inp" id="search-input" placeholder="Номер акта, номер вагона, причина…">' +
@@ -170,12 +173,8 @@ export function showArchive(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
-  // Кнопка сброса — в строке фильтров справа, возвращает к значениям по умолчанию
-  const $reset = $(
-    '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="height:40px;box-sizing:border-box;color:var(--muted);margin-left:auto">Сбросить</button>',
-  )
-  $reset.on('click', () => showArchive(container))
-  $('#archive-filters').append($reset)
+  // Кнопка сброса (отдельной строкой над фильтрами) — возврат к значениям по умолчанию
+  $('#btn-reset-filters').on('click', () => showArchive(container))
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {
