@@ -293,10 +293,8 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
               : ''
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
           const rejectReason =
-            approval &&
-            approval.STATUS === 'rejected' &&
-            approval.COMMENT_TXT
-              ? `<div style="margin-top:6px;padding:6px 9px;background:#fddede;border-radius:6px;font-size:11.5px;color:#a03030"><b>Причина отклонения:</b> ${escapeHtml(approval.COMMENT_TXT)}</div>`
+            approval && approval.STATUS === 'rejected' && approval.COMMENT_TXT
+              ? `<div style="margin-top:6px;padding:6px 9px;background:#fddede;border-radius:6px;font-size:11.5px;color:#a03030"><b>Причина:</b> ${escapeHtml(approval.COMMENT_TXT)}</div>`
               : ''
           return `
         <div style="padding:8px 0;border-bottom:1px solid var(--line,#eee)">
