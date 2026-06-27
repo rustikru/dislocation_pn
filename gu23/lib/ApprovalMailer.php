@@ -292,7 +292,7 @@ HTML;
         return [$pill, $note];
 
       default: // pending
-        $pill = '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">⏳ В процессеся</span>';
+        $pill = '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">В процессе</span>';
         return [$pill, ''];
     }
   }
