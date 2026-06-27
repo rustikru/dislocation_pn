@@ -238,7 +238,7 @@ function showWagonsBlock(wagons) {
   $('#card-left-column').append(`
     <div class="card" style="margin-top:16px">
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Вагоны (${wagons.length})</b></div>
-      <div style="overflow:auto;max-height:360px">
+      <div style="overflow:auto;max-height:calc(100vh - 220px);min-height:360px">
         <table class="tbl">
           <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
