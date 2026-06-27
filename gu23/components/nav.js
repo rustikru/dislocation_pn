@@ -1,18 +1,20 @@
-import { applicationState, setActiveDraft } from '../state.js'
+import { applicationState, setActiveDraft, hasPerm } from '../state.js'
 import { navigateTo } from '../app.js'
 
 export function drawNav() {
-  const navigationItems = [
-    { page: 'new', icon: '＋', label: 'Создать акт' },
-    { page: 'archive', icon: '', label: 'Архив актов' },
-  ]
-  if (applicationState.isAdmin) {
-    // Справочники
+  const navigationItems = []
+
+  if (hasPerm('CREATE_ACT')) {
+    navigationItems.push({ page: 'new', icon: '＋', label: 'Создать акт' })
+  }
+
+  navigationItems.push({ page: 'archive', icon: '', label: 'Архив актов' })
+
+  if (hasPerm('MANAGE_REFS')) {
     navigationItems.push({ page: 'refs', icon: '', label: 'Справочники' })
   }
 
-  if (applicationState.isAdmin) {
-    // Роли
+  if (hasPerm('MANAGE_ROLES')) {
     navigationItems.push({ page: 'roles', icon: '', label: 'Роли' })
   }
 

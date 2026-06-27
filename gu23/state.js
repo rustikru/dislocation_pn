@@ -16,6 +16,12 @@ export const applicationState = {
   currentPage: 'archive',
   selectedActId: null,
   isAdmin: false,
+  userPerms: new Set(), // коды полномочий текущего пользователя
+}
+
+/** Проверить наличие полномочия у текущего пользователя */
+export function hasPerm(code) {
+  return applicationState.userPerms.has(code)
 }
 
 // Активный Проект

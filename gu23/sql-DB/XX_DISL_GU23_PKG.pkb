@@ -2713,6 +2713,32 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end gu23_role_revoke;
 
+   function gu23_user_perms_get (
+      p_user_id in number
+   ) return t_gu23_perm_code_tab pipelined is
+   begin
+      if gu23_is_admin(p_user_id) = 'Y' then
+         -- администратор получает все права
+         for r in (select perm_code from xx_disl_gu23_permissions order by perm_code) loop
+            pipe row(r.perm_code);
+         end loop;
+      else
+         for r in (
+            select distinct p.perm_code
+              from xx_disl_gu23_user_roles ur
+              join xx_disl_gu23_role_permissions rp on rp.role_id = ur.role_id
+              join xx_disl_gu23_permissions p on p.perm_id = rp.perm_id
+             where ur.user_id = p_user_id
+             order by p.perm_code
+         ) loop
+            pipe row(r.perm_code);
+         end loop;
+      end if;
+      return;
+   exception
+      when others then return;
+   end gu23_user_perms_get;
+
    function gu23_has_perm (
       p_user_id   in number,
       p_perm_code in varchar2

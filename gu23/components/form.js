@@ -7,6 +7,7 @@ import {
   activeDraft,
   createNewDraft,
   setActiveDraft,
+  hasPerm,
 } from '../state.js'
 import { navigateTo } from '../app.js'
 import {
@@ -823,10 +824,14 @@ function showSignersFields() {
 }
 
 function showFormButtons() {
+  const sendBtn = hasPerm('SEND_APPROVAL')
+    ? `<button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>`
+    : ''
+
   $('#form-footer').html(`
     <button class="btn ghost" id="btn-cancel">Отмена</button>
     <button class="btn" id="btn-saveDraft">Сохранить Проект</button>
-    <button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>
+    ${sendBtn}
   `)
 
   $('#btn-cancel').on('click', () => {
