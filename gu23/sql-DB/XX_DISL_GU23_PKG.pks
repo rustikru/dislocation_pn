@@ -502,6 +502,13 @@ create or replace package xx_disl_gu23_pkg as
       p_perm_code in varchar2
    ) return varchar2;
 
+   -- Получить все коды полномочий пользователя (pipelined)
+   type t_gu23_perm_code_tab is table of varchar2(50);
+
+   function gu23_user_perms_get (
+      p_user_id in number
+   ) return t_gu23_perm_code_tab pipelined;
+
    -- Матрица роль × полномочие (все строки perm_id × role_id)
    type t_gu23_role_perm_row is record (
          perm_id   number,

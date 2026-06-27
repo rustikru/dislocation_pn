@@ -318,18 +318,27 @@ class GuActRepository
     /* справочники                                                        */
     /* ----------------------------------------------------------------- */
 
-    /** Все справочники для формы: цеха, станции, причины, подписанты, флаг isAdmin. */
+    /** Все справочники для формы: цеха, станции, причины, подписанты, права пользователя. */
     private function getRefs(): void
     {
+        $userId = $this->auth->getUserId();
+        $permRows = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:uid))',
+            [':uid' => $userId]
+        );
+        // pipe возвращает однострочные строки — extracting значение из первого поля
+        $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
+
         echo json_encode([
-            'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
-            'reasons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
-            'stations' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
-            'stations_from' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
-            'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
-            'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
-            'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
-            'isAdmin' => $this->isGu23Admin() ? true : false,
+            'cexes'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
+            'reasons'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'stations'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
+            'stations_from'=> $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
+            'cargos'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
+            'signersOwn'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
+            'signersRzd'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
+            'perms'        => $perms,
+            'isAdmin'      => $this->isGu23Admin() ? true : false, // оставляем для обратной совместимости
         ]);
     }
 

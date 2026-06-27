@@ -1,5 +1,6 @@
 import { sendApiRequest } from './api.js'
 import { applicationState, references, setActiveDraft } from './state.js'
+import { hasPerm } from './state.js'
 import { drawNav } from './components/nav.js'
 import { showArchive } from './components/registry.js'
 import { showForm } from './components/form.js'
@@ -51,6 +52,7 @@ $(document).ready(() => {
     references.signersOwnList = (response && response.signersOwn) || []
     references.signersRzdList = (response && response.signersRzd) || []
     applicationState.isAdmin = !!(response && response.isAdmin)
+    applicationState.userPerms = new Set((response && response.perms) || [])
 
     // Показываем страничку
     showApplication()

@@ -10,7 +10,7 @@ import {
   showTypeName,
   showStatusName,
 } from './ui.js'
-import { setActiveDraft } from '../state.js'
+import { setActiveDraft, hasPerm } from '../state.js'
 
 export function showCard(container) {
   const currentId = $('#view').data('selected-id')
@@ -61,7 +61,7 @@ function buildCardView(container, data) {
 function showToolbarButtons(act, data) {
   const $toolbar = $('#card-toolbar')
 
-  if (act.STATUS === 'draft') {
+  if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
     const $editBtn = $('<button class="btn primary">Редактировать</button>')
     const $delBtn = $('<button class="btn danger">Удалить Проект</button>')
 
@@ -71,13 +71,13 @@ function showToolbarButtons(act, data) {
     $toolbar.append($editBtn, $delBtn)
   }
 
-  if ((act.STATUS === 'active' || act.STATUS === 'closed') && data.isAdmin) {
+  if ((act.STATUS === 'active' || act.STATUS === 'closed') && hasPerm('ANNUL_ACT')) {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
     $toolbar.append($annulBtn)
   }
 
-  if (act.STATUS === 'active' && act.ACT_TYPE === 'end' && data.isAdmin) {
+  if (act.STATUS === 'active' && act.ACT_TYPE === 'end' && hasPerm('CLOSE_ACT')) {
     const $closeBtn = $('<button class="btn">Закрыть акт</button>')
     $closeBtn.on('click', () => closeAct(act))
     $toolbar.append($closeBtn)
@@ -85,7 +85,7 @@ function showToolbarButtons(act, data) {
 
   if (
     act.STATUS === 'active' &&
-    data.isAdmin &&
+    hasPerm('SEND_APPROVAL') &&
     data.signers &&
     data.signers.length
   ) {
@@ -268,9 +268,10 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
         .join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  // Баннер "подписать" — для подписантов акта (pending = ждёт решения, none = ещё не инициировано)
+  // Баннер "подписать" — только для пользователей с правом SIGN_ACT
   const canSign =
     act.STATUS === 'active' &&
+    hasPerm('SIGN_ACT') &&
     (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
   if (canSign) {
