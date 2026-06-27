@@ -1,7 +1,7 @@
 <?php
 /**
  * approve.php — страница согласования акта ГУ-23 по HMAC-ссылке из письма.
- * Не требует авторизации — доступ защищён одноразовой подписью.
+ * 
  */
 ini_set('display_errors', '0');
 
@@ -9,7 +9,7 @@ require_once __DIR__ . '/../connection.php';
 require_once __DIR__ . '/../lib/HmacApproval.php';
 require_once __DIR__ . '/ApprovalRepository.php';
 
-$hmacSecret = 'change-me-in-production';
+$hmacSecret = '';
 $_st = @oci_parse($conn1, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');
 if ($_st) {
     oci_bind_by_name($_st, ':r', $hmacSecret, 128);
@@ -110,7 +110,7 @@ if ($action === 'reject') {
 renderPage('Неизвестное действие', '<p class="err">Недопустимое действие.</p>');
 
 // ===================================================================
-// Вспомогательные функции
+// Доп функции
 // ===================================================================
 
 function showRejectForm(string $actNumber, string $name, int $actId, int $approverId, string $sig, string $error = ''): void
@@ -120,12 +120,12 @@ function showRejectForm(string $actNumber, string $name, int $actId, int $approv
     $errorHtml = $error ? "<p class=\"err\" style=\"margin-bottom: 15px;\">{$error}</p>" : '';
     renderPage('Отклонение акта', "
         {$errorHtml}
-        <p style=\"margin-bottom: 20px;\">Вы собираетесь отклонить акт <b>{$actNumber}</b></p>
+        <p style=\"margin-bottom: 20px;\">Отклонить акт <b>{$actNumber}</b></p>
         <form method=\"post\" action=\"/gu23/approve.php?{$qs}\">
             <label style=\"display:block; margin-bottom:8px; color:#5f6368; font-size:13px; font-weight:600;\">УКАЖИТЕ ПРИЧИНУ ОТКЛОНЕНИЯ:</label>
             <textarea name=\"comment\" rows=\"4\"
                 style=\"width:100%; box-sizing:border-box; max-width:100%; padding:12px; border:1px solid #dadce0; border-radius:4px; font-size:14px; font-family:inherit; color:#202124; outline:none;\"
-                placeholder=\"Например: неверно указано время простоя...\"
+                placeholder=\"Причина отклонения...\"
                 required></textarea>
             <br><br>
             <button type=\"submit\"
