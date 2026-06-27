@@ -277,12 +277,18 @@ a {
   position: relative;
 }
 .btn.icon-btn {
-  align-self: stretch;
-  padding: 6px 12px;
+  justify-content: center;
+  padding: 0 14px;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 1px;
   line-height: 1;
+}
+/* Иконка Word и кнопка «···» — одинаковая высота */
+.cardpad .btn.report-word,
+.cardpad .btn.icon-btn {
+  height: 36px;
+  box-sizing: border-box;
 }
 .actions-menu {
   display: none;
