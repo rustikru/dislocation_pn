@@ -72,6 +72,7 @@ class HmacApproval
 
     private function sign(int $actId, int $approverId, string $action, int $ts): string
     {
+        // Генерируем хэш для конкретного человека на конкретное время (срок действия)
         return hash_hmac('sha256', "{$actId}|{$approverId}|{$action}|{$ts}", $this->secret);
     }
 }
