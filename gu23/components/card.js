@@ -292,13 +292,22 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
               ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
               : ''
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
+          const rejectReason =
+            approval &&
+            approval.STATUS === 'rejected' &&
+            approval.COMMENT_TXT
+              ? `<div style="margin-top:6px;padding:6px 9px;background:#fddede;border-radius:6px;font-size:11.5px;color:#a03030"><b>Причина отклонения:</b> ${escapeHtml(approval.COMMENT_TXT)}</div>`
+              : ''
           return `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
-            ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
+        <div style="padding:8px 0;border-bottom:1px solid var(--line,#eee)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
+              ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
+            </div>
+            <div style="flex-shrink:0">${pill}${versionBadge(approval)}</div>
           </div>
-          <div style="flex-shrink:0">${pill}${versionBadge(approval)}</div>
+          ${rejectReason}
         </div>`
         })
         .join('')
