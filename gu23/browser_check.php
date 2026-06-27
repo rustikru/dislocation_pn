@@ -6,7 +6,6 @@
  *   Chrome >= 80, Edge >= 80, Yandex >= 20, Firefox >= 60, Safari >= 12.
  * Старые браузеры (FF45, IE и пр.) получают страницу-заглушку.
  *
- * Подключать в самом начале страницы:  require_once __DIR__ . '/browser_check.php';
  */
 
 /**
@@ -18,13 +17,13 @@ function gu23_detect_browser(string $ua): array
     // Порядок важен: UA-строки браузеров пересекаются (Edge/Yandex содержат "Chrome").
     $checks = [
         // Internet Explorer — блокируем всегда
-        ['ie',      '/(?:MSIE\s|Trident\/)/i',  null],
-        ['edge',    '/Edg(?:e|A|iOS)?\/(\d+)/i', 1],   // новый Edge (Chromium)
-        ['yandex',  '/YaBrowser\/(\d+)/i',       1],
-        ['opera',   '/(?:OPR|Opera)\/(\d+)/i',   1],
-        ['firefox', '/Firefox\/(\d+)/i',         1],
-        ['chrome',  '/Chrome\/(\d+)/i',          1],
-        ['safari',  '/Version\/(\d+).*Safari/i', 1],
+        ['ie', '/(?:MSIE\s|Trident\/)/i', null],
+        ['edge', '/Edg(?:e|A|iOS)?\/(\d+)/i', 1],   // новый Edge (Chromium)
+        ['yandex', '/YaBrowser\/(\d+)/i', 1],
+        ['opera', '/(?:OPR|Opera)\/(\d+)/i', 1],
+        ['firefox', '/Firefox\/(\d+)/i', 1],
+        ['chrome', '/Chrome\/(\d+)/i', 1],
+        ['safari', '/Version\/(\d+).*Safari/i', 1],
     ];
 
     foreach ($checks as [$name, $re, $grp]) {
@@ -41,11 +40,12 @@ function gu23_detect_browser(string $ua): array
 function gu23_browser_supported(array $b): bool
 {
     $minVersions = [
-        'chrome'  => 80,
-        'edge'    => 80,
-        'yandex'  => 20,
+        'chrome' => 80,
+        'edge' => 80,
+        'yandex' => 20,
         'firefox' => 60,
-        'safari'  => 12,
+        'safari' => 12,
+        'safari' => 67,
         // 'opera' можно добавить при необходимости: 'opera' => 67,
     ];
     if (!isset($minVersions[$b['name']])) {
@@ -68,6 +68,7 @@ if (!gu23_browser_supported($gu23_browser)) {
     ?>
     <!DOCTYPE html>
     <html lang="ru">
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -84,17 +85,29 @@ if (!gu23_browser_supported($gu23_browser)) {
                 justify-content: center;
                 padding: 24px;
             }
+
             .box {
                 background: #fff;
                 max-width: 520px;
                 width: 100%;
                 padding: 36px 32px;
                 border-radius: 8px;
-                box-shadow: 0 1px 3px rgba(0,0,0,.1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
                 text-align: center;
             }
-            h1 { font-size: 22px; margin: 0 0 14px; }
-            p { font-size: 15px; line-height: 1.6; color: #3c4043; margin: 0 0 18px; }
+
+            h1 {
+                font-size: 22px;
+                margin: 0 0 14px;
+            }
+
+            p {
+                font-size: 15px;
+                line-height: 1.6;
+                color: #3c4043;
+                margin: 0 0 18px;
+            }
+
             .browsers {
                 display: flex;
                 flex-wrap: wrap;
@@ -102,6 +115,7 @@ if (!gu23_browser_supported($gu23_browser)) {
                 justify-content: center;
                 margin-top: 8px;
             }
+
             .browsers span {
                 background: #e8f0fe;
                 color: #1a73e8;
@@ -112,6 +126,7 @@ if (!gu23_browser_supported($gu23_browser)) {
             }
         </style>
     </head>
+
     <body>
         <div class="box">
             <h1>Браузер не поддерживается</h1>
@@ -123,11 +138,12 @@ if (!gu23_browser_supported($gu23_browser)) {
                 <span>Google Chrome</span>
                 <span>Microsoft Edge</span>
                 <span>Яндекс.Браузер</span>
-                <span>Mozilla Firefox</span>
-                <span>Safari</span>
+                <span>Mozilla Firefox >60</span>
+                <span>Opera</span>
             </div>
         </div>
     </body>
+
     </html>
     <?php
     exit;
