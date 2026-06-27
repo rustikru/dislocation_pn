@@ -4,74 +4,74 @@
  */
 class ApprovalMailer
 {
-    private HmacApproval $hmac;
-    private string       $baseUrl;
-    private string       $from;
-    private string       $mailDir;
+  private HmacApproval $hmac;
+  private string $baseUrl;
+  private string $from;
+  private string $mailDir;
 
-    public function __construct(
-        string $secret,
-        string $baseUrl,
-        string $from    = 'noreply@company.ru',
-        int    $ttlDays = 1,
-        string $mailDir = ''
-    ) {
-        $this->hmac    = new HmacApproval($secret, $ttlDays);
-        $this->baseUrl = rtrim($baseUrl, '/');
-        $this->from    = $from;
-        $this->mailDir = $mailDir ?: dirname(__DIR__) . '/mail';
-    }
+  public function __construct(
+    string $secret,
+    string $baseUrl,
+    string $from = 'noreply@company.ru',
+    int $ttlDays = 1,
+    string $mailDir = ''
+  ) {
+    $this->hmac = new HmacApproval($secret, $ttlDays);
+    $this->baseUrl = rtrim($baseUrl, '/');
+    $this->from = $from;
+    $this->mailDir = $mailDir ?: dirname(__DIR__) . '/mail';
+  }
 
-    /**
-     * Сгенерировать ссылки подтверждения и отклонения + sig для сохранения в БД.
-     *
-     * @return array{token_sig: string, approve_link: string, reject_link: string}
-     */
-    public function generateLinks(int $actId, int $approverId): array
-    {
-        parse_str(
-            parse_url($this->hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY),
-            $ap
-        );
-        parse_str(
-            parse_url($this->hmac->generate($actId, $approverId, 'reject'), PHP_URL_QUERY),
-            $rp
-        );
+  /**
+   * Сгенерировать ссылки подтверждения и отклонения + sig для сохранения в БД.
+   *
+   * @return array{token_sig: string, approve_link: string, reject_link: string}
+   */
+  public function generateLinks(int $actId, int $approverId): array
+  {
+    parse_str(
+      parse_url($this->hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY),
+      $ap
+    );
+    parse_str(
+      parse_url($this->hmac->generate($actId, $approverId, 'reject'), PHP_URL_QUERY),
+      $rp
+    );
 
-        return [
-            'token_sig'    => $ap['sig'] ?? '',
-            'approve_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($ap),
-            'reject_link'  => $this->baseUrl . '/gu23/approve.php?' . http_build_query($rp),
-        ];
-    }
+    return [
+      'token_sig' => $ap['sig'] ?? '',
+      'approve_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($ap),
+      'reject_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($rp),
+    ];
+  }
 
-    /**
-     * Собрать HTML-тело письма согласования.
-     *
-     * @param string $recipientName  ФИО получателя
-     * @param int    $actId          ID акта
-     * @param string $approveLink    Ссылка «Согласовать»
-     * @param string $rejectLink     Ссылка «Отклонить»
-     * @param array  $act            Строка из gu23_get_act (ACT_NUMBER, ACT_TYPE, DEPT, STATION, …)
-     * @param array  $signers        Строки из gu23_get_signers (FIO, POST, ORG, STYPE, SIGNER_REF_ID)
-     * @param array  $approvals      Строки из gu23_get_approvals (APPROVER_ID, FULL_NAME, STATUS, DECIDED_AT, COMMENT_TXT)
-     */
-    public function buildHtml(
-        string $recipientName,
-        int    $actId,
-        string $approveLink,
-        string $rejectLink,
-        array  $act       = [],
-        array  $signers   = [],
-        array  $approvals = []
-    ): string {
-        $name      = htmlspecialchars($recipientName, ENT_QUOTES);
-        $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? "№ {$actId}", ENT_QUOTES);
+  /**
+   * Собрать HTML-тело письма согласования.
+   *
+   * @param string $recipientName  ФИО получателя
+   * @param int    $actId          ID акта
+   * @param string $approveLink    Ссылка «Согласовать»
+   * @param string $rejectLink     Ссылка «Отклонить»
+   * @param array  $act            Строка из gu23_get_act (ACT_NUMBER, ACT_TYPE, DEPT, STATION, …)
+   * @param array  $signers        Строки из gu23_get_signers (FIO, POST, ORG, STYPE, SIGNER_REF_ID)
+   * @param array  $approvals      Строки из gu23_get_approvals (APPROVER_ID, FULL_NAME, STATUS, DECIDED_AT, COMMENT_TXT)
+   */
+  public function buildHtml(
+    string $recipientName,
+    int $actId,
+    string $approveLink,
+    string $rejectLink,
+    array $act = [],
+    array $signers = [],
+    array $approvals = []
+  ): string {
+    $name = htmlspecialchars($recipientName, ENT_QUOTES);
+    $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? "№ {$actId}", ENT_QUOTES);
 
-        $actDetailsHtml  = $this->buildActDetails($act);
-        $signersHtml     = $this->buildSignersTable($signers, $approvals);
+    $actDetailsHtml = $this->buildActDetails($act);
+    $signersHtml = $this->buildSignersTable($signers, $approvals);
 
-        return <<<HTML
+    return <<<HTML
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -144,54 +144,54 @@ class ApprovalMailer
 </body>
 </html>
 HTML;
+  }
+
+  /**
+   * HTML-блок с реквизитами акта.
+   */
+  private function buildActDetails(array $act): string
+  {
+    if (empty($act)) {
+      return '';
     }
 
-    /**
-     * HTML-блок с реквизитами акта.
-     */
-    private function buildActDetails(array $act): string
-    {
-        if (empty($act)) {
-            return '';
-        }
+    $typeNames = [
+      'start' => 'Начало простоя',
+      'end' => 'Окончание простоя',
+      'other' => 'Прочий акт',
+    ];
+    $type = $typeNames[$act['ACT_TYPE'] ?? ''] ?? ($act['ACT_TYPE'] ?? '—');
 
-        $typeNames = [
-            'start' => 'Начало простоя',
-            'end'   => 'Окончание простоя',
-            'other' => 'Прочий акт',
-        ];
-        $type = $typeNames[$act['ACT_TYPE'] ?? ''] ?? ($act['ACT_TYPE'] ?? '—');
+    $rows = [
+      ['Тип акта', $type],
+      ['Цех', $act['DEPT'] ?? ''],
+      ['Ст. составления', $act['STATION'] ?? ''],
+      ['Ст. отправления', $act['ST_FROM'] ?? ''],
+      ['Ст. назначения', $act['ST_TO'] ?? ''],
+      ['Груз', $act['CARGO_REF'] ?? ''],
+      ['Причина', $act['REASON_NAME'] ?? ''],
+      ['Начало простоя', $this->fmtDate($act['START_AT'] ?? '')],
+      ['Окончание', $this->fmtDate($act['END_AT'] ?? '')],
+      ['Вагонов', $act['WAGON_CNT'] > 0 ? (string) (int) $act['WAGON_CNT'] : ''],
+      ['Обстоятельства', $act['CIRCUMSTANCES'] ?? ''],
+    ];
 
-        $rows = [
-            ['Тип акта',        $type],
-            ['Цех',             $act['DEPT']        ?? ''],
-            ['Ст. составления', $act['STATION']     ?? ''],
-            ['Ст. отправления', $act['ST_FROM']     ?? ''],
-            ['Ст. назначения',  $act['ST_TO']       ?? ''],
-            ['Груз',            $act['CARGO_REF']   ?? ''],
-            ['Причина',         $act['REASON_NAME'] ?? ''],
-            ['Начало простоя',  $this->fmtDate($act['START_AT'] ?? '')],
-            ['Окончание',       $this->fmtDate($act['END_AT']   ?? '')],
-            ['Вагонов',         $act['WAGON_CNT'] > 0 ? (string)(int)$act['WAGON_CNT'] : ''],
-            ['Обстоятельства',  $act['CIRCUMSTANCES'] ?? ''],
-        ];
-
-        $rowsHtml = '';
-        foreach ($rows as [$label, $value]) {
-            if ((string)$value === '') {
-                continue;
-            }
-            $l = htmlspecialchars($label, ENT_QUOTES);
-            $v = nl2br(htmlspecialchars($value, ENT_QUOTES));
-            $rowsHtml .= <<<ROW
+    $rowsHtml = '';
+    foreach ($rows as [$label, $value]) {
+      if ((string) $value === '') {
+        continue;
+      }
+      $l = htmlspecialchars($label, ENT_QUOTES);
+      $v = nl2br(htmlspecialchars($value, ENT_QUOTES));
+      $rowsHtml .= <<<ROW
               <tr>
                 <td style="padding:7px 12px 7px 0;color:#666;font-size:13px;white-space:nowrap;vertical-align:top">{$l}</td>
                 <td style="padding:7px 0;font-size:13px;vertical-align:top"><b>{$v}</b></td>
               </tr>
 ROW;
-        }
+    }
 
-        return <<<HTML
+    return <<<HTML
         <div style="background:#f8f9fb;border:1px solid #e0e4ea;border-radius:6px;padding:16px 20px;margin-bottom:20px">
           <div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">РЕКВИЗИТЫ АКТА</div>
           <table cellpadding="0" cellspacing="0" width="100%">
@@ -199,46 +199,46 @@ ROW;
           </table>
         </div>
 HTML;
+  }
+
+  /**
+   * HTML-таблица подписантов со статусом согласования.
+   */
+  private function buildSignersTable(array $signers, array $approvals): string
+  {
+    if (empty($signers)) {
+      return '';
     }
 
-    /**
-     * HTML-таблица подписантов со статусом согласования.
-     */
-    private function buildSignersTable(array $signers, array $approvals): string
-    {
-        if (empty($signers)) {
-            return '';
-        }
+    // Индекс статусов: approver_id → approval row
+    $approvalMap = [];
+    foreach ($approvals as $a) {
+      $approvalMap[(int) ($a['APPROVER_ID'] ?? 0)] = $a;
+    }
 
-        // Индекс статусов: approver_id → approval row
-        $approvalMap = [];
-        foreach ($approvals as $a) {
-            $approvalMap[(int)($a['APPROVER_ID'] ?? 0)] = $a;
-        }
+    $rows = '';
+    foreach ($signers as $i => $s) {
+      $no = $i + 1;
+      $fio = htmlspecialchars($s['FIO'] ?? '—', ENT_QUOTES);
+      $post = htmlspecialchars($s['POST'] ?? '', ENT_QUOTES);
+      $org = htmlspecialchars($s['ORG'] ?? '', ENT_QUOTES);
+      $stype = $s['STYPE'] ?? null;
+      $refId = (int) ($s['SIGNER_REF_ID'] ?? 0);
 
-        $rows = '';
-        foreach ($signers as $i => $s) {
-            $no    = $i + 1;
-            $fio   = htmlspecialchars($s['FIO']  ?? '—', ENT_QUOTES);
-            $post  = htmlspecialchars($s['POST'] ?? '',  ENT_QUOTES);
-            $org   = htmlspecialchars($s['ORG']  ?? '',  ENT_QUOTES);
-            $stype = $s['STYPE'] ?? null;
-            $refId = (int)($s['SIGNER_REF_ID'] ?? 0);
+      if ($stype === 'own' && $refId) {
+        $appr = $approvalMap[$refId] ?? null;
+        $status = $appr['STATUS'] ?? 'pending';
+        [$pill, $note] = $this->statusPill($status, $appr);
+      } elseif ($stype === 'rzd') {
+        $pill = '';
+        $note = '';
+      } else {
+        $pill = '<span style="background:#e8eaed;color:#5f6368;padding:2px 8px;border-radius:4px;font-size:11px">Вручную</span>';
+        $note = '';
+      }
 
-            if ($stype === 'own' && $refId) {
-                $appr   = $approvalMap[$refId] ?? null;
-                $status = $appr['STATUS'] ?? 'pending';
-                [$pill, $note] = $this->statusPill($status, $appr);
-            } elseif ($stype === 'rzd') {
-                $pill = '';
-                $note = '';
-            } else {
-                $pill = '<span style="background:#e8eaed;color:#5f6368;padding:2px 8px;border-radius:4px;font-size:11px">Вручную</span>';
-                $note = '';
-            }
-
-            $bg = $i % 2 === 0 ? '#ffffff' : '#f8f9fb';
-            $rows .= <<<ROW
+      $bg = $i % 2 === 0 ? '#ffffff' : '#f8f9fb';
+      $rows .= <<<ROW
               <tr style="background:{$bg}">
                 <td style="padding:8px 10px;font-size:13px;color:#888;text-align:center">{$no}</td>
                 <td style="padding:8px 10px;font-size:13px">
@@ -249,9 +249,9 @@ HTML;
                 <td style="padding:8px 10px;font-size:13px;text-align:center">{$pill}{$note}</td>
               </tr>
 ROW;
-        }
+    }
 
-        return <<<HTML
+    return <<<HTML
         <div style="margin-top:8px">
           <div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>
           <table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-radius:6px;overflow:hidden;border-collapse:collapse">
@@ -268,65 +268,65 @@ ROW;
           </table>
         </div>
 HTML;
+  }
+
+  /**
+   * HTML-пилюля статуса и дополнительная строка (дата / причина отклонения).
+   */
+  private function statusPill(string $status, ?array $appr): array
+  {
+    switch ($status) {
+      case 'approved':
+        $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
+        $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✓ Согласовано</span>';
+        $note = $date ? "<br><span style=\"color:#888;font-size:11px\">{$date}</span>" : '';
+        return [$pill, $note];
+
+      case 'rejected':
+        $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
+        $comment = $appr ? htmlspecialchars($appr['COMMENT_TXT'] ?? '', ENT_QUOTES) : '';
+        $pill = '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✗ Отклонено</span>';
+        $note = ($date || $comment)
+          ? "<br><span style=\"color:#888;font-size:11px\">" . implode(' · ', array_filter([$date, $comment])) . '</span>'
+          : '';
+        return [$pill, $note];
+
+      default: // pending
+        $pill = '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">⏳ Ожидается</span>';
+        return [$pill, ''];
     }
+  }
 
-    /**
-     * HTML-пилюля статуса и дополнительная строка (дата / причина отклонения).
-     */
-    private function statusPill(string $status, ?array $appr): array
-    {
-        switch ($status) {
-            case 'approved':
-                $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
-                $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✓ Согласовано</span>';
-                $note = $date ? "<br><span style=\"color:#888;font-size:11px\">{$date}</span>" : '';
-                return [$pill, $note];
-
-            case 'rejected':
-                $date    = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
-                $comment = $appr ? htmlspecialchars($appr['COMMENT_TXT'] ?? '', ENT_QUOTES) : '';
-                $pill    = '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✗ Отклонено</span>';
-                $note    = ($date || $comment)
-                    ? "<br><span style=\"color:#888;font-size:11px\">" . implode(' · ', array_filter([$date, $comment])) . '</span>'
-                    : '';
-                return [$pill, $note];
-
-            default: // pending
-                $pill = '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">⏳ Ожидается</span>';
-                return [$pill, ''];
-        }
+  /**
+   * Форматировать дату «YYYY-MM-DD HH:MM:SS» → «DD.MM.YYYY HH:MM».
+   */
+  private function fmtDate(string $dt): string
+  {
+    if (!$dt) {
+      return '';
     }
+    $t = strtotime($dt);
+    return $t ? date('d.m.Y H:i', $t) : $dt;
+  }
 
-    /**
-     * Форматировать дату «YYYY-MM-DD HH:MM:SS» → «DD.MM.YYYY HH:MM».
-     */
-    private function fmtDate(string $dt): string
-    {
-        if (!$dt) {
-            return '';
-        }
-        $t = strtotime($dt);
-        return $t ? date('d.m.Y H:i', $t) : $dt;
-    }
+  /**
+   * Сохранить письмо в файл (режим отладки / send_file).
+   * Отправка через Oracle: GuActRepository::sendMailViaOracle().
+   */
+  public function send(string $to, string $subject, string $html, string $mode): bool
+  {
+    return $this->saveToFile($to, $subject, $html);
+  }
 
-    /**
-     * Сохранить письмо в файл (режим отладки / send_file).
-     * Отправка через Oracle: GuActRepository::sendMailViaOracle().
-     */
-    public function send(string $to, string $subject, string $html, string $mode): bool
-    {
-        return $this->saveToFile($to, $subject, $html);
+  private function saveToFile(string $to, string $subject, string $html): bool
+  {
+    if (!is_dir($this->mailDir)) {
+      mkdir($this->mailDir, 0755, true);
     }
-
-    private function saveToFile(string $to, string $subject, string $html): bool
-    {
-        if (!is_dir($this->mailDir)) {
-            mkdir($this->mailDir, 0755, true);
-        }
-        $ts      = date('Ymd_His');
-        $safe    = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
-        $file    = $this->mailDir . '/' . $ts . '_' . $safe . '.html';
-        $content = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
-        return file_put_contents($file, $content) !== false;
-    }
+    $ts = date('Ymd_His');
+    $safe = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
+    $file = $this->mailDir . '/' . $ts . '_' . $safe . '.html';
+    $content = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
+    return file_put_contents($file, $content) !== false;
+  }
 }

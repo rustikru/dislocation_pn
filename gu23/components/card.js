@@ -71,13 +71,20 @@ function showToolbarButtons(act, data) {
     $toolbar.append($editBtn, $delBtn)
   }
 
-  if ((act.STATUS === 'active' || act.STATUS === 'closed') && hasPerm('ANNUL_ACT')) {
+  if (
+    (act.STATUS === 'active' || act.STATUS === 'closed') &&
+    hasPerm('ANNUL_ACT')
+  ) {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
     $annulBtn.on('click', () => annulActiveAct(act))
     $toolbar.append($annulBtn)
   }
 
-  if (act.STATUS === 'active' && act.ACT_TYPE === 'end' && hasPerm('CLOSE_ACT')) {
+  if (
+    act.STATUS === 'active' &&
+    act.ACT_TYPE === 'end' &&
+    hasPerm('CLOSE_ACT')
+  ) {
     const $closeBtn = $('<button class="btn">Закрыть акт</button>')
     $closeBtn.on('click', () => closeAct(act))
     $toolbar.append($closeBtn)
@@ -279,8 +286,8 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
         <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8"></div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">✓ Согласовать</button>
-          <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">✕ Отклонить</button>
+          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">Согласовать</button>
+          <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">Отклонить</button>
         </div>
         <div id="reject-reason-box" style="display:none;margin-top:8px">
           <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
