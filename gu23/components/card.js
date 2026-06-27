@@ -283,7 +283,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
   let myBannerHtml = ''
   if (canSign) {
     myBannerHtml = `
-      <div id="my-approval-banner" style="background:#f0f4ff;border-radius:6px;padding:12px 14px;margin-bottom:4px">
+      <div id="my-approval-banner" style="border-radius:6px;padding:12px 14px;margin-bottom:4px">
         <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8"></div>
         <div style="display:flex;gap:8px">
           <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">Согласовать</button>
