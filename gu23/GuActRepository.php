@@ -238,12 +238,18 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
 
     /** Выполнить конвейерную функцию и вернуть массив строк. */
+    /** Убрать ссылку «Help: https://...» из текста ошибки Oracle 21c+. */
+    private function ociMsg(array $e): string
+    {
+        return preg_replace('/\s*Help:\s*https?://\S+/i', '', $e['message'] ?? '?');
+    }
+
     private function pipe(string $sql, array $binds = []): array
     {
         $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
-            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
+            $msg = 'oci_parse: ' . $this->ociMsg($e) . ' | SQL: ' . $sql;
             Gu23Logger::error($msg, ['binds' => array_keys($binds)]);
             throw new \RuntimeException($msg);
         }
@@ -252,7 +258,7 @@ class GuActRepository
         }
         if (!@oci_execute($st)) {
             $e = oci_error($st);
-            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
+            $msg = 'oci_execute: ' . $this->ociMsg($e) . ' | SQL: ' . $sql;
             Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
             throw new \RuntimeException($msg);
         }
@@ -287,7 +293,7 @@ class GuActRepository
         $st = @oci_parse($this->conn, $sql);
         if (!$st) {
             $e = oci_error($this->conn);
-            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
+            $msg = 'oci_parse: ' . $this->ociMsg($e) . ' | expr: ' . $expr;
             Gu23Logger::error($msg);
             throw new \RuntimeException($msg);
         }
@@ -298,7 +304,7 @@ class GuActRepository
         }
         if (!@oci_execute($st)) {
             $e = oci_error($st);
-            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
+            $msg = 'oci_execute: ' . $this->ociMsg($e) . ' | expr: ' . $expr;
             Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
             throw new \RuntimeException($msg);
         }
@@ -1005,7 +1011,7 @@ class GuActRepository
 
         if (!$ok) {
             $e = oci_error($st);
-            Gu23Logger::error('sendMailViaOracle: execute failed', ['to' => $to, 'err' => $e['message'] ?? '?']);
+            Gu23Logger::error('sendMailViaOracle: execute failed', ['to' => $to, 'err' => $this->ociMsg($e)]);
         }
         return (bool) $ok;
     }
