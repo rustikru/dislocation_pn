@@ -88,7 +88,7 @@ class Gu23Logger
         return $frames;
     }
 
-    /** $_POST полей. */
+    /** $_POST. */
     private static function safePost(): array
     {
         $skip = ['password', 'pwd', 'token', 'token_sig', 'secret'];
