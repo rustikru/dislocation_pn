@@ -277,7 +277,9 @@ a {
   position: relative;
 }
 .btn.icon-btn {
-  padding: 0 10px;
+  align-self: stretch;
+  padding: 6px 12px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 1px;
   line-height: 1;

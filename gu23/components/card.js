@@ -2,7 +2,6 @@ import { sendApiRequest } from '../api.js'
 import { navigateTo } from '../app.js'
 import { escapeHtml, formatDateTime, formatToInputDate } from '../utils.js'
 import {
-  showStatusChip,
   showTypeChip,
   showToast,
   showConfirmBox,
@@ -32,17 +31,7 @@ function buildCardView(container, data) {
     <div class="phead">
       <button class="btn sm ghost" id="btn-back-to-archive">Назад</button>
       <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
-      ${showStatusChip(act.STATUS)}
       <div class="spacer"></div>
-      ${
-        act.STATUS !== 'draft' && act.STATUS !== 'annulled'
-          ? `<a class="btn primary" id="btn-download" target="_blank" href="report/report.php?id=${act.ID}">Скачать</a>`
-          : ''
-      }
-      <div class="actions-dd" id="actions-dd" style="display:none">
-        <button class="btn icon-btn" id="btn-actions" title="Ещё действия">···</button>
-        <div class="actions-menu" id="actions-menu"></div>
-      </div>
     </div>
     <div id="annulled-banner-place"></div>
     <div class="grid-layout" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
@@ -53,8 +42,8 @@ function buildCardView(container, data) {
 
   $('#btn-back-to-archive').on('click', () => navigateTo('archive'))
 
-  showActionsMenu(act, data)
   showDetailsBlock(act)
+  showActionsMenu(act, data)
   showWagonsBlock(data.wagons)
   showSignersBlock(
     act,
@@ -195,11 +184,27 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
+  const downloadHtml =
+    act.STATUS !== 'draft' && act.STATUS !== 'annulled'
+      ? `<a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
+           <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
+         </a>`
+      : ''
+
   $('#card-left-column')
     .append(
       `
     <div class="card">
-      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Реквизиты акта</b></div>
+      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <b>Реквизиты акта</b>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${downloadHtml}
+          <div class="actions-dd" id="actions-dd" style="display:none">
+            <button class="btn icon-btn" id="btn-actions" title="Ещё действия">···</button>
+            <div class="actions-menu" id="actions-menu"></div>
+          </div>
+        </div>
+      </div>
       <dl class="kv" style="padding:16px 18px">${dlHtml}</dl>
     </div>
   `,
