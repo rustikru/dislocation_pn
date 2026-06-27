@@ -96,26 +96,26 @@ class ApprovalMailer
         <tr>
           <td style="padding:28px 32px">
 
-            <p style="margin:0 0 18px;font-size:15px">
+            <p style="margin:0 0 18px;font-size:13px">
               Уважаемый(-ая) <b>{$name}</b>,<br>
-              Вас просят согласовать акт общей формы ГУ-23.
+              Требуется согласование акта общей формы ГУ-23.
             </p>
 
             <!-- Реквизиты акта -->
             {$actDetailsHtml}
 
             <!-- Кнопки -->
-            <table cellpadding="0" cellspacing="0" style="margin:28px 0">
+            <table cellpadding="0" cellspacing="0" style="margin:20px 0">
               <tr>
-                <td style="padding-right:12px">
+                <td style="padding-right:8px">
                   <a href="{$approveLink}"
-                     style="display:inline-block;background:#22863a;color:#fff;padding:13px 30px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:700">
+                     style="display:inline-block;background:#22863a;color:#fff;padding:9px 20px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600">
                     ✓&nbsp; Согласовать
                   </a>
                 </td>
                 <td>
                   <a href="{$rejectLink}"
-                     style="display:inline-block;background:#c0392b;color:#fff;padding:13px 30px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:700">
+                     style="display:inline-block;background:#c0392b;color:#fff;padding:9px 20px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600">
                     ✗&nbsp; Отклонить
                   </a>
                 </td>
@@ -230,7 +230,7 @@ HTML;
                 $status = $appr['STATUS'] ?? 'pending';
                 [$pill, $note] = $this->statusPill($status, $appr);
             } elseif ($stype === 'rzd') {
-                $pill = '<span style="background:#e8eaed;color:#5f6368;padding:2px 8px;border-radius:4px;font-size:11px">Не участвует</span>';
+                $pill = '';
                 $note = '';
             } else {
                 $pill = '<span style="background:#e8eaed;color:#5f6368;padding:2px 8px;border-radius:4px;font-size:11px">Вручную</span>';
