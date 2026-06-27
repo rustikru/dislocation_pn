@@ -6,6 +6,6 @@ phonebook/
 db_config.local.php
 gu23/request_data/
 gu23/act_data/
-.DS_Store.DS_Store
+.DS_Store
+**/.DS_Store
 mail/
-mail
