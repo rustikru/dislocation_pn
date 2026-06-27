@@ -50,7 +50,7 @@ class ApprovalMailer
    *
    * @param string $recipientName  ФИО получателя
    * @param int    $actId          ID акта
-   * @param string $approveLink    Ссылка «Согласовать»
+   * @param string $approveLink    Ссылка «Подписать»
    * @param string $rejectLink     Ссылка «Отклонить»
    * @param array  $act            Строка из gu23_get_act (ACT_NUMBER, ACT_TYPE, DEPT, STATION, …)
    * @param array  $signers        Строки из gu23_get_signers (FIO, POST, ORG, STYPE, SIGNER_REF_ID)
@@ -110,7 +110,7 @@ class ApprovalMailer
                 <td style="padding-right:8px">
                   <a href="{$approveLink}"
                      style="display:inline-block;background:#22863a;color:#fff;padding:9px 20px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600">
-                    Согласовать
+                    Подписать
                   </a>
                 </td>
                 <td>
@@ -278,7 +278,7 @@ HTML;
     switch ($status) {
       case 'approved':
         $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
-        $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Согласовано</span>';
+        $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Подписано</span>';
         $note = $date ? "<br><span style=\"color:#888;font-size:11px\">{$date}</span>" : '';
         return [$pill, $note];
 

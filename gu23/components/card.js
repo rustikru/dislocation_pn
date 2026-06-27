@@ -286,7 +286,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       <div id="my-approval-banner" style="border-radius:6px;padding:12px 14px;margin-bottom:4px">
         <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8"></div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">Согласовать</button>
+          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">Подписать</button>
           <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">Отклонить</button>
         </div>
         <div id="reject-reason-box" style="display:none;margin-top:8px">
