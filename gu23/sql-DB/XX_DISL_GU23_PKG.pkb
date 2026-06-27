@@ -16,7 +16,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    c_dtf       constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
    c_us        constant char(1) := chr(31);            -- разделитель полей
    c_rs        constant char(1) := chr(30);          -- разделитель записей
-   g_client_ip varchar2(64) := null;                  -- IP клиента текущего запроса
+   g_client_ip  varchar2(64)  := null;                 -- IP клиента текущего запроса
+   -- Секретный ключ HMAC для ссылок согласования.
+   -- На проде замените строку ниже перед компиляцией (не коммитить реальный ключ в git).
+   -- Сгенерировать: SELECT dbms_random.string('x', 64) FROM dual;
+   g_hmac_secret constant varchar2(128) := 'change-me-in-production';
 
    procedure gu23_set_client_ip (
       p_ip in varchar2
@@ -2986,6 +2990,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       when others then
          return format_error();
    end;
+   /* ------------------------------------------------------------------ */
+   function gu23_get_hmac_secret return varchar2 is
+   begin
+      return g_hmac_secret;
+   end gu23_get_hmac_secret;
+
    /* ------------------------------------------------------------------ */
    procedure gu23_send_mail (
       p_to      in varchar2,

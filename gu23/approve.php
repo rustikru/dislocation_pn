@@ -9,16 +9,14 @@ require_once __DIR__ . '/../connection.php';
 require_once __DIR__ . '/../lib/HmacApproval.php';
 require_once __DIR__ . '/ApprovalRepository.php';
 
-if (!defined('HMAC_SECRET')) {
-    require_once file_exists(__DIR__ . '/../db_config.local.php')
-        ? __DIR__ . '/../db_config.local.php'
-        : __DIR__ . '/../db_config.php';
-}
-if (!defined('HMAC_SECRET')) {
-    define('HMAC_SECRET', 'change-me-in-production');
+$hmacSecret = 'change-me-in-production';
+$_st = @oci_parse($conn1, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');
+if ($_st) {
+    oci_bind_by_name($_st, ':r', $hmacSecret, 128);
+    @oci_execute($_st);
 }
 
-$hmac = new HmacApproval(HMAC_SECRET, ttlDays: 1);
+$hmac = new HmacApproval($hmacSecret, ttlDays: 1);
 $params = $_GET + $_POST;
 $verify = $hmac->verify($params);
 

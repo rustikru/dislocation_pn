@@ -17,6 +17,9 @@ create or replace package xx_disl_gu23_pkg as
       p_ip in varchar2
    );
 
+   /* ---- Вернуть секретный ключ для HMAC-ссылок согласования ---- */
+   function gu23_get_hmac_secret return varchar2;
+
    /* ---- Отправить HTML-письмо (делегирует в корпоративный пакет отправки почты) ---- */
    procedure gu23_send_mail (
       p_to      in varchar2,

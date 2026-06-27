@@ -1009,19 +1009,23 @@ class GuActRepository
         require_once __DIR__ . '/../lib/HmacApproval.php';
         require_once __DIR__ . '/../lib/ApprovalMailer.php';
 
-        if (!defined('HMAC_SECRET')) {
-            require_once file_exists(__DIR__ . '/../db_config.local.php')
-                ? __DIR__ . '/../db_config.local.php'
-                : __DIR__ . '/../db_config.php';
-        }
-        if (!defined('HMAC_SECRET')) {
-            define('HMAC_SECRET', 'change-me-in-production');
-        }
-
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
             . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
-        return new ApprovalMailer(HMAC_SECRET, $baseUrl);
+        return new ApprovalMailer($this->getHmacSecret(), $baseUrl);
+    }
+
+    private function getHmacSecret(): string
+    {
+        $st = @oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');
+        if ($st) {
+            $secret = '';
+            oci_bind_by_name($st, ':r', $secret, 128);
+            if (@oci_execute($st) && $secret !== '') {
+                return $secret;
+            }
+        }
+        return 'change-me-in-production';
     }
 
     /* ----------------------------------------------------------------- */
