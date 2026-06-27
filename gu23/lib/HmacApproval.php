@@ -21,6 +21,7 @@ class HmacApproval
         $ts = time();
         $sig = $this->sign($actId, $approverId, $action, $ts);
 
+        // Формируем штатными средствами массив в URL-кодированную строку запроса
         $params = http_build_query([
             'act' => $actId,
             'uid' => $approverId,

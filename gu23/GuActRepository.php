@@ -898,6 +898,7 @@ class GuActRepository
                 $approvalRows
             );
             $subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+            // Если режим у нас отправка писем - отправляем письмо 
             $ok = $mode === 'send_mail'
                 ? $this->sendMailViaOracle($email, $subject, $html)
                 : $mailer->send($email, $subject, $html, $mode);

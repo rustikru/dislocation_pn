@@ -1,6 +1,6 @@
 <?php
 /**
- * ApprovalMailer — генерация HMAC-ссылок и отправка писем согласования ГУ-23.
+ * ApprovalMailer — генерация HMAC-ссылок (html страничка) и отправка писем на подписание ГУ-23.
  */
 class ApprovalMailer
 {
@@ -310,7 +310,7 @@ HTML;
   }
 
   /**
-   * Сохранить письмо в файл (режим отладки / send_file).
+   * Сохранить письмо в файл 
    * Отправка через Oracle: GuActRepository::sendMailViaOracle().
    */
   public function send(string $to, string $subject, string $html, string $mode): bool
@@ -318,6 +318,7 @@ HTML;
     return $this->saveToFile($to, $subject, $html);
   }
 
+  // СОхраняем html страничку письма в папку gu23/mail/....
   private function saveToFile(string $to, string $subject, string $html): bool
   {
     if (!is_dir($this->mailDir)) {
