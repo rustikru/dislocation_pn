@@ -608,6 +608,7 @@ a {
 .st-annulled {
   color: var(--annul);
   background: var(--raise);
+  text-decoration: line-through;
 }
 .st-closed {
   color: var(--info);
@@ -1085,8 +1086,8 @@ textarea.inp {
   justify-content: center;
   cursor: pointer;
 }
-.perm-cb-wrap input[type="checkbox"],
-.role-cb-wrap input[type="checkbox"] {
+.perm-cb-wrap input[type='checkbox'],
+.role-cb-wrap input[type='checkbox'] {
   width: 16px;
   height: 16px;
   cursor: pointer;

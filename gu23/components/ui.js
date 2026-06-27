@@ -13,7 +13,7 @@ const actStatusesConfig = {
   closed: { label: 'Закрыт', className: 'st-closed' },
   annulled: { label: 'Аннулирован', className: 'st-annulled' },
   signed: { label: 'Подписан', className: 'st-signed' },
-  rejected: { label: 'Отклонён', className: 'st-annulled' },
+  rejected: { label: 'Отклонён', className: 'st-rejected' },
 }
 
 export function showStatusChip(status) {
