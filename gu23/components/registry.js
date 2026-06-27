@@ -42,7 +42,6 @@ export function showArchive(container) {
   let searchTimeout = null
 
   // Создание фильтра с множественным выбором (чекбокс-дропдаун).
-  // Значения хранятся в filterState[key] как CSV (пусто = «все»).
   const createMultiSelectFilter = (options, labels, key) => {
     const allLabel = labels[0] // первый элемент — «Все …»
     const $wrap = $('<div class="ms-filter"></div>')
@@ -51,7 +50,7 @@ export function showArchive(container) {
     )
     const $menu = $('<div class="ms-menu"></div>')
 
-    // реальные значения (пустое «Все …» пропускаем)
+    // реальные значения
     const realCount = options.filter((v) => v !== '').length
 
     // поиск внутри списка — только для длинных списков
@@ -69,7 +68,7 @@ export function showArchive(container) {
       $menu.append($search)
     }
 
-    // чекбоксы для реальных значений
+    // чекбоксы для  значений
     options.forEach((val, idx) => {
       if (val === '') return
       $menu.append(
@@ -101,7 +100,6 @@ export function showArchive(container) {
       loadArchiveData()
     })
 
-    // клик внутри меню не закрывает его
     $menu.on('click', (e) => e.stopPropagation())
     $btn.on('click', (e) => {
       e.stopPropagation()
@@ -267,7 +265,7 @@ export function showArchive(container) {
         )
       }
 
-      // Номера актов начала, реально присутствующих в выборке
+      // Номера актов начала
       const rootNumbers = new Set(rootActs.map((a) => a.ACT_NUMBER))
 
       // Собираем иерархию (по умолчанию все развернуты)
@@ -279,8 +277,8 @@ export function showArchive(container) {
         })
       })
 
-      // «Осиротевшие» акты окончания: их родитель (акт начала) не попал в выборку
-      // (например, при фильтре по статусу). Выводим их отдельными строками,
+      // «Осиротевшие» акты окончания: их родитель (акт начала)
+      // Выводим их отдельными строками,
       // иначе они просто исчезают из архива.
       Object.keys(childActsMap).forEach((parentNum) => {
         if (rootNumbers.has(parentNum)) return
