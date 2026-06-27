@@ -24,8 +24,8 @@ export function showRefs(container) {
       <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины составления</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <input class="inp" id="refs-search" value="" placeholder="Поиск…" style="flex:1;font-size:13px;padding:4px 8px">
-      <button class="btn sm" id="btn-add-ref" style="font-size:12px;padding:3px 10px;white-space:nowrap">+ Добавить</button>
+      <input class="inp" id="refs-search" value="" placeholder="Поиск…" style="flex:1;font-size:13px;height:34px;padding:0 10px;box-sizing:border-box">
+      <button class="btn sm" id="btn-add-ref" style="font-size:13px;height:34px;padding:0 14px;box-sizing:border-box;white-space:nowrap">+ Добавить</button>
     </div>
     <div id="refs-body"><div class="muted" style="font-size:13px">Загрузка…</div></div>
   `)
