@@ -8,8 +8,7 @@ export function showArchive(container) {
   $(container).html(
     '<div class="phead">' +
       '<h1>Реестр актов</h1>' +
-      '</div>' +
-      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">' +
+      '<div class="spacer"></div>' +
       '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="color:var(--muted)">Сбросить</button>' +
       '</div>' +
       '<div class="filters" id="archive-filters">' +
@@ -173,7 +172,7 @@ export function showArchive(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
-  // Кнопка сброса (отдельной строкой над фильтрами) — возврат к значениям по умолчанию
+  // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))
 
   // Поиск с задержкой
