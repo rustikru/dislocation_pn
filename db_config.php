@@ -10,4 +10,9 @@
                       (SERVICE_NAME = '.$serviceName.')
                     )
               )';
+
+// Секретный ключ для HMAC-ссылок согласования ГУ-23.
+// Замените на длинную случайную строку (минимум 32 символа), например:
+//   php -r "echo bin2hex(random_bytes(32));"
+define('HMAC_SECRET', 'change-me-in-production');
 	
