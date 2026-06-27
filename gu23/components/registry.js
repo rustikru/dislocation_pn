@@ -185,12 +185,25 @@ export function showArchive(container) {
         )
       }
 
+      // Номера актов начала, реально присутствующих в выборке
+      const rootNumbers = new Set(rootActs.map((a) => a.ACT_NUMBER))
+
       // Собираем иерархию (по умолчанию все развернуты)
       rootActs.forEach((rootAct) => {
         rowsHtml += generateRowHtml(rootAct, false)
         const children = childActsMap[rootAct.ACT_NUMBER] || []
         children.forEach((childAct) => {
           rowsHtml += generateRowHtml(childAct, true)
+        })
+      })
+
+      // «Осиротевшие» акты окончания: их родитель (акт начала) не попал в выборку
+      // (например, при фильтре по статусу). Выводим их отдельными строками,
+      // иначе они просто исчезают из архива.
+      Object.keys(childActsMap).forEach((parentNum) => {
+        if (rootNumbers.has(parentNum)) return
+        childActsMap[parentNum].forEach((childAct) => {
+          rowsHtml += generateRowHtml(childAct, false)
         })
       })
 
