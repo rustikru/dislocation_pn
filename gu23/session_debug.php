@@ -13,7 +13,7 @@ session_start();
 
 <head>
   <meta charset="utf-8">
-  <title>Session Debug</title>
+  <title>Session & Server Debug</title>
   <style>
     body {
       font-family: monospace;
@@ -29,6 +29,7 @@ session_start();
       border-radius: 6px;
       overflow: hidden;
       box-shadow: 0 1px 3px #0002;
+      margin-bottom: 30px;
     }
 
     th {
@@ -36,6 +37,11 @@ session_start();
       color: #fff;
       padding: 8px 14px;
       text-align: left;
+    }
+
+    .server-table th {
+      background: #2c3e50;
+      /* Чуть другой оттенок для сервера */
     }
 
     td {
@@ -47,7 +53,8 @@ session_start();
     td:first-child {
       color: #666;
       white-space: nowrap;
-      width: 200px;
+      width: 250px;
+      font-weight: bold;
     }
 
     td:last-child {
@@ -55,9 +62,16 @@ session_start();
       word-break: break-all;
     }
 
+    pre {
+      margin: 0;
+      font-family: inherit;
+      white-space: pre-wrap;
+    }
+
     .empty {
       color: #aaa;
       font-style: italic;
+      margin-bottom: 30px;
     }
 
     h2 {
@@ -66,23 +80,30 @@ session_start();
     }
 
     .destroy {
-      margin-top: 16px;
+      margin-bottom: 30px;
     }
 
     .destroy a {
       color: #c0392b;
       font-size: 12px;
+      text-decoration: none;
+    }
+
+    .destroy a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 
 <body>
+
   <h2>$_SESSION · <?= htmlspecialchars(session_id()) ?></h2>
 
   <?php if (isset($_GET['destroy'])):
     session_destroy();
-    echo '<p>Сессия уничтожена. <a href="session_debug.php">Обновить</a></p>';
-    exit; endif; ?>
+    echo '<p>Сессия уничтожена. <a href="' . htmlspecialchars($_SERVER['PHP_SELF']) . '">Обновить</a></p>';
+    exit;
+  endif; ?>
 
   <?php if (empty($_SESSION)): ?>
     <p class="empty">Сессия пуста.</p>
@@ -95,14 +116,40 @@ session_start();
       <?php foreach ($_SESSION as $key => $value): ?>
         <tr>
           <td><?= htmlspecialchars($key) ?></td>
-          <td><?= htmlspecialchars(is_bool($value) ? ($value ? 'true' : 'false') : print_r($value, true)) ?></td>
+          <td>
+            <pre><?= htmlspecialchars(is_bool($value) ? ($value ? 'true' : 'false') : (is_scalar($value) ? $value : print_r($value, true))) ?></pre>
+          </td>
         </tr>
       <?php endforeach; ?>
     </table>
   <?php endif; ?>
 
-  <div class="destroy"><a href="?destroy=1" onclick="return confirm('Уничтожить сессию?')">🗑 Уничтожить сессию</a>
+  <div class="destroy">
+    <a href="?destroy=1" onclick="return confirm('Уничтожить сессию?')">🗑 Уничтожить сессию</a>
   </div>
+
+
+  <h2>$_SERVER</h2>
+
+  <?php if (empty($_SERVER)): ?>
+    <p class="empty">Массив $_SERVER пуст.</p>
+  <?php else: ?>
+    <table class="server-table">
+      <tr>
+        <th>Переменная</th>
+        <th>Значение</th>
+      </tr>
+      <?php foreach ($_SERVER as $key => $value): ?>
+        <tr>
+          <td><?= htmlspecialchars($key) ?></td>
+          <td>
+            <pre><?= htmlspecialchars(is_bool($value) ? ($value ? 'true' : 'false') : (is_scalar($value) ? $value : print_r($value, true))) ?></pre>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
+
 </body>
 
 </html>
