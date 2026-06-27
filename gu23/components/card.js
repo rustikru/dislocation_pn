@@ -129,7 +129,9 @@ function showActionsMenu(act, data) {
       $('#actions-menu').toggle()
     })
     // закрытие по клику вне меню
-    $(document).off('click.actionsMenu').on('click.actionsMenu', () => closeActionsMenu())
+    $(document)
+      .off('click.actionsMenu')
+      .on('click.actionsMenu', () => closeActionsMenu())
   }
 
   if (act.STATUS === 'annulled' && act.ANNUL_REASON) {
@@ -185,7 +187,9 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
   const downloadHtml =
-    act.STATUS !== 'draft' && act.STATUS !== 'annulled'
+    act.STATUS !== 'draft' &&
+    act.STATUS !== 'annulled' &&
+    act.STATUS !== 'rejected'
       ? `<a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
            <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
          </a>`
