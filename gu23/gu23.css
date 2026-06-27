@@ -1001,6 +1001,22 @@ textarea.inp {
   padding: 4px;
   z-index: 60;
 }
+.ms-search {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  padding: 6px 9px;
+  font-size: 13px;
+  margin-bottom: 4px;
+  background: var(--surface, #fff);
+}
+.ms-search:focus {
+  outline: none;
+  border-color: var(--signal);
+}
 .ms-item {
   display: flex;
   align-items: center;

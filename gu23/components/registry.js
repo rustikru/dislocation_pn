@@ -50,7 +50,25 @@ export function showArchive(container) {
     )
     const $menu = $('<div class="ms-menu"></div>')
 
-    // чекбоксы для реальных значений (пустое «Все …» пропускаем)
+    // реальные значения (пустое «Все …» пропускаем)
+    const realCount = options.filter((v) => v !== '').length
+
+    // поиск внутри списка — только для длинных списков
+    if (realCount > 8) {
+      const $search = $(
+        '<input type="text" class="ms-search" placeholder="Поиск…">',
+      )
+      $search.on('input', function () {
+        const q = this.value.trim().toLowerCase()
+        $menu.find('.ms-item').each(function () {
+          const txt = $(this).find('span').text().toLowerCase()
+          $(this).toggle(txt.indexOf(q) !== -1)
+        })
+      })
+      $menu.append($search)
+    }
+
+    // чекбоксы для реальных значений
     options.forEach((val, idx) => {
       if (val === '') return
       $menu.append(
