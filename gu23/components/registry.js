@@ -9,7 +9,7 @@ export function showArchive(container) {
     '<div class="phead">' +
       '<h1>Реестр актов</h1>' +
       '<div class="spacer"></div>' +
-      '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="color:var(--muted)">Сбросить</button>' +
+      '<button id="btn-reset-filters" title="Сбросить фильтры" style="border:none;background:none;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 2px">Сбросить</button>' +
       '</div>' +
       '<div class="filters" id="archive-filters">' +
       '<div class="searchbox">' +
