@@ -19,7 +19,7 @@ export function showRefs(container) {
     <div class="phead" style="padding-bottom:10px">
       <h2 style="margin:0;font-size:16px">Справочники</h2>
     </div>
-    <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:10px;border-bottom:2px solid var(--line)">
+    <div id="refs-tabs" style="display:flex;gap:3px;margin-bottom:10px;border-bottom:1px solid var(--line2)">
       <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты</button>
       <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины</button>
     </div>
@@ -88,9 +88,17 @@ function reloadRefs() {
 }
 
 function tabStyle(active) {
+  // Вкладки в стиле браузера (Safari), но с прямыми углами:
+  // активная — «карточка», сливающаяся с контентом снизу.
+  const base =
+    'padding:8px 20px;font-size:13px;border-radius:0;cursor:pointer;'
   return active
-    ? 'padding:5px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--accent,#2563eb);border-bottom:2px solid var(--accent,#2563eb);margin-bottom:-2px;cursor:pointer'
-    : 'padding:5px 16px;border:none;background:none;font-size:13px;font-weight:400;color:var(--muted,#888);cursor:pointer'
+    ? base +
+        'border:1px solid var(--line2);border-bottom-color:var(--surface,#fff);' +
+        'background:var(--surface,#fff);color:var(--ink);font-weight:600;margin-bottom:-1px'
+    : base +
+        'border:1px solid var(--line);border-bottom:none;' +
+        'background:var(--surface2,#f7f7f4);color:var(--muted,#888);font-weight:500'
 }
 
 function renderPager(total, page) {
