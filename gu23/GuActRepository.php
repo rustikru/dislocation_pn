@@ -114,7 +114,7 @@ class GuActRepository
         ob_start();
         //Gu23Logger::info('action', ['action' => $action]);
         try {
-            // Передаём IP клиента в пакет — используется в log_act_history
+            // Передаём IP клиента в пакет в log_act_history
             $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR']
                 ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
                 : ($_SERVER['REMOTE_ADDR'] ?? '');
@@ -330,15 +330,15 @@ class GuActRepository
         $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
 
         echo json_encode([
-            'cexes'        => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
-            'reasons'      => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
-            'stations'     => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
-            'stations_from'=> $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
-            'cargos'       => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
-            'signersOwn'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
-            'signersRzd'   => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
-            'perms'        => $perms,
-            'isAdmin'      => $this->isGu23Admin() ? true : false, // оставляем для обратной совместимости
+            'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
+            'reasons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'stations' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
+            'stations_from' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
+            'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
+            'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
+            'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
+            'perms' => $perms,
+            'isAdmin' => $this->isGu23Admin() ? true : false, // оставляем для обратной совместимости
         ]);
     }
 
@@ -868,7 +868,7 @@ class GuActRepository
         }
 
         // 3. Полный список подписантов и текущих статусов согласования — для тела письма
-        $allSigners   = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))',  [':id' => $actId]);
+        $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
         $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
 
         $mailer = $this->loadMailer();
@@ -889,9 +889,13 @@ class GuActRepository
             oci_commit($this->conn);
 
             $html = $mailer->buildHtml(
-                $fullName, $actId,
-                $links['approve_link'], $links['reject_link'],
-                $actRows[0] ?? [], $allSigners, $approvalRows
+                $fullName,
+                $actId,
+                $links['approve_link'],
+                $links['reject_link'],
+                $actRows[0] ?? [],
+                $allSigners,
+                $approvalRows
             );
             $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
             $ok = $mode === 'send_mail'
@@ -958,14 +962,18 @@ class GuActRepository
         );
         oci_commit($this->conn);
 
-        $actRows      = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))',      [':id' => $actId]);
-        $allSigners   = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))',  [':id' => $actId]);
+        $actRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))', [':id' => $actId]);
+        $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
         $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
 
-        $html    = $mailer->buildHtml(
-            $fullName, $actId,
-            $links['approve_link'], $links['reject_link'],
-            $actRows[0] ?? [], $allSigners, $approvalRows
+        $html = $mailer->buildHtml(
+            $fullName,
+            $actId,
+            $links['approve_link'],
+            $links['reject_link'],
+            $actRows[0] ?? [],
+            $allSigners,
+            $approvalRows
         );
         $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
         $ok = $mode === 'send_mail'
@@ -982,8 +990,10 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function sendMailViaOracle(string $to, string $subject, string $html): bool
     {
-        $st = @oci_parse($this->conn,
-            'BEGIN xx_disl_gu23_pkg.gu23_send_mail(:to, :subj, :body); END;');
+        $st = @oci_parse(
+            $this->conn,
+            'BEGIN xx_disl_gu23_pkg.gu23_send_mail(:to, :subj, :body); END;'
+        );
         if (!$st) {
             Gu23Logger::error('sendMailViaOracle: oci_parse failed', ['to' => $to]);
             return false;
@@ -995,7 +1005,7 @@ class GuActRepository
             return false;
         }
 
-        oci_bind_by_name($st, ':to',   $to,      256);
+        oci_bind_by_name($st, ':to', $to, 256);
         oci_bind_by_name($st, ':subj', $subject, 512);
         oci_bind_by_name($st, ':body', $clob, -1, OCI_B_CLOB);
         $clob->writeTemporary($html, OCI_TEMP_CLOB);
