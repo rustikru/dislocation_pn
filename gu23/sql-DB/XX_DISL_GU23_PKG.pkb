@@ -691,7 +691,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_status    in varchar2 default null,
       p_dept_id   in varchar2 default null,
       p_date_from in varchar2 default null,
-      p_date_to   in varchar2 default null
+      p_date_to   in varchar2 default null,
+      p_page      in number default 1,
+      p_page_size in number default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -708,6 +710,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                to_date(p_date_to,
                        'DD.MM.YYYY') + 1
          end;
+        -- пагинация на стороне БД
+      v_size number := nvl(p_page_size,
+                           1000000);
+      v_off  number := ( nvl(p_page,
+                             1) - 1 ) * v_size;
    begin
       for a in (
          select *
@@ -749,12 +756,79 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                    || p_q
                                    || '%'
          ) )
-          order by a.created_at desc
+          order by a.created_at desc offset v_off rows
+         fetch next v_size rows only
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
 
       return;
+   end;
+
+    -- количество актов под те же фильтры (для пагинации)
+   function gu23_count_acts (
+      p_q         in varchar2 default null,
+      p_type      in varchar2 default null,
+      p_status    in varchar2 default null,
+      p_dept_id   in varchar2 default null,
+      p_date_from in varchar2 default null,
+      p_date_to   in varchar2 default null
+   ) return number is
+      v_q    varchar2(512) := lower(p_q);
+      v_from date :=
+         case
+            when p_date_from is not null then
+               to_date(p_date_from,
+                       'DD.MM.YYYY')
+         end;
+      v_to   date :=
+         case
+            when p_date_to is not null then
+               to_date(p_date_to,
+                       'DD.MM.YYYY') + 1
+         end;
+      v_cnt  number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_act_v a
+       where ( p_type is null
+          or a.act_type = p_type )
+         and ( p_status is null
+          or a.status = p_status )
+         and ( p_dept_id is null
+          or a.dept_id = to_number(p_dept_id) )
+         and ( ( v_from is null
+                 and v_to is null )
+          or ( a.start_at is not null
+               and ( v_from is null
+                or a.start_at >= v_from )
+               and ( v_to is null
+                or a.start_at < v_to ) )
+          or ( a.end_at is not null
+               and ( v_from is null
+                or a.end_at >= v_from )
+               and ( v_to is null
+                or a.end_at < v_to ) ) )
+         and ( v_q is null
+          or lower(a.act_number) like '%'
+                                      || v_q
+                                      || '%'
+          or lower(a.act_start_number) like '%'
+                                            || v_q
+                                            || '%'
+          or lower(a.reason_name) like '%'
+                                       || v_q
+                                       || '%'
+          or exists (
+            select 1
+              from xx_disl_gu23_act_row r
+             where r.act_id = a.id
+               and r.wagon_no like '%'
+                                   || p_q
+                                   || '%'
+         ) );
+      return v_cnt;
    end;
 
     -- Акт

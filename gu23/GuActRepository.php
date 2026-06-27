@@ -358,8 +358,9 @@ class GuActRepository
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 50;
 
-        $all = $this->pipe(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6))',
+        // Общее количество под фильтры (для пагинации)
+        $total = (int) $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6)',
             [
                 ':b1' => $q,
                 ':b2' => $type,
@@ -367,10 +368,24 @@ class GuActRepository
                 ':b4' => $dept,
                 ':b5' => $dateFrom,
                 ':b6' => $dateTo
+            ],
+            40
+        );
+
+        // Только нужная страница — пагинация на стороне БД (OFFSET/FETCH)
+        $acts = $this->pipe(
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8))',
+            [
+                ':b1' => $q,
+                ':b2' => $type,
+                ':b3' => $status,
+                ':b4' => $dept,
+                ':b5' => $dateFrom,
+                ':b6' => $dateTo,
+                ':b7' => $page,
+                ':b8' => $limit
             ]
         );
-        $total = count($all);
-        $acts = array_slice($all, ($page - 1) * $limit, $limit);
 
         echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
     }
