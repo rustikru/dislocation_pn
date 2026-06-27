@@ -14,11 +14,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
   ******************************************************************************/
    c_package     constant varchar2(30) := 'xx_disl_gu23_pkg';
    c_dtf         constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us          constant char(1) := chr(31);            -- разделитель полей
+   c_us          constant char(1) := chr(31);          -- разделитель полей
    c_rs          constant char(1) := chr(30);          -- разделитель записей
    g_client_ip   varchar2(64) := null;                 -- IP клиента текущего запроса
+   
    -- Секретный ключ HMAC для ссылок согласования.
-   -- На проде замените строку ниже перед компиляцией (не коммитить реальный ключ в git).
    -- Сгенерировать: SELECT dbms_random.string('x', 64) FROM dual;
    g_hmac_secret constant varchar2(128) := 'Уведомления-ГУ-23';
 
@@ -171,7 +171,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       'YYYY-MM-DD HH24:MI' );
    end;
 
-    -- Разбирает CLOB в формате RS/US в таблицу строк вагонов (pipe row)
+    -- Разбирает CLOB в таблицу строк вагонов 
    function parse_wagon_clob (
       p_clob in clob
    ) return t_wagon_clob_tab
@@ -455,12 +455,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       insert into xx_disl_gu23_signer (
          id,
          act_id,
-         signer_ref_id,  -- для stype='own': xx_disl_users.id; для stype='rzd': xx_disl_gu23_ref_signer.id
+         signer_ref_id,
          fio,
          post,
          org,
          ord_no,
-         stype           -- 'own' / 'rzd' / NULL (вручную)
+         stype           -- 'own' / 'rzd' / NULL
       ) values ( p_row.id,
                  p_row.act_id,
                  p_row.signer_ref_id,
@@ -608,7 +608,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- подписанты ? работники предприятия
+    -- подписанты - работники предприятия
    function gu23_get_ref_signer_own (
       p_dept_id in varchar2 default null
    ) return xx_disl_gu23_signer_tab
@@ -617,13 +617,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
-         /*select du.id,
-                du.full_name as fio,
-                null as post,
-                null as org,
-                null as unit,
-                'Работник предприятия' as stype
-           from xx_disl_users du*/
          select du.id,
                 du.full_name as fio,
                 prv.appoint_name as post,
@@ -658,7 +651,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- подписанты ? работники станции ОАО ?РЖД?
+    -- подписанты - работники станции ОАО ?РЖД?
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined
    is
@@ -1924,7 +1917,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       if v_status != 'active' then
          return 'ERR'
                 || c_us
-                || 'Акт должен быть в статусе ?Открыт?';
+                || 'Акт должен быть в статусе "Открыт"';
       end if;
       update xx_disl_gu23_act
          set status = 'closed',
@@ -2082,7 +2075,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    is
       l_row t_gu23_approval_signer_row;
    begin
-      for r in (-- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id напрямую
+      for r in (-- подписанты предприятия (stype='own')
          select u.id as approver_id,
                 u.full_name,
                 lower(u.login)
@@ -2213,7 +2206,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
-    -- Автоматически обновить статус акта на основе решений подписантов.
+    -- Автоматически обновить статус акта на основе подписантов.
     -- Вызывается после каждого сохранения решения.
    procedure sync_act_status (
       p_act_id in number
@@ -2222,7 +2215,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_total    number;
       v_approved number;
    begin
-        -- есть хоть одно отклонение ? акт отклонён
+        -- есть хоть одно отклонение - акт отклонён
       select count(*)
         into v_rejected
         from xx_disl_gu23_approval
@@ -2239,7 +2232,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return;
       end if;
 
-        -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id — обязаны подписать
+        -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id — долдны подписать
       select count(*)
         into v_total
         from xx_disl_gu23_signer
@@ -2292,8 +2285,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         from xx_disl_gu23_act
        where id = p_act_id;
 
-        -- Ищем по (act_id, approver_id) ? надёжнее чем по token_sig,
-        -- т.к. approve и reject ссылки имеют разные sig (action входит в хэш)
+        -- Ищем по (act_id, approver_id) 
       select count(*)
         into v_cnt
         from xx_disl_gu23_approval
@@ -2689,7 +2681,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return 'OK';
    exception
       when dup_val_on_index then
-            -- роль уже назначена ? идемпотентно
+            -- роль уже назначена 
          return 'OK';
       when others then
          rollback;
