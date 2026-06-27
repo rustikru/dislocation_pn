@@ -323,8 +323,8 @@ class GuActRepository
     {
         $userId = $this->auth->getUserId();
         $permRows = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:uid))',
-            [':uid' => $userId]
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
+            [':b1' => $userId]
         );
         // pipe возвращает однострочные строки — extracting значение из первого поля
         $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
