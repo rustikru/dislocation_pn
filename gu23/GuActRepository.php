@@ -5,7 +5,7 @@
  * Репозиторий модуля "ГУ-23 · Акты общей формы".
  */
 
-// Fallback для серверов без mbstring
+//  без mbstring
 if (!function_exists('mb_strtoupper')) {
     function mb_strtoupper(string $s, ?string $enc = null): string
     {
@@ -1044,7 +1044,7 @@ class GuActRepository
                 return $secret;
             }
         }
-        return 'change-me-in-production';
+        return '';
     }
 
     /* ----------------------------------------------------------------- */
