@@ -2276,6 +2276,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_hist_txt varchar2(1000);
       v_ver      number;
    begin
+      -- фиксируем IP для log_act_history
+      gu23_set_client_ip(p_signer_ip);
+
         -- текущая версия акта (будет зафиксирована в подписи)
       select nvl(
          content_version,
