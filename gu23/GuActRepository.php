@@ -839,7 +839,7 @@ class GuActRepository
             [':id' => $actId]
         );
         if (empty($actRows) || (int) ($actRows[0]['WAGON_CNT'] ?? 0) === 0) {
-            echo json_encode(['ok' => false, 'msg' => 'Нельзя отправить на согласование: в акте нет вагонов']);
+            echo json_encode(['ok' => false, 'msg' => 'Нельзя отправить на подписание: в акте нет вагонов']);
             return;
         }
 
@@ -897,7 +897,7 @@ class GuActRepository
                 $allSigners,
                 $approvalRows
             );
-            $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+            $subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
             $ok = $mode === 'send_mail'
                 ? $this->sendMailViaOracle($email, $subject, $html)
                 : $mailer->send($email, $subject, $html, $mode);
@@ -975,7 +975,7 @@ class GuActRepository
             $allSigners,
             $approvalRows
         );
-        $subject = 'Требуется согласование акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+        $subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
         $ok = $mode === 'send_mail'
             ? $this->sendMailViaOracle($email, $subject, $html)
             : $mailer->send($email, $subject, $html, $mode);

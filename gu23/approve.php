@@ -55,7 +55,7 @@ if ($existing && $existing['STATUS'] !== 'pending') {
     $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
     $decidedAt = $existing['DECIDED_AT'] ?? '';
     renderPage('Уже обработано', "
-        <p>Вы уже дали решение по акту <b>{$actNumber}</b>.</p>
+        <p>Вы уже подписали акт ранее <b>{$actNumber}</b>.</p>
         <p style=\"margin-top: 12px;\">Статус: <span class=\"status-badge\">{$statusLabel}</span>" . ($decidedAt ? " <span class=\"muted\">({$decidedAt})</span>" : '') . "</p>
     ");
     exit;
@@ -215,7 +215,7 @@ function renderPage(string $title, string $body): void
 </head>
 <body>
   <div class="card">
-    <div class="system-header">Согласование актов ГУ-23</div>
+    <div class="system-header">Подписание актов ГУ-23</div>
     <h3>{$title}</h3>
     {$body}
   </div>

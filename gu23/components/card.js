@@ -632,12 +632,12 @@ function resendApprovalLinks(act, signers, approvals) {
 
 function sendForApproval(act) {
   if (!(act.WAGON_CNT > 0)) {
-    showToast('Нельзя отправить на согласование: в акте нет вагонов', 'err')
+    showToast('Нельзя отправить на подписание: в акте нет вагонов', 'err')
     return
   }
   showConfirmBox(
-    'Отправить на согласование',
-    'Запросить электронное согласование у подписантов акта?',
+    'Отправить на подписание',
+    'Запросить электронное подписание у подписантов акта?',
     () => {
       sendApiRequest('gu23_send_approval', { act_id: act.ID }).done(
         (response) => {

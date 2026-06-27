@@ -907,7 +907,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select *
            from xx_disl_gu23_act_v a
           where a.act_type = 'start'
-            and a.status = 'active'
+            and a.status in (--'active',
+             'signed' )
           order by a.start_at
       ) loop
          pipe row ( g_act_row(a) );

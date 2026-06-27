@@ -76,7 +76,7 @@ class ApprovalMailer
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Согласование акта ГУ-23</title>
+  <title>Подписание акта ГУ-23</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0">
@@ -98,7 +98,7 @@ class ApprovalMailer
 
             <p style="margin:0 0 18px;font-size:13px">
               Уважаемый(-ая) <b>{$name}</b>,<br>
-              Требуется согласование акта общей формы ГУ-23.
+              Требуется подписание акта общей формы ГУ-23.
             </p>
 
             <!-- Реквизиты акта -->
