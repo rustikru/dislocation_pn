@@ -68,6 +68,7 @@ export function showArchive(container) {
       else if ($checked.length === 1)
         $btn.text($checked.first().parent().find('span').text())
       else $btn.text(allLabel + ': ' + $checked.length)
+      $btn.toggleClass('has-value', $checked.length > 0)
     }
 
     $menu.on('change', 'input', () => {
