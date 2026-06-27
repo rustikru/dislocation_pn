@@ -24,7 +24,7 @@ $actId = (int) ($params['act'] ?? 0);
 $approverId = (int) ($params['uid'] ?? 0);
 $action = $params['action'] ?? '';
 $sig = $params['sig'] ?? '';
-$signerIp = $_SERVER['HTTP_X_FORWARDED_FOR']
+$signerIp = !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
     ? trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0])
     : ($_SERVER['REMOTE_ADDR'] ?? '');
 

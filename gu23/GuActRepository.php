@@ -115,7 +115,7 @@ class GuActRepository
         //Gu23Logger::info('action', ['action' => $action]);
         try {
             // Передаём IP клиента в пакет в log_act_history
-            $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR']
+            $clientIp = !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
                 ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
                 : ($_SERVER['REMOTE_ADDR'] ?? '');
             $clientIp = trim($clientIp);
