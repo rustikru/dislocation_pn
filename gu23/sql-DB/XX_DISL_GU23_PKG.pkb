@@ -1915,10 +1915,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || c_us
                 || 'Закрыть можно только акт окончания простоя';
       end if;
-      if v_status != 'active' then
+      if v_status not in ( 'active',
+                           'signed' ) then
          return 'ERR'
                 || c_us
-                || 'Акт должен быть в статусе "Открыт"';
+                || 'Акт должен быть в статусе "Открыт" или "Подписан"';
       end if;
       update xx_disl_gu23_act
          set status = 'closed',

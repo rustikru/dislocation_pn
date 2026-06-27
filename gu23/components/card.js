@@ -81,7 +81,7 @@ function showToolbarButtons(act, data) {
   }
 
   if (
-    act.STATUS === 'active' &&
+    (act.STATUS === 'active' || act.STATUS === 'signed') &&
     act.ACT_TYPE === 'end' &&
     hasPerm('CLOSE_ACT')
   ) {
