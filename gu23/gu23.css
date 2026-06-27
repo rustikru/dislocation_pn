@@ -899,15 +899,15 @@ textarea.inp {
     transform 0.22s ease;
   background: #fff;
   border: 1px solid var(--line2);
-  border-left: 5px solid var(--line2);
+  border-left: 4px solid var(--line2);
   color: var(--ink);
-  padding: 15px 24px;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 10px 16px;
+  border-radius: 7px;
+  font-size: 13px;
   font-weight: 500;
-  max-width: 480px;
+  max-width: 400px;
   z-index: 90;
-  box-shadow: 0 12px 36px rgba(27, 32, 39, 0.24);
+  box-shadow: 0 8px 24px rgba(27, 32, 39, 0.14);
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -920,17 +920,16 @@ textarea.inp {
   margin-right: 9px;
 }
 .toast.ok {
-  background: #e6f4ea;
-  border-color: #137333;
-  border-left-color: #137333;
-  color: #0d652d;
+  background: #f1f8f3;
+  border-color: #cfe6d6;
+  border-left-color: #4c9a68;
+  color: #2c6a44;
 }
 .toast.err {
-  background: #fce8e6;
-  border-color: #c5221f;
-  border-left-color: #c5221f;
-  color: #a50e0e;
-  font-weight: 600;
+  background: #fbf1f0;
+  border-color: #ecd4d1;
+  border-left-color: #c0796f;
+  color: #8a4036;
 }
 
 .filters {
