@@ -130,7 +130,7 @@ function showRejectForm(string $actNumber, string $name, int $actId, int $approv
             <br><br>
             <button type=\"submit\"
                 style=\"background:#5f6368; color:#ffffff; padding:10px 24px; border:none; border-radius:4px; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;\">
-                Подтвердить отклонение
+                Отклонить
             </button>
         </form>
     ");

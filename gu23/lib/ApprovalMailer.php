@@ -85,10 +85,10 @@ class ApprovalMailer
 
         <!-- Шапка -->
         <tr>
-          <td style="background:#1a5fa8;padding:24px 32px">
+          <td style="background:#792885;padding:24px 32px">
             <div style="color:#fff;font-size:13px;letter-spacing:.5px;opacity:.8;margin-bottom:4px">АО «МЕТАФРАКС КЕМИКАЛС»</div>
             <div style="color:#fff;font-size:20px;font-weight:700">Акт общей формы ГУ-23</div>
-            <div style="color:#a8c8f0;font-size:14px;margin-top:4px">{$actNumber}</div>
+            <div style="color:#59faac;font-size:14px;margin-top:4px">{$actNumber}</div>
           </td>
         </tr>
 
