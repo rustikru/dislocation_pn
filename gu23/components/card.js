@@ -34,8 +34,13 @@ function buildCardView(container, data) {
       <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
       ${showStatusChip(act.STATUS)}
       <div class="spacer"></div>
+      ${
+        act.STATUS !== 'draft' && act.STATUS !== 'annulled'
+          ? `<a class="btn primary" id="btn-download" target="_blank" href="report/report.php?id=${act.ID}">Скачать</a>`
+          : ''
+      }
       <div class="actions-dd" id="actions-dd" style="display:none">
-        <button class="btn" id="btn-actions">Действия <span style="font-size:10px;margin-left:4px">▾</span></button>
+        <button class="btn icon-btn" id="btn-actions" title="Ещё действия">···</button>
         <div class="actions-menu" id="actions-menu"></div>
       </div>
     </div>
@@ -83,16 +88,6 @@ function showActionsMenu(act, data) {
   if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
-  }
-
-  // --- скачивание DOCX ---
-  if (act.STATUS !== 'draft' && act.STATUS !== 'annulled') {
-    const $docx = $(
-      `<a class="menu-item" target="_blank" href="report/report.php?id=${act.ID}">Скачать DOCX</a>`,
-    )
-    $docx.on('click', () => closeActionsMenu())
-    $menu.append($docx)
-    count++
   }
 
   // --- рассылка ссылок на подписание ---
