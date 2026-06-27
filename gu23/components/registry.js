@@ -18,13 +18,23 @@ export function showArchive(container) {
       '<div class="card" id="acts-table-container"></div>',
   )
 
+  // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const toInputDate = (d) =>
+    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+  const toFilterDate = (d) =>
+    `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
   const filterState = {
     q: '',
     type: '',
     status: '',
     dept: '',
-    date_from: '',
-    date_to: '',
+    date_from: toFilterDate(monthStart),
+    date_to: toFilterDate(monthEnd),
     page: 1,
   }
   const PAGE_SIZE = 50
@@ -74,9 +84,17 @@ export function showArchive(container) {
     'dept',
   )
 
-  // Фильтр по дате
-  const $dateFrom = $('<input type="date" class="inp" title="Дата с">')
-  const $dateTo = $('<input type="date" class="inp" title="Дата по">')
+  // Фильтр по периоду (дата начала или окончания). По умолчанию — текущий месяц.
+  const $dateFrom = $(
+    '<input type="date" class="inp" title="Дата с" value="' +
+      toInputDate(monthStart) +
+      '">',
+  )
+  const $dateTo = $(
+    '<input type="date" class="inp" title="Дата по" value="' +
+      toInputDate(monthEnd) +
+      '">',
+  )
   $dateFrom.on('change', (e) => {
     filterState.date_from = e.target.value
       ? e.target.value.split('-').reverse().join('.')
@@ -91,7 +109,7 @@ export function showArchive(container) {
     filterState.page = 1
     loadArchiveData()
   })
-  //$('#archive-filters').append($dateFrom, $dateTo)
+  $('#archive-filters').append($dateFrom, $dateTo)
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {

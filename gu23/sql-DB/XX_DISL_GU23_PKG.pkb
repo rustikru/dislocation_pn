@@ -718,10 +718,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              or a.status = p_status )
             and ( p_dept_id is null
              or a.dept_id = to_number(p_dept_id) )
-            and ( v_from is null
-             or a.created_at >= v_from )
-            and ( v_to is null
-             or a.created_at < v_to )
+            -- период: попадание по дате начала ИЛИ по дате окончания
+            and ( ( v_from is null
+                    and v_to is null )
+             or ( a.start_at is not null
+                  and ( v_from is null
+                   or a.start_at >= v_from )
+                  and ( v_to is null
+                   or a.start_at < v_to ) )
+             or ( a.end_at is not null
+                  and ( v_from is null
+                   or a.end_at >= v_from )
+                  and ( v_to is null
+                   or a.end_at < v_to ) ) )
             and ( v_q is null
          or lower(a.act_number) like '%'
                   || v_q
