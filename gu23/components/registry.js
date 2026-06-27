@@ -8,8 +8,6 @@ export function showArchive(container) {
   $(container).html(
     '<div class="phead">' +
       '<h1>Реестр актов</h1>' +
-      '<div class="spacer"></div>' +
-      '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="color:var(--muted)">Сбросить</button>' +
       '</div>' +
       '<div class="filters" id="archive-filters">' +
       '<div class="searchbox">' +
@@ -172,8 +170,12 @@ export function showArchive(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
-  // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
-  $('#btn-reset-filters').on('click', () => showArchive(container))
+  // Кнопка сброса — в строке фильтров справа, возвращает к значениям по умолчанию
+  const $reset = $(
+    '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="height:40px;box-sizing:border-box;color:var(--muted);margin-left:auto">Сбросить</button>',
+  )
+  $reset.on('click', () => showArchive(container))
+  $('#archive-filters').append($reset)
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {
