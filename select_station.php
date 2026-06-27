@@ -1,7 +1,9 @@
 <?php
 session_start();
-// Сохраняем текущий URL для возможного редиректа после авторизации
-if (!isset($_SESSION['redirect_after_auth']) || $_SERVER['REQUEST_URI'] != '/select_station.php') {
+// Сохраняем текущий URL для возможного редиректа после авторизации.
+// Важно: НЕ сохраняем сам select_station.php, иначе после выбора станции
+// будет бесконечный редирект страницы на саму себя.
+if (strpos($_SERVER['REQUEST_URI'], '/select_station.php') !== 0) {
     $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
 }
 
