@@ -20,8 +20,8 @@ export function showRefs(container) {
       <h2 style="margin:0;font-size:16px">Справочники</h2>
     </div>
     <div id="refs-tabs" style="display:flex;gap:2px;margin-bottom:10px;border-bottom:2px solid var(--line)">
-      <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты РЖД</button>
-      <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины составления</button>
+      <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты</button>
+      <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <input class="inp" id="refs-search" value="" placeholder="Поиск…" style="flex:1;font-size:13px;height:34px;padding:0 10px;box-sizing:border-box">
