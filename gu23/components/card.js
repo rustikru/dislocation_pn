@@ -32,9 +32,13 @@ function buildCardView(container, data) {
     <div class="phead">
       <button class="btn sm ghost" id="btn-back-to-archive">Назад</button>
       <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
+      ${showStatusChip(act.STATUS)}
       <div class="spacer"></div>
+      <div class="actions-dd" id="actions-dd" style="display:none">
+        <button class="btn" id="btn-actions">Действия <span style="font-size:10px;margin-left:4px">▾</span></button>
+        <div class="actions-menu" id="actions-menu"></div>
+      </div>
     </div>
-    <div id="card-toolbar" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px"></div>
     <div id="annulled-banner-place"></div>
     <div class="grid-layout" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
       <div id="card-left-column"></div>
@@ -44,7 +48,7 @@ function buildCardView(container, data) {
 
   $('#btn-back-to-archive').on('click', () => navigateTo('archive'))
 
-  showToolbarButtons(act, data)
+  showActionsMenu(act, data)
   showDetailsBlock(act)
   showWagonsBlock(data.wagons)
   showSignersBlock(
@@ -58,40 +62,40 @@ function buildCardView(container, data) {
   showHistoryBlock(data.history)
 }
 
-function showToolbarButtons(act, data) {
-  const $toolbar = $('#card-toolbar')
+function showActionsMenu(act, data) {
+  const $menu = $('#actions-menu')
+  let count = 0
 
+  // helper: пункт меню
+  const addItem = (label, onClick, variant = '') => {
+    const $item = $(
+      `<button class="menu-item${variant ? ' ' + variant : ''}">${label}</button>`,
+    )
+    $item.on('click', () => {
+      closeActionsMenu()
+      onClick()
+    })
+    $menu.append($item)
+    count++
+  }
+
+  // --- черновик: редактирование / удаление ---
   if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
-    const $editBtn = $('<button class="btn primary">Редактировать</button>')
-    const $delBtn = $('<button class="btn danger">Удалить Проект</button>')
-
-    $editBtn.on('click', () => editDraftAct(data))
-    $delBtn.on('click', () => deleteDraftAct(act))
-
-    $toolbar.append($editBtn, $delBtn)
+    addItem('Редактировать', () => editDraftAct(data))
+    addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
   }
 
-  if (
-    (act.STATUS === 'active' ||
-      act.STATUS === 'signed' ||
-      act.STATUS === 'closed') &&
-    hasPerm('ANNUL_ACT')
-  ) {
-    const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
-    $annulBtn.on('click', () => annulActiveAct(act))
-    $toolbar.append($annulBtn)
+  // --- скачивание DOCX ---
+  if (act.STATUS !== 'draft' && act.STATUS !== 'annulled') {
+    const $docx = $(
+      `<a class="menu-item" target="_blank" href="report/report.php?id=${act.ID}">Скачать DOCX</a>`,
+    )
+    $docx.on('click', () => closeActionsMenu())
+    $menu.append($docx)
+    count++
   }
 
-  if (
-    (act.STATUS === 'active' || act.STATUS === 'signed') &&
-    act.ACT_TYPE === 'end' &&
-    hasPerm('CLOSE_ACT')
-  ) {
-    const $closeBtn = $('<button class="btn">Закрыть акт</button>')
-    $closeBtn.on('click', () => closeAct(act))
-    $toolbar.append($closeBtn)
-  }
-
+  // --- рассылка ссылок на подписание ---
   if (
     act.STATUS === 'active' &&
     hasPerm('SEND_APPROVAL') &&
@@ -108,14 +112,40 @@ function showToolbarButtons(act, data) {
       return !appr || appr.STATUS !== 'approved'
     })
     if (hasUnsigned) {
-      const $resendBtn = $(
-        '<button class="btn sm ghost">Сформировать ссылки на подписание</button>',
-      )
-      $resendBtn.on('click', () =>
+      addItem('Рассылка ссылок на подписание', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
       )
-      $toolbar.append($resendBtn)
     }
+  }
+
+  // --- закрытие акта окончания ---
+  if (
+    (act.STATUS === 'active' || act.STATUS === 'signed') &&
+    act.ACT_TYPE === 'end' &&
+    hasPerm('CLOSE_ACT')
+  ) {
+    addItem('Закрыть акт', () => closeAct(act))
+  }
+
+  // --- аннулирование ---
+  if (
+    (act.STATUS === 'active' ||
+      act.STATUS === 'signed' ||
+      act.STATUS === 'closed') &&
+    hasPerm('ANNUL_ACT')
+  ) {
+    addItem('Аннулировать акт', () => annulActiveAct(act), 'danger')
+  }
+
+  // показываем меню, только если есть хотя бы одно действие
+  if (count > 0) {
+    $('#actions-dd').show()
+    $('#btn-actions').on('click', (e) => {
+      e.stopPropagation()
+      $('#actions-menu').toggle()
+    })
+    // закрытие по клику вне меню
+    $(document).off('click.actionsMenu').on('click.actionsMenu', () => closeActionsMenu())
   }
 
   if (act.STATUS === 'annulled' && act.ANNUL_REASON) {
@@ -123,6 +153,10 @@ function showToolbarButtons(act, data) {
       <div class="banner err"><b>Аннулирован.</b> Причина: ${escapeHtml(act.ANNUL_REASON)}</div>
     `)
   }
+}
+
+function closeActionsMenu() {
+  $('#actions-menu').hide()
 }
 
 function showDetailsBlock(act) {
@@ -166,19 +200,11 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
-  // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика и аннулированного
-  const docxBtnHtml =
-    act.STATUS !== 'draft' && act.STATUS !== 'annulled'
-      ? `<a class="btn report-word" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
-           <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink: 0;">
-         </a>`
-      : ''
-
   $('#card-left-column')
     .append(
       `
     <div class="card">
-      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><b>Реквизиты акта</b>${docxBtnHtml}</div>
+      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Реквизиты акта</b></div>
       <dl class="kv" style="padding:16px 18px">${dlHtml}</dl>
     </div>
   `,
