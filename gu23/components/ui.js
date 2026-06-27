@@ -55,14 +55,26 @@ export function showFormField(label, inputHtml, isRequired = false) {
 
 // Уведомления
 export function showToast(message, type) {
-  const icon = type === 'ok' ? ' ' : type === 'err' ? ' ' : ''
-  const toastHtml = `
-    <div class="toast ${type || ''}">
-      ${icon}${escapeHtml(message)}
-    </div>
-  `
-  const $toast = $(toastHtml).appendTo('body')
-  setTimeout(() => $toast.remove(), 3200)
+  // ошибки висят дольше — их важнее заметить
+  const duration = type === 'err' ? 7000 : type === 'ok' ? 4500 : 5000
+  const $toast = $(
+    `<div class="toast ${type || ''}" role="alert">${escapeHtml(message)}</div>`,
+  ).appendTo('body')
+
+  // плавное появление
+  requestAnimationFrame(() => $toast.addClass('show'))
+
+  const hide = () => {
+    $toast.removeClass('show')
+    setTimeout(() => $toast.remove(), 250)
+  }
+
+  const timer = setTimeout(hide, duration)
+  // закрытие по клику
+  $toast.on('click', () => {
+    clearTimeout(timer)
+    hide()
+  })
 }
 
 // модальное окошко
