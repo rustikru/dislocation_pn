@@ -175,21 +175,13 @@ function showFormFields() {
     activeDraft.stationFromId = this.value
   })
 
-  // Строка Назначение (Autocomplete) + Накладная + Груз
-  const cargosHtml = ['']
-    .concat(references.cargosList.map((c) => c.NAME || c.CODE))
-    .map(
-      (c) =>
-        `<option value="${c}" ${activeDraft.cargoReference === c ? 'selected' : ''}>${c || '— выберите —'}</option>`,
-    )
-    .join('')
-
+  // Строка Назначение (Autocomplete) + Груз (Autocomplete)
   $body.append(`
     <div class="cols">
       ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
-      
-      ${showFormField('Груз', `<select class="inp" id="sel-cargo">${cargosHtml}</select>`, true)}
-      
+
+      ${showFormField('Груз', `<div style="position:relative"><input class="inp" id="auto-cargo" placeholder="Начните вводить…" value="${escapeHtml(activeDraft.cargoReference || '')}"><div class="dropdown" id="cargo-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
+
     </div>
   `)
 
@@ -197,30 +189,54 @@ function showFormFields() {
   $('#inp-waybill').on('input', function () {
     activeDraft.waybillNumber = this.value
   })
-  $('#sel-cargo').on('change', function () {
-    activeDraft.cargoReference = this.value
-  })
+
+  // Груз — автокомплит по списку, допускается и свободный ввод
+  const cargoItems = references.cargosList.map((c) => ({
+    label: c.NAME || c.CODE,
+    value: c.NAME || c.CODE,
+  }))
+  initListAutocomplete(
+    $('#auto-cargo'),
+    $('#cargo-dropdown'),
+    cargoItems,
+    (it) => {
+      activeDraft.cargoReference = it.value
+    },
+    function () {
+      // свободный ввод тоже сохраняем
+      activeDraft.cargoReference = $('#auto-cargo').val()
+    },
+  )
 
   // Причина и обстоятельства
-  const reasonsHtml = [
-    //  добавляем пустой вариант
-    `<option value="" ${!activeDraft.reasonId ? 'selected' : ''}>— выберите —</option>`,
-
-    ...references.reasonsList.map((r) => {
-      const label = r.NAME || r.CODE
-      const isSelected = activeDraft.reasonId === r.CODE ? 'selected' : ''
-      return `<option value="${r.CODE}" ${isSelected}>${label}</option>`
-    }),
-  ].join('')
+  const reasonItems = references.reasonsList.map((r) => ({
+    label: r.NAME || r.CODE,
+    value: r.CODE,
+  }))
+  const reasonInitLabel = (() => {
+    const r = references.reasonsList.find((r) => r.CODE === activeDraft.reasonId)
+    return r ? r.NAME || r.CODE : activeDraft.reasonName || ''
+  })()
 
   $body.append(`
-    ${showFormField('Причина составления', `<select class="inp" id="sel-reason">${reasonsHtml}</select>`, true)}
+    ${showFormField('Причина составления', `<div style="position:relative"><input class="inp" id="auto-reason" placeholder="Начните вводить…" value="${escapeHtml(reasonInitLabel)}"><div class="dropdown" id="reason-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
-  $('#sel-reason').on('change', function () {
-    activeDraft.reasonId = this.value
-  })
+  // Причина — только из списка (хранится код), поэтому свободный ввод сбрасывает выбор
+  initListAutocomplete(
+    $('#auto-reason'),
+    $('#reason-dropdown'),
+    reasonItems,
+    (it) => {
+      activeDraft.reasonId = it.value
+      activeDraft.reasonName = it.label
+    },
+    function () {
+      activeDraft.reasonId = ''
+    },
+  )
+
   $('#txt-circumstances').on('change', function () {
     activeDraft.circumstances = this.value
   })
@@ -292,7 +308,7 @@ function loadOpenStartsList() {
       )
       if (isSelected && act.CARGO_REF) {
         activeDraft.cargoReference = act.CARGO_REF
-        $('#sel-cargo').val(act.CARGO_REF)
+        $('#auto-cargo').val(act.CARGO_REF)
       }
     })
 
@@ -361,6 +377,86 @@ function applySelectedStartAct(id, filterNums = null) {
   }
 
   showForm($('#view')[0])
+}
+
+/**
+ * Клиентский автокомплит по готовому списку (для «Груз», «Причина»).
+ * items: [{label, value}], onSelect(item), onInput() — на свободный ввод.
+ */
+function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
+  let activeIdx = -1
+
+  function setActive(idx) {
+    const $items = $dropdown.find('.ac-item')
+    $items.removeClass('ac-active')
+    activeIdx = idx
+    if (idx >= 0 && idx < $items.length) {
+      $items.eq(idx).addClass('ac-active')[0].scrollIntoView({
+        block: 'nearest',
+      })
+    }
+  }
+
+  function render(q) {
+    const ql = (q || '').trim().toLowerCase()
+    const matches = ql
+      ? items.filter((it) => it.label.toLowerCase().indexOf(ql) !== -1)
+      : items
+    $dropdown.empty()
+    activeIdx = -1
+    if (!matches.length) {
+      $dropdown.hide()
+      return
+    }
+    matches.slice(0, 100).forEach((it) => {
+      const $item = $(
+        `<div class="ac-item" data-value="${escapeHtml(String(it.value))}">${escapeHtml(it.label)}</div>`,
+      )
+      $item.on('mousedown', function (e) {
+        e.preventDefault()
+        $inp.val(it.label)
+        onSelect(it)
+        $dropdown.hide()
+        activeIdx = -1
+      })
+      $item.on('mouseenter', function () {
+        setActive($(this).index())
+      })
+      $dropdown.append($item)
+    })
+    $dropdown.show()
+  }
+
+  $inp.on('focus', function () {
+    render($(this).val())
+  })
+  $inp.on('input', function () {
+    if (onInput) onInput()
+    render($(this).val())
+  })
+  $inp.on('keydown', function (e) {
+    if (!$dropdown.is(':visible')) return
+    const $items = $dropdown.find('.ac-item')
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActive(Math.min(activeIdx + 1, $items.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActive(Math.max(activeIdx - 1, 0))
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault()
+      $items.eq(activeIdx).trigger('mousedown')
+    } else if (e.key === 'Escape') {
+      $dropdown.hide()
+      activeIdx = -1
+    }
+  })
+  $inp.on('blur', () =>
+    setTimeout(() => {
+      $dropdown.hide()
+      activeIdx = -1
+    }, 200),
+  )
 }
 
 function initStationAutocomplete() {
