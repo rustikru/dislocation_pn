@@ -902,6 +902,10 @@ textarea.inp {
   opacity: 0.5;
 }
 
+.hist-container {
+  max-height: 320px;
+  overflow-y: auto;
+}
 .hist {
   list-style: none;
   margin: 0;
