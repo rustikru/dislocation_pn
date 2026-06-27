@@ -72,7 +72,9 @@ function showToolbarButtons(act, data) {
   }
 
   if (
-    (act.STATUS === 'active' || act.STATUS === 'closed') &&
+    (act.STATUS === 'active' ||
+      act.STATUS === 'signed' ||
+      act.STATUS === 'closed') &&
     hasPerm('ANNUL_ACT')
   ) {
     const $annulBtn = $('<button class="btn danger">Аннулировать</button>')
