@@ -946,6 +946,65 @@ textarea.inp {
   width: auto;
   min-width: 130px;
 }
+
+/* Мультивыбор-фильтр (чекбокс-дропдаун) */
+.ms-filter {
+  position: relative;
+  display: inline-block;
+}
+.ms-btn {
+  min-width: 140px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  position: relative;
+  padding-right: 26px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.ms-btn::after {
+  content: '▾';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--muted);
+}
+.ms-menu {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  min-width: 100%;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 60;
+}
+.ms-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ms-item:hover {
+  background: var(--surface2, #f4f5f7);
+}
+.ms-item input {
+  margin: 0;
+  cursor: pointer;
+}
 .searchbox {
   position: relative;
   flex: 1;

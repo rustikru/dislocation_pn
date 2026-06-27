@@ -40,30 +40,66 @@ export function showArchive(container) {
   const PAGE_SIZE = 50
   let searchTimeout = null
 
-  // Создание фильтров
-  const createSelectFilter = (options, labels, key) => {
-    const optionsHtml = options
-      .map(
-        (val, idx) =>
-          '<option value="' + val + '">' + labels[idx] + '</option>',
+  // Создание фильтра с множественным выбором (чекбокс-дропдаун).
+  // Значения хранятся в filterState[key] как CSV (пусто = «все»).
+  const createMultiSelectFilter = (options, labels, key) => {
+    const allLabel = labels[0] // первый элемент — «Все …»
+    const $wrap = $('<div class="ms-filter"></div>')
+    const $btn = $(
+      '<button type="button" class="inp ms-btn">' + allLabel + '</button>',
+    )
+    const $menu = $('<div class="ms-menu"></div>')
+
+    // чекбоксы для реальных значений (пустое «Все …» пропускаем)
+    options.forEach((val, idx) => {
+      if (val === '') return
+      $menu.append(
+        '<label class="ms-item"><input type="checkbox" value="' +
+          val +
+          '"><span>' +
+          labels[idx] +
+          '</span></label>',
       )
-      .join('')
-    const $select = $('<select class="inp">' + optionsHtml + '</select>')
-    $select.on('change', (e) => {
-      filterState[key] = e.target.value
+    })
+
+    const updateLabel = () => {
+      const $checked = $menu.find('input:checked')
+      if ($checked.length === 0) $btn.text(allLabel)
+      else if ($checked.length === 1)
+        $btn.text($checked.first().parent().find('span').text())
+      else $btn.text(allLabel + ': ' + $checked.length)
+    }
+
+    $menu.on('change', 'input', () => {
+      filterState[key] = $menu
+        .find('input:checked')
+        .map((i, el) => el.value)
+        .get()
+        .join(',')
       filterState.page = 1
+      updateLabel()
       loadArchiveData()
     })
-    $('#archive-filters').append($select)
+
+    // клик внутри меню не закрывает его
+    $menu.on('click', (e) => e.stopPropagation())
+    $btn.on('click', (e) => {
+      e.stopPropagation()
+      $('.ms-menu').not($menu).hide() // закрыть остальные
+      $menu.toggle()
+    })
+
+    $wrap.append($btn, $menu)
+    $('#archive-filters').append($wrap)
   }
 
   // Инициализация фильтров
-  createSelectFilter(
+  createMultiSelectFilter(
     ['', 'start', 'end', 'other'],
     ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
     'type',
   )
-  createSelectFilter(
+  createMultiSelectFilter(
     ['', 'draft', 'active', 'closed', 'annulled', 'signed', 'rejected'],
     [
       'Все статусы',
@@ -78,11 +114,16 @@ export function showArchive(container) {
   )
 
   const departmentCodes = references.departmentsList.map((d) => d.CODE)
-  createSelectFilter(
+  createMultiSelectFilter(
     [''].concat(references.departmentsList.map((d) => String(d.ID))),
     ['Все цеха'].concat(departmentCodes),
     'dept',
   )
+
+  // закрытие выпадающих меню по клику вне
+  $(document)
+    .off('click.msfilter')
+    .on('click.msfilter', () => $('.ms-menu').hide())
 
   // Фильтр по периоду (дата начала или окончания). По умолчанию — текущий месяц.
   const $dateFrom = $(

@@ -720,11 +720,26 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select *
            from xx_disl_gu23_act_v a
           where ( p_type is null
-             or a.act_type = p_type )
+             or instr(','
+                      || p_type
+                      || ',',
+                      ','
+                      || a.act_type
+                      || ',') > 0 )
             and ( p_status is null
-             or a.status = p_status )
+             or instr(','
+                      || p_status
+                      || ',',
+                      ','
+                      || a.status
+                      || ',') > 0 )
             and ( p_dept_id is null
-             or a.dept_id = to_number(p_dept_id) )
+             or instr(','
+                      || p_dept_id
+                      || ',',
+                      ','
+                      || a.dept_id
+                      || ',') > 0 )
             -- период: попадание по дате начала ИЛИ по дате окончания
             and ( ( v_from is null
                     and v_to is null )
@@ -793,11 +808,26 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_cnt
         from xx_disl_gu23_act_v a
        where ( p_type is null
-          or a.act_type = p_type )
+          or instr(','
+                   || p_type
+                   || ',',
+                   ','
+                   || a.act_type
+                   || ',') > 0 )
          and ( p_status is null
-          or a.status = p_status )
+          or instr(','
+                   || p_status
+                   || ',',
+                   ','
+                   || a.status
+                   || ',') > 0 )
          and ( p_dept_id is null
-          or a.dept_id = to_number(p_dept_id) )
+          or instr(','
+                   || p_dept_id
+                   || ',',
+                   ','
+                   || a.dept_id
+                   || ',') > 0 )
          and ( ( v_from is null
                  and v_to is null )
           or ( a.start_at is not null
