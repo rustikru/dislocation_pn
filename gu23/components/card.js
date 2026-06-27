@@ -116,17 +116,6 @@ function showToolbarButtons(act, data) {
     }
   }
 
-  // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика
-  if (act.STATUS !== 'draft' && act.STATUS !== 'annulled') {
-    const $docxBtn = $(`
-        <a class="btn report-word" target="_blank" title="Скачать акт">
-            <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink: 0;">
-        </a>
-    `)
-    $docxBtn.attr('href', 'report/report.php?id=' + act.ID)
-    $toolbar.append($docxBtn)
-  }
-
   if (act.STATUS === 'annulled' && act.ANNUL_REASON) {
     $('#annulled-banner-place').html(`
       <div class="banner err"><b>Аннулирован.</b> Причина: ${escapeHtml(act.ANNUL_REASON)}</div>
@@ -175,11 +164,19 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
+  // Кнопка скачивания DOCX доступна для всех статусов, кроме черновика и аннулированного
+  const docxBtnHtml =
+    act.STATUS !== 'draft' && act.STATUS !== 'annulled'
+      ? `<a class="btn report-word" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
+           <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink: 0;">
+         </a>`
+      : ''
+
   $('#card-left-column')
     .append(
       `
     <div class="card">
-      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Реквизиты акта</b></div>
+      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><b>Реквизиты акта</b>${docxBtnHtml}</div>
       <dl class="kv" style="padding:16px 18px">${dlHtml}</dl>
     </div>
   `,
