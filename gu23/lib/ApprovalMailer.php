@@ -278,14 +278,14 @@ HTML;
     switch ($status) {
       case 'approved':
         $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
-        $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✓ Согласовано</span>';
+        $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Согласовано</span>';
         $note = $date ? "<br><span style=\"color:#888;font-size:11px\">{$date}</span>" : '';
         return [$pill, $note];
 
       case 'rejected':
         $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
         $comment = $appr ? htmlspecialchars($appr['COMMENT_TXT'] ?? '', ENT_QUOTES) : '';
-        $pill = '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">✗ Отклонено</span>';
+        $pill = '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Отклонено</span>';
         $note = ($date || $comment)
           ? "<br><span style=\"color:#888;font-size:11px\">" . implode(' · ', array_filter([$date, $comment])) . '</span>'
           : '';
