@@ -2081,7 +2081,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select u.id as approver_id,
                 u.full_name,
                 lower(u.login)
-                || '@company.ru' as fake_email
+                || '@company.ru' as email
            from xx_disl_gu23_signer s
            join xx_disl_users u
          on u.id = s.signer_ref_id
@@ -2090,7 +2090,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       ) loop
          l_row.approver_id := r.approver_id;
          l_row.full_name := r.full_name;
-         l_row.fake_email := r.fake_email;
+         l_row.email := r.email;
          pipe row ( l_row );
       end loop;
 

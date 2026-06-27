@@ -91,7 +91,7 @@ export function showArchive(container) {
     filterState.page = 1
     loadArchiveData()
   })
-  $('#archive-filters').append($dateFrom, $dateTo)
+  //$('#archive-filters').append($dateFrom, $dateTo)
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {

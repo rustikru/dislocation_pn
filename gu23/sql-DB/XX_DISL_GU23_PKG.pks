@@ -357,7 +357,7 @@ create or replace package xx_disl_gu23_pkg as
    type t_gu23_approval_signer_row is record (
          approver_id number,
          full_name   varchar2(256),
-         fake_email  varchar2(256)
+         email       varchar2(256)
    );
    type t_gu23_approval_signer_tab is
       table of t_gu23_approval_signer_row;
@@ -503,11 +503,12 @@ create or replace package xx_disl_gu23_pkg as
    ) return varchar2;
 
    -- Получить все коды полномочий пользователя (pipelined)
-   type t_gu23_perm_code_tab is table of varchar2(50);
-
+   type t_gu23_perm_code_tab is
+      table of varchar2(50);
    function gu23_user_perms_get (
       p_user_id in number
-   ) return t_gu23_perm_code_tab pipelined;
+   ) return t_gu23_perm_code_tab
+      pipelined;
 
    -- Матрица роль × полномочие (все строки perm_id × role_id)
    type t_gu23_role_perm_row is record (
@@ -521,7 +522,6 @@ create or replace package xx_disl_gu23_pkg as
    );
    type t_gu23_role_perm_tab is
       table of t_gu23_role_perm_row;
-
    function gu23_role_perms_get return t_gu23_role_perm_tab
       pipelined;
 
