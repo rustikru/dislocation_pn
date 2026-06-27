@@ -110,13 +110,13 @@ class ApprovalMailer
                 <td style="padding-right:8px">
                   <a href="{$approveLink}"
                      style="display:inline-block;background:#22863a;color:#fff;padding:9px 20px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600">
-                    ✓&nbsp; Согласовать
+                    Согласовать
                   </a>
                 </td>
                 <td>
                   <a href="{$rejectLink}"
                      style="display:inline-block;background:#c0392b;color:#fff;padding:9px 20px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600">
-                    ✗&nbsp; Отклонить
+                    Отклонить
                   </a>
                 </td>
               </tr>

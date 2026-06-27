@@ -6,7 +6,7 @@
 ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../connection.php';
-require_once __DIR__ . '/../lib/HmacApproval.php';
+require_once __DIR__ . '/lib/HmacApproval.php';
 require_once __DIR__ . '/ApprovalRepository.php';
 
 $hmacSecret = '';
