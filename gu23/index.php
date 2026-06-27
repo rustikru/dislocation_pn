@@ -1,5 +1,7 @@
 <?php
 session_start();
+// Блокируем устаревшие браузеры (старый Firefox и пр.) до отрисовки страницы
+require_once __DIR__ . '/browser_check.php';
 // Сохраняем текущий URL для возможного редиректа после авторизации
 if (!isset($_SESSION['redirect_after_auth']) || $_SERVER['REQUEST_URI'] != '/select_station.php') {
     $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
