@@ -107,7 +107,7 @@ function showToolbarButtons(act, data) {
     })
     if (hasUnsigned) {
       const $resendBtn = $(
-        '<button class="btn sm ghost">Переотправить ссылки</button>',
+        '<button class="btn sm ghost">Сформировать ссылки на подписание</button>',
       )
       $resendBtn.on('click', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
@@ -575,8 +575,8 @@ function resendApprovalLinks(act, signers, approvals) {
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
       <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
-        <h3 style="margin:0 0 6px">Переотправить ссылки</h3>
-        <p class="muted" style="margin:0 0 16px;font-size:13px">Выберите подписантов, которым нужно отправить новые ссылки согласования:</p>
+        <h3 style="margin:0 0 6px">Сформировать повторно ссылки на подписание</h3>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">Выберите подписантов, которым нужно отправить новые ссылки на подписание:</p>
         <div style="max-height:300px;overflow-y:auto;margin-bottom:16px">${rows}</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost" id="resend-cancel">Отмена</button>

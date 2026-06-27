@@ -75,10 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
         renderPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
             <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
-            <p class=\"ok\">Решение записано.</p>
+            <p class=\"ok\">Сохранено.</p>
         ");
     } else {
-        renderPage('Ошибка', '<p class="err">Не удалось сохранить решение. Попробуйте ещё раз.</p>');
+        renderPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
     }
     exit;
 }
@@ -89,12 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
 if ($action === 'approve') {
     $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig, $signerIp);
     if ($ok) {
-        renderPage('Акт согласован', "
-            <p>Вы согласовали акт <b>{$actNumber}</b>.</p>
-            <p class=\"ok\" style=\"margin-top: 15px;\">Решение успешно записано. Спасибо!</p>
+        renderPage('Акт подписан', "
+            <p>Вы подписали акт <b>{$actNumber}</b>.</p>
+            <p class=\"ok\" style=\"margin-top: 15px;\">Спасибо!</p>
         ");
     } else {
-        renderPage('Ошибка', '<p class="err">Не удалось сохранить решение. Попробуйте ещё раз.</p>');
+        renderPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
     }
     exit;
 }
