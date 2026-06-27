@@ -1,6 +1,6 @@
 import { sendApiRequest } from '../api.js'
 import { escapeHtml } from '../utils.js'
-import { showToast } from './ui.js'
+import { showToast, showConfirmBox } from './ui.js'
 
 const ROLES_PAGE_SIZE = 20
 
@@ -162,6 +162,13 @@ function renderMatrix() {
     const assign = cb.checked
 
     if (!assign) {
+      // подтверждение отключено — отзыв сразу, на совести пользователя
+      // cb.checked = true
+      // showConfirmBox(
+      //   'Убрать полномочие',
+      //   `Убрать «${pname}» у роли «${rname}»?`,
+      //   () => doPermRevoke(rid, pid, cb),
+      // )
       doPermRevoke(rid, pid, cb)
     } else {
       doPermAssign(rid, pid, cb)
@@ -307,6 +314,13 @@ function renderUsers(users, roles, total, page, pageSize) {
     const uname = $(cb).data('uname')
 
     if (!cb.checked) {
+      // подтверждение отключено — отзыв сразу, на совести пользователя
+      // cb.checked = true
+      // showConfirmBox(
+      //   'Отозвать роль',
+      //   `Убрать роль «${rname}» у пользователя ${uname}?`,
+      //   () => doRevoke(uid, rid, cb),
+      // )
       doRevoke(uid, rid, cb)
     } else {
       doAssign(uid, rid, cb)
