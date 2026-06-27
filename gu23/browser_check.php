@@ -45,11 +45,10 @@ function gu23_browser_supported(array $b): bool
         'yandex' => 20,
         'firefox' => 60,
         'safari' => 12,
-        'safari' => 67,
-        // 'opera' можно добавить при необходимости: 'opera' => 67,
+        'opera' => 67,
     ];
     if (!isset($minVersions[$b['name']])) {
-        return false; // ie, opera, unknown — не поддерживаются
+        return false; // ie, unknown — не поддерживаются
     }
     return $b['version'] >= $minVersions[$b['name']];
 }
@@ -139,6 +138,7 @@ if (!gu23_browser_supported($gu23_browser)) {
                 <span>Microsoft Edge</span>
                 <span>Яндекс.Браузер</span>
                 <span>Mozilla Firefox >60</span>
+                <span>Safari</span>
                 <span>Opera</span>
             </div>
         </div>
