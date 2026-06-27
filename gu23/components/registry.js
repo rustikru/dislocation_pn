@@ -171,6 +171,13 @@ export function showArchive(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
+  // Кнопка сброса — возвращает фильтры к значениям по умолчанию (текущий месяц)
+  const $reset = $(
+    '<button class="btn sm ghost" id="btn-reset-filters" title="Сбросить фильтры">Сбросить</button>',
+  )
+  $reset.on('click', () => showArchive(container))
+  $('#archive-filters').append($reset)
+
   // Поиск с задержкой
   $('#search-input').on('input', function () {
     filterState.q = $(this).val().trim()
