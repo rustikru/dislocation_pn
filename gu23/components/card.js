@@ -236,7 +236,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
     if (status === 'rejected')
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030"> Отклонено</span>'
     if (status === 'pending')
-      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> Ожидает</span>'
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> В процессе</span>'
     return ''
   }
 
