@@ -54,7 +54,7 @@ export function showArchive(container) {
     })
   }
 
-  // Создание фильтра с множественным выбором (чекбокс-дропдаун).
+  // Создание фильтра с множественным выбором
   const createMultiSelectFilter = (options, labels, key) => {
     const allLabel = labels[0] // первый элемент — «Все …»
     const $wrap = $('<div class="ms-filter"></div>')
@@ -66,7 +66,7 @@ export function showArchive(container) {
     // реальные значения
     const realCount = options.filter((v) => v !== '').length
 
-    // поиск внутри списка — только для длинных списков
+    // поиск внутри списка
     if (realCount > 8) {
       const $search = $(
         '<input type="text" class="ms-search" placeholder="Поиск…">',
@@ -226,7 +226,7 @@ export function showArchive(container) {
     searchTimeout = setTimeout(loadArchiveData, 250)
   })
 
-  // Загрузка и отрисовка таблицы
+  // Загрузка таблицы
   function loadArchiveData() {
     sendApiRequest('gu23_get_acts', filterState).done((resp) => {
       const acts =
@@ -322,9 +322,8 @@ export function showArchive(container) {
         })
       })
 
-      // «Осиротевшие» акты окончания: их родитель (акт начала)
+      //акты окончания: их родитель (акт начала)
       // Выводим их отдельными строками,
-      // иначе они просто исчезают из архива.
       Object.keys(childActsMap).forEach((parentNum) => {
         if (rootNumbers.has(parentNum)) return
         childActsMap[parentNum].forEach((childAct) => {

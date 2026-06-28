@@ -88,10 +88,8 @@ function reloadRefs() {
 }
 
 function tabStyle(active) {
-  // Вкладки в стиле браузера (Safari), но с прямыми углами:
   // активная — «карточка», сливающаяся с контентом снизу.
-  const base =
-    'padding:8px 20px;font-size:13px;border-radius:0;cursor:pointer;'
+  const base = 'padding:8px 20px;font-size:13px;border-radius:0;cursor:pointer;'
   return active
     ? base +
         'border:1px solid var(--line2);border-bottom-color:var(--surface,#fff);' +

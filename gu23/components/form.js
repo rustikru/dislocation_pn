@@ -1,6 +1,6 @@
 import { sendApiRequest } from '../api.js'
 
-// 'send_mail' — реальная отправка email, 'send_file' — сохранить письмо в папку mail/, false — не отправлять
+// 'send_mail' — реальная отправка email, 'send_file' — сохранить письмо в папку mail, false — не отправлять
 const APPROVAL_MODE = 'send_file'
 import {
   references,
@@ -383,8 +383,7 @@ function applySelectedStartAct(id, filterNums = null) {
 }
 
 /**
- * Клиентский автокомплит по готовому списку (для «Груз», «Причина»).
- * items: [{label, value}], onSelect(item), onInput() — на свободный ввод.
+ * Автокомпликт (для «Груз», «Причина»).
  */
 function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   let activeIdx = -1

@@ -8,7 +8,7 @@ let searchTimeout = null
 let rolesSearch = ''
 let rolesPage = 1
 
-// Данные, загруженные один раз
+// Данные, загруженные
 let matrixData = null // { roles, perms, cells: {perm_id: {role_id: 'Y'/'N'}} }
 
 export function showRoles(container) {
@@ -162,7 +162,6 @@ function renderMatrix() {
     const assign = cb.checked
 
     if (!assign) {
-      // подтверждение отключено — отзыв сразу, на совести пользователя
       // cb.checked = true
       // showConfirmBox(
       //   'Убрать полномочие',
@@ -181,7 +180,7 @@ function doPermAssign(rid, pid, cb) {
   sendApiRequest('gu23_perm_assign', { role_id: rid, perm_id: pid })
     .done((r) => {
       if (r && r.ok) {
-        // обновляем локальный кеш
+        // обновляем  кеш
         if (matrixData?.cells[pid]) matrixData.cells[pid][rid] = 'Y'
         showToast('Полномочие добавлено', 'ok')
       } else {
@@ -217,7 +216,7 @@ function doPermRevoke(rid, pid, cb) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Таблица пользователей (с пагинацией)
+   Таблица пользователей (с постраничиным выводом)
    ══════════════════════════════════════════════════════════ */
 
 function loadUsers() {
@@ -297,7 +296,7 @@ function renderUsers(users, roles, total, page, pageSize) {
     searchTimeout = setTimeout(loadUsers, 250)
   })
 
-  // Пагинация
+  // Постраничный вывод
   $('#roles-users-wrap').on('click', '.page-btn', function () {
     const p = parseInt($(this).data('page'), 10)
     if (!p || p === rolesPage) return
@@ -314,7 +313,6 @@ function renderUsers(users, roles, total, page, pageSize) {
     const uname = $(cb).data('uname')
 
     if (!cb.checked) {
-      // подтверждение отключено — отзыв сразу, на совести пользователя
       // cb.checked = true
       // showConfirmBox(
       //   'Отозвать роль',
