@@ -214,7 +214,9 @@ function showFormFields() {
     value: r.CODE,
   }))
   const reasonInitLabel = (() => {
-    const r = references.reasonsList.find((r) => r.CODE === activeDraft.reasonId)
+    const r = references.reasonsList.find(
+      (r) => r.CODE === activeDraft.reasonId,
+    )
     return r ? r.NAME || r.CODE : activeDraft.reasonName || ''
   })()
 
@@ -730,13 +732,14 @@ function showWagonsTable() {
       return `
       <tr>
         <td class="wn">${wagon.n}</td>
+        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.waybill || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.owner || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.kind || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.from || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.to || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.cargo || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.weight || '—'}</span></td>
-        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.waybill || '—'}</span></td>
+        
         ${isEndType ? `<td class="dur">${durationText}</td>` : ''}
         <td><button class="delx" data-idx="${idx}">×</button></td>
       </tr>
@@ -748,7 +751,16 @@ function showWagonsTable() {
     <div style="overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:7px">
       <table class="wtbl">
         <thead>
-          <tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th><th>Накладная</th>${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
+          <tr>
+            <th>№ вагона</th>
+            <th>Накладная</th>
+            <th>Собственник</th>
+            <th>Род</th>
+            <th>Ст. отпр.</th>
+            <th>Ст. назн.</th>
+            <th>Груз</th>
+            <th>Вес(кг)</th>
+            ${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>

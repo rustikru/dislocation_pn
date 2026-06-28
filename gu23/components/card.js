@@ -338,7 +338,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
         <div id="reject-reason-box" style="display:none;margin-top:8px">
           <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
             style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
-          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Подтвердить отклонение</button>
+          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Отклоненить</button>
         </div>
       </div>`
   }
