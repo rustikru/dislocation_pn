@@ -781,10 +781,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                    || p_q
                                    || '%'
          ) )
-         --order by a.created_at desc offset v_off rows
-         --fetch next v_size rows only
+          order by a.created_at desc
+         offset v_off rows fetch next v_size rows only
       ) loop
-         pipe row ( g_act_row(a) );
+         v_idx := v_idx + 1;
+            -- пропускаем строки до начала страницы
+         if v_idx > v_off then
+            pipe row ( g_act_row(a) );
+         end if;
+            -- набрали страницу — выходим
+         exit when v_idx >= v_off + v_size;
       end loop;
 
       return;
