@@ -697,7 +697,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_act_tab
       pipelined
    is
-      v_idx  number;
+      v_idx  number := 0;
       v_q    varchar2(512) := lower(p_q);
       v_from date :=
          case
@@ -711,7 +711,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                to_date(p_date_to,
                        'DD.MM.YYYY') + 1
          end;
-        -- пагинация на стороне БД
       v_size number := nvl(
          p_page_size,
          1000000
