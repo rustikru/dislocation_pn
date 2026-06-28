@@ -710,11 +710,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                to_date(p_date_to,
                        'DD.MM.YYYY') + 1
          end;
-        -- пагинация на стороне БД
+        -- пагинация на стороне БД (без OFFSET/FETCH — совместимо с Oracle 11g)
       v_size number := nvl(p_page_size,
                            1000000);
       v_off  number := ( nvl(p_page,
                              1) - 1 ) * v_size;
+      v_idx  number := 0;
    begin
       for a in (
          select *
@@ -771,10 +772,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                    || p_q
                                    || '%'
          ) )
-          order by a.created_at desc offset v_off rows
-         fetch next v_size rows only
+          order by a.created_at desc
       ) loop
-         pipe row ( g_act_row(a) );
+         v_idx := v_idx + 1;
+            -- пропускаем строки до начала страницы
+         if v_idx > v_off then
+            pipe row ( g_act_row(a) );
+         end if;
+            -- набрали страницу — выходим
+         exit when v_idx >= v_off + v_size;
       end loop;
 
       return;
