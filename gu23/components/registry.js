@@ -42,6 +42,18 @@ export function showArchive(container) {
   const PAGE_SIZE = 50
   let searchTimeout = null
 
+  // Позиционируем выпадающее меню по координатам кнопки (fixed),
+  // чтобы не уезжало при переносе строк / сворачивании бокового меню.
+  const positionMenu = ($btn, $menu) => {
+    const r = $btn[0].getBoundingClientRect()
+    $menu.css({
+      position: 'fixed',
+      top: r.bottom + 4 + 'px',
+      left: 'auto',
+      right: window.innerWidth - r.right + 'px',
+    })
+  }
+
   // Создание фильтра с множественным выбором (чекбокс-дропдаун).
   const createMultiSelectFilter = (options, labels, key) => {
     const allLabel = labels[0] // первый элемент — «Все …»
@@ -105,6 +117,7 @@ export function showArchive(container) {
     $btn.on('click', (e) => {
       e.stopPropagation()
       $('.ms-menu').not($menu).hide() // закрыть остальные
+      if (!$menu.is(':visible')) positionMenu($btn, $menu)
       $menu.toggle()
     })
 
@@ -177,7 +190,7 @@ export function showArchive(container) {
     '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
   )
   const $extraMenu = $(
-    '<div class="ms-menu" style="padding:12px;min-width:240px;left:auto;right:0"></div>',
+    '<div class="ms-menu" style="padding:12px;min-width:240px"></div>',
   )
   $extraMenu.append(
     '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Приложение</label>' +
@@ -190,6 +203,7 @@ export function showArchive(container) {
   $extraBtn.on('click', (e) => {
     e.stopPropagation()
     $('.ms-menu').not($extraMenu).hide()
+    if (!$extraMenu.is(':visible')) positionMenu($extraBtn, $extraMenu)
     $extraMenu.toggle()
   })
   $extraMenu.on('change', '#filter-has-signed', function () {
