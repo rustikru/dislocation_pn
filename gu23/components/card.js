@@ -232,8 +232,7 @@ function showWagonsBlock(wagons) {
       <td>${escapeHtml(w.ST_TO || '—')}</td>
       <td>${escapeHtml(w.CARGO || '—')}</td>
       <td>${escapeHtml(w.WEIGHT || '—')}</td>
-      
-      <td class="num"></td>
+      <td>${escapeHtml(w.WAYBILL_NO || '—')}</td>
     </tr>
   `,
     )
@@ -244,7 +243,7 @@ function showWagonsBlock(wagons) {
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Вагоны (${wagons.length})</b></div>
       <div style="overflow:auto;max-height:calc(100vh - 220px);min-height:360px">
         <table class="tbl">
-          <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th></tr></thead>
+          <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th><th>Накладная</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
@@ -508,6 +507,8 @@ function editDraftAct(data) {
       from: w.ST_FROM,
       to: w.ST_TO,
       cargo: w.CARGO,
+      weight: w.WEIGHT,
+      waybill: w.WAYBILL_NO || '',
     })),
     signers: data.signers.map((s) => ({
       id: s.SIGNER_REF_ID || null,

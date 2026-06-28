@@ -517,7 +517,7 @@ class GuActRepository
         $wagons = json_decode((string) filter_input(INPUT_POST, 'wagons'), true) ?: [];
         $signers = json_decode((string) filter_input(INPUT_POST, 'signers'), true) ?: [];
 
-        $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight']);
+        $wagonClob = $this->packRows($wagons, ['n', 'owner', 'kind', 'from', 'to', 'cargo', 'weight', 'waybill']);
         $signerClob = $this->packRows($signers, ['id', 'fio', 'post', 'org', 'stype']); // field 5 = stype
         /*Gu23Logger::debug('signer_clob', [
             'count' => count($signers),

@@ -359,6 +359,7 @@ function applySelectedStartAct(id, filterNums = null) {
     to: w.ST_TO,
     cargo: w.CARGO,
     weight: w.WEIGHT,
+    waybill: w.WAYBILL_NO || '',
   }))
 
   if (filterNums) {
@@ -601,6 +602,7 @@ function loadWagonsDataFromDislocation() {
     const records = rows || []
     let foundCount = 0
     let addedCount = 0
+    let firstFound = null
 
     // Получаем существующие номера вагонов для проверки
     const existingNumbers = new Set(activeDraft.wagons.map((w) => w.n))
@@ -608,6 +610,7 @@ function loadWagonsDataFromDislocation() {
     records.forEach((row) => {
       if (String(row.FOUND) === '1') {
         foundCount++
+        if (!firstFound) firstFound = row
         const wagonNumber = String(row.WAGON_NO)
 
         // Добавляем только если вагона еще нет в списке
@@ -620,12 +623,21 @@ function loadWagonsDataFromDislocation() {
             to: row.ST_TO,
             cargo: row.CARGO,
             weight: row.WEIGHT,
+            waybill: row.WAYBILL_NO || '',
           })
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
         }
       }
     })
+
+    // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
+    if (firstFound) {
+      if (!activeDraft.cargoReference && firstFound.CARGO)
+        activeDraft.cargoReference = firstFound.CARGO
+      if (!activeDraft.stationToName && firstFound.ST_TO)
+        activeDraft.stationToName = firstFound.ST_TO
+    }
 
     activeDraft._summary = {
       req: inputNums.length,
@@ -724,6 +736,7 @@ function showWagonsTable() {
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.to || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.cargo || '—'}</span></td>
         <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.weight || '—'}</span></td>
+        <td><span style="padding: 5px 0; display: inline-block; color: var(--ink2); font-weight: 500;">${wagon.waybill || '—'}</span></td>
         ${isEndType ? `<td class="dur">${durationText}</td>` : ''}
         <td><button class="delx" data-idx="${idx}">×</button></td>
       </tr>
@@ -735,7 +748,7 @@ function showWagonsTable() {
     <div style="overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:7px">
       <table class="wtbl">
         <thead>
-          <tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th>${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
+          <tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th><th>Накладная</th>${isEndType ? '<th>Простой</th>' : ''}<th></th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
@@ -952,7 +965,8 @@ function validateForm(checkSigners) {
     errors.push('Добавьте вагоны или укажите груз / номер накладной')
   if (!activeDraft.stationId) errors.push('Не указана ст. составления')
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
-  if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
+  if (!activeDraft.stationToId && !activeDraft.waybillNumber)
+    errors.push('Не указана ст. назначения')
 
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')

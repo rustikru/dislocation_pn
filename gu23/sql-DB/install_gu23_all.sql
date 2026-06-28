@@ -125,6 +125,7 @@ create table xx_disl_gu23_act_row (
    st_to    varchar2(128),
    cargo    varchar2(256),
    weight   varchar2(32),
+   waybill_no varchar2(64),
    constraint xx_disl_gu23_row_fk foreign key ( act_id )
       references xx_disl_gu23_act ( id )
          on delete cascade

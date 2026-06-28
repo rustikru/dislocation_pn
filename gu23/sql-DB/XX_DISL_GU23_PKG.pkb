@@ -230,6 +230,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                v_rec,
                7
             );
+            l_row.waybill_no := g_field(
+               v_rec,
+               8
+            );
             pipe row ( l_row );
          end if;
       end loop;
@@ -436,7 +440,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          st_from,
          st_to,
          cargo,
-         weight
+         weight,
+         waybill_no
       ) values ( p_row.id,
                  p_row.act_id,
                  p_row.wagon_no,
@@ -445,7 +450,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                  p_row.st_from,
                  p_row.st_to,
                  p_row.cargo,
-                 p_row.weight );
+                 p_row.weight,
+                 p_row.waybill_no );
    end insert_act_row;
 
    procedure insert_signer (
@@ -926,6 +932,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_row.st_to := r.st_to;
          l_row.cargo := r.cargo;
          l_row.weight := r.weight;
+         l_row.waybill_no := r.waybill_no;
          pipe row ( l_row );
       end loop;
 
@@ -1318,6 +1325,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                l_row.st_to := d.dest_station;
                l_row.cargo := d.cargo_name;
                l_row.weight := d.weight;
+               l_row.waybill_no := d.waybill_no;
                l_row.found := 1;
             end loop;
 
@@ -1342,6 +1350,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.st_to := d.dest_station;
             l_row.cargo := d.cargo_name;
             l_row.weight := d.weight;
+            l_row.waybill_no := d.waybill_no;
             l_row.found := 1;
             pipe row ( l_row );
          end loop;
@@ -1829,7 +1838,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             st_from,
             st_to,
             cargo,
-            weight
+            weight,
+            waybill_no
          ) values ( xx_disl_gu23_act_row_seq.nextval,
                     v_id,
                     w.wagon_no,
@@ -1838,7 +1848,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                     vw_from,
                     vw_to,
                     vw_cargo,
-                    vw_weight );
+                    vw_weight,
+                    w.waybill_no );
 
          v_wcnt := v_wcnt + 1;
       end loop;

@@ -87,15 +87,16 @@ create or replace package xx_disl_gu23_pkg as
    type xx_disl_gu23_act_tab is
       table of t_gu23_act_row;
    type xx_disl_gu23_row is record (
-         id       number,
-         act_id   number,
-         wagon_no varchar2(16),
-         owner    varchar2(128),
-         kind     varchar2(128),
-         st_from  varchar2(128),
-         st_to    varchar2(128),
-         cargo    varchar2(256),
-         weight   varchar2(32)
+         id         number,
+         act_id     number,
+         wagon_no   varchar2(16),
+         owner      varchar2(128),
+         kind       varchar2(128),
+         st_from    varchar2(128),
+         st_to      varchar2(128),
+         cargo      varchar2(256),
+         weight     varchar2(32),
+         waybill_no varchar2(64)
    );
    type xx_disl_gu23_row_tab is
       table of xx_disl_gu23_row;
@@ -123,14 +124,15 @@ create or replace package xx_disl_gu23_pkg as
    type xx_disl_gu23_hist_tab is
       table of xx_disl_gu23_hist_row;
    type xx_disl_gu23_wagon_row is record (
-         wagon_no varchar2(16),
-         owner    varchar2(128),
-         kind     varchar2(128),
-         st_from  varchar2(128),
-         st_to    varchar2(128),
-         cargo    varchar2(256),
-         weight   varchar2(32),
-         found    number
+         wagon_no   varchar2(16),
+         owner      varchar2(128),
+         kind       varchar2(128),
+         st_from    varchar2(128),
+         st_to      varchar2(128),
+         cargo      varchar2(256),
+         weight     varchar2(32),
+         waybill_no varchar2(64),
+         found      number
    );
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;
@@ -306,13 +308,14 @@ create or replace package xx_disl_gu23_pkg as
 
 -- Строка, разобранная из CLOB-пачки вагонов (RS/US-формат)
    type t_wagon_clob_row is record (
-         wagon_no varchar2(16),
-         owner    varchar2(128),
-         kind     varchar2(128),
-         st_from  varchar2(128),
-         st_to    varchar2(128),
-         cargo    varchar2(256),
-         weight   varchar2(32)
+         wagon_no   varchar2(16),
+         owner      varchar2(128),
+         kind       varchar2(128),
+         st_from    varchar2(128),
+         st_to      varchar2(128),
+         cargo      varchar2(256),
+         weight     varchar2(32),
+         waybill_no varchar2(64)
    );
    type t_wagon_clob_tab is
       table of t_wagon_clob_row;
