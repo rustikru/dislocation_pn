@@ -39,7 +39,6 @@ export function showArchive(container) {
     has_signed: '', // 'Y' = только с подписанным документом
     page: 1,
   }
-  const PAGE_SIZE = 50
   let searchTimeout = null
 
   // Позиционируем выпадающее меню по координатам кнопки (fixed),
@@ -233,6 +232,8 @@ export function showArchive(container) {
         resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []
       const total = resp && resp.total ? resp.total : acts.length
       const page = resp && resp.page ? resp.page : 1
+      // размер страницы берём из ответа сервера (не из клиентской константы)
+      const pageSize = (resp && resp.page_size) || acts.length || 1
 
       // Построение дерева связей
       const rootActs = []
@@ -342,7 +343,7 @@ export function showArchive(container) {
           '<tr><td colspan="9" class="muted" style="padding:24px;text-align:center">Актов не найдено</td></tr>'
       }
 
-      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+      const totalPages = Math.max(1, Math.ceil(total / pageSize))
       const pagerBtns = []
       if (page > 1)
         pagerBtns.push(

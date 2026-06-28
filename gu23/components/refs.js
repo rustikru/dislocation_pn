@@ -8,7 +8,8 @@ let refsPage = 1
 let currentItems = []
 let searchTimer = null
 
-const REFS_PAGE_SIZE = 20
+const REFS_PAGE_SIZE = 20 // fallback, актуальный размер приходит с сервера
+let refsPageSize = REFS_PAGE_SIZE
 
 export function showRefs(container) {
   refsSearch = ''
@@ -77,6 +78,7 @@ function fetchTab() {
       return
     }
     currentItems = data.items || []
+    refsPageSize = data.page_size || REFS_PAGE_SIZE
     if (refsTab === 'signers')
       renderSigners(currentItems, data.total, data.page)
     else renderReasons(currentItems, data.total, data.page)
@@ -100,7 +102,7 @@ function tabStyle(active) {
 }
 
 function renderPager(total, page) {
-  const pages = Math.ceil(total / REFS_PAGE_SIZE)
+  const pages = Math.ceil(total / refsPageSize)
   if (pages <= 1)
     return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
   let html =
