@@ -697,6 +697,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_act_tab
       pipelined
    is
+      v_idx  number;
       v_q    varchar2(512) := lower(p_q);
       v_from date :=
          case
