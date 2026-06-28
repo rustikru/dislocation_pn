@@ -1,6 +1,8 @@
 import { applicationState, setActiveDraft, hasPerm } from '../state.js'
 import { navigateTo } from '../app.js'
 
+const NAV_COLLAPSE_KEY = 'gu23_nav_collapsed'
+
 export function drawNav() {
   const navigationItems = []
 
@@ -8,17 +10,35 @@ export function drawNav() {
     navigationItems.push({ page: 'new', icon: '＋', label: 'Создать акт' })
   }
 
-  navigationItems.push({ page: 'archive', icon: '', label: 'Архив актов' })
+  navigationItems.push({ page: 'archive', icon: '🗂', label: 'Архив актов' })
 
   if (hasPerm('MANAGE_REFS')) {
-    navigationItems.push({ page: 'refs', icon: '', label: 'Справочники' })
+    navigationItems.push({ page: 'refs', icon: '📖', label: 'Справочники' })
   }
 
   if (hasPerm('MANAGE_ROLES')) {
-    navigationItems.push({ page: 'roles', icon: '', label: 'Роли' })
+    navigationItems.push({ page: 'roles', icon: '👥', label: 'Роли' })
   }
 
   const $nav = $('#nav').empty()
+
+  // применяем сохранённое состояние «свёрнуто»
+  const collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
+  $nav.toggleClass('collapsed', collapsed)
+
+  // кнопка-переключатель
+  const $toggle = $(`
+    <button class="navtoggle" title="Свернуть/развернуть меню">
+      <span class="ic">≡</span>
+      <span>Свернуть</span>
+    </button>
+  `)
+  $toggle.on('click', () => {
+    const nowCollapsed = !$nav.hasClass('collapsed')
+    $nav.toggleClass('collapsed', nowCollapsed)
+    localStorage.setItem(NAV_COLLAPSE_KEY, nowCollapsed ? '1' : '0')
+  })
+  $nav.append($toggle)
 
   navigationItems.forEach((item) => {
     const isActive =
@@ -26,7 +46,7 @@ export function drawNav() {
       (item.page === 'archive' && applicationState.currentPage === 'card')
 
     const $button = $(`
-      <button class="navbtn ${isActive ? 'active' : ''}">
+      <button class="navbtn ${isActive ? 'active' : ''}" title="${item.label}">
         <span class="ic">${item.icon}</span>
         <span>${item.label}</span>
       </button>
@@ -58,8 +78,8 @@ export function drawNav() {
   const $logout = $(`
     <form method="post" action="index.php" style="margin-top:4px">
       <input type="hidden" name="logout" value="1">
-      <button type="submit" class="navbtn" style="color:var(--rej);width:100%">
-        <span class="ic"></span>
+      <button type="submit" class="navbtn" title="Выход" style="color:var(--rej);width:100%">
+        <span class="ic">⎋</span>
         <span>Выход</span>
       </button>
     </form>

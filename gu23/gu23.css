@@ -180,9 +180,57 @@ a {
   overflow: auto;
   display: flex;
   flex-direction: column;
+  transition: flex-basis 0.18s ease;
 }
 .side > * + * {
   margin-top: 3px;
+}
+
+/* Кнопка-переключатель «свернуть/развернуть» */
+.navtoggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 9px 11px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.navtoggle:hover {
+  background: var(--surface2);
+  color: var(--ink2);
+}
+.navtoggle .ic {
+  width: 17px;
+  text-align: center;
+  margin-right: 11px;
+  font-size: 16px;
+}
+
+/* Свёрнутое состояние — только иконки */
+.side.collapsed {
+  flex-basis: 60px;
+}
+.side.collapsed .navbtn,
+.side.collapsed .navtoggle {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.side.collapsed .navbtn > span:not(.ic),
+.side.collapsed .navtoggle > span:not(.ic) {
+  display: none;
+}
+.side.collapsed .navbtn .ic,
+.side.collapsed .navtoggle .ic {
+  margin-right: 0;
+}
+.side.collapsed .foot > div:first-child {
+  display: none; /* блок с данными пользователя скрываем */
 }
 .navbtn {
   display: flex;
