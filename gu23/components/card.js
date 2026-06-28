@@ -658,7 +658,6 @@ function resendApprovalLinks(act, signers, approvals) {
       sendApiRequest('gu23_resend_approval', {
         act_id: act.ID,
         user_id: userId,
-        mode: 'send_file',
       }).done((r) => {
         done++
         if (!r || !r.ok) errors++

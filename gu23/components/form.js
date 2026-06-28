@@ -1,7 +1,4 @@
 import { sendApiRequest } from '../api.js'
-
-// 'send_mail' — реальная отправка email, 'send_file' — сохранить письмо в папку mail, false — не отправлять
-const APPROVAL_MODE = 'send_file'
 import {
   references,
   activeDraft,
@@ -1043,10 +1040,9 @@ function saveActToServer(status, skipWarning = false) {
   sendApiRequest('gu23_save_act', payload).done((response) => {
     if (response && response.ok) {
       setActiveDraft(null)
-      if (status === 'active' && APPROVAL_MODE && APPROVAL_MODE !== 'false') {
+      if (status === 'active') {
         sendApiRequest('gu23_send_approval', {
           act_id: response.id,
-          mode: APPROVAL_MODE,
         }).done((approvalResp) => {
           const approvalMsg =
             approvalResp && approvalResp.ok

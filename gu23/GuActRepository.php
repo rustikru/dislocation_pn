@@ -108,6 +108,23 @@ class GuActRepository
         }
     }
 
+    /**
+     * Режим рассылки писем — определяется сервером, НЕ клиентом.
+     *   GU23_MAIL_MODE (из db_config) — если задан;
+     *   иначе: dev (есть db_config.local.php) → 'send_file' (письма в папку mail/),
+     *          прод → 'send_mail' (реальная отправка через Oracle UTL_MAIL).
+     */
+    private function mailMode(): string
+    {
+        if (defined('GU23_MAIL_MODE')) {
+            return GU23_MAIL_MODE;
+        }
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
+            return 'send_file';
+        }
+        return 'send_mail';
+    }
+
     public function handle(string $action, array $post): void
     {
         ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
@@ -844,7 +861,7 @@ class GuActRepository
         }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
-        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file'; // 'send_mail' | 'send_file'
+        $mode = $this->mailMode(); // режим определяется сервером, не клиентом
 
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
@@ -950,7 +967,7 @@ class GuActRepository
 
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = (int) filter_input(INPUT_POST, 'user_id');
-        $mode = filter_input(INPUT_POST, 'mode') ?: 'send_file';
+        $mode = $this->mailMode(); // режим определяется сервером, не клиентом
 
         if (!$actId || !$userId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
