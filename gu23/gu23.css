@@ -1097,11 +1097,11 @@ textarea.inp {
 }
 .searchbox {
   position: relative;
-  flex: 1;
-  min-width: 200px;
+  flex: 2;
+  min-width: 300px;
 }
 .searchbox .inp {
-  padding-left: 32px;
+  padding-left: 12px;
 }
 .searchbox::before {
   position: absolute;
