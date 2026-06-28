@@ -1164,7 +1164,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              ei.owner,
              ei.depart_station,
              ei.dest_station,
-             ei.cargo_weight_kg as weight
+             ei.cargo_weight_kg as weight,
+             ei.waybill_no as  waybill_no
         from xx_dislocation_rjd ei
         join max_dislocation md
       on ei.report_dt = md.max_dt
