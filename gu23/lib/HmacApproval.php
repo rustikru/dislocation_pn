@@ -14,7 +14,7 @@ class HmacApproval
     }
 
     /**
-     * Сгенерировать ссылку для согласования.
+     * Сгенерировать ссылку для подписания.
      */
     public function generate(int $actId, int $approverId, string $action = 'approve'): string
     {

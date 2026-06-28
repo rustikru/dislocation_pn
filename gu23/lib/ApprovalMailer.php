@@ -46,7 +46,7 @@ class ApprovalMailer
   }
 
   /**
-   * Собрать HTML-тело письма согласования.
+   * Собрать HTML-тело письма подписания.
    *
    * @param string $recipientName  ФИО получателя
    * @param int    $actId          ID акта

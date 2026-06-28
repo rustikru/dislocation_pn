@@ -1,6 +1,6 @@
 <?php
 /**
- * ApprovalRepository — для согласования актов ГУ-23
+ * ApprovalRepository — для подписания актов ГУ-23
  */
 class ApprovalRepository
 {

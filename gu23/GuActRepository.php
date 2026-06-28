@@ -805,7 +805,7 @@ class GuActRepository
             $parts = explode(self::US, $result, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
         } else {
-            $label = $decision === 'approved' ? 'Акт согласован' : 'Акт отклонён';
+            $label = $decision === 'approved' ? 'Акт подписан' : 'Акт отклонён';
             echo json_encode(['ok' => true, 'msg' => $label]);
         }
     }

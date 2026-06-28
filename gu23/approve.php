@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
 }
 
 // -------------------------------------------------------------------
-// GET: согласование
+// GET: подписание
 // -------------------------------------------------------------------
 if ($action === 'approve') {
     $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig, $signerIp);
