@@ -29,7 +29,7 @@ function buildCardView(container, data) {
 
   $(container).html(`
     <div class="phead">
-      <button class="btn sm ghost" id="btn-back-to-archive">Назад</button>
+      <button class="btn ghost" id="btn-back-to-archive">Назад</button>
       <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
       <div class="spacer"></div>
     </div>
