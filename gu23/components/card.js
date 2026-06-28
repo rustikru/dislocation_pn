@@ -226,13 +226,14 @@ function showWagonsBlock(wagons) {
       (w) => `
     <tr>
       <td class="num" style="color:var(--signal);font-weight:600">${escapeHtml(w.WAGON_NO)}</td>
+      <td>${escapeHtml(w.WAYBILL_NO || '—')}</td>
       <td>${escapeHtml(w.OWNER || '—')}</td>
       <td>${escapeHtml(w.KIND || '—')}</td>
       <td>${escapeHtml(w.ST_FROM || '—')}</td>
       <td>${escapeHtml(w.ST_TO || '—')}</td>
       <td>${escapeHtml(w.CARGO || '—')}</td>
       <td>${escapeHtml(w.WEIGHT || '—')}</td>
-      <td>${escapeHtml(w.WAYBILL_NO || '—')}</td>
+      
     </tr>
   `,
     )
@@ -243,7 +244,17 @@ function showWagonsBlock(wagons) {
       <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Вагоны (${wagons.length})</b></div>
       <div style="overflow:auto;max-height:calc(100vh - 220px);min-height:360px">
         <table class="tbl">
-          <thead><tr><th>№ вагона</th><th>Собственник</th><th>Род</th><th>Ст. отпр.</th><th>Ст. назн.</th><th>Груз</th><th>Вес(кг)</th><th>Накладная</th></tr></thead>
+          <thead>
+           
+            <tr><th>№ вагона</th>
+            <th>Накладная</th>
+            <th>Собственник</th>
+            <th>Род</th>
+            <th>Ст. отпр.</th><th>
+            Ст. назн.</th><th>Груз</th>
+            <th>Вес(кг)</th>
+            
+            </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
