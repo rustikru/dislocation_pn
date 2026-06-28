@@ -991,9 +991,22 @@ textarea.inp {
   margin-bottom: 9px;
 }
 .filters .inp,
-.filters select {
+.filters select,
+.filters .ms-btn {
   width: auto;
-  min-width: 130px;
+  min-width: 116px;
+  height: 34px;
+  font-size: 13px;
+}
+/* компактные контролы фильтров */
+.filters input.inp,
+.filters select.inp {
+  height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.filters .ms-btn {
+  line-height: 32px;
 }
 
 /* Мультивыбор-фильтр (чекбокс-дропдаун) */
