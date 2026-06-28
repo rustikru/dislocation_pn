@@ -177,7 +177,7 @@ export function showArchive(container) {
     '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
   )
   const $extraMenu = $(
-    '<div class="ms-menu" style="padding:12px;min-width:240px"></div>',
+    '<div class="ms-menu" style="padding:12px;min-width:240px;left:auto;right:0"></div>',
   )
   $extraMenu.append(
     '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Приложение</label>' +
