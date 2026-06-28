@@ -41,15 +41,20 @@ export function showArchive(container) {
   }
   let searchTimeout = null
 
-  // Позиционируем выпадающее меню по координатам кнопки (fixed),
-  // чтобы не уезжало при переносе строк / сворачивании бокового меню.
+  // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
+  // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
   const positionMenu = ($btn, $menu) => {
     const r = $btn[0].getBoundingClientRect()
+    const mw = $menu.outerWidth()
+    let left = r.left
+    if (left + mw > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - mw - 8)
+    }
     $menu.css({
       position: 'fixed',
       top: r.bottom + 4 + 'px',
-      left: 'auto',
-      right: window.innerWidth - r.right + 'px',
+      left: left + 'px',
+      right: 'auto',
     })
   }
 
@@ -115,9 +120,12 @@ export function showArchive(container) {
     $menu.on('click', (e) => e.stopPropagation())
     $btn.on('click', (e) => {
       e.stopPropagation()
-      $('.ms-menu').not($menu).hide() // закрыть остальные
-      if (!$menu.is(':visible')) positionMenu($btn, $menu)
-      $menu.toggle()
+      const willOpen = !$menu.is(':visible')
+      $('.ms-menu').hide() // закрыть все
+      if (willOpen) {
+        $menu.show() // показать, чтобы измерить ширину
+        positionMenu($btn, $menu)
+      }
     })
 
     $wrap.append($btn, $menu)
@@ -201,9 +209,12 @@ export function showArchive(container) {
   $extraMenu.on('click', (e) => e.stopPropagation())
   $extraBtn.on('click', (e) => {
     e.stopPropagation()
-    $('.ms-menu').not($extraMenu).hide()
-    if (!$extraMenu.is(':visible')) positionMenu($extraBtn, $extraMenu)
-    $extraMenu.toggle()
+    const willOpen = !$extraMenu.is(':visible')
+    $('.ms-menu').hide()
+    if (willOpen) {
+      $extraMenu.show()
+      positionMenu($extraBtn, $extraMenu)
+    }
   })
   $extraMenu.on('change', '#filter-has-signed', function () {
     filterState.has_signed = this.value === 'signed' ? 'Y' : ''

@@ -1076,12 +1076,17 @@ textarea.inp {
 .ms-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 3px 9px;
+  gap: 6px;
+  padding: 1px 8px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12.5px;
+  line-height: 1.5;
   cursor: pointer;
   white-space: nowrap;
+}
+.ms-item input {
+  width: 13px;
+  height: 13px;
 }
 .ms-item:hover {
   background: var(--surface2, #f4f5f7);
