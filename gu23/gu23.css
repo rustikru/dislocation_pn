@@ -1081,9 +1081,9 @@ textarea.inp {
 .ms-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 5px;
+  gap: 7px;
+  padding: 3px 9px;
+  border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
