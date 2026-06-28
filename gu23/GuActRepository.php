@@ -110,14 +110,18 @@ class GuActRepository
 
     /**
      * Режим рассылки писем — определяется сервером, НЕ клиентом.
-     *   GU23_MAIL_MODE (из db_config) — если задан;
-     *   иначе: dev (есть db_config.local.php) → 'send_file' (письма в папку mail/),
-     *          прод → 'send_mail' (реальная отправка через Oracle UTL_MAIL).
+     *   Читается из gu23/config.php ('mail_mode');
+     *   если не задан — dev (есть db_config.local.php) → 'send_file', иначе 'send_mail'.
      */
     private function mailMode(): string
     {
-        if (defined('GU23_MAIL_MODE')) {
-            return GU23_MAIL_MODE;
+        static $cfg = null;
+        if ($cfg === null) {
+            $path = __DIR__ . '/config.php';
+            $cfg = file_exists($path) ? (array) (require $path) : [];
+        }
+        if (!empty($cfg['mail_mode'])) {
+            return $cfg['mail_mode'];
         }
         if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return 'send_file';
