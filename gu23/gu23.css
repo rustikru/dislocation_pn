@@ -1047,7 +1047,7 @@ textarea.inp {
   position: absolute;
   left: 0;
   top: calc(100% + 4px);
-  min-width: 100%;
+  min-width: 170px;
   max-height: 280px;
   overflow-y: auto;
   background: var(--surface, #fff);
