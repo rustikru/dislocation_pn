@@ -1,13 +1,13 @@
 import { sendApiRequest } from './api.js'
 import { applicationState, references, setActiveDraft } from './state.js'
 import { hasPerm } from './state.js'
-import { drawNav } from './components/nav.js'
-import { showArchive } from './components/registry.js'
-import { showForm } from './components/form.js'
-import { showCard } from './components/card.js'
-import { showWagonSearch } from './components/wagonSearch.js'
-import { showRefs } from './components/refs.js'
-import { showRoles } from './components/roles.js'
+import { drawNav } from './nav.js'
+import { showArchive } from './registry.js'
+import { showForm } from './form.js'
+import { showCard } from './card.js'
+import { showWagonSearch } from './wagonSearch.js'
+import { showRefs } from './refs.js'
+import { showRoles } from './roles.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {

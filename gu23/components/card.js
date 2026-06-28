@@ -1,6 +1,6 @@
-import { sendApiRequest } from '../api.js'
-import { navigateTo } from '../app.js'
-import { escapeHtml, formatDateTime, formatToInputDate } from '../utils.js'
+import { sendApiRequest } from './api.js'
+import { navigateTo } from './app.js'
+import { escapeHtml, formatDateTime, formatToInputDate } from './utils.js'
 import {
   showTypeChip,
   showToast,
@@ -9,7 +9,7 @@ import {
   showTypeName,
   showStatusName,
 } from './ui.js'
-import { setActiveDraft, hasPerm } from '../state.js'
+import { setActiveDraft, hasPerm } from './state.js'
 
 export function showCard(container) {
   const currentId = $('#view').data('selected-id')

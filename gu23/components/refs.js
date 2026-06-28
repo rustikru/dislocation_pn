@@ -1,5 +1,5 @@
-import { sendApiRequest } from '../api.js'
-import { escapeHtml } from '../utils.js'
+import { sendApiRequest } from './api.js'
+import { escapeHtml } from './utils.js'
 import { showToast, showConfirmBox } from './ui.js'
 
 let refsTab = 'signers'

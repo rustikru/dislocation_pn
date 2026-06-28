@@ -1,7 +1,7 @@
-import { sendApiRequest } from '../api.js'
-import { references } from '../state.js'
-import { navigateTo } from '../app.js'
-import { escapeHtml, formatDate, formatDateTime } from '../utils.js'
+import { sendApiRequest } from './api.js'
+import { references } from './state.js'
+import { navigateTo } from './app.js'
+import { escapeHtml, formatDate, formatDateTime } from './utils.js'
 import { showStatusChip, showTypeChip } from './ui.js'
 
 export function showArchive(container) {

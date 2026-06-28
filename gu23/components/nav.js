@@ -1,5 +1,5 @@
-import { applicationState, setActiveDraft, hasPerm } from '../state.js'
-import { navigateTo } from '../app.js'
+import { applicationState, setActiveDraft, hasPerm } from './state.js'
+import { navigateTo } from './app.js'
 
 const NAV_COLLAPSE_KEY = 'gu23_nav_collapsed'
 

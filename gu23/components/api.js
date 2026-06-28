@@ -1,4 +1,4 @@
-import { showToast } from './components/ui.js'
+import { showToast } from './ui.js'
 
 export function sendApiRequest(action, data) {
   return $.ajax({

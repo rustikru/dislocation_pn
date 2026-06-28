@@ -1,12 +1,12 @@
-import { sendApiRequest } from '../api.js'
+import { sendApiRequest } from './api.js'
 import {
   references,
   activeDraft,
   createNewDraft,
   setActiveDraft,
   hasPerm,
-} from '../state.js'
-import { navigateTo } from '../app.js'
+} from './state.js'
+import { navigateTo } from './app.js'
 import {
   escapeHtml,
   formatToInputDate,
@@ -14,7 +14,7 @@ import {
   parseTimeToMilliseconds,
   calculateDuration,
   parseWagonsFromText,
-} from '../utils.js'
+} from './utils.js'
 import { showFormField, showToast, showConfirmBox } from './ui.js'
 
 export function showForm(container) {
