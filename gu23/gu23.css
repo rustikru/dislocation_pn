@@ -186,29 +186,24 @@ a {
   margin-top: 3px;
 }
 
-/* Кнопка-переключатель «свернуть/развернуть» */
+/* Кнопка-переключатель «свернуть/развернуть» — иконка */
 .navtoggle {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   width: 100%;
-  text-align: left;
   background: none;
   border: none;
   color: var(--muted);
-  padding: 9px 11px;
-  border-radius: 6px;
-  font-size: 13px;
-  margin-bottom: 4px;
+  padding: 4px 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
 }
 .navtoggle:hover {
-  background: var(--surface2);
-  color: var(--ink2);
+  color: var(--ink);
 }
-.navtoggle .ic {
-  width: 17px;
-  text-align: center;
-  margin-right: 11px;
-  font-size: 16px;
+.navtoggle svg {
+  display: block;
 }
 
 /* Свёрнутое состояние — только иконки */
