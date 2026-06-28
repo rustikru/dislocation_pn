@@ -711,48 +711,58 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                        'DD.MM.YYYY') + 1
          end;
         -- пагинация на стороне БД
-      v_size number := nvl(p_page_size,
-                           1000000);
-      v_off  number := ( nvl(p_page,
-                             1) - 1 ) * v_size;
+      v_size number := nvl(
+         p_page_size,
+         1000000
+      );
+      v_off  number := ( nvl(
+         p_page,
+         1
+      ) - 1 ) * v_size;
    begin
       for a in (
          select *
            from xx_disl_gu23_act_v a
           where ( p_type is null
-             or instr(','
-                      || p_type
-                      || ',',
-                      ','
-                      || a.act_type
-                      || ',') > 0 )
+             or instr(
+            ','
+            || p_type
+            || ',',
+            ','
+            || a.act_type
+            || ','
+         ) > 0 )
             and ( p_status is null
-             or instr(','
-                      || p_status
-                      || ',',
-                      ','
-                      || a.status
-                      || ',') > 0 )
+             or instr(
+            ','
+            || p_status
+            || ',',
+            ','
+            || a.status
+            || ','
+         ) > 0 )
             and ( p_dept_id is null
-             or instr(','
-                      || p_dept_id
-                      || ',',
-                      ','
-                      || a.dept_id
-                      || ',') > 0 )
+             or instr(
+            ','
+            || p_dept_id
+            || ',',
+            ','
+            || a.dept_id
+            || ','
+         ) > 0 )
             -- период: попадание по дате начала ИЛИ по дате окончания
             and ( ( v_from is null
-                    and v_to is null )
+            and v_to is null )
              or ( a.start_at is not null
-                  and ( v_from is null
-                   or a.start_at >= v_from )
-                  and ( v_to is null
-                   or a.start_at < v_to ) )
+            and ( v_from is null
+             or a.start_at >= v_from )
+            and ( v_to is null
+             or a.start_at < v_to ) )
              or ( a.end_at is not null
-                  and ( v_from is null
-                   or a.end_at >= v_from )
-                  and ( v_to is null
-                   or a.end_at < v_to ) ) )
+            and ( v_from is null
+             or a.end_at >= v_from )
+            and ( v_to is null
+             or a.end_at < v_to ) ) )
             and ( v_q is null
          or lower(a.act_number) like '%'
                   || v_q
@@ -771,8 +781,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                    || p_q
                                    || '%'
          ) )
-          order by a.created_at desc offset v_off rows
-         fetch next v_size rows only
+         --order by a.created_at desc offset v_off rows
+         --fetch next v_size rows only
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
@@ -808,56 +818,62 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_cnt
         from xx_disl_gu23_act_v a
        where ( p_type is null
-          or instr(','
-                   || p_type
-                   || ',',
-                   ','
-                   || a.act_type
-                   || ',') > 0 )
+          or instr(
+         ','
+         || p_type
+         || ',',
+         ','
+         || a.act_type
+         || ','
+      ) > 0 )
          and ( p_status is null
-          or instr(','
-                   || p_status
-                   || ',',
-                   ','
-                   || a.status
-                   || ',') > 0 )
+          or instr(
+         ','
+         || p_status
+         || ',',
+         ','
+         || a.status
+         || ','
+      ) > 0 )
          and ( p_dept_id is null
-          or instr(','
-                   || p_dept_id
-                   || ',',
-                   ','
-                   || a.dept_id
-                   || ',') > 0 )
+          or instr(
+         ','
+         || p_dept_id
+         || ',',
+         ','
+         || a.dept_id
+         || ','
+      ) > 0 )
          and ( ( v_from is null
-                 and v_to is null )
+         and v_to is null )
           or ( a.start_at is not null
-               and ( v_from is null
-                or a.start_at >= v_from )
-               and ( v_to is null
-                or a.start_at < v_to ) )
+         and ( v_from is null
+          or a.start_at >= v_from )
+         and ( v_to is null
+          or a.start_at < v_to ) )
           or ( a.end_at is not null
-               and ( v_from is null
-                or a.end_at >= v_from )
-               and ( v_to is null
-                or a.end_at < v_to ) ) )
+         and ( v_from is null
+          or a.end_at >= v_from )
+         and ( v_to is null
+          or a.end_at < v_to ) ) )
          and ( v_q is null
-          or lower(a.act_number) like '%'
-                                      || v_q
-                                      || '%'
-          or lower(a.act_start_number) like '%'
-                                            || v_q
-                                            || '%'
-          or lower(a.reason_name) like '%'
-                                       || v_q
-                                       || '%'
-          or exists (
-            select 1
-              from xx_disl_gu23_act_row r
-             where r.act_id = a.id
-               and r.wagon_no like '%'
-                                   || p_q
+      or lower(a.act_number) like '%'
+               || v_q
+               || '%'
+      or lower(a.act_start_number) like '%'
+               || v_q
+               || '%'
+      or lower(a.reason_name) like '%'
+                                   || v_q
                                    || '%'
-         ) );
+          or exists (
+         select 1
+           from xx_disl_gu23_act_row r
+          where r.act_id = a.id
+            and r.wagon_no like '%'
+                                || p_q
+                                || '%'
+      ) );
       return v_cnt;
    end;
 
