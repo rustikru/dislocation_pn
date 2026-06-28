@@ -238,25 +238,27 @@ create or replace package xx_disl_gu23_pkg as
 
     -- ---- Акты ----
    function gu23_get_acts (
-      p_q         in varchar2 default null,
-      p_type      in varchar2 default null,
-      p_status    in varchar2 default null,
-      p_dept_id   in varchar2 default null,
-      p_date_from in varchar2 default null,   -- 'DD.MM.YYYY'
-      p_date_to   in varchar2 default null,   -- 'DD.MM.YYYY'
-      p_page      in number default 1,        -- номер страницы (с 1)
-      p_page_size in number default null      -- размер страницы (null = все)
+      p_q          in varchar2 default null,
+      p_type       in varchar2 default null,
+      p_status     in varchar2 default null,
+      p_dept_id    in varchar2 default null,
+      p_date_from  in varchar2 default null,   -- 'DD.MM.YYYY'
+      p_date_to    in varchar2 default null,   -- 'DD.MM.YYYY'
+      p_has_signed in varchar2 default null,   -- 'Y' = есть подписанный файл
+      p_page       in number default 1,        -- номер страницы (с 1)
+      p_page_size  in number default null      -- размер страницы (null = все)
    ) return xx_disl_gu23_act_tab
       pipelined;
 
     -- количество актов под те же фильтры (для пагинации)
    function gu23_count_acts (
-      p_q         in varchar2 default null,
-      p_type      in varchar2 default null,
-      p_status    in varchar2 default null,
-      p_dept_id   in varchar2 default null,
-      p_date_from in varchar2 default null,
-      p_date_to   in varchar2 default null
+      p_q          in varchar2 default null,
+      p_type       in varchar2 default null,
+      p_status     in varchar2 default null,
+      p_dept_id    in varchar2 default null,
+      p_date_from  in varchar2 default null,
+      p_date_to    in varchar2 default null,
+      p_has_signed in varchar2 default null
    ) return number;
 
    function gu23_get_act (

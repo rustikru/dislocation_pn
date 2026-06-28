@@ -36,6 +36,7 @@ export function showArchive(container) {
     dept: '',
     date_from: toFilterDate(monthStart),
     date_to: toFilterDate(monthEnd),
+    has_signed: '', // 'Y' = только с подписанным документом
     page: 1,
   }
   const PAGE_SIZE = 50
@@ -169,6 +170,36 @@ export function showArchive(container) {
     loadArchiveData()
   })
   $('#archive-filters').append($dateFrom, $dateTo)
+
+  // Доп. фильтры (поповер): «Приложение» — Все / Подписанный документ
+  const $extraWrap = $('<div class="ms-filter"></div>')
+  const $extraBtn = $(
+    '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
+  )
+  const $extraMenu = $(
+    '<div class="ms-menu" style="padding:12px;min-width:240px"></div>',
+  )
+  $extraMenu.append(
+    '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Приложение</label>' +
+      '<select class="inp" id="filter-has-signed" style="width:100%">' +
+      '<option value="">Все</option>' +
+      '<option value="signed">Подписанный документ</option>' +
+      '</select>',
+  )
+  $extraMenu.on('click', (e) => e.stopPropagation())
+  $extraBtn.on('click', (e) => {
+    e.stopPropagation()
+    $('.ms-menu').not($extraMenu).hide()
+    $extraMenu.toggle()
+  })
+  $extraMenu.on('change', '#filter-has-signed', function () {
+    filterState.has_signed = this.value === 'signed' ? 'Y' : ''
+    filterState.page = 1
+    $extraBtn.toggleClass('has-value', !!filterState.has_signed)
+    loadArchiveData()
+  })
+  $extraWrap.append($extraBtn, $extraMenu)
+  $('#archive-filters').append($extraWrap)
 
   // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))

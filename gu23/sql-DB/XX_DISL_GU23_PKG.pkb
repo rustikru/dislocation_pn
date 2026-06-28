@@ -698,6 +698,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_dept_id   in varchar2 default null,
       p_date_from in varchar2 default null,
       p_date_to   in varchar2 default null,
+      p_has_signed in varchar2 default null,
       p_page      in number default 1,
       p_page_size in number default null
    ) return xx_disl_gu23_act_tab
@@ -769,6 +770,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              or a.end_at >= v_from )
             and ( v_to is null
              or a.end_at < v_to ) ) )
+            -- есть прикреплённый подписанный файл
+            and ( nvl(p_has_signed, 'N') <> 'Y'
+             or exists (
+            select 1
+              from xx_disl_gu23_file f
+             where f.act_id = a.id
+               and f.file_category = 'signed'
+         ) )
             and ( v_q is null
          or lower(a.act_number) like '%'
                   || v_q
@@ -809,7 +818,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_status    in varchar2 default null,
       p_dept_id   in varchar2 default null,
       p_date_from in varchar2 default null,
-      p_date_to   in varchar2 default null
+      p_date_to   in varchar2 default null,
+      p_has_signed in varchar2 default null
    ) return number is
       v_q    varchar2(512) := lower(p_q);
       v_from date :=
@@ -868,6 +878,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           or a.end_at >= v_from )
          and ( v_to is null
           or a.end_at < v_to ) ) )
+         and ( nvl(p_has_signed, 'N') <> 'Y'
+          or exists (
+         select 1
+           from xx_disl_gu23_file f
+          where f.act_id = a.id
+            and f.file_category = 'signed'
+      ) )
          and ( v_q is null
       or lower(a.act_number) like '%'
                || v_q
