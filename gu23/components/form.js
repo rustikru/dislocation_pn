@@ -606,6 +606,7 @@ function loadWagonsDataFromDislocation() {
     let foundCount = 0
     let addedCount = 0
     let firstFound = null
+    const busy = [] // вагоны/накладные, уже занятые другим актом начала
 
     // Получаем существующие номера вагонов для проверки
     const existingNumbers = new Set(activeDraft.wagons.map((w) => w.n))
@@ -615,6 +616,16 @@ function loadWagonsDataFromDislocation() {
         foundCount++
         if (!firstFound) firstFound = row
         const wagonNumber = String(row.WAGON_NO)
+
+        // Вагон/накладная уже заняты действующим актом начала — не добавляем
+        if (row.DUP_ACT) {
+          busy.push({
+            n: wagonNumber,
+            act: row.DUP_ACT,
+            by: row.DUP_BY, // 'wagon' (в пределах месяца) | 'waybill' (3 мес.)
+          })
+          return
+        }
 
         // Добавляем только если вагона еще нет в списке
         if (!existingNumbers.has(wagonNumber)) {
@@ -627,7 +638,7 @@ function loadWagonsDataFromDislocation() {
             to: row.ST_TO,
             cargo: row.CARGO,
             weight: row.WEIGHT
-            
+
           })
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
@@ -644,17 +655,32 @@ function loadWagonsDataFromDislocation() {
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
       }
     }
+    // Текст про занятые вагоны/накладные (уже есть действующий акт начала)
+    let busyText = ''
+    if (busy.length) {
+      const parts = busy.map(
+        (b) =>
+          `${b.n} (${b.by === 'waybill' ? 'накладная' : 'вагон'} — акт ${b.act})`,
+      )
+      busyText = ` Пропущено занятых: ${busy.length} — ${parts.join(', ')}.`
+    }
+
     // Выводим плашку о итогах найденных данных
     activeDraft._summary = {
       req: inputNums.length,
       found: foundCount,
       added: addedCount,
-      text: `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.`,
+      busy: busy.length,
+      text:
+        `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.` +
+        busyText,
     }
 
     showToast(
-      `Добавлено ${addedCount} новых вагонов из ${foundCount} найденных`,
-      addedCount ? 'ok' : 'info',
+      busy.length
+        ? `Добавлено ${addedCount}, пропущено занятых ${busy.length} (уже есть акт начала)`
+        : `Добавлено ${addedCount} новых вагонов из ${foundCount} найденных`,
+      busy.length ? 'warn' : addedCount ? 'ok' : 'info',
     )
     $('#txt-wagons').val('')
     showForm($('#view')[0])

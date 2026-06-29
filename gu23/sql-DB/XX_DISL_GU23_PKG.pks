@@ -134,7 +134,9 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          cargo      varchar2(256),
          weight     varchar2(32),
          waybill_no varchar2(64),
-         found      number
+         found      number,
+         dup_act    varchar2(64),  -- номер уже существующего акта начала, занявшего вагон/накладную (null = свободен)
+         dup_by     varchar2(16)   -- по чему совпадение: 'wagon' (в пределах месяца) или 'waybill' (в пределах 3 мес.)
    );
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;

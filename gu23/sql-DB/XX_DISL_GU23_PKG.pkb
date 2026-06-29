@@ -1325,6 +1325,80 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                        )
          and ei.inv_date_create > to_date('01.01.2026','dd.mm.rrrr')
          and ei.inv_recip_name <> 'ОАО "Метафракс"';
+
+        -- Проставляет l_row.dup_act/dup_by, если по вагону (в пределах месяца)
+        -- или накладной (в пределах 3 месяцев) уже есть занятый акт начала.
+        -- Только для актов начала; занятые статусы: active/signed/closed.
+      procedure set_dup_flag is
+      begin
+         l_row.dup_act := null;
+         l_row.dup_by := null;
+         if
+            l_row.found <> 1
+            or nvl(
+               p_act_type,
+               'start'
+            ) <> 'start'
+         then
+            return;
+         end if;
+            -- по вагону в пределах текущего месяца
+         begin
+            select a.act_number
+              into l_row.dup_act
+              from xx_disl_gu23_act a,
+                   xx_disl_gu23_act_row r
+             where r.act_id = a.id
+               and a.act_type = 'start'
+               and a.status in ( 'active',
+                                 'signed',
+                                 'closed' )
+               and r.wagon_no = l_row.wagon_no
+               and trunc(
+                  a.start_at,
+                  'MM'
+               ) = trunc(
+                  sysdate,
+                  'MM'
+               )
+               and rownum = 1;
+            l_row.dup_by := 'wagon';
+         exception
+            when no_data_found then
+               l_row.dup_act := null;
+         end;
+            -- по накладной в пределах 3 месяцев
+         if
+            l_row.dup_act is null
+            and l_row.waybill_no is not null
+         then
+            begin
+               select a.act_number
+                 into l_row.dup_act
+                 from xx_disl_gu23_act a,
+                      xx_disl_gu23_act_row r
+                where r.act_id = a.id
+                  and a.act_type = 'start'
+                  and a.status in ( 'active',
+                                    'signed',
+                                    'closed' )
+                  and r.waybill_no = l_row.waybill_no
+                  and a.start_at >= add_months(
+                     sysdate,
+                     -3
+                  )
+                  and a.start_at <= add_months(
+                     sysdate,
+                     3
+                  )
+                  and rownum = 1;
+               l_row.dup_by := 'waybill';
+            exception
+               when no_data_found then
+                  l_row.dup_act := null;
+            end;
+         end if;
+      end set_dup_flag;
    begin
       l_row.weight := null;
 
@@ -1377,7 +1451,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.cargo := null;
             l_row.weight := null;
             l_row.st_to_code := null;
-                
+            l_row.dup_act := null;
+            l_row.dup_by := null;
+
 
                 --log_new (l_function, 'p_waybill_no=' || p_waybill_no);
                 --log_new (l_function, 'p_dest_station=' || p_dest_station);
@@ -1401,6 +1477,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                l_row.found := 1;
             end loop;
 
+            set_dup_flag;
             pipe row ( l_row );
          end loop;
         ---------------------------------------------------------------------
@@ -1425,6 +1502,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.waybill_no := d.waybill_no;
             l_row.st_to_code := d.st_to_code;
             l_row.found := 1;
+            l_row.dup_act := null;
+            l_row.dup_by := null;
+            set_dup_flag;
             pipe row ( l_row );
          end loop;
       end if;
