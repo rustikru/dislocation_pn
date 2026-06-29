@@ -639,9 +639,10 @@ function loadWagonsDataFromDislocation() {
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
         activeDraft.cargoReference = firstFound.CARGO  //  груз
-      if (!activeDraft.stationToName && firstFound.ST_TO)
+      if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
+      }
     }
     // Выводим плашку о итогах найденных данных
     activeDraft._summary = {
