@@ -46,13 +46,21 @@
 /* ============ Общий фон / шрифт ============ */
 body {
   font-family: var(--nt-sans);
+  font-weight: 400;
   background-color: var(--nt-bg);
   color: var(--nt-ink);
   border-top: 4px solid var(--nt-accent);
+  /* сглаживание — без него шрифт выглядит толще, чем в прототипе */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
+/* Во весь экран — без пустых зон по бокам */
 .wrapper {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
   background-color: var(--nt-panel);
-  box-shadow: var(--nt-shadow);
 }
 
 /* =====================================================================
@@ -189,15 +197,15 @@ header {
 /* Кнопки (поиск и доп. кнопки) — единый современный вид */
 .btnFind {
   height: auto;
-  line-height: normal;
+  line-height: 1.3;
   font-family: var(--nt-sans);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--nt-ink);
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);
-  border-radius: var(--nt-r);
-  padding: 6px 13px;
+  border-radius: 6px;
+  padding: 4px 10px;
   cursor: pointer;
   transition: background .12s, border-color .12s, color .12s;
 }
@@ -263,7 +271,7 @@ aside {
   padding: 2px 6px;
   margin-left: 0.4em;
 }
-.tree_content_railway { font-weight: 600; color: var(--nt-accent-deep); }
+.tree_content_railway { font-weight: 500; color: var(--nt-accent-deep); }
 .tree_Content:hover { background: var(--nt-panel-2); }
 
 /* Выделение узла / результат поиска */
