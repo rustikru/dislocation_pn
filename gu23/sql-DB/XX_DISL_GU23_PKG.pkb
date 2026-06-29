@@ -1842,6 +1842,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                'N'
             ) <> 'Y'
          then
+            -- дубль по вагону в пределах одного месяца
+            -- занятые циклы: active/signed/closed; annulled/rejected/draft — свободны
             v_dupnum := null;
             begin
                select a.act_number
@@ -1850,9 +1852,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                       xx_disl_gu23_act_row r
                 where r.act_id = a.id
                   and a.act_type = 'start'
-                  and a.status = 'active'
+                  and a.status in ( 'active',
+                                    'signed',
+                                    'closed' )
                   and a.id <> v_id
                   and r.wagon_no = w.wagon_no
+                  and trunc(
+                     a.start_at,
+                     'MM'
+                  ) = trunc(
+                     v_start,
+                     'MM'
+                  )
                   and rownum = 1;
             exception
                when no_data_found then
@@ -1863,7 +1874,44 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                rollback;
                return format_error('Нельзя создать акт ?Начало простоя?: по вагону '
                                    || w.wagon_no
-                                   || ' уже есть открытый цикл в акте ' || v_dupnum);
+                                   || ' уже есть акт ' || v_dupnum || ' за этот месяц');
+            end if;
+
+            -- дубль по накладной в пределах 3 месяцев
+            if w.waybill_no is not null then
+               v_dupnum := null;
+               begin
+                  select a.act_number
+                    into v_dupnum
+                    from xx_disl_gu23_act a,
+                         xx_disl_gu23_act_row r
+                   where r.act_id = a.id
+                     and a.act_type = 'start'
+                     and a.status in ( 'active',
+                                       'signed',
+                                       'closed' )
+                     and a.id <> v_id
+                     and r.waybill_no = w.waybill_no
+                     and a.start_at >= add_months(
+                        v_start,
+                        -3
+                     )
+                     and a.start_at <= add_months(
+                        v_start,
+                        3
+                     )
+                     and rownum = 1;
+               exception
+                  when no_data_found then
+                     v_dupnum := null;
+               end;
+
+               if v_dupnum is not null then
+                  rollback;
+                  return format_error('Нельзя создать акт ?Начало простоя?: по накладной '
+                                      || w.waybill_no
+                                      || ' уже есть акт ' || v_dupnum || ' (в пределах 3 месяцев)');
+               end if;
             end if;
          end if;
 
