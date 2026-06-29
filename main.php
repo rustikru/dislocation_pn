@@ -31,6 +31,9 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
         <link rel="stylesheet" href="css/request_window.css?ver=0" type="text/css">
         <link type="text/css" href="jquery/jquery-ui.min.css" rel="Stylesheet" />
         <link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
+        <!-- НОВАЯ ТЕМА главной: верхнее меню, дерево путей, таблица вагонов (заявки не затрагиваются).
+             Быстрое переключение на старый вид — закомментируйте строку ниже. -->
+        <link rel="stylesheet" href="css/main_new_theme.css?ver=1" type="text/css">
         <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
         <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="js/tree.js"></script>

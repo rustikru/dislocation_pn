@@ -1,0 +1,341 @@
+/* =====================================================================
+   НОВАЯ ТЕМА главной страницы (main.php)
+   Накладной слой поверх site_layout.css / tree.css.
+   Охват: верхнее меню (шапка), иерархия ж/д путей (дерево), таблица
+   вагонов (.addInfoTable) + общий фон/шрифты.
+   НЕ затрагивает: заявки (request_window.css / .request-*).
+   Быстрое переключение: закомментировать <link> на этот файл в main.php.
+   Палитра — промышленный зелёный (Метафракс); цвета в hex для
+   совместимости со старыми браузерами.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --nt-bg:        #e9edf1;
+  --nt-panel:     #ffffff;
+  --nt-panel-2:   #f5f7f9;
+  --nt-line:      #d7dee5;
+  --nt-line-soft: #e6ebf0;
+
+  --nt-ink:   #1d2733;
+  --nt-ink-2: #4a5666;
+  --nt-ink-3: #7c8896;
+
+  --nt-accent:      #3d7a5f;
+  --nt-accent-deep: #2f5f49;
+  --nt-accent-soft: #e7f1ec;
+  --nt-accent-line: #c2dccf;
+
+  --nt-ok:     #3f8a5a;
+  --nt-ok-bg:  #e6f4ea;
+  --nt-warn:   #a9791f;
+  --nt-warn-bg:#f6ecd4;
+  --nt-err:    #bb4a36;
+  --nt-err-bg: #f7e4df;
+
+  --nt-sel-bg: #e0eee7;
+  --nt-hi:     #f2e24a;
+
+  --nt-shadow: 0 1px 2px rgba(20,30,45,.05), 0 6px 20px rgba(20,30,45,.07);
+  --nt-r: 7px;
+  --nt-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --nt-sans: "IBM Plex Sans", system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+
+/* ============ Общий фон / шрифт ============ */
+body {
+  font-family: var(--nt-sans);
+  background-color: var(--nt-bg);
+  color: var(--nt-ink);
+  border-top: 4px solid var(--nt-accent);
+}
+.wrapper {
+  background-color: var(--nt-panel);
+  box-shadow: var(--nt-shadow);
+}
+
+/* =====================================================================
+   1. ВЕРХНЕЕ МЕНЮ (шапка)
+   ===================================================================== */
+header {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+}
+
+/* Полоса навигации */
+.menu {
+  height: auto;
+  min-height: 42px;
+  background: var(--nt-panel);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.menu li { z-index: 10; }
+
+.menu li a {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 15px;
+  line-height: 42px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-family: var(--nt-sans);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--nt-ink-2);
+  text-shadow: none;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.menu li:hover > a {
+  color: var(--nt-ink);
+  background: var(--nt-panel-2);
+}
+.menu li.active > a,
+.menu li:first-child > a {        /* первый пункт подсвечен как активный раздел */
+  color: var(--nt-accent-deep);
+  border-bottom-color: var(--nt-accent);
+  font-weight: 600;
+}
+.menu-station,
+.menu-heading {
+  color: var(--nt-accent-deep) !important;
+  font-size: 14px !important;
+}
+
+/* Выпадающие подменю */
+.menu ul {
+  top: 42px;
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  box-shadow: var(--nt-shadow);
+  padding: 4px;
+}
+.menu ul li a {
+  width: 210px;
+  border: 0;
+  border-radius: 6px;
+  line-height: 32px;
+  padding: 0 12px;
+  margin: 0;
+}
+.menu li:hover > ul li { height: 34px; }
+.menu li:hover > ul li a:hover { background: var(--nt-sel-bg); color: var(--nt-accent-deep); }
+
+/* Правый блок: приветствие + выход */
+.headerstation { line-height: normal; }
+.headerfullname {
+  border: 0;
+  text-shadow: none;
+  color: var(--nt-ink-2);
+  font-family: var(--nt-sans);
+  font-weight: 500;
+  font-size: 12.5px;
+  line-height: 42px;
+  padding: 0 14px;
+  margin: 0;
+}
+.logoutbtn { line-height: 42px; margin-right: 16px; }
+.logoutbtn input[type="submit"] {
+  color: var(--nt-accent-deep);
+  font-family: var(--nt-sans);
+  font-weight: 600;
+  font-size: 12.5px;
+  text-decoration: none !important;
+}
+.logoutbtn input[type="submit"]:hover { text-decoration: underline !important; }
+
+.headermt {                       /* строка тех. обслуживания — оставляем заметной */
+  color: var(--nt-err);
+  font-size: 16px;
+}
+
+/* =====================================================================
+   2. ТУЛБАР / ПОИСК (.options)
+   ===================================================================== */
+.options {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+  background: var(--nt-panel-2);
+  padding: 9px 16px;
+}
+.options label {
+  color: var(--nt-ink-2);
+  font-size: 12.5px;
+  margin-right: 8px;
+}
+.inputFind {
+  height: auto;
+  text-align: left;
+  font-family: var(--nt-mono);
+  font-size: 13px;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: var(--nt-r);
+  padding: 6px 10px;
+  transition: border-color .12s, box-shadow .12s;
+}
+.inputFind:focus {
+  outline: 0;
+  border-color: var(--nt-accent);
+  box-shadow: 0 0 0 3px var(--nt-accent-soft);
+}
+
+/* Кнопки (поиск и доп. кнопки) — единый современный вид */
+.btnFind {
+  height: auto;
+  line-height: normal;
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: var(--nt-r);
+  padding: 6px 13px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btnFind:hover { background: var(--nt-panel-2); border-color: var(--nt-ink-3); }
+/* Кнопка «Поиск» в тулбаре — акцентная */
+.options .btnFind {
+  background: var(--nt-accent);
+  border-color: var(--nt-accent);
+  color: #fff;
+}
+.options .btnFind:hover {
+  background: var(--nt-accent-deep);
+  border-color: var(--nt-accent-deep);
+}
+
+/* =====================================================================
+   3. ИЕРАРХИЯ Ж/Д ПУТЕЙ (дерево)
+   ===================================================================== */
+aside {
+  background: var(--nt-panel);
+  border: 0;
+  border-right: 1px solid var(--nt-line);
+}
+
+/* Панель «Доп. кнопки» */
+.add-btn-window {
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel-2);
+  border-radius: 8px;
+}
+.add-btn-titlebar {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line-soft);
+  background: transparent;
+  color: var(--nt-ink);
+  border-radius: 8px 8px 0 0;
+}
+.request-title { font-family: var(--nt-sans); font-weight: 600; }
+.add-btn-button {
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel);
+  border-radius: 6px;
+}
+
+/* Селектор станции в дереве */
+.selectStationClass {
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: var(--nt-r);
+  padding: 5px 8px;
+}
+
+/* Узлы дерева */
+.tree_Content {
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin-left: 0.4em;
+}
+.tree_content_railway { font-weight: 600; color: var(--nt-accent-deep); }
+.tree_Content:hover { background: var(--nt-panel-2); }
+
+/* Выделение узла / результат поиска */
+.tree_selected,
+.tree_selected > .tree_Content,
+li.tree_Node.tree_selected > .tree_Content {
+  background: var(--nt-sel-bg) !important;
+  color: var(--nt-accent-deep);
+  border-radius: 5px;
+}
+.tree_selectedFind,
+.tree_selectedFind > .tree_Content {
+  background: var(--nt-hi) !important;
+  border-radius: 5px;
+}
+
+/* Подсветка узлов, требующих внимания (сохраняем смысл, делаем мягче) */
+.need_fill_attr > div.tree_Content { background-color: var(--nt-err-bg); color: var(--nt-err); }
+.wrong_number   > div.tree_Content { background-color: var(--nt-warn-bg); color: var(--nt-warn); }
+
+/* =====================================================================
+   4. ДЕТАЛЬНАЯ ТАБЛИЦА ПО ВАГОНУ (.addInfoTable)
+   ===================================================================== */
+section { border: 0; background: var(--nt-bg); }
+
+.addInfoTable {
+  background: var(--nt-panel);
+  border-spacing: 0;
+  border-collapse: separate;
+  text-align: left;
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+}
+.addInfoTable th {
+  height: auto;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--nt-panel-2);
+  color: var(--nt-ink-2);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--nt-line);
+  vertical-align: middle;
+}
+.addInfoTable tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--nt-line-soft);
+  vertical-align: middle;
+}
+/* Нейтральная зебра вместо зелёной */
+.addInfoTable tbody tr:nth-child(odd)  { background: var(--nt-panel); }
+.addInfoTable tbody tr:nth-child(even) { background: var(--nt-panel-2); }
+.addInfoTable tbody tr:hover td { background: var(--nt-sel-bg); }
+
+/* Итоговая строка — закреплена снизу, акцентная */
+.addInfoTable tbody tr#addInfoTableTotalTr,
+.addInfoTable tbody tr#addInfoTableTotalTr td {
+  position: sticky;
+  bottom: 0;
+  background: var(--nt-accent-soft);
+  color: var(--nt-accent-deep);
+  font-weight: 700;
+  border-top: 1px solid var(--nt-accent-line);
+}
+
+/* Сохраняем семантические пометки номеров вагонов */
+.true-car-number  { border: 1px solid var(--nt-ok)  !important; }
+.wrong-car-number { border: 1px solid var(--nt-err) !important; }
+.FromUgl { color: #2f6bdd; }
