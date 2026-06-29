@@ -95,6 +95,7 @@ function showActionsMenu(act, data) {
       const appr = approvalMap[s.USER_ID]
       return !appr || appr.STATUS !== 'approved'
     })
+    
     if (hasUnsigned) {
       addItem('Рассылка ссылок на подписание', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
@@ -204,7 +205,7 @@ function showDetailsBlock(act) {
         <div style="display:flex;align-items:center;gap:8px">
           ${downloadHtml}
           <div class="actions-dd" id="actions-dd" style="display:none">
-            <button class="btn icon-btn" id="btn-actions" title="Ещё действия">···</button>
+            <button class="btn icon-btn" id="btn-actions" title="Ещё действия">...</button>
             <div class="actions-menu" id="actions-menu"></div>
           </div>
         </div>
@@ -263,12 +264,12 @@ function showWagonsBlock(wagons) {
 }
 
 function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
-  // Строим map: approver_id → approval record
+  // map: approver_id → approval record
   const approvalMap = {}
   approvals.forEach((a) => {
     approvalMap[a.APPROVER_ID] = a
   })
-
+  // Статусы для подписантов
   const statusPill = (status) => {
     if (status === 'approved')
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47"> Подписано</span>'
@@ -278,7 +279,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> В процессе</span>'
     return ''
   }
-
+  // Версия документа 
   const versionBadge = (approval) => {
     if (!approval || approval.STATUS !== 'approved') return ''
     const sv = approval.SIGNED_VERSION
@@ -321,7 +322,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
         .join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  // Баннер "подписать" — только для пользователей с правом SIGN_ACT
+  //  "подписать" — только для пользователей с правом SIGN_ACT
   const canSign =
     act.STATUS === 'active' &&
     hasPerm('SIGN_ACT') &&
@@ -677,29 +678,7 @@ function resendApprovalLinks(act, signers, approvals) {
   })
 }
 
-function sendForApproval(act) {
-  if (!(act.WAGON_CNT > 0)) {
-    showToast('Нельзя отправить на подписание: в акте нет вагонов', 'err')
-    return
-  }
-  showConfirmBox(
-    'Отправить на подписание',
-    'Запросить электронное подписание у подписантов акта?',
-    () => {
-      sendApiRequest('gu23_send_approval', { act_id: act.ID }).done(
-        (response) => {
-          if (response && response.ok) {
-            showToast(response.msg || 'Письма отправлены', 'ok')
-            navigateTo('card', act.ID)
-          } else {
-            showToast((response && response.msg) || 'Ошибка отправки', 'err')
-          }
-        },
-      )
-    },
-  )
-}
-
+// Загрузка файла на сервер (приложение)
 function uploadFilesToServer(actId, files, category) {
   if (!files || !files.length) return
   const formData = new FormData()
@@ -724,7 +703,7 @@ function uploadFilesToServer(actId, files, category) {
     navigateTo('card', actId)
   })
 }
-
+// Удаляем (приложение)
 function deleteAttachedFile(fileId, actId) {
   showConfirmBox('Удаление файла', 'Удалить приложение?', () => {
     sendApiRequest('gu23_del_file', { file_id: fileId }).done((response) => {

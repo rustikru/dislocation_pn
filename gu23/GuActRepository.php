@@ -245,7 +245,16 @@ class GuActRepository
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
             }
-            ob_end_flush();
+            // Логируем неуспешные ответы (ok:false) — причина видна в gu23/log/
+            $out = ob_get_clean();
+            $decoded = json_decode($out, true);
+            if (is_array($decoded) && array_key_exists('ok', $decoded) && $decoded['ok'] === false) {
+                Gu23Logger::error('action_failed', [
+                    'action' => $action,
+                    'msg' => $decoded['msg'] ?? '',
+                ]);
+            }
+            echo $out;
         } catch (\Throwable $e) {
             ob_end_clean(); // сбрасываем любые PHP-предупреждения, не ломаем JSON
             Gu23Logger::exception($e, $action);
@@ -484,13 +493,14 @@ class GuActRepository
     /* Грузим данные из внешней дислокации в таблицу                     */
     /* ----------------------------------------------------------------- */
 
-    /** Данные вагонов из внешней дислокации (номер, собственник, маршрут, груз, вес). */
+    /** Данные вагонов из внешней дислокации (номер, накладная, собственник, маршрут, груз, вес). */
     private function getWagonInfo(): void
     {
-        $wagonsJson = filter_input(INPUT_POST, 'wagons');
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: '';
-        $destStation = filter_input(INPUT_POST, 'dest_station') ?: '';
-        $cardoName = filter_input(INPUT_POST, 'cardo_name') ?: '';
+        $wagonsJson = filter_input(INPUT_POST, 'wagons'); // Список вагонов
+        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: ''; // Накладаная
+        $destStation = filter_input(INPUT_POST, 'dest_station') ?: ''; // Станция назначения
+        $cardoName = filter_input(INPUT_POST, 'cardo_name') ?: ''; // Название груза
+        $wagonsJson = filter_input(INPUT_POST, 'wagons'); // add 29.06.2026 Тип акта
 
         $list = json_decode((string) $wagonsJson, true) ?: [];
         $clob = implode(self::RS, array_map('strval', $list));
@@ -964,7 +974,7 @@ class GuActRepository
     /** Переотправка ссылки одному конкретному подписанту (обновляет token_sig). */
     private function resendApproval(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->hasPerm('SEND_APPROVAL')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }

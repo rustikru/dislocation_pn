@@ -8,7 +8,7 @@ let refsPage = 1
 let currentItems = []
 let searchTimer = null
 
-const REFS_PAGE_SIZE = 20 // fallback, актуальный размер приходит с сервера
+const REFS_PAGE_SIZE = 20 // fallback
 let refsPageSize = REFS_PAGE_SIZE
 
 export function showRefs(container) {
@@ -90,7 +90,7 @@ function reloadRefs() {
 }
 
 function tabStyle(active) {
-  // активная — «карточка», сливающаяся с контентом снизу.
+  // активная карточка
   const base = 'padding:8px 20px;font-size:13px;border-radius:0;cursor:pointer;'
   return active
     ? base +

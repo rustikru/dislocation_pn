@@ -1,15 +1,14 @@
 <?php
 session_start();
-// Сохраняем текущий URL для возможного редиректа после авторизации.
-// Важно: НЕ сохраняем сам select_station.php, иначе после выбора станции
-// будет бесконечный редирект страницы на саму себя.
-if (strpos($_SERVER['REQUEST_URI'], '/select_station.php') !== 0) {
-    $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
-}
-
 include_once('login.php');
 include_once('connection.php');
 $auth = new AuthClass();
+
+
+// Если пользователь не авторизован и это не select_station.php
+if (!$auth->isAuth() && strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false) {
+    $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
+}
 
 if ($auth->isAuth()) {
     if (isset($_POST["submit"])) {
@@ -17,10 +16,16 @@ if ($auth->isAuth()) {
     }
 
     if ($auth->getStationId() !== null) {
-        // Проверяем, есть ли сохраненный URL для редиректа
+        // Если есть сохраненный URL для редиректа - используем его
+        // Иначе - main.php
         $redirectUrl = isset($_SESSION['redirect_after_auth']) ? $_SESSION['redirect_after_auth'] : '/main.php';
-
-        // Очищаем сессионную переменную, чтобы она не использовалась повторно
+        
+        // Проверяем, не является ли URL страницей авторизации
+        if ($redirectUrl == '/index.php' || $redirectUrl == '') {
+            $redirectUrl = '/main.php';
+        }
+        
+        // Очищаем сессионную переменную
         unset($_SESSION['redirect_after_auth']);
 
         header("location: " . $redirectUrl);

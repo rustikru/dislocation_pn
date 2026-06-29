@@ -1,14 +1,5 @@
 <?php
 /**
- * browser_check.php — серверная проверка браузера для модуля ГУ-23.
- *
- * Пропускаются только поддерживаемые браузеры (по минимальной версии):
- *   Chrome >= 80, Edge >= 80, Yandex >= 20, Firefox >= 60, Safari >= 12.
- * Старые браузеры (FF45, IE и пр.) получают страницу-заглушку.
- *
- */
-
-/**
  * Определить браузер и версию из User-Agent.
  * @return array{name:string, version:int}  name='unknown' если не распознан
  */
@@ -53,7 +44,6 @@ function gu23_browser_supported(array $b): bool
     return $b['version'] >= $minVersions[$b['name']];
 }
 
-// --- DEV: при локальной разработке проверку пропускаем ---
 if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
     return;
 }
@@ -116,8 +106,8 @@ if (!gu23_browser_supported($gu23_browser)) {
             }
 
             .browsers span {
-                background: #e8f0fe;
-                color: #1a73e8;
+                /* background: #e8f0fe; */
+                
                 padding: 7px 14px;
                 border-radius: 6px;
                 font-size: 14px;
@@ -137,8 +127,7 @@ if (!gu23_browser_supported($gu23_browser)) {
                 <span>Google Chrome</span>
                 <span>Microsoft Edge</span>
                 <span>Яндекс.Браузер</span>
-                <span>Mozilla Firefox >60</span>
-                <span>Safari</span>
+                <span>Mozilla Firefox > верc.60</span>
                 <span>Opera</span>
             </div>
         </div>

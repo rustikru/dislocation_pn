@@ -9,7 +9,7 @@ export function sendApiRequest(action, data) {
   })
 }
 
-// Настройка индикатора загрузки и перехват ошибок сервера
+// Настройка загрузки и перехват ошибок сервера
 $(document).ready(() => {
   $(document).ajaxStart(() => $('.loadImg').show())
   $(document).ajaxStop(() => $('.loadImg').hide())

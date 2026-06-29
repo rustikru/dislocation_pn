@@ -31,7 +31,7 @@
   --signal2: #4d5b72;
   --signalink: #ffffff;
   --signalsoft: #eceff4;
-  --open: #9e5b52;
+  --open: #e61b00;
   --openbg: #f2e9e6;
   --closed: #5a7a60;
   --closedbg: #eaefe9;
@@ -693,6 +693,7 @@ a {
 }
 .frow label .req {
   color: var(--open);
+  font-size: 13px;
 }
 .inp,
 textarea.inp,

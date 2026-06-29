@@ -3,7 +3,7 @@
  * GuActDocxReport.php
  *
  * Генератор DOCX-отчётов для актов ГУ-23.
- * Работает на чистом PHP 8.1+ без сторонних зависимостей (только ZipArchive).
+ * с помощью ZipArchive)
  *
  * Шаблоны: gu23/report/template/*.docx
  * Плейсхолдеры в шаблоне: {{ACT_NUMBER}}, {{DEPT}}, {{WAGON_NO}} и т.д.
@@ -14,7 +14,6 @@ class GuActDocxReport
 {
     /**
      * Маппинг тип_акта => имя файла шаблона (относительно папки template/).
-     * Чтобы добавить свой шаблон — положите DOCX в template/ и пропишите здесь.
      */
     const TEMPLATES = [
         'start' => 'act23_general.docx',
@@ -30,7 +29,7 @@ class GuActDocxReport
     }
 
     /**
-     * Сформировать DOCX и сразу отдать браузеру как скачиваемый файл.
+     * Сформировать DOCX 
      *
      * @param array $act     Строка акта (ACT_NUMBER, DEPT, ACT_TYPE, START_AT …)
      * @param array $wagons  Массив вагонов  (WAGON_NO, KIND, CARGO, WEIGHT, OWNER …)
@@ -45,11 +44,10 @@ class GuActDocxReport
         if (!file_exists($templatePath)) {
             throw new \RuntimeException(
                 'Шаблон не найден: ' . $templatePath . '. '
-                . 'Запустите report/create_template.php для создания шаблона.'
             );
         }
 
-        // Работаем с временной копией, чтобы не повредить шаблон
+        // временной копией
         $tmp = tempnam(sys_get_temp_dir(), 'gu23_docx_');
         copy($templatePath, $tmp);
 
@@ -101,8 +99,6 @@ class GuActDocxReport
 
     /**
      * Склеивает соседние <w:r>, у которых одинаковый (или отсутствующий) <w:rPr>.
-     * Это позволяет искать плейсхолдеры как целые строки, даже если Word
-     * разбил их на несколько кусков.
      */
     private function mergeRuns(string $xml): string
     {
@@ -173,9 +169,7 @@ class GuActDocxReport
             return $para; // Ничего не слилось
         }
 
-        // Перестраиваем содержимое параграфа: заменяем все <w:r>...</w:r> на группы
-        // Собираем новый XML параграфа
-        // Найдём, что стоит ДО первого рана и ПОСЛЕ последнего
+       // Собираем новый XML параграфа
         $firstOffset = $runs[0][1];
         $lastRun = end($runs);
         $lastEnd = $lastRun[1] + strlen($lastRun[0]);
@@ -314,11 +308,7 @@ class GuActDocxReport
         }
         return $row;
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* Вспомогательные                                                         */
-    /* ---------------------------------------------------------------------- */
-
+    
     private function fmtDate(string $d): string
     {
         if (preg_match('/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/', $d, $m)) {

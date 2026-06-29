@@ -7,33 +7,29 @@ export function drawNav() {
   const navigationItems = []
 
   if (hasPerm('CREATE_ACT')) {
-    navigationItems.push({ page: 'new', icon: '＋', label: 'Создать акт' })
+    navigationItems.push({ page: 'new', icon: 'add.svg', label: 'Создать акт' })
   }
 
-  navigationItems.push({ page: 'archive', icon: '🗂', label: 'Архив актов' })
+  navigationItems.push({ page: 'archive', icon: 'archive.svg', label: 'Архив актов' })
 
   if (hasPerm('MANAGE_REFS')) {
-    navigationItems.push({ page: 'refs', icon: '📖', label: 'Справочники' })
+    navigationItems.push({ page: 'refs', icon: 'agenda.svg', label: 'Справочники' })
   }
 
   if (hasPerm('MANAGE_ROLES')) {
-    navigationItems.push({ page: 'roles', icon: '👥', label: 'Роли' })
+    navigationItems.push({ page: 'roles', icon: 'user.svg', label: 'Роли' })
   }
 
   const $nav = $('#nav').empty()
 
-  // применяем сохранённое состояние «свёрнуто»
+  //  «свёрнуто»
   const collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
   $nav.toggleClass('collapsed', collapsed)
 
   // кнопка-переключатель (иконка, как в Gemini)
   const $toggle = $(`
     <button class="navtoggle" title="${collapsed ? 'Развернуть меню' : 'Свернуть меню'}">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="4" width="18" height="16" rx="2"/>
-        <line x1="9" y1="4" x2="9" y2="20"/>
-      </svg>
+      <img src="/img/nav/sidebar.svg" alt="" width="22" height="22" style="flex-shrink:0">
     </button>
   `)
   $toggle.on('click', () => {
@@ -50,7 +46,7 @@ export function drawNav() {
 
     const $button = $(`
       <button class="navbtn ${isActive ? 'active' : ''}" title="${item.label}">
-        <span class="ic">${item.icon}</span>
+        <span class="ic"> <img src="/img/nav/${item.icon}" alt="Word" width="18" height="18" style="flex-shrink:0"></span>
         <span>${item.label}</span>
       </button>
     `)
@@ -87,6 +83,6 @@ export function drawNav() {
       </button>
     </form>
   `)
-  $foot.append($logout)
-  $nav.append($foot)
+  //$foot.append($logout)
+  //$nav.append($foot)
 }

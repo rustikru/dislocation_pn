@@ -1,8 +1,8 @@
 <?php
     session_start(); //Запускаем сессии
-    include_once('login.php');
+    include('login.php');
     
-    include_once('./msg_to_users.php');
+    include('./msg_to_users.php');
     $l_msg_to_users = new msg_to_users();
     $l_msg_to_users -> check_msg();
     
@@ -18,10 +18,20 @@
         header("location: /change_pwd.php");
         exit();
     } elseif ($auth->isAuth()){
+        // Если пользователь авторизован и redirect_after_auth не установлен,
+        // устанавливаем его на главную страницу модуля ГУ-23
+        if (!isset($_SESSION['redirect_after_auth']) || $_SESSION['redirect_after_auth'] == '/index.php') {
+            $_SESSION['redirect_after_auth'] = '/main.php';
+        }
         header("location: /select_station.php");
         exit();
     }
     else { //Если не авторизован, показываем форму ввода логина и пароля
+            // Не авторизован - показываем форму входа
+            // Сохраняем URL только если пользователь НЕ авторизован
+            if (!isset($_SESSION['redirect_after_auth'])) {
+                $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
+            }
 ?>
 <!DOCTYPE html>
 <html>

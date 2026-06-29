@@ -19,7 +19,7 @@ export function navigateTo(pageName, selectedId = null) {
   showApplication()
 }
 
-// Главная функция отрисовки интерфейса
+// функция отрисовки интерфейса
 export function showApplication() {
   drawNav()
 
@@ -41,7 +41,7 @@ export function showApplication() {
 
 $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
-    // Наполняем глобальные справочники данными
+    // Загружаем глобальные справочники данными
     references.departmentsList = (response && response.cexes) || []
     references.reasonsList = (response && response.reasons) || []
     references.stationsList = (response && response.stations) || []

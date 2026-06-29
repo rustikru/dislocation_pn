@@ -12,7 +12,7 @@ class ApprovalMailer
   public function __construct(
     string $secret,
     string $baseUrl,
-    string $from = 'noreply@company.ru',
+    string $from = 'noreply@test.ru',
     int $ttlDays = 1,
     string $mailDir = ''
   ) {
@@ -85,10 +85,10 @@ class ApprovalMailer
 
         <!-- Шапка -->
         <tr>
-          <td style="background:#792885;padding:24px 32px">
-            <div style="color:#fff;font-size:13px;letter-spacing:.5px;opacity:.8;margin-bottom:4px">АО «МЕТАФРАКС КЕМИКАЛС»</div>
+          <td style="background:#471364;padding:24px 32px">
+            <!-- <div style="color:#fff;font-size:13px;letter-spacing:.5px;opacity:.8;margin-bottom:4px">АО «МЕТАФРАКС КЕМИКАЛС»</div> -->
             <div style="color:#fff;font-size:20px;font-weight:700">Акт общей формы ГУ-23</div>
-            <div style="color:#59faac;font-size:14px;margin-top:4px">{$actNumber}</div>
+            <div style="color:#fff;font-size:14px;margin-top:4px">{$actNumber}</div>
           </td>
         </tr>
 
@@ -321,13 +321,27 @@ HTML;
   // СОхраняем html страничку письма в папку gu23/mail/....
   private function saveToFile(string $to, string $subject, string $html): bool
   {
-    if (!is_dir($this->mailDir)) {
-      mkdir($this->mailDir, 0755, true);
+    if (!is_dir($this->mailDir) && !@mkdir($this->mailDir, 0755, true) && !is_dir($this->mailDir)) {
+      if (class_exists('Gu23Logger')) {
+        Gu23Logger::error('mail saveToFile: не удалось создать папку', ['dir' => $this->mailDir]);
+      }
+      return false;
     }
     $ts = date('Ymd_His');
     $safe = preg_replace('/[^a-zA-Z0-9@._-]/', '_', $to);
     $file = $this->mailDir . '/' . $ts . '_' . $safe . '.html';
     $content = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
-    return file_put_contents($file, $content) !== false;
+    $res = @file_put_contents($file, $content);
+    if ($res === false) {
+      $err = error_get_last();
+      if (class_exists('Gu23Logger')) {
+        Gu23Logger::error('mail saveToFile: ошибка записи', [
+          'file' => $file,
+          'error' => $err['message'] ?? '',
+        ]);
+      }
+      return false;
+    }
+    return true;
   }
 }

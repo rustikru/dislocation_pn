@@ -34,7 +34,7 @@ export function showRoles(container) {
 
 function loadMatrix() {
   $('#roles-matrix-wrap').html(
-    '<div class="muted" style="font-size:13px">Загрузка матрицы…</div>',
+    '<div class="muted" style="font-size:13px">Загрузка...</div>',
   )
   sendApiRequest('gu23_role_perms', {}).done((resp) => {
     if (!resp || !resp.ok) {
@@ -125,7 +125,7 @@ function renderMatrix() {
         <span class="muted" style="margin-left:auto;font-size:11px">Нажмите, чтобы свернуть</span>
         <span id="matrix-arrow" style="margin-left:12px;color:var(--muted);font-size:12px"></span>
       </div>
-      <div id="matrix-body" style="overflow:auto">
+      <div id="matrix-body" style="overflow: auto; display: none;">
         <table class="tbl perm-matrix" style="min-width:500px">
           <thead>
             <tr>

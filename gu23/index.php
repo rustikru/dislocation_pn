@@ -2,18 +2,31 @@
 session_start();
 // Блокируем устаревшие браузеры (старый Firefox и пр.) до отрисовки страницы
 require_once __DIR__ . '/browser_check.php';
-// Сохраняем текущий URL для возможного редиректа после авторизации
-if (!isset($_SESSION['redirect_after_auth']) || $_SERVER['REQUEST_URI'] != '/select_station.php') {
-    $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
-}
+
 include('../login.php');
 include('../connection.php');
 $auth = new AuthClass();
 
 if (isset($_POST["logout"])) {
     $auth->out();
+    // При выходе очищаем redirect_after_auth
+    unset($_SESSION['redirect_after_auth']);
+    header("location: /index.php");
+    exit();
 }
 
+// Сохраняем текущий URL для редиректа ТОЛЬКО если:
+// 1. Пользователь НЕ авторизован
+// 2. И это не страница выбора станции
+// 3. И мы не в модуле ГУ-23
+if (!$auth->isAuth()) {
+    if (
+        strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false &&
+        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false
+    ) {
+        $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
+    }
+}
 require_once __DIR__ . '/GuActRepository.php';
 
 if ($auth->isAuth()) {
@@ -31,7 +44,7 @@ if ($auth->isAuth()) {
             <link rel="stylesheet" href="gu23.css" type="text/css">
             <!-- jQuery 3.7.1 (+migrate)  -->
             <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
-            <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script>
+            <!--  <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script> -->
 
             <script src="../js/general_function.js" type="text/javascript"></script>
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->

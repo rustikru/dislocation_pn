@@ -1,11 +1,4 @@
 <?php
-/**
- * ТОЛЬКО ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ — не деплоить на прод!
- */
-if (!file_exists(dirname(__DIR__) . '/db_config.local.php')) {
-  http_response_code(404);
-  exit('Not found');
-}
 session_start();
 ?>
 <!DOCTYPE html>

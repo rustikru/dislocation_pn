@@ -352,13 +352,13 @@ function applySelectedStartAct(id, filterNums = null) {
 
   const newWagons = wagonsToLoad.map((w) => ({
     n: w.WAGON_NO,
+    waybill: w.WAYBILL_NO || '',
     owner: w.OWNER,
     kind: w.KIND,
     from: w.ST_FROM,
     to: w.ST_TO,
     cargo: w.CARGO,
-    weight: w.WEIGHT,
-    waybill: w.WAYBILL_NO || '',
+    weight: w.WEIGHT
   }))
 
   if (filterNums) {
@@ -584,9 +584,13 @@ function showWagonActions() {
 }
 
 function loadWagonsDataFromDislocation() {
+  /*console.log('activeDraft.type='+activeDraft.type);
+  console.log('activeDraft.stationToName='+activeDraft.stationToName);
+  console.log('activeDraft.cargoReference='+activeDraft.cargoReference);
+  */
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
-
+  
   // Синхронизируем поле накладной из DOM до перерисовки
   activeDraft.waybillNumber = $('#inp-waybill').val() || ''
   if (!inputNums.length && !activeDraft.waybillNumber)
@@ -596,6 +600,7 @@ function loadWagonsDataFromDislocation() {
     waybill_no: activeDraft.waybillNumber || '',
     dest_station: activeDraft.stationToName || '',
     cardo_name: activeDraft.cargoReference || '',
+    act_type: activeDraft.type || '',
   }).done((rows) => {
     const records = rows || []
     let foundCount = 0
@@ -615,13 +620,14 @@ function loadWagonsDataFromDislocation() {
         if (!existingNumbers.has(wagonNumber)) {
           activeDraft.wagons.push({
             n: wagonNumber,
+            waybill: row.WAYBILL_NO || '',
             owner: row.OWNER,
             kind: row.KIND,
             from: row.ST_FROM,
             to: row.ST_TO,
             cargo: row.CARGO,
-            weight: row.WEIGHT,
-            waybill: row.WAYBILL_NO || '',
+            weight: row.WEIGHT
+            
           })
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
@@ -632,11 +638,12 @@ function loadWagonsDataFromDislocation() {
     // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
-        activeDraft.cargoReference = firstFound.CARGO
+        activeDraft.cargoReference = firstFound.CARGO  //  груз
       if (!activeDraft.stationToName && firstFound.ST_TO)
-        activeDraft.stationToName = firstFound.ST_TO
+        activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
+        activeDraft.stationToName = firstFound.ST_TO //  станции назначения
     }
-
+    // Выводим плашку о итогах найденных данных
     activeDraft._summary = {
       req: inputNums.length,
       found: foundCount,
@@ -973,9 +980,10 @@ function validateForm(checkSigners) {
     errors.push('Добавьте вагоны или укажите груз / номер накладной')
   if (!activeDraft.stationId) errors.push('Не указана ст. составления')
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
-  if (!activeDraft.stationToId && !activeDraft.waybillNumber)
+  /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
+    errors.push('Не указана ст. назначения') */
+  if (!activeDraft.stationToId)
     errors.push('Не указана ст. назначения')
-
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
   if (activeDraft.type === 'others' && !activeDraft.startAt)
@@ -1051,7 +1059,8 @@ function saveActToServer(status, skipWarning = false) {
                 ? 'Письма: ' + approvalResp.msg
                 : 'Письма не отправлены'
           showToast(
-            `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
+            //`Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
+            `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`,
             'ok',
           )
           navigateTo('card', response.id)
