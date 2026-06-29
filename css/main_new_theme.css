@@ -56,13 +56,43 @@ body {
   text-rendering: optimizeLegibility;
 }
 /* Во весь экран — без пустых зон по бокам.
-   Высота с учётом верхней акцентной полосы (border-top:4px), иначе низ
-   (итоги, «Приём по списку») уезжает за пределы экрана и недостижим. */
+   Flex-каркас: шапка и поиск сверху, колонки занимают ровно остаток высоты,
+   поэтому нижние границы панелей видны и не уезжают за экран. */
 .wrapper {
   width: 100%;
   height: calc(100vh - 4px);
   margin: 0;
-  background-color: var(--nt-panel);
+  background-color: var(--nt-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.wrapper > header,
+.wrapper > .options {
+  flex: 0 0 auto;
+}
+/* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту */
+.main-cols {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+.main-cols > aside {
+  float: none;
+  width: 20%;
+  height: auto;
+  flex: 0 0 20%;
+  box-sizing: border-box;
+}
+.main-cols > section {
+  float: none;
+  width: auto;
+  height: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* =====================================================================
@@ -360,8 +390,7 @@ section {
 .wrong-car-number { border: 1px solid var(--nt-err) !important; }
 .FromUgl { color: #2f6bdd; }
 
-/* Небольшой отступ между деревом путей и таблицей детализации */
-aside { margin-right: 8px; }
+/* Отступ между деревом путей и таблицей задаётся gap у .main-cols */
 
 /* =====================================================================
    5. «Доп. кнопки» — аккуратная сетка чипов

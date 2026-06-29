@@ -33,7 +33,7 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
         <link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
         <!-- НОВАЯ ТЕМА главной: верхнее меню, дерево путей, таблица вагонов (заявки не затрагиваются).
              Быстрое переключение на старый вид — закомментируйте строку ниже. -->
-        <link rel="stylesheet" href="css/main_new_theme.css?ver=4" type="text/css">
+        <link rel="stylesheet" href="css/main_new_theme.css?ver=5" type="text/css">
         <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
         <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="js/tree.js"></script>
@@ -57,6 +57,7 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
                     <!--<input class="btnFind" type="button" size="15" value="Тек. user_id" onclick="test_btn()">-->
                 </div>
             </div>
+            <div class="main-cols">
             <aside>
 				<div>
 					<div class="add-btn-window">
@@ -173,6 +174,7 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
                     </thead>
                 </table>
             </section>
+            </div>
             <div class="loadImg">
                 <img src="img/ajax-loader.gif" />
             </div>
