@@ -1125,6 +1125,24 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           where a.act_type = 'start'
             and a.status in (  --'active',
              'signed' )
+              -- остался хотя бы один незакрытый вагон
+            and exists (
+            select 1
+              from xx_disl_gu23_act_row sr
+             where sr.act_id = a.id
+               and not exists (
+               select 1
+                 from xx_disl_gu23_act e,
+                      xx_disl_gu23_act_row er
+                where er.act_id = e.id
+                  and e.act_type = 'end'
+                  and e.status in ( 'active',
+                                    'signed',
+                                    'closed' )
+                  and e.linked_start_id = a.id
+                  and er.wagon_no = sr.wagon_no
+            )
+         )
           order by a.start_at
       ) loop
          pipe row ( g_act_row(a) );
@@ -1152,7 +1170,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              where er.act_id = e.id
                and e.act_type = 'end'
                and e.status in ( 'active',
-                                 'closed' )
+                                 'signed',
+                                 'closed' )  -- занят; rejected/annulled/draft — свободен
                and e.linked_start_id = p_start_id
                and er.wagon_no = sr.wagon_no
          )
@@ -1871,7 +1890,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                    xx_disl_gu23_act_row er
              where er.act_id = e.id
                and e.act_type = 'end'
-               and e.status = 'active'
+               and e.status in ( 'active',
+                                 'signed',
+                                 'closed' )  -- занят; rejected/annulled/draft — свободен
                and e.linked_start_id = p_data.p_linked_start_id
                and e.id <> v_id
                and er.wagon_no = w.wagon_no;
@@ -1998,7 +2019,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 xx_disl_gu23_act_row er
           where er.act_id = e.id
             and e.act_type = 'end'
-            and e.status = 'active'
+            and e.status in ( 'active',
+                              'signed',
+                              'closed' )  -- закрывающие; rejected/annulled — нет
             and e.linked_start_id = p_data.p_linked_start_id;
 
          if v_closed >= v_tot then
