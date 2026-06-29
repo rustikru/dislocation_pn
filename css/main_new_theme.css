@@ -55,10 +55,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-/* Во весь экран — без пустых зон по бокам */
+/* Во весь экран — без пустых зон по бокам.
+   Высота с учётом верхней акцентной полосы (border-top:4px), иначе низ
+   (итоги, «Приём по списку») уезжает за пределы экрана и недостижим. */
 .wrapper {
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 4px);
   margin: 0;
   background-color: var(--nt-panel);
 }
@@ -332,18 +334,98 @@ section { border: 0; background: var(--nt-bg); }
 .addInfoTable tbody tr:nth-child(even) { background: var(--nt-panel-2); }
 .addInfoTable tbody tr:hover td { background: var(--nt-sel-bg); }
 
-/* Итоговая строка — закреплена снизу, акцентная */
+/* Итоговая строка — закреплена снизу, хорошо заметна */
 .addInfoTable tbody tr#addInfoTableTotalTr,
 .addInfoTable tbody tr#addInfoTableTotalTr td {
   position: sticky;
   bottom: 0;
+  z-index: 3;
   background: var(--nt-accent-soft);
   color: var(--nt-accent-deep);
   font-weight: 700;
-  border-top: 1px solid var(--nt-accent-line);
+  border-top: 2px solid var(--nt-accent);
+  box-shadow: 0 -3px 8px rgba(20,30,45,.10);
 }
 
 /* Сохраняем семантические пометки номеров вагонов */
 .true-car-number  { border: 1px solid var(--nt-ok)  !important; }
 .wrong-car-number { border: 1px solid var(--nt-err) !important; }
 .FromUgl { color: #2f6bdd; }
+
+/* Небольшой отступ между деревом путей и таблицей детализации */
+aside { margin-right: 8px; }
+
+/* =====================================================================
+   5. «Доп. кнопки» — аккуратная сетка чипов
+   ===================================================================== */
+#add_btn_content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  align-items: flex-start;
+}
+#add_btn_content .btnFind {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* =====================================================================
+   6. ЗАЯВКИ — в той же теме
+   Поднимаем над строкой «Итого», чтобы не перекрывали её.
+   ===================================================================== */
+.request-window {
+  right: 14px;
+  bottom: 44px;                 /* над итоговой строкой таблицы */
+  width: 520px;
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(20,30,45,.18);
+  padding: 0;
+  overflow: hidden;
+  z-index: 50;
+}
+.request-titlebar {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+  border-radius: 0;
+  background: var(--nt-panel-2);
+  color: var(--nt-ink);
+  font-family: var(--nt-sans);
+  font-weight: 600;
+  padding: 10px 12px;
+}
+.request-content {
+  padding: 8px;
+  max-height: 26em;
+}
+.request-item {
+  border: 1px solid var(--nt-line-soft);
+  border-radius: 8px;
+  height: auto;
+  min-height: 2em;
+  margin-top: 6px;
+  background: var(--nt-panel);
+  transition: border-color .12s;
+}
+.request-item:first-child { margin-top: 0; }
+.request-item:hover { border-color: var(--nt-ink-3); }
+.request-item-title { font-weight: 600; color: var(--nt-ink); }
+.request-item-need-close { background-color: var(--nt-ok-bg); border-color: var(--nt-ok); }
+.request-item-title-criticality { background-color: var(--nt-err); }
+
+/* Кнопки в заявках (свернуть/добавить/просмотр) — в стиле темы */
+.request-button {
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel);
+  border-radius: 6px;
+}
+.request-button:hover {
+  border-color: var(--nt-ink-3);
+  background: var(--nt-panel-2);
+}
+.request-button-active { border-color: var(--nt-accent) !important; }
