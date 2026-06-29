@@ -228,8 +228,8 @@ header {
    ===================================================================== */
 aside {
   background: var(--nt-panel);
-  border: 0;
-  border-right: 1px solid var(--nt-line);
+  border: 1px solid var(--nt-line);   /* очерченная область, не «бесконечная» */
+  border-radius: 8px;
 }
 
 /* Панель «Доп. кнопки» */
@@ -297,10 +297,18 @@ li.tree_Node.tree_selected > .tree_Content {
 /* =====================================================================
    4. ДЕТАЛЬНАЯ ТАБЛИЦА ПО ВАГОНУ (.addInfoTable)
    ===================================================================== */
-section { border: 0; background: var(--nt-bg); }
+/* Очерченная область таблицы: серое «полотно» с рамкой, белая таблица-карточка */
+section {
+  border: 1px solid var(--nt-line);
+  border-radius: 8px;
+  background: var(--nt-bg);
+  padding: 8px;
+}
 
 .addInfoTable {
   background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: 8px;
   border-spacing: 0;
   border-collapse: separate;
   text-align: left;
@@ -371,12 +379,11 @@ aside { margin-right: 8px; }
 }
 
 /* =====================================================================
-   6. ЗАЯВКИ — в той же теме
-   Поднимаем над строкой «Итого», чтобы не перекрывали её.
+   6. ЗАЯВКИ — в той же теме (расположение как раньше)
    ===================================================================== */
 .request-window {
-  right: 14px;
-  bottom: 44px;                 /* над итоговой строкой таблицы */
+  right: 0;
+  bottom: 5px;                  /* как в оригинале */
   width: 520px;
   font-family: var(--nt-sans);
   font-size: 12.5px;
