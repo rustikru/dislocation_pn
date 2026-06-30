@@ -686,7 +686,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_date_to    in varchar2 default null,
       p_has_signed in varchar2 default null,
       p_page       in number default 1,
-      p_page_size  in number default null
+      p_page_size  in number default null,
+      p_user_id    in number default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -713,7 +714,29 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          1
       ) - 1 ) * v_size;
       v_end  number := v_off + v_size;
+      -- Ограничение архива по пользователю пока не включено:
+      -- v_can_see_all varchar2(1);
+      -- v_user_dept_id number;
    begin
+      -- Раскомментировать после подтверждения источника цеха пользователя.
+      -- v_can_see_all :=
+      --    case
+      --       when gu23_is_admin(p_user_id) = 'Y'
+      --         or gu23_has_perm(p_user_id, 'VIEW_ALL_ACTS') = 'Y'
+      --       then 'Y'
+      --       else 'N'
+      --    end;
+      --
+      -- begin
+      --    select dept_id
+      --      into v_user_dept_id
+      --      from xx_disl_users_emp_v
+      --     where user_id = p_user_id;
+      -- exception
+      --    when no_data_found then
+      --       v_user_dept_id := null;
+      -- end;
+
       for a in (
          select id,
                 act_number,
@@ -782,6 +805,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   || a.dept_id
                   || ','
                ) > 0 )
+                                         -- Ограничение обычных пользователей цехом или участием в подписании.
+                                         -- and (
+                                         --      v_can_see_all = 'Y'
+                                         --      or a.dept_id = v_user_dept_id
+                                         --      or exists (
+                                         --         select 1
+                                         --           from xx_disl_gu23_signer s
+                                         --          where s.act_id = a.id
+                                         --            and s.stype = 'own'
+                                         --            and s.signer_ref_id = p_user_id
+                                         --      )
+                                         -- )
                                          -- период: попадание по дате начала ИЛИ по дате окончания
                   and ( ( v_from is null
                   and v_to is null )
@@ -858,7 +893,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_dept_id    in varchar2 default null,
       p_date_from  in varchar2 default null,
       p_date_to    in varchar2 default null,
-      p_has_signed in varchar2 default null
+      p_has_signed in varchar2 default null,
+      p_user_id    in number default null
    ) return number is
       v_q    varchar2(512) := lower(p_q);
       v_from date :=
@@ -874,7 +910,29 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                        'DD.MM.YYYY') + 1
          end;
       v_cnt  number;
+      -- Ограничение архива по пользователю пока не включено:
+      -- v_can_see_all varchar2(1);
+      -- v_user_dept_id number;
    begin
+      -- Раскомментировать после подтверждения источника цеха пользователя.
+      -- v_can_see_all :=
+      --    case
+      --       when gu23_is_admin(p_user_id) = 'Y'
+      --         or gu23_has_perm(p_user_id, 'VIEW_ALL_ACTS') = 'Y'
+      --       then 'Y'
+      --       else 'N'
+      --    end;
+      --
+      -- begin
+      --    select dept_id
+      --      into v_user_dept_id
+      --      from xx_disl_users_emp_v
+      --     where user_id = p_user_id;
+      -- exception
+      --    when no_data_found then
+      --       v_user_dept_id := null;
+      -- end;
+
       select count(*)
         into v_cnt
         from xx_disl_gu23_act_v a
@@ -905,6 +963,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          || a.dept_id
          || ','
       ) > 0 )
+        -- Ограничение обычных пользователей цехом или участием в подписании.
+        -- and (
+        --      v_can_see_all = 'Y'
+        --      or a.dept_id = v_user_dept_id
+        --      or exists (
+        --         select 1
+        --           from xx_disl_gu23_signer s
+        --          where s.act_id = a.id
+        --            and s.stype = 'own'
+        --            and s.signer_ref_id = p_user_id
+        --      )
+        -- )
          and ( ( v_from is null
          and v_to is null )
           or ( a.start_at is not null

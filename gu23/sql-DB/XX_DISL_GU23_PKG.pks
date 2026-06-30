@@ -252,7 +252,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_date_to    in varchar2 default null, -- 'DD.MM.YYYY'
       p_has_signed in varchar2 default null, -- 'Y' = есть подписанный файл
       p_page       in number default 1, -- номер страницы (с 1)
-      p_page_size  in number default null -- размер страницы (null = все)
+      p_page_size  in number default null, -- размер страницы (null = все)
+      p_user_id    in number default null -- пользователь, для которого строится архив
    ) return xx_disl_gu23_act_tab
       pipelined;
 
@@ -264,7 +265,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_dept_id    in varchar2 default null,
       p_date_from  in varchar2 default null,
       p_date_to    in varchar2 default null,
-      p_has_signed in varchar2 default null
+      p_has_signed in varchar2 default null,
+      p_user_id    in number default null -- пользователь, для которого считается архив
    ) return number;
 
    function gu23_get_act (
