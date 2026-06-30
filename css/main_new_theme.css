@@ -335,6 +335,8 @@ section {
 }
 
 .addInfoTable {
+  width: auto;              /* ширина по содержимому, без растягивания на всю секцию */
+  table-layout: auto;      /* колонки — по содержимому, а не по заголовку */
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);
   border-radius: 8px;
@@ -355,16 +357,18 @@ section {
   font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .3px;
+  letter-spacing: .2px;
   text-align: left;
   padding: 9px 10px;
   border-bottom: 1px solid var(--nt-line);
   vertical-align: middle;
+  white-space: normal;     /* заголовок переносится и не диктует ширину колонки */
 }
 .addInfoTable tbody td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--nt-line-soft);
   vertical-align: middle;
+  white-space: nowrap;     /* данные в одну строку — ширина колонки по содержимому */
 }
 /* Нейтральная зебра вместо зелёной */
 .addInfoTable tbody tr:nth-child(odd)  { background: var(--nt-panel); }
