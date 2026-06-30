@@ -91,10 +91,68 @@ class GuActDocxReport
         // Простая замена плейсхолдеров
         $xml = $this->replacePlaceholders($xml, $act, $signers);
 
+        // Автоподбор ширины колонок таблицы вагонов по содержимому
+        // (до размножения строк, пока в таблице ещё есть маркер {{WAGON_NO}})
+        $xml = $this->autofitWagonTable($xml);
+
         // Динамические строки вагонов
         $xml = $this->fillWagonRows($xml, $wagons);
 
         return $xml;
+    }
+
+    /**
+     * Включает для таблицы вагонов автоподбор ширины колонок «по содержимому»:
+     * предпочтительная ширина таблицы и ячеек переводится в тип "auto",
+     * добавляется <w:tblLayout w:type="autofit"/>. Word пересчитывает
+     * ширину колонок по их содержимому вместо фиксированных значений шаблона.
+     * Затрагивается только таблица, содержащая {{WAGON_NO}}.
+     */
+    private function autofitWagonTable(string $xml): string
+    {
+        return preg_replace_callback(
+            '/<w:tbl\b.*?<\/w:tbl>/s',
+            static function (array $m): string {
+                $tbl = $m[0];
+                if (!str_contains($tbl, '{{WAGON_NO}}')) {
+                    return $tbl; // не таблица вагонов — не трогаем
+                }
+
+                // Предпочтительная ширина таблицы -> авто
+                $tbl = preg_replace(
+                    '/<w:tblW\b[^>]*\/>/',
+                    '<w:tblW w:w="0" w:type="auto"/>',
+                    $tbl,
+                    1
+                );
+
+                // Раскладка -> автоподбор (если ещё не задана — добавляем перед tblLook)
+                if (str_contains($tbl, '<w:tblLayout')) {
+                    $tbl = preg_replace(
+                        '/<w:tblLayout\b[^>]*\/>/',
+                        '<w:tblLayout w:type="autofit"/>',
+                        $tbl
+                    );
+                } else {
+                    $tbl = preg_replace(
+                        '/(<w:tblLook\b)/',
+                        '<w:tblLayout w:type="autofit"/>$1',
+                        $tbl,
+                        1
+                    );
+                }
+
+                // Ширина каждой ячейки -> авто (по содержимому)
+                $tbl = preg_replace(
+                    '/<w:tcW\b[^>]*\/>/',
+                    '<w:tcW w:w="0" w:type="auto"/>',
+                    $tbl
+                );
+
+                return $tbl;
+            },
+            $xml
+        );
     }
 
     /**
