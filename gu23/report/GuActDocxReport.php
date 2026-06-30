@@ -294,7 +294,6 @@ class GuActDocxReport
 
     /**
      * Заменяет плейсхолдер в XML, корректно обрабатывая переносы строк (→ w:br)
-     * и экранируя спецсимволы XML.
      */
     private function replaceInXml(string $xml, string $placeholder, string $value): string
     {

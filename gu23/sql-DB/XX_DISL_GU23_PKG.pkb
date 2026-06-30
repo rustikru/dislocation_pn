@@ -1,4 +1,4 @@
-/* Formatted on 30.06.2026 9:03:36 (QP5 v5.417) */
+/* Formatted on 30.06.2026 12:02:21 (QP5 v5.417) */
 create or replace package body xx_etw.xx_disl_gu23_pkg as
     /******************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
@@ -993,6 +993,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_row.cargo := r.cargo;
          l_row.weight := r.weight;
          l_row.waybill_no := r.waybill_no;
+         begin
+            select act_start_number,
+                   dur_total_h
+              into
+               l_row.act_start_num,
+               l_row.dur_total_h
+              from xx_disl_gu23_act_v
+             where id = p_act_id;
+         exception
+            when others then
+               l_row.act_start_num := '-';
+         end;
+
          pipe row ( l_row );
       end loop;
 
@@ -2998,7 +3011,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 ro.role_id,
                 ro.role_code,
                 ro.role_name
-           from xx_disl_users_emp_v u
+           from xx_disl_users u
            left join xx_disl_gu23_user_roles ur
          on ur.user_id = u.id
            left join xx_disl_gu23_roles ro

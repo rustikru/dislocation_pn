@@ -1,4 +1,3 @@
-/* Formatted on 30.06.2026 9:03:40 (QP5 v5.417) */
 create or replace package xx_etw.xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
@@ -89,16 +88,18 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    type xx_disl_gu23_act_tab is
       table of t_gu23_act_row;
    type xx_disl_gu23_row is record (
-         id         number,
-         act_id     number,
-         wagon_no   varchar2(16),
-         owner      varchar2(128),
-         kind       varchar2(128),
-         st_from    varchar2(128),
-         st_to      varchar2(128),
-         cargo      varchar2(256),
-         weight     varchar2(32),
-         waybill_no varchar2(64)
+         id            number,
+         act_id        number,
+         wagon_no      varchar2(16),
+         owner         varchar2(128),
+         kind          varchar2(128),
+         st_from       varchar2(128),
+         st_to         varchar2(128),
+         cargo         varchar2(256),
+         weight        varchar2(32),
+         waybill_no    varchar2(64),
+         act_start_num varchar2(256),
+         dur_total_h   number
    );
    type xx_disl_gu23_row_tab is
       table of xx_disl_gu23_row;
@@ -136,8 +137,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          weight     varchar2(32),
          waybill_no varchar2(64),
          found      number,
-         dup_act    varchar2(64), -- номер уже существующего акта начала, занявшего вагон/накладную (null = свободен)
-         dup_by     varchar2(16) -- по чему совпадение: 'wagon' (в пределах месяца) или 'waybill' (в пределах 3 мес.)
+         dup_act    varchar2(64),  -- номер уже существующего акта начала, занявшего вагон/накладную (null = свободен)
+         dup_by     varchar2(16)   -- по чему совпадение: 'wagon' (в пределах месяца) или 'waybill' (в пределах 3 мес.)
    );
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;
@@ -597,7 +598,7 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_ref_signer_toggle (
       p_id in number
    ) return varchar2;
---
+
    function gu23_ref_reason_save (
       p_id       in number,
       p_name     in varchar2,

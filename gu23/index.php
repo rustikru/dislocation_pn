@@ -20,10 +20,8 @@ if (isset($_POST["logout"])) {
 // 2. И это не страница выбора станции
 // 3. И мы не в модуле ГУ-23
 if (!$auth->isAuth()) {
-    if (
-        strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false &&
-        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false
-    ) {
+    if (strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false && 
+        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false) {
         $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
     }
 }
@@ -44,7 +42,7 @@ if ($auth->isAuth()) {
             <link rel="stylesheet" href="gu23.css" type="text/css">
             <!-- jQuery 3.7.1 (+migrate)  -->
             <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
-            <!--  <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script> -->
+           <!--  <script src="../jquery/jquery-migrate-3.4.1.js" type="text/javascript"></script> -->
 
             <script src="../js/general_function.js" type="text/javascript"></script>
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
@@ -65,7 +63,7 @@ if ($auth->isAuth()) {
         <body>
             <header>
                 <?php
-                //include('../modules/site/main-top.php');
+                include('../modules/site/main-top.php');
                 ?>
             </header>
             <div class="app">
