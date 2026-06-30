@@ -98,6 +98,36 @@ class GuActDocxReport
         // Динамические строки вагонов
         $xml = $this->fillWagonRows($xml, $wagons);
 
+        // Итоги по таблице вагонов (кол-во и сумма веса)
+        $xml = $this->fillTotals($xml, $wagons);
+
+        return $xml;
+    }
+
+    /**
+     * Подставляет итоги таблицы вагонов: {{TOTAL_COUNT}} — число вагонов,
+     * {{TOTAL_WEIGHT}} — сумма веса. Плейсхолдеры размещаются в строке «Итого»
+     * шаблона. Если их нет — замена просто ничего не делает.
+     */
+    private function fillTotals(string $xml, array $wagons): string
+    {
+        $count = count($wagons);
+
+        $sum = 0.0;
+        foreach ($wagons as $w) {
+            $raw = str_replace([' ', ','], ['', '.'], (string) ($w['WEIGHT'] ?? ''));
+            if (is_numeric($raw)) {
+                $sum += (float) $raw;
+            }
+        }
+        // без хвостовых нулей: 127.000 -> 127, 127.060 -> 127.06
+        $weight = $sum > 0
+            ? rtrim(rtrim(sprintf('%.3f', $sum), '0'), '.')
+            : '0';
+
+        $xml = $this->replaceInXml($xml, '{{TOTAL_COUNT}}', (string) $count);
+        $xml = $this->replaceInXml($xml, '{{TOTAL_WEIGHT}}', $weight);
+
         return $xml;
     }
 
