@@ -300,6 +300,8 @@ class GuActDocxReport
             '{{WAGON_OWNER}}' => $wagon['OWNER'] ?? '',
             '{{WAGON_ST_FROM}}' => $wagon['ST_FROM'] ?? '',
             '{{WAGON_ST_TO}}' => $wagon['ST_TO'] ?? '',
+            '{{WAGON_WAYBILL_NO}}' => $wagon['WAYBILL_NO'] ?? '',
+            
         ];
 
         $row = $rowTemplate;
