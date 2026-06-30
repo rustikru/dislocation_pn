@@ -1,3 +1,4 @@
+/* Formatted on 30.06.2026 9:03:36 (QP5 v5.417) */
 create or replace package body xx_etw.xx_disl_gu23_pkg as
     /******************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
@@ -555,7 +556,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select st_code as st_code,
+         select e_st_code as st_code,
                 st_name as name
            from xx_etw.xx_etw_station_bi_v
           where st_name like 'УГЛЕУ%'
@@ -576,7 +577,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select st_code as st_code,
+         select e_st_code as st_code,
                 st_name as name
            from xx_etw.xx_etw_station_bi_v
           order by name
@@ -599,12 +600,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select fr_code_etsng as code,
                 fr_name as name
            from etw_nsi_freight
-          where trunc(sysdate) between recdatebegin and recdateend
-                       /*and (   fr_name like UPPER ('%Метанол%')
-                            or fr_name like UPPER ('%Карбамид%')
-                            or fr_name like UPPER ('%Уротропин%')
-                            or fr_name like UPPER ('%Меламин%'))
-                            */
+          where trunc(sysdate) between recdatebegin and recdateend /*and (   fr_name like UPPER ('%Метанол%')
+                                                                                  or fr_name like UPPER ('%Карбамид%')
+                                                                                  or fr_name like UPPER ('%Уротропин%')
+                                                                                  or fr_name like UPPER ('%Меламин%'))
+                                                                                  */
       ) loop
          l_row.code := r.name;
          l_row.name := r.name;
@@ -623,25 +623,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_signer_row;
    begin
       for r in (
-         select du.id,
-                du.full_name as fio,
-                prv.appoint_name as post,
-                prv.firm_name as org,
-                prv.theme as unit,
-                'Работник предприятия' as stype
-           from xx_disl_users du
-           left join prv_emp prv
-         on du.card_id = prv.card_id
-            and trunc(sysdate) between d_from and d_to
-            and trunc(sysdate) between d_in and d_out
-           left join xx_disl_enterprise de
-         on du.enterprise = de.id
-          where du.open = 'Y'
-            and prv.firm_name like '%Метафракс%'
-            and du.full_name not like '%user%'
-            and prv.appoint_name not like 'Советн%'
-                --and  prv.THEME like '%'||p_dept||'%'
-                --and prv.THEME like '%ЖДЦ%'
+         select du.*
+           from xx_disl_users_emp_v du
+          where 1 = 1
+                  --and  prv.THEME like '%'||p_dept||'%'
+                  --and prv.THEME like '%ЖДЦ%'
           order by fio
       ) loop
          l_row.id := r.id;
@@ -657,7 +643,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- подписанты - работники станции ОАО ?РЖД?
+    -- подписанты - работники станции ОАО РЖД
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined
    is
@@ -1063,15 +1049,22 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                       s.signer_ref_id
                    else
                       null
-                end as ref_user_id
+                end as ref_user_id,
+                nvl(
+                   du.full_name,
+                   s.fio
+                ) as fio_new
            from xx_disl_gu23_signer s
+           left join xx_disl_users_emp_v du
+         on du.id = signer_ref_id
+            and s.stype = 'own'
           where s.act_id = p_act_id
           order by s.ord_no,
                    s.id
       ) loop
          l_row.id := s.id;
          l_row.signer_ref_id := s.signer_ref_id;
-         l_row.fio := s.fio;
+         l_row.fio := s.fio_new;
          l_row.post := s.post;
          l_row.org := s.org;
          l_row.unit := null;
@@ -1123,9 +1116,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select *
            from xx_disl_gu23_act_v a
           where a.act_type = 'start'
-            and a.status in (  --'active',
+            and a.status in (                         --'active',
              'signed' )
-              -- остался хотя бы один незакрытый вагон
+                         -- остался хотя бы один незакрытый вагон
             and exists (
             select 1
               from xx_disl_gu23_act_row sr
@@ -1171,7 +1164,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                and e.act_type = 'end'
                and e.status in ( 'active',
                                  'signed',
-                                 'closed' )  -- занят; rejected/annulled/draft — свободен
+                                 'closed' ) -- занят; rejected/annulled/draft — свободен
                and e.linked_start_id = p_start_id
                and er.wagon_no = sr.wagon_no
          )
@@ -1333,15 +1326,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       begin
          l_row.dup_act := null;
          l_row.dup_by := null;
-         if
-            l_row.found <> 1
-            or nvl(
-               p_act_type,
-               'start'
-            ) <> 'start'
-         then
+         if l_row.found <> 1
+         or nvl(
+            p_act_type,
+            'start'
+         ) <> 'start' then
             return;
          end if;
+
             -- по вагону в пределах текущего месяца
          begin
             select a.act_number
@@ -1355,18 +1347,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                  'closed' )
                and r.wagon_no = l_row.wagon_no
                and trunc(
-                  a.start_at,
-                  'MM'
-               ) = trunc(
-                  sysdate,
-                  'MM'
-               )
+               a.start_at,
+               'MM'
+            ) = trunc(
+               sysdate,
+               'MM'
+            )
                and rownum = 1;
+
             l_row.dup_by := 'wagon';
          exception
             when no_data_found then
                l_row.dup_act := null;
          end;
+
             -- по накладной в пределах 3 месяцев
          if
             l_row.dup_act is null
@@ -1384,14 +1378,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                     'closed' )
                   and r.waybill_no = l_row.waybill_no
                   and a.start_at >= add_months(
-                     sysdate,
-                     -3
-                  )
+                  sysdate,
+                  -3
+               )
                   and a.start_at <= add_months(
-                     sysdate,
-                     3
-                  )
+                  sysdate,
+                  3
+               )
                   and rownum = 1;
+
                l_row.dup_by := 'waybill';
             exception
                when no_data_found then
@@ -1405,7 +1400,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         --log_new(l_function,'p_waybill_no='||p_waybill_no);
         --log_new(l_function,'p_dest_station='||p_dest_station);
         --log_new(l_function,'p_act_type='||p_act_type);
-        
+
         --log_new(l_function,'v_len='||v_len);
         --log_new(l_function,'v_len='||v_len);
         ---------------------------------------------------------------------
@@ -1922,8 +1917,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                'N'
             ) <> 'Y'
          then
-            -- дубль по вагону в пределах одного месяца
-            -- занятые циклы: active/signed/closed; annulled/rejected/draft — свободны
+                -- дубль по вагону в пределах одного месяца
+                -- занятые циклы: active/signed/closed; annulled/rejected/draft — свободны
             v_dupnum := null;
             begin
                select a.act_number
@@ -1938,12 +1933,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   and a.id <> v_id
                   and r.wagon_no = w.wagon_no
                   and trunc(
-                     a.start_at,
-                     'MM'
-                  ) = trunc(
-                     v_start,
-                     'MM'
-                  )
+                  a.start_at,
+                  'MM'
+               ) = trunc(
+                  v_start,
+                  'MM'
+               )
                   and rownum = 1;
             exception
                when no_data_found then
@@ -1954,10 +1949,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                rollback;
                return format_error('Нельзя создать акт ?Начало простоя?: по вагону '
                                    || w.wagon_no
-                                   || ' уже есть акт ' || v_dupnum || ' за этот месяц');
+                                   || ' уже есть акт '
+                                   || v_dupnum || ' за этот месяц');
             end if;
 
-            -- дубль по накладной в пределах 3 месяцев
+                -- дубль по накладной в пределах 3 месяцев
             if w.waybill_no is not null then
                v_dupnum := null;
                begin
@@ -1973,13 +1969,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                      and a.id <> v_id
                      and r.waybill_no = w.waybill_no
                      and a.start_at >= add_months(
-                        v_start,
-                        -3
-                     )
+                     v_start,
+                     -3
+                  )
                      and a.start_at <= add_months(
-                        v_start,
-                        3
-                     )
+                     v_start,
+                     3
+                  )
                      and rownum = 1;
                exception
                   when no_data_found then
@@ -1990,7 +1986,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   rollback;
                   return format_error('Нельзя создать акт ?Начало простоя?: по накладной '
                                       || w.waybill_no
-                                      || ' уже есть акт ' || v_dupnum || ' (в пределах 3 месяцев)');
+                                      || ' уже есть акт '
+                                      || v_dupnum || ' (в пределах 3 месяцев)');
                end if;
             end if;
          end if;
@@ -2020,7 +2017,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                and e.act_type = 'end'
                and e.status in ( 'active',
                                  'signed',
-                                 'closed' )  -- занят; rejected/annulled/draft — свободен
+                                 'closed' ) -- занят; rejected/annulled/draft — свободен
                and e.linked_start_id = p_data.p_linked_start_id
                and e.id <> v_id
                and er.wagon_no = w.wagon_no;
@@ -2149,7 +2146,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             and e.act_type = 'end'
             and e.status in ( 'active',
                               'signed',
-                              'closed' )  -- закрывающие; rejected/annulled — нет
+                              'closed' ) -- закрывающие; rejected/annulled — нет
             and e.linked_start_id = p_data.p_linked_start_id;
 
          if v_closed >= v_tot then
@@ -2400,7 +2397,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return;
       end if;
       for r in (
-         select st_code,
+         select e_st_code as st_code,
                 upper(st_name) st_name,
                 st_id
            from xx_etw_station_bi_v
@@ -2433,9 +2430,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select u.id as approver_id,
                 u.full_name,
                 lower(u.login)
-                || '@company.ru' as email
+                || '@test.ru' as email
            from xx_disl_gu23_signer s
-           join xx_disl_users u
+           join xx_disl_users_emp_v u
          on u.id = s.signer_ref_id
           where s.act_id = p_act_id
             and s.stype = 'own'
@@ -2787,7 +2784,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 a.signed_version,
                 a.signer_ip
            from xx_disl_gu23_approval a
-           join xx_disl_users u
+           join xx_disl_users_emp_v u
          on u.id = a.approver_id
           where a.act_id = p_act_id
           order by a.requested_at
@@ -3001,7 +2998,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 ro.role_id,
                 ro.role_code,
                 ro.role_name
-           from xx_disl_users u
+           from xx_disl_users_emp_v u
            left join xx_disl_gu23_user_roles ur
          on ur.user_id = u.id
            left join xx_disl_gu23_roles ro
@@ -3350,6 +3347,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       commit;
       return 'OK';
    exception
+      when dup_val_on_index then
+            -- причин уже назначена
+         rollback;
+         return format_error('Причина уже добавлена в справочник!');
       when others then
          rollback;
          return format_error();
