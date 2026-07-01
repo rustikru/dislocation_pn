@@ -388,11 +388,10 @@ class GuActRepository
         $hasSigned = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 50;
-        $userId = $this->auth->getUserId(); // для ограничения архива в пакете
 
         // Общее количество под фильтры (для пагинации)
         $total = (int) $this->callFunc(
-            'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:uid)',
+            'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7)',
             [
                 ':b1' => $q,
                 ':b2' => $type,
@@ -400,15 +399,14 @@ class GuActRepository
                 ':b4' => $dept,
                 ':b5' => $dateFrom,
                 ':b6' => $dateTo,
-                ':b7' => $hasSigned,
-                ':uid' => $userId
+                ':b7' => $hasSigned
             ],
             40
         );
 
         // Только нужная страница — пагинация на стороне БД
         $acts = $this->pipe(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9,:uid))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
             [
                 ':b1' => $q,
                 ':b2' => $type,
@@ -418,8 +416,7 @@ class GuActRepository
                 ':b6' => $dateTo,
                 ':b7' => $hasSigned,
                 ':b8' => $page,
-                ':b9' => $limit,
-                ':uid' => $userId
+                ':b9' => $limit
             ]
         );
 
