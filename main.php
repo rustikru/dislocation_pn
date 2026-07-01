@@ -106,10 +106,12 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
 								<input id= "notification_btn" class="btnFind" style="display:none" type="button" size="15" value="Регистрация уведомлений" onclick="create_modal_dialog_notification();">
 							<?php }?>
 							<?php if (($auth->getStationId()==='2' && $rights['register_notification_gu']==='Y') || ($rights['administrator']==='Y')) {?>
-								<input id= "notification_gu_btn" class="btnFind" type="button" size="15" value="Регистрация уведомлений ГУ" onclick="create_modal_dialog_notification_gu();">
+								<input id= "notification_gu_btn" class="btnFind" type="button" size="15" value="Уведомление ГУ-2б" onclick="create_modal_dialog_notification_gu(null, '2b');">
+								<input id= "notification_gu_2d_btn" class="btnFind" type="button" size="15" value="Уведомление ГУ-2д" onclick="create_modal_dialog_notification_gu(null, '2d');">
 							<?php }?>
 							<?php if (($auth->getStationId()==='2' && $rights['export_notification_gu']==='Y') || ($rights['administrator']==='Y')) {?>
-								<input id= "open_notification_gu_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ" onclick="create_modal_dialog_list_notification_gu();">
+								<input id= "open_notification_gu_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ-2б" onclick="create_modal_dialog_list_notification_gu('2b');">
+								<input id= "open_notification_gu_2d_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ-2д" onclick="create_modal_dialog_list_notification_gu('2d');">
 							<?php }?>   
 						</div>
 					</div>
