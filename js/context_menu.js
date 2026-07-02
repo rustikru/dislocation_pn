@@ -12778,9 +12778,24 @@ function create_return_invoice(p_clicked_li){
     stop_loading_animation();
 }
 /* Уведомление ГУ */
-function create_modal_dialog_list_notification_gu(){
+function create_modal_dialog_list_notification_gu(p_type_gu){
     $('.context-menu').remove();
     start_loading_animation();    
+
+    p_type_gu = p_type_gu || '2b';
+
+    var gu_config = {
+        '2b': {
+            list_title: 'Открыть уведомление ГУ-2б'
+        },
+        '2d': {
+            list_title: 'Открыть уведомление ГУ-2д'
+        }
+    };
+
+    if (gu_config[p_type_gu] == null) {
+        p_type_gu = '2b';
+    }
     
     function fill_select_notification(p_select){
         p_select.empty();
@@ -12792,7 +12807,8 @@ function create_modal_dialog_list_notification_gu(){
             type: 'POST',
             dataType: "text",
             async: false,
-            data:   {ajax_action: 'get_notifications_gu'},
+            data:   {ajax_action: 'get_notifications_gu'
+                    ,type_gu: p_type_gu},
             success: function (data) {
                     var records = JSON.parse(data);
                     $.each(records, function( i, item ) {
@@ -12804,7 +12820,7 @@ function create_modal_dialog_list_notification_gu(){
     }
     
     var md_div = $('<div/>')
-        .attr('title','Открыть уведомление')
+        .attr('title',gu_config[p_type_gu].list_title)
         .appendTo('body');
 
     md_div.notification = $('<select>',{class:'required'});
@@ -12839,7 +12855,7 @@ function create_modal_dialog_list_notification_gu(){
                         create_info_modal_dialog_new('Предупреждение','Выберите уведомление!');
                     }else{
                         md_div.dialog("close");
-                        create_modal_dialog_notification_gu(l_not_id);
+                        create_modal_dialog_notification_gu(l_not_id, p_type_gu);
                     }
                }   
             }, 
@@ -12855,9 +12871,36 @@ function create_modal_dialog_list_notification_gu(){
     stop_loading_animation();
 }
 /* Регистрация уведомлений ГУ */
-function create_modal_dialog_notification_gu(p_not_id){
+function create_modal_dialog_notification_gu(p_not_id, p_type_gu){
     $('.context-menu').remove();
     start_loading_animation();
+
+    p_type_gu = p_type_gu || '2b';
+
+    var gu_config = {
+        '2b': {
+            form_title: 'Регистрация уведомлений ГУ 26-2б ВЦ',
+            notification_label: 'Номер уведомления',
+            notification_etran_label: 'Номер уведомления (ЭТРАН)',
+            show_etran_fields: true,
+            show_contract_field: true,
+            show_report_btn: true,
+            show_export_btn: true
+        },
+        '2d': {
+            form_title: 'Регистрация уведомлений ГУ-2д',
+            notification_label: 'Номер уведомления ГУ-2д',
+            notification_etran_label: 'Номер уведомления ГУ-2д (ЭТРАН)',
+            show_etran_fields: true,
+            show_contract_field: true,
+            show_report_btn: false,
+            show_export_btn: true
+        }
+    };
+
+    if (gu_config[p_type_gu] == null) {
+        p_type_gu = '2b';
+    }
     
 	
 	
@@ -12878,6 +12921,7 @@ function create_modal_dialog_notification_gu(p_not_id){
             dataType: "text",
             async: false,
             data: { not_id: p_not_id
+                   ,type_gu: p_type_gu
                    ,cars: p_cars
                    ,num:p_num
                    ,notification_time:p_notification_time
@@ -12906,6 +12950,7 @@ function create_modal_dialog_notification_gu(p_not_id){
             dataType: "text",
             async: false,
             data: { not_id: p_not_id
+                   ,type_gu: p_type_gu
 				   ,pcalid: p_pcalid
                    ,ajax_action: 'export_notif_etran'
             },
@@ -13284,7 +13329,7 @@ function create_modal_dialog_notification_gu(p_not_id){
     }
     
     var md_div = $('<div/>')
-        .attr('title','Регистрация уведомлений ГУ 26-2б ВЦ')
+        .attr('title',gu_config[p_type_gu].form_title)
         .appendTo('body') // Присоединяем наше меню к body документа: 
         .append('<div style="display: table;">'+
                     '<div class="attr" style="width:330px;">'+
@@ -13322,33 +13367,40 @@ function create_modal_dialog_notification_gu(p_not_id){
     
     md_div.notification_time_fact = $('<input>',{type:'text', class:'text ui-widget-content ui-corner-all required'}).attr('size', '15');
     md_div.notification_person_to = $('<input>',{type:'text', class:'text ui-widget-content ui-corner-all required'}).attr('size', '20');
+
+    var notification_attr_div = $('<div>',{class:'attr',css:{'border':'none','width':'515px'}});
+
+    if (gu_config[p_type_gu].show_contract_field) {
+        notification_attr_div.append(
+            $('<div>')
+                .append($('<label>').text('Договор на ЭП'))
+                .append(md_div.crg_pcalid_num)
+        );
+    }
+
+    notification_attr_div.append(
+        $('<div>')
+            .append($('<label>').text(gu_config[p_type_gu].notification_label))
+            .append(md_div.notification_num)
+    );
+
+    if (gu_config[p_type_gu].show_etran_fields) {
+        notification_attr_div
+            .append(
+                $('<div>')
+                    .append($('<label>').text(gu_config[p_type_gu].notification_etran_label))
+                    .append(md_div.not_number_etran)
+            )
+            .append(
+                $('<div>')
+                    .append($('<label>').text('Статус (ЭТРАН)'))
+                    .append(md_div.not_state_etran)
+            );
+    }
     
     md_div
         .append(
-            $('<div>',{css:{'display':'table'}}).append(
-                $('<div>',{class:'attr',css:{'border':'none','width':'515px'}})
-                    .append(
-                        $('<div>')
-                            .append($('<label>').text('Договор на ЭП'))
-                            .append(md_div.crg_pcalid_num)
-							
-                    )
-					.append(
-                        $('<div>')
-                            .append($('<label>').text('Номер уведомления'))
-                            .append(md_div.notification_num)
-                    )
-                    .append(
-                        $('<div>')
-                            .append($('<label>').text('Номер уведомления (ЭТРАН)'))
-                            .append(md_div.not_number_etran)
-                    )
-                    .append(
-                        $('<div>')
-                            .append($('<label>').text('Статус (ЭТРАН)'))
-                            .append(md_div.not_state_etran)
-                    )
-            ) 
+            $('<div>',{css:{'display':'table'}}).append(notification_attr_div) 
         )
         .append(
             $('<div>',{css:{'display':'table'}}).append(
@@ -13437,6 +13489,7 @@ function create_modal_dialog_notification_gu(p_not_id){
             dataType: "text",
             async:false,
             data: { not_id: p_not_id
+                   ,type_gu: p_type_gu
                    ,ajax_action: 'get_notification_gu'},
             success: function (data) {
                 var l_not = JSON.parse(data);
@@ -13576,6 +13629,12 @@ function create_modal_dialog_notification_gu(p_not_id){
         $('#md_save_btn').hide();
     } else{
         $('#md_report_btn').hide();
+    }
+    if (!gu_config[p_type_gu].show_report_btn){
+        $('#md_report_btn').hide();
+    }
+    if (!gu_config[p_type_gu].show_export_btn){
+        $('#md_export_etran_btn').hide();
     }
     if (p_not_id == null || md_div.not_number_etran.val()!=''){
         $('#md_export_etran_btn').hide();

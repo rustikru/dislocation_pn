@@ -9524,7 +9524,9 @@ end;
 
 function get_notifications_gu(
     p_beg_date varchar2,
-    p_end_date varchar2)
+    p_end_date varchar2,
+    p_type_gu in varchar2 default '2b'
+    )
 return t_xx_id_name_table pipelined
 as
     l_row t_xx_id_name_row;
@@ -9537,12 +9539,28 @@ begin
     for tmp in (
         select xdng.notification_id
               ,xdng.not_number||' от '||to_char(xdng.not_time,'dd.mm.yyyy hh24:mi') num
+              ,not_time
+              ,not_number
+              ,'2b' as type_gu
           from xx_etw.xx_disl_notifications_gu      xdng
          where 1=1
            and xdng.not_time between l_beg_date and l_end_date
+           and p_type_gu = '2b'
+         union all
+         select xdng.notification_id
+              ,xdng.not_number||' от '||to_char(xdng.not_time,'dd.mm.yyyy hh24:mi') num
+              ,not_time
+              ,not_number
+              ,'2d' as type_gu
+          from xx_etw.xx_disl_notifications_gu_2d      xdng
+         where 1=1
+           and xdng.not_time between l_beg_date and l_end_date
+           and p_type_gu = '2d'
          order by
-               xdng.not_time desc,
-               xdng.not_number desc)
+               not_time desc,
+               not_number desc
+         
+               )
     loop
         l_row.id := tmp.notification_id;   
         l_row.name := tmp.num;
@@ -9552,7 +9570,7 @@ begin
 end;
 
 function get_notification_gu(
-    p_not_id number
+    p_not_id number, p_type_gu in varchar2
 ) return t_xx_notification_gu_table pipelined
 as
     l_row       t_xx_notification_gu_row;
@@ -9575,6 +9593,26 @@ begin
            and ng.notification_id = p_not_id
            and ng.notification_id = ngl.notification_id(+)
            and ngl.front_end_id = ecen.front_end_id(+)
+           and p_type_gu = '2b'
+          union all
+          select ng.notification_id
+              ,ng.not_number
+              ,ng.not_time
+              ,ng.not_person_from
+              ,ng.not_comment
+              ,ng.not_time_fact
+              ,ng.not_person_to
+              ,ecen.doc_num
+              ,ecen.state_name
+              ,ng.crg_pcalid -- -- add 11.11.2024 BekmansurovRR по наряду 0000068904 
+          from xx_etw.xx_disl_notifications_gu_2d      ng
+              ,xx_etw.xx_disl_notification_gu2d_link  ngl
+              ,xx_etw.etran_gu2d_data               ecen
+         where 1=1
+           and ng.notification_id = p_not_id
+           and ng.notification_id = ngl.notification_id(+)
+           and ngl.front_end_id = ecen.front_end_id(+)
+           and p_type_gu = '2d'
     ) loop
         l_row.notification_id := l_not_gu.notification_id;  
         l_row.not_number := l_not_gu.not_number;
@@ -9586,31 +9624,31 @@ begin
         l_row.not_number_etran := l_not_gu.cargo_end_notification_number;
         l_row.not_state_etran := l_not_gu.crg_state;
         l_row.crg_pcalid := l_not_gu.crg_pcalid; -- -- add 11.11.2024 BekmansurovRR по наряду 0000068904 
-        
-        select listagg(r.railcar_id||'#'||r.round_id,'|') within group (order by cng.pk_id)
-          into l_row.cars
-          from xx_disl_car_notif_gu         cng
-              ,xx_disl_round                r
-         where 1=1
-           and cng.notification_id = l_not_gu.notification_id
-           and cng.round_id = r.round_id;
-          
+       
+        if p_type_gu = '2b' then
+            select listagg(r.railcar_id||'#'||r.round_id,'|') within group (order by cng.pk_id)
+              into l_row.cars
+              from xx_disl_car_notif_gu         cng
+                  ,xx_disl_round                r
+             where 1=1
+               and cng.notification_id = l_not_gu.notification_id
+               and cng.round_id = r.round_id;
+        elsif p_type_gu = '2d' then
+            select listagg(r.railcar_id||'#'||r.round_id,'|') within group (order by cng.pk_id)
+              into l_row.cars
+              from xx_disl_car_notif_gu_2d         cng
+                  ,xx_disl_round                r
+             where 1=1
+               and cng.notification_id = l_not_gu.notification_id
+               and cng.round_id = r.round_id;
+
+        end if;
         pipe row (l_row);
     end loop;
 end;
 
-function register_notification_gu(
-    p_user_id                   number,
-    p_not_id                    number,
-    p_cars                      varchar2,
-    p_not_number                varchar2,
-    p_notification_time         varchar2,
-    p_notification_person_from  number,
-    p_comment                   varchar2,
-    p_notification_time_fact    varchar2,
-    p_notification_person_to    varchar2,
-    p_crg_pcalid                number -- add 11.11.2024 BekmansurovRR по наряду 0000068904
-    )
+function register_notification_gu(p_data in t_regit_row)
+    
 return varchar2 
 as
     l_function                  varchar2(100):='register_notification_gu';
@@ -9618,102 +9656,192 @@ as
     
     l_not_row                   xx_etw.xx_disl_notifications_gu%rowtype;
     l_round_row                 xx_etw.xx_disl_car_notif_gu%rowtype;
+    
+    --
+    l_gu2d_row                   xx_etw.xx_disl_notifications_gu_2d%rowtype;
+    l_gu2d_car_row               xx_etw.xx_disl_car_notif_gu_2d%rowtype;
         
     l_notification_time         date;
     l_notification_time_fact    date;
     l_round_id                  number;
 begin
-    log_new(l_log_id,l_function,'p_user_id = '||p_user_id
-                             ||' p_not_id='||p_not_id
-                             ||' p_cars='||p_cars
-                             ||' p_notification_time = '||p_notification_time
-                             ||' p_notification_person_from = '||p_notification_person_from
-                             ||' p_comment = '||p_comment
-                             ||' p_notification_time_fact = '||p_notification_time_fact
-                             ||' p_notification_person_to = '||p_notification_person_to
-                             ||' p_crg_pcalid = '||p_crg_pcalid
+    log_new(l_log_id,l_function,'p_user_id = '||p_data.user_id
+                             ||' p_not_id='||p_data.not_id
+                             ||' p_cars='||p_data.cars
+                             ||' p_notification_time = '||p_data.notification_time
+                             ||' p_notification_person_from = '||p_data.notification_person_from
+                             ||' p_comment = '||p_data.pcomment
+                             ||' p_notification_time_fact = '||p_data.notification_time_fact
+                             ||' p_notification_person_to = '||p_data.notification_person_to
+                             ||' p_crg_pcalid = '||p_data.crg_pcalid
+                             ||' p_gu_type = '||p_data.gu_type
                              );
     
-    begin
-        l_notification_time := to_date(p_notification_time,'dd.mm.yyyy hh24:mi');
-    exception
-        when others then l_notification_time := null;
-    end;
+    -- Сохраняем данные для ГУ-2б
+    if upper(p_data.gu_type) = '2B' then 
+        log_new(l_log_id,l_function,'Регистрируем 2Б....');
     
-    begin
-        l_notification_time_fact := to_date(p_notification_time_fact,'dd.mm.yyyy hh24:mi');
-    exception
-        when others then l_notification_time_fact := null;
-    end;
-   
-    if (p_not_id is null) then
-        l_not_row.notification_id := xx_etw.xx_disl_notifications_gu_seq.nextval();
-    else
-        l_not_row.notification_id := p_not_id;
-    end if;
-    
-    l_not_row.not_number := p_not_number;
-    l_not_row.not_time := l_notification_time;
-    l_not_row.not_person_from := p_notification_person_from;
-    l_not_row.not_comment := p_comment;
-    l_not_row.not_time_fact := l_notification_time_fact;
-    l_not_row.not_person_to := p_notification_person_to;
-    l_not_row.created_by := p_user_id;
-    l_not_row.created_date := sysdate;
-    l_not_row.crg_pcalid := p_crg_pcalid;
-    
-    log_new(l_log_id,l_function,'l_not_row.notification_id: '||l_not_row.notification_id);
-    log_new(l_log_id,l_function,'l_not_row.not_number: '||l_not_row.not_number);
-    
-    delete
-      from xx_disl_notifications_gu
-     where notification_id = l_not_row.notification_id;
-     
-    insert into xx_etw.xx_disl_notifications_gu
-    values l_not_row;  
-    
-    delete 
-      from xx_etw.xx_disl_car_notif_gu
-     where notification_id = l_not_row.notification_id;
-    
-    for l_cars in (
-        select regexp_substr(p_cars,'[^|]+',1,level) car_number
-          from dual
-       connect by level <= regexp_count(p_cars,'[^|]+'))
-    loop
-        l_round_row := null;
+        begin
+            l_notification_time := to_date(p_data.notification_time,'dd.mm.yyyy hh24:mi');
+        exception
+            when others then l_notification_time := null;
+        end;
         
-        log_new(l_log_id,l_function,'l_cars.car_number: '||l_cars.car_number);
+        begin
+            l_notification_time_fact := to_date(p_data.notification_time_fact,'dd.mm.yyyy hh24:mi');
+        exception
+            when others then l_notification_time_fact := null;
+        end;
+       
+        if (p_data.not_id is null) then
+            l_not_row.notification_id := xx_etw.xx_disl_notifications_gu_seq.nextval();
+        else
+            l_not_row.notification_id := p_data.not_id;
+        end if;
         
-        l_round_id := returnlastround(l_cars.car_number);
-        log_new(l_log_id,l_function,'l_round_id: '||l_round_id);
+        l_not_row.not_number := p_data.not_number;
+        l_not_row.not_time := l_notification_time;
+        l_not_row.not_person_from := p_data.notification_person_from;
+        l_not_row.not_comment := p_data.pcomment;
+        l_not_row.not_time_fact := l_notification_time_fact;
+        l_not_row.not_person_to := p_data.notification_person_to;
+        l_not_row.created_by := p_data.user_id;
+        l_not_row.created_date := sysdate;
+        l_not_row.crg_pcalid := p_data.crg_pcalid;
         
-        update xx_etw.xx_disl_car_notif_gu
-           set last_record = 'N' 
-         where 1=1
-           and round_id = l_round_id
-           and last_record = 'Y';
-        log_new(l_log_id,l_function,'update xx_etw.xx_disl_car_notif_gu: '||sql%rowcount);
+        log_new(l_log_id,l_function,'l_not_row.notification_id: '||l_not_row.notification_id);
+        log_new(l_log_id,l_function,'l_not_row.not_number: '||l_not_row.not_number);
         
+        delete
+          from xx_disl_notifications_gu
+         where notification_id = l_not_row.notification_id;
          
-        l_round_row.pk_id := xx_etw.xx_disl_car_notif_gu_seq.nextval();
-        l_round_row.round_id := l_round_id;
-        l_round_row.notification_id := l_not_row.notification_id;
-        l_round_row.last_record := 'Y';
+        insert into xx_etw.xx_disl_notifications_gu
+        values l_not_row;  
         
-        log_new(l_log_id,l_function,'l_round_row.pk_id: '||l_round_row.pk_id);
-        log_new(l_log_id,l_function,'l_round_row.round_id: '||l_round_row.round_id);
-        log_new(l_log_id,l_function,'l_round_row.notification_id: '||l_round_row.notification_id);
-        log_new(l_log_id,l_function,'l_round_row.last_record: '||l_round_row.last_record);
+        delete 
+          from xx_etw.xx_disl_car_notif_gu
+         where notification_id = l_not_row.notification_id;
         
-        insert into xx_etw.xx_disl_car_notif_gu
-        values l_round_row;
-    end loop;
+        for l_cars in (
+            select regexp_substr(p_data.cars,'[^|]+',1,level) car_number
+              from dual
+           connect by level <= regexp_count(p_data.cars,'[^|]+'))
+        loop
+            l_round_row := null;
+            
+            log_new(l_log_id,l_function,'l_cars.car_number: '||l_cars.car_number);
+            
+            l_round_id := returnlastround(l_cars.car_number);
+            log_new(l_log_id,l_function,'l_round_id: '||l_round_id);
+            
+            update xx_etw.xx_disl_car_notif_gu
+               set last_record = 'N' 
+             where 1=1
+               and round_id = l_round_id
+               and last_record = 'Y';
+            log_new(l_log_id,l_function,'update xx_etw.xx_disl_car_notif_gu: '||sql%rowcount);
+            
+             
+            l_round_row.pk_id := xx_etw.xx_disl_car_notif_gu_seq.nextval();
+            l_round_row.round_id := l_round_id;
+            l_round_row.notification_id := l_not_row.notification_id;
+            l_round_row.last_record := 'Y';
+            
+            log_new(l_log_id,l_function,'l_round_row.pk_id: '||l_round_row.pk_id);
+            log_new(l_log_id,l_function,'l_round_row.round_id: '||l_round_row.round_id);
+            log_new(l_log_id,l_function,'l_round_row.notification_id: '||l_round_row.notification_id);
+            log_new(l_log_id,l_function,'l_round_row.last_record: '||l_round_row.last_record);
+            
+            insert into xx_etw.xx_disl_car_notif_gu
+            values l_round_row;
+        end loop;
+    -- Сохраняем данные для ГУ-2д
+    elsif upper(p_data.gu_type) = '2D' then 
+        log_new(l_log_id,l_function,'Регистрируем 2Д....');
+        begin
+            l_notification_time := to_date(p_data.notification_time,'dd.mm.yyyy hh24:mi');
+        exception
+            when others then l_notification_time := null;
+        end;
+        
+        begin
+            l_notification_time_fact := to_date(p_data.notification_time_fact,'dd.mm.yyyy hh24:mi');
+        exception
+            when others then l_notification_time_fact := null;
+        end;
+       
+        if (p_data.not_id is null) then
+            l_gu2d_row.notification_id := xx_etw.xx_disl_notifications_gu2d_seq.nextval();
+        else
+            l_gu2d_row.notification_id := p_data.not_id;
+        end if;
+        
+        l_gu2d_row.not_number := p_data.not_number;
+        l_gu2d_row.not_time := l_notification_time;
+        l_gu2d_row.not_person_from := p_data.notification_person_from;
+        l_gu2d_row.not_comment := p_data.pcomment;
+        l_gu2d_row.not_time_fact := l_notification_time_fact;
+        l_gu2d_row.not_person_to := p_data.notification_person_to;
+        l_gu2d_row.created_by := p_data.user_id;
+        l_gu2d_row.created_date := sysdate;
+        l_gu2d_row.crg_pcalid := p_data.crg_pcalid;
+        
+        log_new(l_log_id,l_function,'l_gu2d_row.notification_id: '||l_gu2d_row.notification_id);
+        log_new(l_log_id,l_function,'l_gu2d_row.not_number: '||l_gu2d_row.not_number);
+        
+        delete
+          from xx_disl_notifications_gu_2d
+         where notification_id = l_gu2d_row.notification_id;
+         
+        insert into xx_etw.xx_disl_notifications_gu_2d
+        values l_gu2d_row;  
+        
+        delete 
+          from xx_etw.xx_disl_car_notif_gu_2d
+         where notification_id = l_gu2d_row.notification_id;
+        
+        for l_cars in (
+            select regexp_substr(p_data.cars,'[^|]+',1,level) car_number
+              from dual
+           connect by level <= regexp_count(p_data.cars,'[^|]+'))
+        loop
+            l_gu2d_car_row := null;
+            
+            log_new(l_log_id,l_function,'l_cars.car_number: '||l_cars.car_number);
+            
+            l_round_id := returnlastround(l_cars.car_number);
+            log_new(l_log_id,l_function,'l_round_id: '||l_round_id);
+            
+            update xx_etw.xx_disl_car_notif_gu_2d
+               set last_record = 'N' 
+             where 1=1
+               and round_id = l_round_id
+               and last_record = 'Y';
+            log_new(l_log_id,l_function,'update xx_etw.xx_disl_car_notif_gu: '||sql%rowcount);
+            
+             
+            l_gu2d_car_row.pk_id := xx_etw.xx_disl_car_notif_gu2d_seq.nextval();
+            l_gu2d_car_row.round_id := l_round_id;
+            l_gu2d_car_row.notification_id := l_gu2d_row.notification_id;
+            l_gu2d_car_row.last_record := 'Y';
+            
+            log_new(l_log_id,l_function,'l_gu2d_car_row.pk_id: '||l_gu2d_car_row.pk_id);
+            log_new(l_log_id,l_function,'l_gu2d_car_row.round_id: '||l_gu2d_car_row.round_id);
+            log_new(l_log_id,l_function,'l_gu2d_car_row.notification_id: '||l_gu2d_car_row.notification_id);
+            log_new(l_log_id,l_function,'l_gu2d_car_row.last_record: '||l_gu2d_car_row.last_record);
+            
+            insert into xx_etw.xx_disl_car_notif_gu_2d
+            values l_gu2d_car_row;
+        end loop;
+    end if;
     
     commit;
     return 'done';
 exception
-    when others then rollback; return 'fail';
+    when others then 
+        log_new(l_log_id,l_function,'Error: '||sqlerrm);
+        rollback; return 'fail';
 end;
 
 -- Вывод договора на эксплуатацию путей для формы 2ГУ
@@ -9738,6 +9866,123 @@ begin
         
     end loop;
 end;
+-- Отправка уведомления ГУ (2Б или 2Д) в Этран
+function export_gu_to_etran (p_user_id   in number,
+                             p_not_id    in varchar2,
+                             p_pcalid    in number default null,
+                             p_type_gu   in varchar2) return varchar2
+is
+    l_function                          varchar2(100):='export_gu_to_etran';
+    l_log_id                            number := xx_etw.xx_disl_log_seq.nextval();
+    ---
+    l_return varchar2(4000);
+begin
+    log_new(l_log_id,l_function,'p_user_id = '||p_user_id
+                             ||' p_not_id = '||p_not_id
+                             ||' p_type_gu = '||p_type_gu);
+    if p_type_gu = '2b' then 
+        -- Отправка уведомления ГУ (2Б) в Этран
+        l_return := export_notif_etran( p_user_id, p_not_id, p_pcalid);
+    elsif p_type_gu = '2d' then 
+        -- Отправка уведомления ГУ (2Д) в Этран
+        l_return := export_gu2d_etran( p_user_id, p_not_id, p_pcalid);
+    end if;
+    
+    return l_return;
+end;      
+
+-- Отправка уведомления ГУ (2Д) в Этран
+function export_gu2d_etran (p_user_id   in number,
+                            p_not_id    in varchar2,
+                            p_pcalid    in number default null)
+    return varchar2
+is
+    l_function                          varchar2(100):='export_gu2d_etran';
+    l_log_id                            number := xx_etw.xx_disl_log_seq.nextval();
+    ---
+    l_not_row                           xx_etw.xx_disl_notifications_gu_2d%rowtype;
+    ---
+    l_row_d                             etran_gu2d_data%rowtype;
+    l_row_wag                           etran_gu2d_data_wags%rowtype;
+    ---
+    x_front_end_id                      number;
+    l_result                            varchar2(4000);
+    x_return_status                     varchar2(10):='S';
+    x_message                           varchar2(4000);
+    x_list_cont                         varchar2(4000);
+begin
+    
+
+    select *
+      into l_not_row
+      from xx_etw.xx_disl_notifications_gu_2d
+     where notification_id = p_not_id;   
+    
+    begin   
+        select front_end_id
+          into l_row_d.front_end_id
+          from xx_etw.xx_disl_notification_gu2d_link
+         where notification_id = l_not_row.notification_id;     
+    exception
+        when no_data_found then l_row_d.front_end_id := null;
+    end;    
+    
+    if l_row_d.front_end_id is not null then return 'fail$Уведомление уже создано ранее!'; end if;
+    
+    -- ETRAN_GU2D_DATA  - уведомление
+    --  – вагоны
+    l_row_d.front_end_id := etw_front_end_id_s.nextval;
+    
+    insert into etran_gu2d_data values l_row_d;
+
+    insert into xx_etw.xx_disl_notification_gu2d_link
+        values (p_not_id,l_row_d.front_end_id); 
+    
+    -- Добавляем вагоны для уведомления
+    for car in (
+        select rownum as rwn, 
+               car.railcar_id as car_number,
+                round(nvl((select cnsi.car_length 
+                            from xx_etw.etw_car_nsi cnsi 
+                           where 1=1 
+                                  and cnsi.car_number = car.railcar_id),14)/14,2) as cond_car_length
+          from xx_disl_car_notif_gu_2d x,
+               xx_disl_round car
+         where x.notification_id = p_not_id
+               and x.round_id = car.round_id
+               and x.last_record  = 'Y'
+    )
+    loop
+        l_row_wag := null;
+        
+        l_row_wag.front_end_id := l_row_d.front_end_id;
+        l_row_wag.car_order := car.rwn;
+        l_row_wag.car_number := car.car_number;
+        l_row_wag.car_length := car.cond_car_length;
+        
+        insert into etran_gu2d_data_wags values l_row_wag;
+    end loop;
+    
+    -- Отправляем в этран
+    /*etran_gu2d_pkg.set_gu2d_api(p_front_end_id      => l_row_d.front_end_id, 
+                                px_return_status    => x_return_status, 
+                                px_message          => x_message);
+    */
+    if (x_return_status = 'S') then
+        
+        l_result := 'done';
+        
+    else
+        l_result := 'fail|'||x_message;
+    end if;
+    
+    
+    return l_result;
+exception
+    when others then rollback; 
+    log_new(l_log_id,l_function,'EXCEPTION.OTHERS = ' || sqlerrm); 
+    return 'fail|'||substr(sqlerrm,1,200);
+end;                        
 
 function export_notif_etran(
     p_user_id                   in number,

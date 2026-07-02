@@ -1384,25 +1384,30 @@ is
 
     type t_xx_notification_gu_table is table of t_xx_notification_gu_row;
 
-    function get_notifications_gu (p_beg_date varchar2, p_end_date varchar2)
+    function get_notifications_gu (p_beg_date varchar2, p_end_date varchar2, p_type_gu in varchar2 default '2b')
         return t_xx_id_name_table
         pipelined;
 
-    function get_notification_gu (p_not_id number)
+    function get_notification_gu (p_not_id number, p_type_gu in varchar2)
         return t_xx_notification_gu_table
         pipelined;
 
-    function register_notification_gu (p_user_id                    number,
-                                       p_not_id                     number,
-                                       p_cars                       varchar2,
-                                       p_not_number                 varchar2,
-                                       p_notification_time          varchar2,
-                                       p_notification_person_from   number,
-                                       p_comment                    varchar2,
-                                       p_notification_time_fact     varchar2,
-                                       p_notification_person_to     varchar2,
-                                       p_crg_pcalid                 number -- add 11.11.2024 BekmansurovRR по наряду 0000068904
-                                                                          )
+    type t_regit_row is record
+    (
+        user_id                    number,
+        not_id                     number,
+        cars                       varchar2(4000),
+        not_number                 varchar2(4000),
+        notification_time          varchar2(150),
+        notification_person_from   number,
+        pcomment                    varchar2(4000),
+        notification_time_fact     varchar2(150),
+        notification_person_to     varchar2(150),
+        crg_pcalid                 number,
+        gu_type                    varchar2(50)
+    );
+    
+    function register_notification_gu (p_data in t_regit_row)
         return varchar2;
 
     type t_xx_contract_gu_row is record
@@ -1418,12 +1423,22 @@ is
     function get_contract_default_for_gu
         return t_xx_contract_gu_table
         pipelined;
-
+    
+    -- Отправка уведомления ГУ (2Б или 2Д) в Этран
+    function export_gu_to_etran (p_user_id   in number,
+                                 p_not_id    in varchar2,
+                                 p_pcalid    in number default null,
+                                 p_type_gu   in varchar2) return varchar2;
+    -- Отправка уведомления ГУ (2Б) в Этран
     function export_notif_etran (p_user_id   in number,
                                  p_not_id    in varchar2,
                                  p_pcalid    in number default null)
         return varchar2;
-
+    -- Отправка уведомления ГУ (2Д) в Этран
+    function export_gu2d_etran (p_user_id   in number,
+                                p_not_id    in varchar2,
+                                p_pcalid    in number default null)
+        return varchar2;
     procedure remove_empty_bandwagons (p_errbuf       out nocopy varchar2,
                                        p_retcode      out nocopy varchar2);
 

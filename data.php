@@ -37,9 +37,6 @@ if (isset($routes[$action])) {
                 $e = oci_error();
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
-        $tz = oci_parse($conn, "ALTER SESSION SET TIME_ZONE = 'Asia/Yekaterinburg'");
-        oci_execute($tz);
-        oci_free_statement($tz);
         (new $class($conn, $auth))->handle($action, $_POST);
         oci_close($conn);
         exit;
@@ -1367,10 +1364,19 @@ if ($_POST['ajax_action'] === 'get_notifications_gu') {
 
         $arrChild = array();
         $credential_id = filter_input(INPUT_POST, 'credential_id') ?? '';
+        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
+        $type_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
+        if (!in_array($type_gu, array('2b', '2d'), true)) {
+                oci_close($conn);
+                echo json_encode($arrChild);
+                return;
+        }
+        
 
-        $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notifications_gu(:bind1,:bind2))');
+        $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notifications_gu(:bind1,:bind2,:bind3))');
         oci_bind_by_name($oci_child, ":bind1", $credential_id);
         oci_bind_by_name($oci_child, ":bind2", $credential_id);
+        oci_bind_by_name($oci_child, ":bind3", $type_gu);
         oci_execute($oci_child);
         while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC + OCI_RETURN_NULLS)) {
                 array_push($arrChild, $tmp);
@@ -3518,39 +3524,70 @@ if ($_POST['ajax_action'] === 'get_suitable_claims') {
 }
 
 if ($_POST['ajax_action'] === 'register_notification_gu') {
-        $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
-        if (!$conn) {
-                $e = oci_error();
-                trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-        }
-        $result = null;
-        $user_id = $auth->getUserId();
-        $not_id = filter_input(INPUT_POST, 'not_id') ?? '';
-        $cars = filter_input(INPUT_POST, 'cars') ?? '';
-        $num = filter_input(INPUT_POST, 'num') ?? '';
-        $notification_time = filter_input(INPUT_POST, 'notification_time') ?? '';
-        $notification_person_from = filter_input(INPUT_POST, 'notification_person_from') ?? '';
-        $comment = filter_input(INPUT_POST, 'comment') ?? '';
-        $notification_time_fact = filter_input(INPUT_POST, 'notification_time_fact') ?? '';
-        $notification_person_to = filter_input(INPUT_POST, 'notification_person_to') ?? '';
-        $crg_pcalid = filter_input(INPUT_POST, 'crg_pcalid') ?? '';
-        $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.register_notification_gu(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11); end;');
-        oci_bind_by_name($oci_request, ":bind1", $result, 4000);
-        oci_bind_by_name($oci_request, ":bind2", $user_id);
-        oci_bind_by_name($oci_request, ":bind3", $not_id);
-        oci_bind_by_name($oci_request, ":bind4", $cars);
-        oci_bind_by_name($oci_request, ":bind5", $num);
-        oci_bind_by_name($oci_request, ":bind6", $notification_time);
-        oci_bind_by_name($oci_request, ":bind7", $notification_person_from);
-        oci_bind_by_name($oci_request, ":bind8", $comment);
-        oci_bind_by_name($oci_request, ":bind9", $notification_time_fact);
-        oci_bind_by_name($oci_request, ":bind10", $notification_person_to);
-        oci_bind_by_name($oci_request, ":bind11", $crg_pcalid);
-        oci_execute($oci_request);
+    $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
+    if (!$conn) {
+        $e = oci_error();
+        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+    }
 
+    $sql = '
+    declare
+        p_data xx_dislocation.t_regit_row;
+    begin
+        p_data.user_id                  := :p_user_id;
+        p_data.not_id                   := :p_not_id;
+        p_data.cars                     := :p_cars;
+        p_data.not_number               := :p_not_number;
+        p_data.notification_time        := :p_notification_time;
+        p_data.notification_person_from := :p_notification_person_from;
+        p_data.pcomment                 := :p_pcomment;
+        p_data.notification_time_fact   := :p_notification_time_fact;
+        p_data.notification_person_to   := :p_notification_person_to;
+        p_data.crg_pcalid               := :p_crg_pcalid;
+        p_data.gu_type                  := :p_gu_type;
+        
+        :p_result := xx_dislocation.register_notification_gu(p_data);
+    end;
+    ';
+
+    $oci_request = oci_parse($conn, $sql);
+
+    $user_id = $auth->getUserId();
+    $not_id = filter_input(INPUT_POST, 'not_id') ?? '';
+    $cars = filter_input(INPUT_POST, 'cars') ?? '';
+    $not_number = filter_input(INPUT_POST, 'num') ?? '';
+    $notification_time = filter_input(INPUT_POST, 'notification_time') ?? '';
+    $notification_person_from = filter_input(INPUT_POST, 'notification_person_from') ?? '';
+    $pcomment = filter_input(INPUT_POST, 'comment') ?? '';
+    $notification_time_fact = filter_input(INPUT_POST, 'notification_time_fact') ?? '';
+    $notification_person_to = filter_input(INPUT_POST, 'notification_person_to') ?? '';
+    $crg_pcalid = filter_input(INPUT_POST, 'crg_pcalid') ?? '';
+    //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
+    $gu_type = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
+    if (!in_array($gu_type, array('2b', '2d'), true)) {
         oci_close($conn);
+        echo 'fail|unknown type_gu=' . $gu_type;
+        return;
+    }
 
-        echo $result;
+    oci_bind_by_name($oci_request, ':p_result', $result, 4000);
+    oci_bind_by_name($oci_request, ':p_user_id', $user_id);
+    oci_bind_by_name($oci_request, ':p_not_id', $not_id);
+    oci_bind_by_name($oci_request, ':p_cars', $cars, 4000);
+    oci_bind_by_name($oci_request, ':p_not_number', $not_number, 4000);
+    oci_bind_by_name($oci_request, ':p_notification_time', $notification_time, 150);
+    oci_bind_by_name($oci_request, ':p_notification_person_from', $notification_person_from);
+    oci_bind_by_name($oci_request, ':p_pcomment', $pcomment, 4000);
+    oci_bind_by_name($oci_request, ':p_notification_time_fact', $notification_time_fact, 150);
+    oci_bind_by_name($oci_request, ':p_notification_person_to', $notification_person_to, 150);
+    oci_bind_by_name($oci_request, ':p_crg_pcalid', $crg_pcalid);
+    oci_bind_by_name($oci_request, ':p_gu_type', $gu_type, 50);
+
+    oci_execute($oci_request);
+
+    oci_close($conn);
+
+    echo $result;
 }
 
 if ($_POST['ajax_action'] === 'export_notif_etran') {
@@ -3560,13 +3597,21 @@ if ($_POST['ajax_action'] === 'export_notif_etran') {
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
         $userID = $auth->getUserId();
-        $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.export_notif_etran(:bind2,:bind3,:bind4); end;');
+        $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.export_gu_to_etran(:bind2,:bind3,:bind4,:bind5); end;');
         $not_id = filter_input(INPUT_POST, 'not_id');
         $pcalid = filter_input(INPUT_POST, 'pcalid');
+        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
+        $ptype_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
+        if (!in_array($ptype_gu, array('2b', '2d'), true)) {
+                oci_close($conn);
+                echo 'fail|unknown type_gu=' . $ptype_gu;
+                return;
+        }
         oci_bind_by_name($oci_request, ":bind1", $result, 4000);
         oci_bind_by_name($oci_request, ":bind2", $userID);
         oci_bind_by_name($oci_request, ":bind3", $not_id);
         oci_bind_by_name($oci_request, ":bind4", $pcalid);
+        oci_bind_by_name($oci_request, ":bind5", $ptype_gu);
 
         oci_execute($oci_request);
         oci_close($conn);
@@ -3583,8 +3628,16 @@ if ($_POST['ajax_action'] === 'get_notification_gu') {
 
         $arrChild = array();
         $not_id = filter_input(INPUT_POST, 'not_id');
-        $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notification_gu(:bind1))');
+        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
+        $type_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
+        if (!in_array($type_gu, array('2b', '2d'), true)) {
+                oci_close($conn);
+                echo json_encode($arrChild);
+                return;
+        }
+        $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notification_gu(:bind1, :bind2))');
         oci_bind_by_name($oci_child, ":bind1", $not_id);
+        oci_bind_by_name($oci_child, ":bind2", $type_gu);
 
         oci_execute($oci_child);
 
