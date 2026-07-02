@@ -12778,6 +12778,78 @@ function create_return_invoice(p_clicked_li){
     stop_loading_animation();
 }
 /* Уведомление ГУ */
+function show_notification_gu_type_menu(p_button, p_action){
+    var l_button = $(p_button);
+    var l_old_menu = $('.notification-gu-type-menu');
+
+    if (l_old_menu.length !== 0 && l_old_menu.data('button-id') === l_button.attr('id')) {
+        l_old_menu.remove();
+        $(document).off('mousedown.notification_gu_type_menu');
+        return;
+    }
+
+    l_old_menu.remove();
+    $(document).off('mousedown.notification_gu_type_menu');
+
+    function select_type(p_type_gu){
+        $('.notification-gu-type-menu').remove();
+        $(document).off('mousedown.notification_gu_type_menu');
+
+        if (p_action === 'register') {
+            create_modal_dialog_notification_gu(null, p_type_gu);
+        } else if (p_action === 'open') {
+            create_modal_dialog_list_notification_gu(p_type_gu);
+        }
+    }
+
+    var l_offset = l_button.offset();
+    var l_menu = $('<div>', {
+            'class': 'notification-gu-type-menu',
+            css: {
+                position: 'absolute',
+                left: l_offset.left + l_button.outerWidth() + 4,
+                top: l_offset.top,
+                zIndex: 10000,
+                display: 'none',
+                whiteSpace: 'nowrap',
+                padding: '2px',
+                background: '#EBEBEB',
+                border: '1px solid #404040',
+                borderRadius: '3px'
+            }
+        })
+        .data('button-id', l_button.attr('id'))
+        .appendTo('body');
+
+    $('<input>', {type: 'button', class: 'btnFind', value: 'ГУ-2б'})
+        .css({'margin-right': '2px'})
+        .appendTo(l_menu)
+        .click(function(e){
+            e.stopPropagation();
+            select_type('2b');
+        });
+
+    $('<input>', {type: 'button', class: 'btnFind', value: 'ГУ-2д'})
+        .appendTo(l_menu)
+        .click(function(e){
+            e.stopPropagation();
+            select_type('2d');
+        });
+
+    l_menu
+        .mousedown(function(e){
+            e.stopPropagation();
+        })
+        .show('slide', {direction: 'left'}, 120);
+
+    setTimeout(function(){
+        $(document).on('mousedown.notification_gu_type_menu', function(){
+            $('.notification-gu-type-menu').remove();
+            $(document).off('mousedown.notification_gu_type_menu');
+        });
+    }, 0);
+}
+
 function create_modal_dialog_list_notification_gu(p_type_gu){
     $('.context-menu').remove();
     start_loading_animation();    
