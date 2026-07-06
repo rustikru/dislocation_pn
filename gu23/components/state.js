@@ -24,6 +24,11 @@ export function hasPerm(code) {
   return applicationState.userPerms.has(code)
 }
 
+/** Текущий пользователь — администратор */
+export function isAdmin() {
+  return applicationState.isAdmin === true
+}
+
 // Активный Проект
 export let activeDraft = null
 

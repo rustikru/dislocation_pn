@@ -9,7 +9,7 @@ import {
   showTypeName,
   showStatusName,
 } from './ui.js'
-import { setActiveDraft, hasPerm } from './state.js'
+import { setActiveDraft, hasPerm, isAdmin } from './state.js'
 
 export function showCard(container) {
   const currentId = $('#view').data('selected-id')
@@ -74,9 +74,12 @@ function showActionsMenu(act, data) {
   }
 
   // --- черновик: редактирование / удаление ---
+  // Проект правит владелец; акт «на подписании» (active) — администратор
   if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
+  } else if (act.STATUS === 'active' && isAdmin()) {
+    addItem('Редактировать (админ)', () => editDraftAct(data))
   }
 
   // --- рассылка ссылок на подписание ---

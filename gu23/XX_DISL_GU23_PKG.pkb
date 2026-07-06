@@ -1837,7 +1837,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                return format_error('Акт не найден');
          end;
 
-         if v_cur_status <> 'draft' then
+            -- Редактировать можно Проект; администратор — ещё и акт «на подписании»
+         if
+            v_cur_status <> 'draft'
+            and not ( v_cur_status = 'active'
+                      and gu23_is_admin(p_data.p_user_id) = 'Y' )
+         then
             return format_error('Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
          end if;
 
@@ -1864,7 +1869,17 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 cal_days = v_cd,
                 linked_start_id = p_data.p_linked_start_id,
                 modified_at = sysdate,
-                modified_by = p_data.p_user_id
+                modified_by = p_data.p_user_id,
+                -- правка акта «на подписании» админом — новая версия содержимого
+                content_version = nvl(
+                   content_version,
+                   1
+                ) + case
+                   when v_cur_status = 'draft' then
+                      0
+                   else
+                      1
+                end
           where id = v_id;
 
          delete from xx_disl_gu23_act_row
@@ -1872,6 +1887,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
          delete from xx_disl_gu23_signer
           where act_id = v_id;
+
+            -- Админ скорректировал акт «на подписании»: собранные подписи
+            -- относятся к прежней версии — сбрасываем, требуется переподписание
+         if v_cur_status <> 'draft' then
+            delete from xx_disl_gu23_approval
+             where act_id = v_id;
+
+            log_act_history(
+               p_act_id  => v_id,
+               p_user_id => p_data.p_user_id,
+               p_text    => 'Акт скорректирован администратором на стадии подписания — ранее собранные подписи сброшены'
+            );
+         end if;
       end if;
 
         -- разбираем вагоны
