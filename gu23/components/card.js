@@ -85,7 +85,7 @@ function showActionsMenu(act, data) {
     // раскомментировать условие ниже.
     // && act.ACT_TYPE === 'other'
   ) {
-    addItem('Редактировать (админ)', () => editDraftAct(data))
+    addItem('Редактировать', () => editDraftAct(data))
   }
 
   // --- рассылка ссылок на подписание ---

@@ -150,7 +150,6 @@ function showFormFields() {
     <div class="cols">
       ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
       ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
-      ${showFormField('Ст. отправления', `<div style="position:relative"><input class="inp" id="auto-stationFrom" placeholder="Введите название (мин. 3 символа)…" value="${escapeHtml(stationFromName)}"><div class="dropdown" id="from-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
     </div>
   `)
 
@@ -170,13 +169,16 @@ function showFormFields() {
     activeDraft.stationId = this.value
   })
 
-  // Строка Назначение (Autocomplete) + Груз (Autocomplete)
+  // Строка: Ст. отправления + Ст. назначения (рядом), Груз — строкой ниже
   $body.append(`
     <div class="cols">
+      ${showFormField('Ст. отправления', `<div style="position:relative"><input class="inp" id="auto-stationFrom" placeholder="Введите название (мин. 3 символа)…" value="${escapeHtml(stationFromName)}"><div class="dropdown" id="from-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
+
       ${showFormField('Ст. назначения', `<div style="position:relative"><input class="inp" id="auto-stationTo" placeholder="Введите название (мин. 3 символа)…" value="${activeDraft.stationToName}"><div class="dropdown" id="auto-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
-
+    </div>
+    <div class="cols">
       ${showFormField('Груз', `<div style="position:relative"><input class="inp" id="auto-cargo" placeholder="Начните вводить…" value="${escapeHtml(activeDraft.cargoReference || '')}"><div class="dropdown" id="cargo-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
-
+      <div></div>
     </div>
   `)
 
