@@ -138,18 +138,19 @@ function showFormFields() {
         `<option value="${s.CODE}" ${activeDraft.stationId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
     )
     .join('')
-  const stationsFromHtml = references.stationsFromList
-    .map(
-      (s) =>
-        `<option value="${s.CODE}" ${activeDraft.stationFromId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
+  // Имя станции отправления для начального значения автокомплита
+  const stationFromName = (() => {
+    const s = (references.stationsFromList || []).find(
+      (s) => String(s.CODE) === String(activeDraft.stationFromId),
     )
-    .join('')
+    return s ? s.NAME : activeDraft.stationFromName || ''
+  })()
 
   $body.append(`
     <div class="cols">
       ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
       ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
-      ${showFormField('Ст. отправления', `<select class="inp" id="sel-stationFrom">${stationsFromHtml}</select>`, true)}
+      ${showFormField('Ст. отправления', `<div style="position:relative"><input class="inp" id="auto-stationFrom" placeholder="Введите название (мин. 3 символа)…" value="${escapeHtml(stationFromName)}"><div class="dropdown" id="from-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
     </div>
   `)
 
@@ -167,9 +168,6 @@ function showFormFields() {
   })
   $('#sel-station').on('change', function () {
     activeDraft.stationId = this.value
-  })
-  $('#sel-stationFrom').on('change', function () {
-    activeDraft.stationFromId = this.value
   })
 
   // Строка Назначение (Autocomplete) + Груз (Autocomplete)
@@ -458,9 +456,9 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   )
 }
 
-function initStationAutocomplete() {
-  const $inp = $('#auto-stationTo')
-  const $dropdown = $('#auto-dropdown')
+// Инициализирует автокомплит станции (серверный поиск gu23_search_station)
+// для произвольного поля. onSelect(code,name) — выбор, onClear() — очистка.
+function initStationAC($inp, $dropdown, onSelect, onClear) {
   let timer = null
   let activeIdx = -1
 
@@ -476,8 +474,7 @@ function initStationAutocomplete() {
 
   function selectItem($item) {
     $inp.val($item.data('name'))
-    activeDraft.stationToId = $item.data('code')
-    activeDraft.stationToName = $item.data('name')
+    onSelect($item.data('code'), $item.data('name'))
     $dropdown.hide()
     activeIdx = -1
   }
@@ -488,10 +485,7 @@ function initStationAutocomplete() {
     activeIdx = -1
     if (value.length < 3) {
       $dropdown.hide().empty()
-      if (!value) {
-        activeDraft.stationToId = ''
-        activeDraft.stationToName = ''
-      }
+      if (!value) onClear()
       return
     }
 
@@ -542,6 +536,34 @@ function initStationAutocomplete() {
       $dropdown.hide()
       activeIdx = -1
     }, 200),
+  )
+}
+
+// Автокомплит для станций отправления и назначения
+function initStationAutocomplete() {
+  initStationAC(
+    $('#auto-stationTo'),
+    $('#auto-dropdown'),
+    (code, name) => {
+      activeDraft.stationToId = code
+      activeDraft.stationToName = name
+    },
+    () => {
+      activeDraft.stationToId = ''
+      activeDraft.stationToName = ''
+    },
+  )
+  initStationAC(
+    $('#auto-stationFrom'),
+    $('#from-dropdown'),
+    (code, name) => {
+      activeDraft.stationFromId = code
+      activeDraft.stationFromName = name
+    },
+    () => {
+      activeDraft.stationFromId = ''
+      activeDraft.stationFromName = ''
+    },
   )
 }
 
@@ -605,6 +627,7 @@ function loadWagonsDataFromDislocation() {
     const records = rows || []
     let foundCount = 0
     let addedCount = 0
+    let noDataCount = 0 // добавлены без данных (не нашлись в дислокации)
     let firstFound = null
     const busy = [] // вагоны/накладные, уже занятые другим актом начала
 
@@ -612,10 +635,11 @@ function loadWagonsDataFromDislocation() {
     const existingNumbers = new Set(activeDraft.wagons.map((w) => w.n))
 
     records.forEach((row) => {
+      const wagonNumber = String(row.WAGON_NO || '').trim()
+
       if (String(row.FOUND) === '1') {
         foundCount++
         if (!firstFound) firstFound = row
-        const wagonNumber = String(row.WAGON_NO)
 
         // Вагон/накладная уже заняты действующим актом начала — не добавляем
         if (row.DUP_ACT) {
@@ -643,6 +667,21 @@ function loadWagonsDataFromDislocation() {
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
         }
+      } else if (wagonNumber && !existingNumbers.has(wagonNumber)) {
+        // Данные из дислокации не подтянулись — всё равно добавляем вагон (только номер)
+        activeDraft.wagons.push({
+          n: wagonNumber,
+          waybill: '',
+          owner: '',
+          kind: '',
+          from: '',
+          to: '',
+          cargo: '',
+          weight: '',
+        })
+        existingNumbers.add(wagonNumber)
+        addedCount++
+        noDataCount++
       }
     })
 
@@ -665,21 +704,30 @@ function loadWagonsDataFromDislocation() {
       busyText = ` Пропущено занятых: ${busy.length} — ${parts.join(', ')}.`
     }
 
+    // Текст про вагоны, добавленные без данных (не нашлись в дислокации)
+    const noDataText = noDataCount
+      ? ` Без данных из дислокации (добавлены только номера): ${noDataCount}.`
+      : ''
+
     // Выводим плашку о итогах найденных данных
     activeDraft._summary = {
       req: inputNums.length,
       found: foundCount,
       added: addedCount,
       busy: busy.length,
+      noData: noDataCount,
       text:
         `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.` +
+        noDataText +
         busyText,
     }
 
     showToast(
       busy.length
         ? `Добавлено ${addedCount}, пропущено занятых ${busy.length} (уже есть акт начала)`
-        : `Добавлено ${addedCount} новых вагонов из ${foundCount} найденных`,
+        : noDataCount
+          ? `Добавлено ${addedCount} (из них без данных: ${noDataCount})`
+          : `Добавлено ${addedCount} новых вагонов из ${foundCount} найденных`,
       busy.length ? 'warn' : addedCount ? 'ok' : 'info',
     )
     $('#txt-wagons').val('')
@@ -844,6 +892,8 @@ function showSignersFields() {
     }
   }
 
+  const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
+
   for (let i = 0; i < countNeeded; i++) {
     let signersList = []
     let helpText = ''
@@ -878,10 +928,20 @@ function showSignersFields() {
 
     let inputHtml = ''
     if (isManual) {
+      // подсказки для ручного ввода — из того же справочника, что и для этого слота
+      manualSlots.push({ slot: i, source: signersList })
+      const ddStyle =
+        'display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;'
       inputHtml = `
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px">
-          <input class="inp signer-fio" data-slot="${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
-          <input class="inp signer-post" data-slot="${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
+          <div style="position:relative">
+            <input class="inp signer-fio" data-slot="${i}" id="signer-fio-${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
+            <div class="dropdown" id="signer-fio-dd-${i}" style="${ddStyle}"></div>
+          </div>
+          <div style="position:relative">
+            <input class="inp signer-post" data-slot="${i}" id="signer-post-${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
+            <div class="dropdown" id="signer-post-dd-${i}" style="${ddStyle}"></div>
+          </div>
           <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
         </div>
       `
@@ -971,6 +1031,45 @@ function showSignersFields() {
     else if ($(this).hasClass('signer-post'))
       activeDraft.signers[slot].post = this.value
     else activeDraft.signers[slot].org = this.value
+  })
+
+  // Автокомплит для ручного ввода подписанта: по ФИО или должности.
+  // Совпадения ищутся из справочника соответствующего слота; выбор заполняет
+  // ФИО/должность/организацию (режим остаётся «Вручную», можно поправить).
+  manualSlots.forEach(({ slot, source }) => {
+    const items = (source || []).map((s) => ({
+      // label содержит и ФИО, и должность — поиск работает по обоим
+      label: `${s.FIO || ''}${s.POST ? ' · ' + s.POST : ''}${s.ORG ? ' · ' + s.ORG : ''}`,
+      value: s.ID,
+      fio: s.FIO || '',
+      post: s.POST || '',
+      org: s.ORG || '',
+    }))
+    if (!items.length) return
+
+    const fill = (it) => {
+      activeDraft.signers[slot] = {
+        id: null,
+        fio: it.fio,
+        post: it.post,
+        org: it.org,
+        manual: true,
+      }
+      showSignersFields()
+    }
+
+    initListAutocomplete(
+      $(`#signer-fio-${slot}`),
+      $(`#signer-fio-dd-${slot}`),
+      items,
+      fill,
+    )
+    initListAutocomplete(
+      $(`#signer-post-${slot}`),
+      $(`#signer-post-dd-${slot}`),
+      items,
+      fill,
+    )
   })
 }
 
