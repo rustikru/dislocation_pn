@@ -358,7 +358,7 @@ function applySelectedStartAct(id, filterNums = null) {
     from: w.ST_FROM,
     to: w.ST_TO,
     cargo: w.CARGO,
-    weight: w.WEIGHT
+    weight: w.WEIGHT,
   }))
 
   if (filterNums) {
@@ -614,7 +614,7 @@ function loadWagonsDataFromDislocation() {
   */
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
-  
+
   // Синхронизируем поле накладной из DOM до перерисовки
   activeDraft.waybillNumber = $('#inp-waybill').val() || ''
   if (!inputNums.length && !activeDraft.waybillNumber)
@@ -663,8 +663,7 @@ function loadWagonsDataFromDislocation() {
             from: row.ST_FROM,
             to: row.ST_TO,
             cargo: row.CARGO,
-            weight: row.WEIGHT
-
+            weight: row.WEIGHT,
           })
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
@@ -690,7 +689,7 @@ function loadWagonsDataFromDislocation() {
     // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
-        activeDraft.cargoReference = firstFound.CARGO  //  груз
+        activeDraft.cargoReference = firstFound.CARGO //  груз
       if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
@@ -703,7 +702,7 @@ function loadWagonsDataFromDislocation() {
         (b) =>
           `${b.n} (${b.by === 'waybill' ? 'накладная' : 'вагон'} — акт ${b.act})`,
       )
-      busyText = ` Пропущено занятых: ${busy.length} — ${parts.join(', ')}.`
+      busyText = ` Пропущено: ${busy.length} — ${parts.join(', ')}.`
     }
 
     // Текст про вагоны, добавленные без данных (не нашлись в дислокации)
@@ -720,7 +719,7 @@ function loadWagonsDataFromDislocation() {
       noData: noDataCount,
       text:
         `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.` +
-        noDataText +
+        //noDataText +
         busyText,
     }
 
@@ -1110,8 +1109,7 @@ function validateForm(checkSigners) {
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
   /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
     errors.push('Не указана ст. назначения') */
-  if (!activeDraft.stationToId)
-    errors.push('Не указана ст. назначения')
+  if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
   if (activeDraft.type === 'others' && !activeDraft.startAt)
