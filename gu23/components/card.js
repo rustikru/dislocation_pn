@@ -78,7 +78,13 @@ function showActionsMenu(act, data) {
   if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
-  } else if (act.STATUS === 'active' && isAdmin()) {
+  } else if (
+    act.STATUS === 'active' &&
+    isAdmin()
+    // (В будущем) ограничить правку админом только типом «Прочий акт»:
+    // раскомментировать условие ниже.
+    // && act.ACT_TYPE === 'other'
+  ) {
     addItem('Редактировать (админ)', () => editDraftAct(data))
   }
 

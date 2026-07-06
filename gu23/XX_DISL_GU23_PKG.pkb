@@ -1837,11 +1837,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                return format_error('Акт не найден');
          end;
 
-            -- Редактировать можно Проект; администратор — ещё и акт «на подписании»
+            -- Редактировать можно Проект; администратор — ещё и акт «на подписании».
+            -- (В будущем) ограничить правку админом только типом «Прочий акт»:
+            -- раскомментировать условие «and p_data.p_type = 'other'» ниже.
          if
             v_cur_status <> 'draft'
             and not ( v_cur_status = 'active'
-                      and gu23_is_admin(p_data.p_user_id) = 'Y' )
+                      and gu23_is_admin(p_data.p_user_id) = 'Y'
+                      -- and p_data.p_type = 'other'
+                     )
          then
             return format_error('Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
          end if;
