@@ -1,26 +1,26 @@
-CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
+create or replace package xx_etw.xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
-    PURPOSE:   Акты: составление актов (форма ГУ-23)
+    PURPOSE:   РђРєС‚С‹: СЃРѕСЃС‚Р°РІР»РµРЅРёРµ Р°РєС‚РѕРІ (С„РѕСЂРјР° Р“РЈ-23)
     REVISIONS:
     Ver        Date        Author           Description
     ---------  ----------  ---------------  ------------------------------------
     1.0        23.06.2026  BekmansurovRR    1. Created this package.
-    1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
-                                              waybill_no, cargo_ref; раздельные
-                                              справочники станций и подписантов;
-                                              справочник грузов.
+    1.1        23.06.2026  BekmansurovRR    2. РќРѕРІС‹Рµ РїРѕР»СЏ Р°РєС‚Р°: st_from, st_to,
+                                              waybill_no, cargo_ref; СЂР°Р·РґРµР»СЊРЅС‹Рµ
+                                              СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№ Рё РїРѕРґРїРёСЃР°РЅС‚РѕРІ;
+                                              СЃРїСЂР°РІРѕС‡РЅРёРє РіСЂСѓР·РѕРІ.
  ******************************************************************************/
 
-    /* ---- Установить IP клиента ---- */
+    /* ---- РЈСЃС‚Р°РЅРѕРІРёС‚СЊ IP РєР»РёРµРЅС‚Р° ---- */
    procedure gu23_set_client_ip (
       p_ip in varchar2
    );
 
-    /* ---- Вернуть секретный ключ для HMAC-ссылок согласования ---- */
+    /* ---- Р’РµСЂРЅСѓС‚СЊ СЃРµРєСЂРµС‚РЅС‹Р№ РєР»СЋС‡ РґР»СЏ HMAC-СЃСЃС‹Р»РѕРє СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ ---- */
    function gu23_get_hmac_secret return varchar2;
 
-    /* ---- Отправить HTML-письмо ---- */
+    /* ---- РћС‚РїСЂР°РІРёС‚СЊ HTML-РїРёСЃСЊРјРѕ ---- */
    procedure gu23_send_mail (
       p_to      in varchar2,
       p_subject in varchar2,
@@ -28,7 +28,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_from    in varchar2 default 'noreply@test.ru'
    );
 
-    /* ************* Begin Типы ************************* */
+    /* ************* Begin РўРёРїС‹ ************************* */
 
    type xx_disl_gu23_ref_row is record (
          id   number,
@@ -39,14 +39,14 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       table of xx_disl_gu23_ref_row;
    type xx_disl_gu23_signer_row is record (
          id            number,
-         signer_ref_id number,                      -- ref ID из справочника
+         signer_ref_id number,                      -- ref ID РёР· СЃРїСЂР°РІРѕС‡РЅРёРєР°
          fio           varchar2(256),
          post          varchar2(256),
          org           varchar2(256),
          unit          varchar2(256),
          stype         varchar2(128),
          ord_no        number,
-         user_id       number        -- ID пользователя (если ref-подписант)
+         user_id       number        -- ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РµСЃР»Рё ref-РїРѕРґРїРёСЃР°РЅС‚)
    );
    type xx_disl_gu23_signer_tab is
       table of xx_disl_gu23_signer_row;
@@ -56,15 +56,15 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
          act_start_number    varchar2(64),
          act_type            varchar2(16),
          status              varchar2(16),
-         dept_id             number,                              -- ID цеха
-         dept                varchar2(32),    -- код цеха (для отображения)
-         station_id          varchar2(150),           -- ID ст. составления
-         station             varchar2(128),   -- ст. составления (название)
-         st_from_id          varchar2(150),           -- ID ст. отправления
-         st_from             varchar2(128),   -- ст. отправления (название)
-         st_to_id            varchar2(150),            -- ID ст. назначения
-         st_to               varchar2(128),    -- ст. назначения (название)
-         cargo_ref           varchar2(256),                         -- груз
+         dept_id             number,                              -- ID С†РµС…Р°
+         dept                varchar2(32),    -- РєРѕРґ С†РµС…Р° (РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ)
+         station_id          varchar2(150),           -- ID СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
+         station             varchar2(128),   -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
+         st_from_id          varchar2(150),           -- ID СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
+         st_from             varchar2(128),   -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
+         st_to_id            varchar2(150),            -- ID СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
+         st_to               varchar2(128),    -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
+         cargo_ref           varchar2(256),                         -- РіСЂСѓР·
          reason_id           varchar2(512),
          reason_name         varchar2(1000),
          circumstances       varchar2(4000),
@@ -88,18 +88,18 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    type xx_disl_gu23_act_tab is
       table of t_gu23_act_row;
    type xx_disl_gu23_row is record (
-         id         number,
-         act_id     number,
-         wagon_no   varchar2(16),
-         owner      varchar2(128),
-         kind       varchar2(128),
-         st_from    varchar2(128),
-         st_to      varchar2(128),
-         cargo      varchar2(256),
-         weight     varchar2(32),
-         waybill_no varchar2(64),
+         id            number,
+         act_id        number,
+         wagon_no      varchar2(16),
+         owner         varchar2(128),
+         kind          varchar2(128),
+         st_from       varchar2(128),
+         st_to         varchar2(128),
+         cargo         varchar2(256),
+         weight        varchar2(32),
+         waybill_no    varchar2(64),
          act_start_num varchar2(256),
-         dur_total_h number
+         dur_total_h   number
    );
    type xx_disl_gu23_row_tab is
       table of xx_disl_gu23_row;
@@ -137,32 +137,32 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
          weight     varchar2(32),
          waybill_no varchar2(64),
          found      number,
-         dup_act    varchar2(64),  -- номер уже существующего акта начала, занявшего вагон/накладную (null = свободен)
-         dup_by     varchar2(16)   -- по чему совпадение: 'wagon' (в пределах месяца) или 'waybill' (в пределах 3 мес.)
+         dup_act    varchar2(64),  -- РЅРѕРјРµСЂ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµРіРѕ Р°РєС‚Р° РЅР°С‡Р°Р»Р°, Р·Р°РЅСЏРІС€РµРіРѕ РІР°РіРѕРЅ/РЅР°РєР»Р°РґРЅСѓСЋ (null = СЃРІРѕР±РѕРґРµРЅ)
+         dup_by     varchar2(16)   -- РїРѕ С‡РµРјСѓ СЃРѕРІРїР°РґРµРЅРёРµ: 'wagon' (РІ РїСЂРµРґРµР»Р°С… РјРµСЃСЏС†Р°) РёР»Рё 'waybill' (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃ.)
    );
    type xx_disl_gu23_wagon_tab is
       table of xx_disl_gu23_wagon_row;
 
-    -- ---- Типы для параметров Сохранения акта ----
+    -- ---- РўРёРїС‹ РґР»СЏ РїР°СЂР°РјРµС‚СЂРѕРІ РЎРѕС…СЂР°РЅРµРЅРёСЏ Р°РєС‚Р° ----
    type t_gu23_save_act is record (
          p_user_id         number,
-         p_id              number,                         -- 0/NULL = новый
+         p_id              number,                         -- 0/NULL = РЅРѕРІС‹Р№
          p_type            varchar2(16),             -- start / end / other
          p_status          varchar2(16),                  -- draft / active
-         p_dept            varchar2(32),                        -- код цеха
-         p_station         varchar2(128),             -- ID ст. составления
-         p_st_from         varchar2(128),             -- ID ст. отправления
-         p_st_to           varchar2(128),              -- ID ст. назначения
-         p_waybill_no      varchar2(64), -- № накладной (только для поиска Дислокации, не хранится на строках акта)
+         p_dept            varchar2(32),                        -- РєРѕРґ С†РµС…Р°
+         p_station         varchar2(128),             -- ID СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
+         p_st_from         varchar2(128),             -- ID СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
+         p_st_to           varchar2(128),              -- ID СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
+         p_waybill_no      varchar2(64), -- в„– РЅР°РєР»Р°РґРЅРѕР№ (С‚РѕР»СЊРєРѕ РґР»СЏ РїРѕРёСЃРєР° Р”РёСЃР»РѕРєР°С†РёРё, РЅРµ С…СЂР°РЅРёС‚СЃСЏ РЅР° СЃС‚СЂРѕРєР°С… Р°РєС‚Р°)
          p_cargo_ref       varchar2(256),
          p_reason          varchar2(512),
          p_circumstances   varchar2(4000),
-         p_start_at        varchar2(20),   -- 'YYYY-MM-DD HH24:MI' или NULL
+         p_start_at        varchar2(20),   -- 'YYYY-MM-DD HH24:MI' РёР»Рё NULL
          p_end_at          varchar2(20),
          p_linked_start_id number,
-         p_wagons          clob, -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
-         p_signers         clob, -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
-         p_force           varchar2(1) -- 'Y' = разрешить дубль открытого простоя
+         p_wagons          clob, -- CHR(30): Р·Р°РїРёСЃРё; CHR(31): РїРѕР»СЏ: no,owner,kind,from,to,cargo,weight
+         p_signers         clob, -- CHR(30): Р·Р°РїРёСЃРё; CHR(31): РїРѕР»СЏ: ref_id,fio,post,org
+         p_force           varchar2(1) -- 'Y' = СЂР°Р·СЂРµС€РёС‚СЊ РґСѓР±Р»СЊ РѕС‚РєСЂС‹С‚РѕРіРѕ РїСЂРѕСЃС‚РѕСЏ
    );
    type t_gu23_add_file is record (
          p_act_id   number,
@@ -188,7 +188,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
          p_user_id number
    );
 
-    /* ************* end Типы ************************* */
+    /* ************* end РўРёРїС‹ ************************* */
    function fnc_boolean_num (
       p_bool in boolean
    ) return number;
@@ -209,7 +209,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_row in xx_disl_gu23_signer%rowtype
    );
 
-    -- ---- Справочники
+    -- ---- РЎРїСЂР°РІРѕС‡РЅРёРєРё
    function gu23_get_ref_cex return xx_disl_gu23_ref_tab
       pipelined;
 
@@ -218,31 +218,31 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- ---- Справочники станций
-   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab                         -- ст. составления
+    -- ---- РЎРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№
+   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab                         -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
       pipelined;
 
-   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab                         -- ст. отправления
+   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab                         -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
       pipelined;
 
-   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab                          -- ст. назначения
+   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab                          -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
       pipelined;
 
    function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- Справочники подписантов
-    -- работники предприятия; p_dept ? код цеха для фильтрации (null = все)
+    -- РЎРїСЂР°РІРѕС‡РЅРёРєРё РїРѕРґРїРёСЃР°РЅС‚РѕРІ
+    -- СЂР°Р±РѕС‚РЅРёРєРё РїСЂРµРґРїСЂРёСЏС‚РёСЏ; p_dept ? РєРѕРґ С†РµС…Р° РґР»СЏ С„РёР»СЊС‚СЂР°С†РёРё (null = РІСЃРµ)
    function gu23_get_ref_signer_own (
       p_dept_id in varchar2 default null
    ) return xx_disl_gu23_signer_tab
       pipelined;
 
-    -- работники станции ОАО ?РЖД?
+    -- СЂР°Р±РѕС‚РЅРёРєРё СЃС‚Р°РЅС†РёРё РћРђРћ ?Р Р–Р”?
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined;
 
-    -- ---- Акты ----
+    -- ---- РђРєС‚С‹ ----
    function gu23_get_acts (
       p_q          in varchar2 default null,
       p_type       in varchar2 default null,
@@ -250,13 +250,13 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_dept_id    in varchar2 default null,
       p_date_from  in varchar2 default null, -- 'DD.MM.YYYY'
       p_date_to    in varchar2 default null, -- 'DD.MM.YYYY'
-      p_has_signed in varchar2 default null, -- 'Y' = есть подписанный файл
-      p_page       in number default 1, -- номер страницы (с 1)
-      p_page_size  in number default null -- размер страницы (null = все)
+      p_has_signed in varchar2 default null, -- 'Y' = РµСЃС‚СЊ РїРѕРґРїРёСЃР°РЅРЅС‹Р№ С„Р°Р№Р»
+      p_page       in number default 1, -- РЅРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹ (СЃ 1)
+      p_page_size  in number default null -- СЂР°Р·РјРµСЂ СЃС‚СЂР°РЅРёС†С‹ (null = РІСЃРµ)
    ) return xx_disl_gu23_act_tab
       pipelined;
 
-    -- количество актов под те же фильтры
+    -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р°РєС‚РѕРІ РїРѕРґ С‚Рµ Р¶Рµ С„РёР»СЊС‚СЂС‹
    function gu23_count_acts (
       p_q          in varchar2 default null,
       p_type       in varchar2 default null,
@@ -292,29 +292,29 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_hist_tab
       pipelined;
 
-    -- открытые акты начала простоя (без связи с актами окончания)
+    -- РѕС‚РєСЂС‹С‚С‹Рµ Р°РєС‚С‹ РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ (Р±РµР· СЃРІСЏР·Рё СЃ Р°РєС‚Р°РјРё РѕРєРѕРЅС‡Р°РЅРёСЏ)
    function gu23_get_open_starts return xx_disl_gu23_act_tab
       pipelined;
 
-    -- ещё открытые (не закрытые действующим окончанием) вагоны акта начала
+    -- РµС‰С‘ РѕС‚РєСЂС‹С‚С‹Рµ (РЅРµ Р·Р°РєСЂС‹С‚С‹Рµ РґРµР№СЃС‚РІСѓСЋС‰РёРј РѕРєРѕРЅС‡Р°РЅРёРµРј) РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р°
    function gu23_get_open_rows (
       p_start_id in number
    ) return xx_disl_gu23_row_tab
       pipelined;
 
-    -- все акты по номеру вагона (поиск по вагону)
+    -- РІСЃРµ Р°РєС‚С‹ РїРѕ РЅРѕРјРµСЂСѓ РІР°РіРѕРЅР° (РїРѕРёСЃРє РїРѕ РІР°РіРѕРЅСѓ)
    function gu23_get_by_wagon (
       p_wagon in varchar2
    ) return xx_disl_gu23_act_tab
       pipelined;
 
-    -- ---- Поиск станций (для autocomplete, мин 3 символа) ----
+    -- ---- РџРѕРёСЃРє СЃС‚Р°РЅС†РёР№ (РґР»СЏ autocomplete, РјРёРЅ 3 СЃРёРјРІРѕР»Р°) ----
    function gu23_search_station (
       p_q in varchar2
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
-    -- Строка, разобранная из CLOB-пачки вагонов (RS/US-формат)
+    -- РЎС‚СЂРѕРєР°, СЂР°Р·РѕР±СЂР°РЅРЅР°СЏ РёР· CLOB-РїР°С‡РєРё РІР°РіРѕРЅРѕРІ (RS/US-С„РѕСЂРјР°С‚)
    type t_wagon_clob_row is record (
          wagon_no   varchar2(16),
          owner      varchar2(128),
@@ -332,7 +332,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return t_wagon_clob_tab
       pipelined;
 
-    -- получить данные по вагонам из дислокации ----
+    -- РїРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕ РІР°РіРѕРЅР°Рј РёР· РґРёСЃР»РѕРєР°С†РёРё ----
    function gu23_get_wagon_info (
       p_wagons       in clob,
       p_waybill_no   in varchar2 default null,
@@ -342,8 +342,8 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_wagon_tab
       pipelined;
 
-    -- ---- Запись ----
-    -- получить id для нового файла
+    -- ---- Р—Р°РїРёСЃСЊ ----
+    -- РїРѕР»СѓС‡РёС‚СЊ id РґР»СЏ РЅРѕРІРѕРіРѕ С„Р°Р№Р»Р°
    function gu23_new_file_id return number;
 
    function gu23_add_file (
@@ -354,8 +354,8 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_data in t_gu23_del_file
    ) return varchar2;
 
-    -- Сохранение акта (создание/правка Проекта) вместе со строками и подписантами.
-    -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
+    -- РЎРѕС…СЂР°РЅРµРЅРёРµ Р°РєС‚Р° (СЃРѕР·РґР°РЅРёРµ/РїСЂР°РІРєР° РџСЂРѕРµРєС‚Р°) РІРјРµСЃС‚Рµ СЃРѕ СЃС‚СЂРѕРєР°РјРё Рё РїРѕРґРїРёСЃР°РЅС‚Р°РјРё.
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚: 'OK'||CHR(31)||id||CHR(31)||number   Р»РёР±Рѕ  'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_save_act (
       p_data in t_gu23_save_act
    ) return varchar2;
@@ -368,16 +368,16 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_data in t_gu23_annul_act
    ) return varchar2;
 
-    -- Закрыть акт (только тип 'end', только активный)
-    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- Р—Р°РєСЂС‹С‚СЊ Р°РєС‚ (С‚РѕР»СЊРєРѕ С‚РёРї 'end', С‚РѕР»СЊРєРѕ Р°РєС‚РёРІРЅС‹Р№)
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_close_act (
       p_id      in number,
       p_user_id in number
    ) return varchar2;
 
-    -- ---- Согласование актов ----
+    -- ---- РЎРѕРіР»Р°СЃРѕРІР°РЅРёРµ Р°РєС‚РѕРІ ----
 
-    -- Строка результата gu23_approval_get_signers
+    -- РЎС‚СЂРѕРєР° СЂРµР·СѓР»СЊС‚Р°С‚Р° gu23_approval_get_signers
    type t_gu23_approval_signer_row is record (
          approver_id number,
          full_name   varchar2(256),
@@ -386,36 +386,36 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    type t_gu23_approval_signer_tab is
       table of t_gu23_approval_signer_row;
 
-    -- Подписанты акта, у которых есть user_id в справочнике (email-согласование)
+    -- РџРѕРґРїРёСЃР°РЅС‚С‹ Р°РєС‚Р°, Сѓ РєРѕС‚РѕСЂС‹С… РµСЃС‚СЊ user_id РІ СЃРїСЂР°РІРѕС‡РЅРёРєРµ (email-СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ)
    function gu23_approval_get_signers (
       p_act_id in number
    ) return t_gu23_approval_signer_tab
       pipelined;
 
-    -- Создать записи согласования для всех подходящих подписантов.
-    -- Возвращает число созданных записей или 'ERR'||CHR(31)||текст.
+    -- РЎРѕР·РґР°С‚СЊ Р·Р°РїРёСЃРё СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РґР»СЏ РІСЃРµС… РїРѕРґС…РѕРґСЏС‰РёС… РїРѕРґРїРёСЃР°РЅС‚РѕРІ.
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ С‡РёСЃР»Рѕ СЃРѕР·РґР°РЅРЅС‹С… Р·Р°РїРёСЃРµР№ РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚.
    function gu23_approval_init (
       p_act_id       in number,
       p_requested_by in number
    ) return varchar2;
 
-    -- ФИО пользователя по ID
+    -- Р¤РРћ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РїРѕ ID
    function gu23_approval_get_name (
       p_id in number
    ) return varchar2;
 
-    -- Найти запись по HMAC-подписи; возвращает 'status'||CHR(31)||'DD.MM.YYYY HH24:MI' или NULL
+    -- РќР°Р№С‚Рё Р·Р°РїРёСЃСЊ РїРѕ HMAC-РїРѕРґРїРёСЃРё; РІРѕР·РІСЂР°С‰Р°РµС‚ 'status'||CHR(31)||'DD.MM.YYYY HH24:MI' РёР»Рё NULL
    function gu23_approval_by_sig (
       p_sig in varchar2
    ) return varchar2;
 
-    -- Статус согласования по act_id + approver_id (для reject-ссылок с другим sig)
+    -- РЎС‚Р°С‚СѓСЃ СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РїРѕ act_id + approver_id (РґР»СЏ reject-СЃСЃС‹Р»РѕРє СЃ РґСЂСѓРіРёРј sig)
    function gu23_approval_get_status (
       p_act_id      in number,
       p_approver_id in number
    ) return varchar2;
 
-    -- Создать запрос на согласование; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РЎРѕР·РґР°С‚СЊ Р·Р°РїСЂРѕСЃ РЅР° СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_approval_request (
       p_act_id       in number,
       p_approver_id  in number,
@@ -423,7 +423,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_token_sig    in varchar2
    ) return varchar2;
 
-    -- Сохранить решение согласующего; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РЎРѕС…СЂР°РЅРёС‚СЊ СЂРµС€РµРЅРёРµ СЃРѕРіР»Р°СЃСѓСЋС‰РµРіРѕ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_approval_save_decision (
       p_act_id      in number,
       p_approver_id in number,
@@ -433,14 +433,14 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_signer_ip   in varchar2 default null
    ) return varchar2;
 
-    -- Текущий статус согласования одного пользователя по акту
-    -- Возвращает: 'none' | 'pending' | 'approved' | 'rejected'
+    -- РўРµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РѕРґРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РїРѕ Р°РєС‚Сѓ
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚: 'none' | 'pending' | 'approved' | 'rejected'
    function gu23_approval_my_status (
       p_act_id  in number,
       p_user_id in number
    ) return varchar2;
 
-    -- Все записи согласования по акту (для отображения статусов в карточке)
+    -- Р’СЃРµ Р·Р°РїРёСЃРё СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РїРѕ Р°РєС‚Сѓ (РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ СЃС‚Р°С‚СѓСЃРѕРІ РІ РєР°СЂС‚РѕС‡РєРµ)
    type t_gu23_approval_row is record (
          approver_id    number,
          full_name      varchar2(256),
@@ -457,8 +457,8 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return t_gu23_approval_tab
       pipelined;
 
-    -- Подписать акт напрямую (без email-ссылки, из интерфейса)
-    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РџРѕРґРїРёСЃР°С‚СЊ Р°РєС‚ РЅР°РїСЂСЏРјСѓСЋ (Р±РµР· email-СЃСЃС‹Р»РєРё, РёР· РёРЅС‚РµСЂС„РµР№СЃР°)
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_direct_decision (
       p_act_id    in number,
       p_user_id   in number,
@@ -467,14 +467,14 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
       p_signer_ip in varchar2 default null
    ) return varchar2;
 
-    -- ---- Роли и доступ ----
+    -- ---- Р РѕР»Рё Рё РґРѕСЃС‚СѓРї ----
 
-    -- Есть ли у пользователя хотя бы одна роль в модуле ГУ-23 ('Y'/'N')
+    -- Р•СЃС‚СЊ Р»Рё Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ С…РѕС‚СЏ Р±С‹ РѕРґРЅР° СЂРѕР»СЊ РІ РјРѕРґСѓР»Рµ Р“РЈ-23 ('Y'/'N')
    function gu23_can_access (
       p_user_id in number
    ) return varchar2;
 
-    -- Является ли пользователь администратором ГУ-23 (роль GU23_ADMIN) ('Y'/'N')
+    -- РЇРІР»СЏРµС‚СЃСЏ Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРј Р“РЈ-23 (СЂРѕР»СЊ GU23_ADMIN) ('Y'/'N')
    function gu23_is_admin (
       p_user_id in number
    ) return varchar2;
@@ -487,7 +487,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    type t_gu23_role_tab is
       table of t_gu23_role_row;
 
-    -- Справочник всех ролей
+    -- РЎРїСЂР°РІРѕС‡РЅРёРє РІСЃРµС… СЂРѕР»РµР№
    function gu23_roles_get_all return t_gu23_role_tab
       pipelined;
 
@@ -502,31 +502,31 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    type t_gu23_user_role_tab is
       table of t_gu23_user_role_row;
 
-    -- Пользователи с их ролями (одна строка на пару user+role; нет роли ? role_* null)
+    -- РџРѕР»СЊР·РѕРІР°С‚РµР»Рё СЃ РёС… СЂРѕР»СЏРјРё (РѕРґРЅР° СЃС‚СЂРѕРєР° РЅР° РїР°СЂСѓ user+role; РЅРµС‚ СЂРѕР»Рё ? role_* null)
    function gu23_users_roles_get (
       p_search in varchar2 default null
    ) return t_gu23_user_role_tab
       pipelined;
 
-    -- Назначить роль пользователю; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РќР°Р·РЅР°С‡РёС‚СЊ СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_role_assign (
       p_user_id in number,
       p_role_id in number
    ) return varchar2;
 
-    -- Отозвать роль у пользователя; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РћС‚РѕР·РІР°С‚СЊ СЂРѕР»СЊ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_role_revoke (
       p_user_id in number,
       p_role_id in number
    ) return varchar2;
 
-    -- Проверить наличие полномочия у пользователя ('Y'/'N')
+    -- РџСЂРѕРІРµСЂРёС‚СЊ РЅР°Р»РёС‡РёРµ РїРѕР»РЅРѕРјРѕС‡РёСЏ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ ('Y'/'N')
    function gu23_has_perm (
       p_user_id   in number,
       p_perm_code in varchar2
    ) return varchar2;
 
-    -- Получить все коды полномочий пользователя (pipelined)
+    -- РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РєРѕРґС‹ РїРѕР»РЅРѕРјРѕС‡РёР№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (pipelined)
    type t_gu23_perm_code_tab is
       table of varchar2(50);
    function gu23_user_perms_get (
@@ -534,7 +534,7 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    ) return t_gu23_perm_code_tab
       pipelined;
 
-    -- Матрица роль ? полномочие (все строки perm_id ? role_id)
+    -- РњР°С‚СЂРёС†Р° СЂРѕР»СЊ ? РїРѕР»РЅРѕРјРѕС‡РёРµ (РІСЃРµ СЃС‚СЂРѕРєРё perm_id ? role_id)
    type t_gu23_role_perm_row is record (
          perm_id   number,
          perm_code varchar2(50),
@@ -549,19 +549,19 @@ CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg as
    function gu23_role_perms_get return t_gu23_role_perm_tab
       pipelined;
 
-    -- Назначить полномочие роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РќР°Р·РЅР°С‡РёС‚СЊ РїРѕР»РЅРѕРјРѕС‡РёРµ СЂРѕР»Рё; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_perm_assign (
       p_role_id in number,
       p_perm_id in number
    ) return varchar2;
 
-    -- Отозвать полномочие у роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    -- РћС‚РѕР·РІР°С‚СЊ РїРѕР»РЅРѕРјРѕС‡РёРµ Сѓ СЂРѕР»Рё; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
    function gu23_perm_revoke (
       p_role_id in number,
       p_perm_id in number
    ) return varchar2;
 
-    -- ---- Администрирование справочников ----
+    -- ---- РђРґРјРёРЅРёСЃС‚СЂРёСЂРѕРІР°РЅРёРµ СЃРїСЂР°РІРѕС‡РЅРёРєРѕРІ ----
 
    type t_gu23_ref_signer_row is record (
          id     number,
