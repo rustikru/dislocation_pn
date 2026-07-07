@@ -131,9 +131,9 @@ class GuActRepository
     }
 
     /**
-     * Режим рассылки писем — определяется сервером, НЕ клиентом.
-     *   Читается из gu23/config.php ('mail_mode');
-     *   если не задан — dev (есть db_config.local.php) → 'send_file', иначе 'send_mail'.
+     * Режим рассылки писем 
+     *   из gu23/config.php ('mail_mode');
+     *   → 'send_file', иначе 'send_mail'.
      */
     private function mailMode(): string
     {
@@ -153,7 +153,7 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
-        ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
+        ini_set('display_errors', '0');  // PHP-warning отключаем
         ob_start();
         //Gu23Logger::info('action', ['action' => $action]);
         try {
@@ -357,7 +357,7 @@ class GuActRepository
         return $ret;
     }
 
-    /** Привязать строку как временный CLOB. */
+    /** Привязать строку CLOB. */
     private function bindClob($st, string $name, string $value)
     {
         $lob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
@@ -370,7 +370,7 @@ class GuActRepository
     /* справочники                                                        */
     /* ----------------------------------------------------------------- */
 
-    /** Все справочники для формы: цеха, станции, причины, подписанты, права пользователя. */
+    /** справочники для формы: цеха, станции, причины, подписанты, права пользователя. */
     private function getRefs(): void
     {
         $userId = $this->auth->getUserId();
@@ -430,7 +430,7 @@ class GuActRepository
             40
         );
 
-        // Только нужная страница — пагинация на стороне БД
+        // Только нужная страница 
         $acts = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
             [
