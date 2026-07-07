@@ -2137,14 +2137,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          v_wcnt := v_wcnt + 1;
       end loop;
 
-        -- при отправке нужен хотя бы один вагон ИЛИ указан груз
-      if
-         v_wcnt = 0
-         and p_data.p_cargo_ref is null
-         and p_data.p_status = 'active'
-      then
-         rollback;
-         return format_error('Добавьте вагоны или укажите груз / накладную');
+        -- при отправке на подписание обязательны и вагоны, и груз (для start/other)
+      if p_data.p_status = 'active' then
+         if v_wcnt = 0 then
+            rollback;
+            return format_error('Добавьте хотя бы один вагон');
+         end if;
+         if
+            p_data.p_type in ( 'start',
+                               'other' )
+            and p_data.p_cargo_ref is null
+         then
+            rollback;
+            return format_error('Не указан груз');
+         end if;
       end if;
 
         -- разбираем подписантов: поля ref_id|fio|post|org

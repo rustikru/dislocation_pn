@@ -1101,12 +1101,15 @@ function validateForm(checkSigners) {
   if (!activeDraft.reasonId) errors.push('Не указана причина составления')
   if (!String(activeDraft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')
+  // Вагоны обязательны (добавляются из таблицы дислокации), груз — тоже.
+  // Накладная и груз — лишь помощники поиска вагонов, но груз обязателен к заполнению.
+  if (!activeDraft.wagons.length)
+    errors.push('Добавьте хотя бы один вагон (из таблицы дислокации)')
   if (
-    !activeDraft.wagons.length &&
-    !activeDraft.cargoReference &&
-    !activeDraft.waybillNumber
+    (activeDraft.type === 'start' || activeDraft.type === 'other') &&
+    !activeDraft.cargoReference
   )
-    errors.push('Добавьте вагоны или укажите груз / номер накладной')
+    errors.push('Не указан груз')
   if (!activeDraft.stationId) errors.push('Не указана ст. составления')
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
   /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
@@ -1115,8 +1118,8 @@ function validateForm(checkSigners) {
     errors.push('Не указана ст. назначения')
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
-  if (activeDraft.type === 'others' && !activeDraft.startAt)
-    errors.push('Не указана дата составления простоя')
+  if (activeDraft.type === 'other' && !activeDraft.startAt)
+    errors.push('Не указана дата составления акта')
   if (activeDraft.type === 'end') {
     if (!activeDraft.linkedStartId)
       errors.push('Не выбран открытый акт начала простоя')
