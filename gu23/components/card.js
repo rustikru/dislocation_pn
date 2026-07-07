@@ -79,9 +79,8 @@ function showActionsMenu(act, data) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
   }
-  // (В будущем) Правка акта «на подписании» администратором — пока отключено.
-  // Чтобы включить: раскомментировать блок ниже (в паре с условием в пакете
-  // gu23_save_act). Опционально ограничить типом: добавить && act.ACT_TYPE === 'other'.
+  // Правка акта «на подписании» администратором — пока отключено.
+  // gu23_save_act : добавить && act.ACT_TYPE === 'other'.
   // else if (act.STATUS === 'active' && isAdmin()) {
   //   addItem('Редактировать', () => editDraftAct(data))
   // }
@@ -102,7 +101,7 @@ function showActionsMenu(act, data) {
       const appr = approvalMap[s.USER_ID]
       return !appr || appr.STATUS !== 'approved'
     })
-    
+
     if (hasUnsigned) {
       addItem('Рассылка ссылок на подписание', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
@@ -286,7 +285,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> В процессе</span>'
     return ''
   }
-  // Версия документа 
+  // Версия документа
   const versionBadge = (approval) => {
     if (!approval || approval.STATUS !== 'approved') return ''
     const sv = approval.SIGNED_VERSION
@@ -309,8 +308,8 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
             : isRzd
               ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
               : // own-подписант с привязкой к пользователю, но без решения:
-              // на акте «на подписании» показываем «В процессе»
-              s.USER_ID && act.STATUS === 'active'
+                // на акте «на подписании» показываем «В процессе»
+                s.USER_ID && act.STATUS === 'active'
                 ? statusPill('pending')
                 : ''
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
