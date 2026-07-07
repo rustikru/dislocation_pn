@@ -31,6 +31,10 @@ require_once __DIR__ . '/GuActRepository.php';
 
 if ($auth->isAuth()) {
     if (GuActRepository::canAccess($conn1, $auth)) {
+        $jsVersion = @filemtime(__DIR__ . '/js.php') ?: time();
+        foreach (glob(__DIR__ . '/components/*.js') ?: [] as $jsFile) {
+            $jsVersion = max($jsVersion, @filemtime($jsFile) ?: $jsVersion);
+        }
         ?>
         <!DOCTYPE html>
         <html lang="ru">
@@ -48,10 +52,8 @@ if ($auth->isAuth()) {
 
             <script src="../js/general_function.js" type="text/javascript"></script>
             <!-- <script src="gu23.js?ver=1" type="text/javascript"></script> -->
-            <script type="module" src="components/app.js"></script>
-            <!-- js.php — запасной не-модульный бандл (для старых браузеров без ES-modules).
-                 Отключён: приложение грузится как ES-модуль, иначе двойная инициализация. -->
-            <!-- <script src="js.php?v=6" type="text/javascript"></script> -->
+            <!-- <script type="module" src="components/app.js"></script> -->
+            <script src="js.php?v=<?= htmlspecialchars((string) $jsVersion, ENT_QUOTES, 'UTF-8') ?>" type="text/javascript"></script>
             <script>
                 window.GU23_SESSION = {
                     login: <?= json_encode($_SESSION['login'] ?? '') ?>,
