@@ -51,6 +51,7 @@ $(document).ready(() => {
     references.cargosList = (response && response.cargos) || []
     references.signersOwnList = (response && response.signersOwn) || []
     references.signersRzdList = (response && response.signersRzd) || []
+    references.signersManualList = (response && response.signersManual) || []
     applicationState.isAdmin = !!(response && response.isAdmin)
     applicationState.userPerms = new Set((response && response.perms) || [])
 

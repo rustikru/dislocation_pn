@@ -673,6 +673,41 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null) —
+    -- уникальные ФИО/должность/организация из истории актов.
+    -- Используется как подсказки для режима «Вручную» (без справочника).
+   function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select fio,
+                post,
+                org
+           from xx_disl_gu23_signer
+          where signer_ref_id is null
+            and fio is not null
+          group by fio,
+                   post,
+                   org
+          order by fio
+      ) loop
+         l_row.id := null;
+         l_row.signer_ref_id := null;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := null;
+         l_row.stype := null;
+         l_row.ord_no := null;
+         l_row.user_id := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
     -- ----------------------------------------------------------------
     -- акты
     -- ----------------------------------------------------------------
@@ -2102,14 +2137,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          v_wcnt := v_wcnt + 1;
       end loop;
 
-        -- при отправке нужен хотя бы один вагон ИЛИ указан груз
-      if
-         v_wcnt = 0
-         and p_data.p_cargo_ref is null
-         and p_data.p_status = 'active'
-      then
-         rollback;
-         return format_error('Добавьте вагоны или укажите груз / накладную');
+        -- при отправке на подписание обязательны и вагоны, и груз (для start/other)
+      if p_data.p_status = 'active' then
+         if v_wcnt = 0 then
+            rollback;
+            return format_error('Добавьте хотя бы один вагон');
+         end if;
+         if
+            p_data.p_type in ( 'start',
+                               'other' )
+            and p_data.p_cargo_ref is null
+         then
+            rollback;
+            return format_error('Не указан груз');
+         end if;
       end if;
 
         -- разбираем подписантов: поля ref_id|fio|post|org

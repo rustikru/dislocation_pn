@@ -308,7 +308,11 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
             ? statusPill(approval.STATUS)
             : isRzd
               ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
-              : ''
+              : // own-подписант с привязкой к пользователю, но без решения:
+              // на акте «на подписании» показываем «В процессе»
+              s.USER_ID && act.STATUS === 'active'
+                ? statusPill('pending')
+                : ''
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
           const rejectReason =
             approval && approval.STATUS === 'rejected' && approval.COMMENT_TXT

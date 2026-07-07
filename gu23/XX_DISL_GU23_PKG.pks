@@ -242,6 +242,10 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined;
 
+    -- ранее введённые вручную подписанты (для подсказок в режиме «Вручную»)
+   function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
+      pipelined;
+
     -- ---- Акты ----
    function gu23_get_acts (
       p_q          in varchar2 default null,
