@@ -9,6 +9,7 @@ export const references = {
   cargosList: [],
   signersOwnList: [],
   signersRzdList: [],
+  signersManualList: [], // ранее введённые вручную подписанты (подсказки)
 }
 
 // Текущее состояние экрана

@@ -673,6 +673,41 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null) —
+    -- уникальные ФИО/должность/организация из истории актов.
+    -- Используется как подсказки для режима «Вручную» (без справочника).
+   function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_signer_row;
+   begin
+      for r in (
+         select fio,
+                post,
+                org
+           from xx_disl_gu23_signer
+          where signer_ref_id is null
+            and fio is not null
+          group by fio,
+                   post,
+                   org
+          order by fio
+      ) loop
+         l_row.id := null;
+         l_row.signer_ref_id := null;
+         l_row.fio := r.fio;
+         l_row.post := r.post;
+         l_row.org := r.org;
+         l_row.unit := null;
+         l_row.stype := null;
+         l_row.ord_no := null;
+         l_row.user_id := null;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
     -- ----------------------------------------------------------------
     -- акты
     -- ----------------------------------------------------------------

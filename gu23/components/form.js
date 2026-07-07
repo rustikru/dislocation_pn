@@ -930,8 +930,9 @@ function showSignersFields() {
 
     let inputHtml = ''
     if (isManual) {
-      // подсказки для ручного ввода — из того же справочника, что и для этого слота
-      manualSlots.push({ slot: i, source: signersList })
+      // подсказки для ручного ввода — ТОЛЬКО ранее введённые вручную записи
+      // (из истории актов), без справочника предприятия/РЖД
+      manualSlots.push({ slot: i, source: references.signersManualList })
       const ddStyle =
         'display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;'
       inputHtml = `
