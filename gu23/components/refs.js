@@ -209,7 +209,7 @@ function showSignerForm(signer) {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost sf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn sf-save">Сохранить</button>
         </div>
       </div>
