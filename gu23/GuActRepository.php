@@ -36,14 +36,34 @@ class GuActRepository
         $this->auth = $auth;
     }
 
+    private static function hasLocalConfig(): bool
+    {
+        return file_exists(dirname(__DIR__) . '/db_config.local.php');
+    }
+
+    private function allPerms(): array
+    {
+        return [
+            'CREATE_ACT',
+            'EDIT_OWN_ACT',
+            'SEND_APPROVAL',
+            'SIGN_ACT',
+            'VIEW_ALL_ACTS',
+            'MANAGE_REFS',
+            'MANAGE_ROLES',
+            'CLOSE_ACT',
+            'DELETE_ACT',
+            'ANNUL_ACT',
+        ];
+    }
+
     /** Есть ли у пользователя хотя бы одна роль в ГУ-23 (доступ к модулю). */
     public static function canAccess($conn, AuthClass $auth): bool
     {
         if ($auth->isAuthAdmin()) {
             return true;
         }
-        // DEV: если есть локальный конфиг — пропускаем без Oracle
-        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
+        if (self::hasLocalConfig()) {
             return true;
         }
         $userId = $auth->getUserId();
@@ -70,6 +90,9 @@ class GuActRepository
         if ($this->auth->isAuthAdmin()) {
             return true;
         }
+        if (self::hasLocalConfig()) {
+            return true;
+        }
         $userId = $this->auth->getUserId();
         if (!$userId) {
             return false;
@@ -88,8 +111,7 @@ class GuActRepository
         if ($this->auth->isAuthAdmin()) {
             return true;
         }
-        // DEV: локальный конфиг — все полномочия открыты
-        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
+        if (self::hasLocalConfig()) {
             return true;
         }
         $userId = $this->auth->getUserId();
@@ -123,7 +145,7 @@ class GuActRepository
         if (!empty($cfg['mail_mode'])) {
             return $cfg['mail_mode'];
         }
-        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
+        if (self::hasLocalConfig()) {
             return 'send_file';
         }
         return 'send_mail';
@@ -352,12 +374,15 @@ class GuActRepository
     private function getRefs(): void
     {
         $userId = $this->auth->getUserId();
-        $permRows = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
-            [':b1' => $userId]
-        );
-        // pipe возвращает однострочные строки — extracting значение из первого поля
-        $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
+        if ($this->auth->isAuthAdmin() || self::hasLocalConfig()) {
+            $perms = $this->allPerms();
+        } else {
+            $permRows = $this->pipe(
+                'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
+                [':b1' => $userId]
+            );
+            $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
+        }
 
         echo json_encode([
             'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
