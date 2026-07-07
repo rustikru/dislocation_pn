@@ -229,7 +229,7 @@ function showSignerForm(signer) {
   $modal.find('.sf-toggle').on('click', () => {
     const msg =
       signer?.ACTIVE === 'Y'
-        ? 'Деактивировать подписанта?'
+        ? 'Отключить подписанта?'
         : 'Активировать подписанта?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
@@ -357,7 +357,7 @@ function showReasonForm(reason) {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost rf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn rf-save">Сохранить</button>
         </div>
       </div>
@@ -376,9 +376,7 @@ function showReasonForm(reason) {
 
   $modal.find('.rf-toggle').on('click', () => {
     const msg =
-      reason?.ACTIVE === 'Y'
-        ? 'Деактивировать причину?'
-        : 'Активировать причину?'
+      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
         if (r && r.ok) {
