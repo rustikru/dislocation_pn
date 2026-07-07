@@ -10,10 +10,18 @@ export function drawNav() {
     navigationItems.push({ page: 'new', icon: 'add.svg', label: 'Создать акт' })
   }
 
-  navigationItems.push({ page: 'archive', icon: 'archive.svg', label: 'Архив актов' })
+  navigationItems.push({
+    page: 'archive',
+    icon: 'archive.svg',
+    label: 'Архив актов',
+  })
 
   if (hasPerm('MANAGE_REFS')) {
-    navigationItems.push({ page: 'refs', icon: 'agenda.svg', label: 'Справочники' })
+    navigationItems.push({
+      page: 'refs',
+      icon: 'agenda.svg',
+      label: 'Справочники',
+    })
   }
 
   if (hasPerm('MANAGE_ROLES')) {
@@ -26,7 +34,7 @@ export function drawNav() {
   const collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
   $nav.toggleClass('collapsed', collapsed)
 
-  // кнопка-переключатель (иконка, как в Gemini)
+  // кнопка-переключатель
   const $toggle = $(`
     <button class="navtoggle" title="${collapsed ? 'Развернуть меню' : 'Свернуть меню'}">
       <img src="/img/nav/sidebar.svg" alt="" width="22" height="22" style="flex-shrink:0">
