@@ -1,9 +1,6 @@
 <?php
 /**
  * Минимальная LDAP/AD-проверка логина и пароля.
- *
- * Класс ничего не знает о сессиях и правах приложения: он только подтверждает
- * пароль в LDAP. Данные пользователя приложение по-прежнему берет из Oracle.
  */
 class LdapAuth
 {
@@ -38,8 +35,8 @@ class LdapAuth
      */
     public function verify($login, $password)
     {
-        $login = trim((string)$login);
-        $password = (string)$password;
+        $login = trim((string) $login);
+        $password = (string) $password;
 
         if (empty($this->cfg['enabled'])) {
             return $this->fail('LDAP отключен');
@@ -109,7 +106,7 @@ class LdapAuth
 
             ldap_set_option($ldap, LDAP_OPT_PROTOCOL_VERSION, 3);
             ldap_set_option($ldap, LDAP_OPT_REFERRALS, 0);
-            ldap_set_option($ldap, LDAP_OPT_NETWORK_TIMEOUT, (int)$this->cfg['network_timeout']);
+            ldap_set_option($ldap, LDAP_OPT_NETWORK_TIMEOUT, (int) $this->cfg['network_timeout']);
 
             if (!empty($this->cfg['start_tls']) && !@ldap_start_tls($ldap)) {
                 ldap_unbind($ldap);
@@ -174,7 +171,7 @@ class LdapAuth
 
         $result = array();
         foreach ($hosts as $host) {
-            $host = trim((string)$host);
+            $host = trim((string) $host);
             if ($host === '') {
                 continue;
             }
@@ -184,7 +181,7 @@ class LdapAuth
             }
 
             if (!preg_match('/:[0-9]+$/', $host)) {
-                $host .= ':' . (int)$this->cfg['port'];
+                $host .= ':' . (int) $this->cfg['port'];
             }
 
             $result[] = $host;
@@ -212,7 +209,7 @@ class LdapAuth
 
         $result = array();
         foreach ($formats as $format) {
-            $format = trim((string)$format);
+            $format = trim((string) $format);
             if ($format !== '') {
                 $result[] = str_replace('{login}', $login, $format);
             }
