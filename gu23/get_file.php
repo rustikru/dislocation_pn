@@ -1,6 +1,6 @@
 <?php
 /**
- * get_file.php — отдача на скачивание/просмотр.
+ * get_file.php — скачивание/просмотр.
  *
  *   GET /gu23/get_file.php?id=<file_id>[&inline=1]
  * 

@@ -29,7 +29,7 @@ export function showRoles(container) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Матрица полномочий
+   полномочий
    ══════════════════════════════════════════════════════════ */
 
 function loadMatrix() {
@@ -39,7 +39,7 @@ function loadMatrix() {
   sendApiRequest('gu23_role_perms', {}).done((resp) => {
     if (!resp || !resp.ok) {
       $('#roles-matrix-wrap').html(
-        '<div class="card cardpad" style="color:var(--rej)">Ошибка загрузки матрицы полномочий.</div>',
+        '<div class="card cardpad" style="color:var(--rej)">Ошибка загрузки полномочий.</div>',
       )
       return
     }
@@ -81,7 +81,7 @@ function renderMatrix() {
 
   if (!roles.length || !perms.length) {
     $('#roles-matrix-wrap').html(
-      '<div class="card cardpad muted">Роли или полномочия не заполнены. Выполните fill_roles.sql и fill_permissions.sql.</div>',
+      '<div class="card cardpad muted">Роли или полномочия не заполнены</div>',
     )
     return
   }
@@ -162,12 +162,6 @@ function renderMatrix() {
     const assign = cb.checked
 
     if (!assign) {
-      // cb.checked = true
-      // showConfirmBox(
-      //   'Убрать полномочие',
-      //   `Убрать «${pname}» у роли «${rname}»?`,
-      //   () => doPermRevoke(rid, pid, cb),
-      // )
       doPermRevoke(rid, pid, cb)
     } else {
       doPermAssign(rid, pid, cb)
@@ -216,7 +210,7 @@ function doPermRevoke(rid, pid, cb) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Таблица пользователей (с постраничиным выводом)
+   Таблица пользователей
    ══════════════════════════════════════════════════════════ */
 
 function loadUsers() {
@@ -313,12 +307,6 @@ function renderUsers(users, roles, total, page, pageSize) {
     const uname = $(cb).data('uname')
 
     if (!cb.checked) {
-      // cb.checked = true
-      // showConfirmBox(
-      //   'Отозвать роль',
-      //   `Убрать роль «${rname}» у пользователя ${uname}?`,
-      //   () => doRevoke(uid, rid, cb),
-      // )
       doRevoke(uid, rid, cb)
     } else {
       doAssign(uid, rid, cb)

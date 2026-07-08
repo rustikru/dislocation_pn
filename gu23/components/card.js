@@ -79,7 +79,7 @@ function showActionsMenu(act, data) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
   }
-  // Правка акта «на подписании» администратором — пока отключено.
+  // Правка акта «на подписании» администратором
   // gu23_save_act : добавить && act.ACT_TYPE === 'other'.
   // else if (act.STATUS === 'active' && isAdmin()) {
   //   addItem('Редактировать', () => editDraftAct(data))

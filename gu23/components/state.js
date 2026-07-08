@@ -37,7 +37,7 @@ export function setActiveDraft(value) {
   activeDraft = value
 }
 
-// Функция создания новой структуры для акта
+// создания новой структуры акта
 export function createNewDraft(actType) {
   activeDraft = {
     id: 0,
