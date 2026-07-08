@@ -11,8 +11,32 @@ if (isset($_POST["logout"])) {
 }
 if ($auth->isAuth()&&$auth->getStationId() !== null){
     $rights = $auth->getRights();
+    // add 08.07.2026 Bekmansurovrr
+    if (!$auth->hasAnyRights($rights)) {
+        ?>
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Внутренняя дислокация</title>
+                <link rel="stylesheet" href="css/site_layout.css?ver=2" type="text/css">
+                <link type="image/x-icon" href="img/ico/ico-road.ico" rel="shortcut icon">
+                <link type="Image/x-icon" href="img/ico/ico-road.ico" rel="icon">
+            </head>
+            <body>
+                <div style="margin: 40px; font-size: 16px;">
+                    У пользователя не назначены полномочия. Обратитесь к администратору системы.
+                    <form action="" method="post" style="margin-top: 20px;">
+                        <input type="submit" name="logout" value="Выйти">
+                    </form>
+                </div>
+            </body>
+        </html>
+        <?php
+        exit();
+    }
 //echo '<pre>';
-//print_r($_SESSION); // 
+//print_r($_SESSION); //
 //echo '</pre>';
 ?>
 <!DOCTYPE html>

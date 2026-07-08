@@ -257,16 +257,40 @@ class AuthClass {
                     trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
             }
 
-            $oci_request = oci_parse($conn, 'select lower(x.rights_code) as rights_code from table(xx_dislocation.get_rights_list()) x');
+			$oci_request = oci_parse($conn, 'select lower(x.rights_code) as rights_code from table(xx_dislocation.get_rights_list()) x');
             //OCIBindByName($oci_request, ":bind1", $login);
             oci_execute($oci_request);
 			while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-				$mas[$tmp['RIGHTS_CODE']] = $_SESSION["".$tmp['RIGHTS_CODE'].""];
+				// add 08.07.2026 Bekmansurovrr
+				$mas[$tmp['RIGHTS_CODE']] = isset($_SESSION["".$tmp['RIGHTS_CODE'].""]) ? $_SESSION["".$tmp['RIGHTS_CODE'].""] : 'N';
 			}
-			return $mas; 
+			return $mas;
         }
     }
-    
+
+    // add 08.07.2026 Bekmansurovrr
+    public function hasAnyRights($rights = null) {
+        if (!$this->isAuth()) {
+            return false;
+        }
+
+        if ($rights === null) {
+            $rights = $this->getRights();
+        }
+
+        if (!is_array($rights)) {
+            return false;
+        }
+
+        foreach ($rights as $value) {
+            if ($value === 'Y' || $value === '1') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function getStationId() {
         if ($this->isAuth()) { //Если пользователь авторизован
             if (isset($_SESSION["station_id"])) {
