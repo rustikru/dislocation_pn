@@ -34,7 +34,7 @@ class AuthClass {
         if(!preg_match("/^[a-zA-Z0-9_]+$/",$login)){
                 $err[] = "Логин может состоять только из букв английского алфавита и цифр";
         } 
-		else {
+	else {
             $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
             if (!$conn) {
                     $e = oci_error();
@@ -44,39 +44,72 @@ class AuthClass {
             $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.return_user_data_new(:bind1))');
             OCIBindByName($oci_request, ":bind1", $login);
             oci_execute($oci_request);
-            
-			while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-				if ($tmp['PASSWORD'] === md5($password)) {
-				
-					$_SESSION['is_auth'] = true; //Делаем пользователя авторизованным
-					$_SESSION['login'] = $login; //Записываем в сессию логин пользователя
-					$_SESSION['user_id'] = $tmp['USER_ID'];
-					$_SESSION['full_name'] = $tmp['FULL_NAME'];
-					$_SESSION['flag_change_pwd'] = $tmp['FLAG_CHANGE_PWD'];
-					$_SESSION['enterprise'] = $tmp['ENTERPRISE'];
-					$_SESSION['test'] = 'test';
-					$_SESSION["".$tmp['RIGHTS_CODE'].""] = $tmp['RIGHTS_VAL'];
-					if ($tmp['RIGHTS_VAL'] == 'Y' && $tmp['RIGHTS_CODE'] == 'administrator'){
-							$_SESSION['is_auth_admin'] = true;
-						}
-					
-				}
-				else { //Логин и пароль не подошел
-					$_SESSION["is_auth"] = false;
-					$_SESSION['is_auth_admin'] = false;
-					
-				}
-			}
+
+            $user_rows = array();
+            while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
+                $user_rows[] = $tmp;
+            }
 			oci_close($conn);
-			
-			if ($_SESSION['is_auth']){
-				return true; 
-			}else {
-				return false; 
-			}
-			
-			
+
+            $_SESSION["is_auth"] = false;
+            $_SESSION['is_auth_admin'] = false;
+
+            if (count($user_rows) === 0) {
+                return false;
+            }
+
+            $password_ok = false;
+            foreach ($user_rows as $tmp) {
+                if ($tmp['PASSWORD'] === md5((string)$password)) {
+                    $password_ok = true;
+                    break;
+                }
+            }
+
+            if (!$password_ok) {
+                $password_ok = $this->authLdap($login, $password);
+            }
+
+            if (!$password_ok) {
+                return false;
+            }
+
+            foreach ($user_rows as $tmp) {
+                $_SESSION['is_auth'] = true; //Делаем пользователя авторизованным
+                $_SESSION['login'] = $login; //Записываем в сессию логин пользователя
+                $_SESSION['user_id'] = $tmp['USER_ID'];
+                $_SESSION['full_name'] = $tmp['FULL_NAME'];
+                $_SESSION['flag_change_pwd'] = $tmp['FLAG_CHANGE_PWD'];
+                $_SESSION['enterprise'] = $tmp['ENTERPRISE'];
+                $_SESSION['test'] = 'test';
+                $_SESSION["".$tmp['RIGHTS_CODE'].""] = $tmp['RIGHTS_VAL'];
+                if ($tmp['RIGHTS_VAL'] == 'Y' && $tmp['RIGHTS_CODE'] == 'administrator'){
+                    $_SESSION['is_auth_admin'] = true;
+                }
+            }
+
+            return true;
+
+
         }
+    }
+
+    private function authLdap($login, $password) {
+        $config_file = __DIR__ . '/ldap_config.php';
+        if (!file_exists($config_file)) {
+            return false;
+        }
+
+        $cfg = include($config_file);
+        if (!is_array($cfg) || empty($cfg['enabled'])) {
+            return false;
+        }
+
+        require_once __DIR__ . '/lib/LdapAuth.php';
+        $ldap = new LdapAuth($cfg);
+        $result = $ldap->verify($login, $password);
+
+        return !empty($result['ok']);
     }
     
     public function change_pwd($new_pwd) {
