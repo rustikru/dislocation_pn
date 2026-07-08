@@ -499,41 +499,41 @@ if ($_POST['ajax_action'] === 'get_add_info_for_objects') {
 }
 
 /* 
-	Функция возвращает массив инф. по вагону 
-	
-	@param car_number - Номер вагоны
-	
-	return array
-	
-	ID					- номер вагона
-	OBJ_TYPE 			- тип 
-	NAME				
-	FOREIGN_CAR	
-	R_ORDER	
-	INV_NUMBER			- номер накладной
-	STATUS				- статус накладной
-	STATE				- состояние: гр. или порож
-	CAR_TYPE	
-	FREIGHT_NAME		- Наименование груза
-	WEIGHT_NET	
-	ARRIVE_WEIGHT_NET	- вес груза
-	WEIGHT_DEP			- вес тары
-	WEIGHT_GROSS		- вес с весов
-	CONT				- контейнер
-	CONT_COUNT			- кол-во контейнеров
-	OWNER				- владелец вагона (МТФ, МД)
-	DATE_ARRIVE			- Дата прибытия (УГЛ)
-	DATE_LAST_OPER		- дата посл.операции
-	DATE_LOADING		- дата операци на произ.площадке
-	CAR_LENGTH			- 
-	CONT_WITH_INS				- Контейнеры с результатами осмотров
-	SCALE_WEIGHT_DEP			- Вес порожний с весов
-	SCALE_WEIGHT_GROSS			- Вес брутто с весов
-	SCALE_WEIGHT_DEP_ADD		- Указывает на то что вес с предыдущего круга
-	SCALE_WEIGHT_GROSS_ADD	
-	CAN_CREATE_RETURN_INVOICE	
-	RAILCAR_TYPE		- тип (1 - вагон, 2 - контейнер)
-	ROUND_ID			- ID оборота вагона. 
+        Функция возвращает массив инф. по вагону 
+
+        @param car_number - Номер вагоны
+
+        return array
+
+        ID					- номер вагона
+        OBJ_TYPE 			- тип 
+        NAME				
+        FOREIGN_CAR	
+        R_ORDER	
+        INV_NUMBER			- номер накладной
+        STATUS				- статус накладной
+        STATE				- состояние: гр. или порож
+        CAR_TYPE	
+        FREIGHT_NAME		- Наименование груза
+        WEIGHT_NET	
+        ARRIVE_WEIGHT_NET	- вес груза
+        WEIGHT_DEP			- вес тары
+        WEIGHT_GROSS		- вес с весов
+        CONT				- контейнер
+        CONT_COUNT			- кол-во контейнеров
+        OWNER				- владелец вагона (МТФ, МД)
+        DATE_ARRIVE			- Дата прибытия (УГЛ)
+        DATE_LAST_OPER		- дата посл.операции
+        DATE_LOADING		- дата операци на произ.площадке
+        CAR_LENGTH			- 
+        CONT_WITH_INS				- Контейнеры с результатами осмотров
+        SCALE_WEIGHT_DEP			- Вес порожний с весов
+        SCALE_WEIGHT_GROSS			- Вес брутто с весов
+        SCALE_WEIGHT_DEP_ADD		- Указывает на то что вес с предыдущего круга
+        SCALE_WEIGHT_GROSS_ADD	
+        CAN_CREATE_RETURN_INVOICE	
+        RAILCAR_TYPE		- тип (1 - вагон, 2 - контейнер)
+        ROUND_ID			- ID оборота вагона. 
 
 */
 
@@ -561,10 +561,10 @@ if ($_POST['ajax_action'] === 'get_add_info_for_car') {
 }
 
 /* 
-	Функция возвращает массив инф. по контейнеру 
-	
-	@param car_number - Номер вагона
-	
+        Функция возвращает массив инф. по контейнеру 
+
+        @param car_number - Номер вагона
+
 */
 if ($_POST['ajax_action'] === 'get_add_info_for_cont') {
         $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
@@ -589,7 +589,7 @@ if ($_POST['ajax_action'] === 'get_add_info_for_cont') {
         echo json_encode($arrChild);
 }
 /* 
-	Информация по пользователю
+        Информация по пользователю
 */
 if ($_POST['ajax_action'] === 'getLoginData') {
         $right = $auth->getRights();
@@ -606,10 +606,10 @@ if ($_POST['ajax_action'] === 'getLoginData') {
 if ($_POST['ajax_action'] === 'get_init_data') {
         $right = $auth->getRights();
         $login_data = $right;
-        $login_data['stationId']     = $auth->getStationId();
-        $login_data['stationName']   = $auth->getStation();
-        $login_data['userName']      = $auth->getFullName();
-        $login_data['user_id']       = $auth->getUserId();
+        $login_data['stationId'] = $auth->getStationId();
+        $login_data['stationName'] = $auth->getStation();
+        $login_data['userName'] = $auth->getFullName();
+        $login_data['user_id'] = $auth->getUserId();
         $login_data['administrator'] = $auth->getAdministrator();
 
         $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
@@ -619,19 +619,19 @@ if ($_POST['ajax_action'] === 'get_init_data') {
         }
 
         $queries = [
-                'freight_list'       => 'select * from table(xx_dislocation.get_freight_list)',
-                'org_name_list'      => 'select * from table(xx_dislocation.get_org_name_list)',
-                'scales_type_list'   => 'select * from table(xx_dislocation.get_scales_type_list)',
-                'define_task_list'   => 'select * from table(xx_dislocation.get_define_task_list)',
-                'car_type_list'      => 'select * from table(xx_dislocation.get_car_type_list)',
-                'train_drivers'      => 'select * from table(xx_dislocation.get_train_drivers)',
-                'users_for_naliv'    => 'select * from table(xx_dislocation.get_users_for_naliv)',
-                'conductors'         => 'select * from table(xx_dislocation.get_conductors)',
-                'locomotives'        => 'select * from table(xx_dislocation.get_locomotives)',
+                'freight_list' => 'select * from table(xx_dislocation.get_freight_list)',
+                'org_name_list' => 'select * from table(xx_dislocation.get_org_name_list)',
+                'scales_type_list' => 'select * from table(xx_dislocation.get_scales_type_list)',
+                'define_task_list' => 'select * from table(xx_dislocation.get_define_task_list)',
+                'car_type_list' => 'select * from table(xx_dislocation.get_car_type_list)',
+                'train_drivers' => 'select * from table(xx_dislocation.get_train_drivers)',
+                'users_for_naliv' => 'select * from table(xx_dislocation.get_users_for_naliv)',
+                'conductors' => 'select * from table(xx_dislocation.get_conductors)',
+                'locomotives' => 'select * from table(xx_dislocation.get_locomotives)',
                 'inspection_persons' => 'select * from table(xx_dislocation.get_inspection_persons)',
-                'masters'            => 'select * from table(xx_dislocation.get_masters)',
-                'ins_results'        => 'select * from table(xx_dislocation.get_ins_results)',
-                'ins_doc_types'      => 'select * from table(xx_dislocation.get_ins_doc_types)',
+                'masters' => 'select * from table(xx_dislocation.get_masters)',
+                'ins_results' => 'select * from table(xx_dislocation.get_ins_results)',
+                'ins_doc_types' => 'select * from table(xx_dislocation.get_ins_doc_types)',
         ];
 
         $result = ['login' => $login_data];
@@ -651,7 +651,7 @@ if ($_POST['ajax_action'] === 'get_init_data') {
 }
 
 /*
-	Авторизовался пользователь. (Да/Нет)
+        Авторизовался пользователь. (Да/Нет)
 */
 if ($_POST['ajax_action'] === 'get_is_auth') {
         echo $auth->isAuth();
@@ -1300,7 +1300,7 @@ if ($_POST['ajax_action'] === 'get_location_of_cars') {
         }
 
         $arrChild = array();
-        $find_car  = filter_input(INPUT_POST, 'find_car');
+        $find_car = filter_input(INPUT_POST, 'find_car');
         $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_location_of_cars(:bind1))');
         oci_bind_by_name($oci_child, ":bind1", $find_car);
         oci_execute($oci_child);
@@ -1364,14 +1364,8 @@ if ($_POST['ajax_action'] === 'get_notifications_gu') {
 
         $arrChild = array();
         $credential_id = filter_input(INPUT_POST, 'credential_id') ?? '';
-        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
-        $type_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
-        if (!in_array($type_gu, array('2b', '2d'), true)) {
-                oci_close($conn);
-                echo json_encode($arrChild);
-                return;
-        }
-        
+        $type_gu = filter_input(INPUT_POST, 'type_gu') ?? '';
+
 
         $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notifications_gu(:bind1,:bind2,:bind3))');
         oci_bind_by_name($oci_child, ":bind1", $credential_id);
@@ -1430,14 +1424,14 @@ if ($_POST['ajax_action'] === 'change_cars_weight_net') {
             l_prm.date_end          := :p_date_end;
             l_prm.date_zayavka_uvod := :p_date_zayavka_uvod;
             l_prm.date_uvod         := :p_date_uvod;
-            l_prm.who_looked_id     := null;
-            l_prm.who_looked        := :p_who_looked;
-            l_prm.who_start_id      := null;
-            l_prm.who_start         := :p_who_start;
-            l_prm.who_end_id        := null;
-            l_prm.who_end           := :p_who_end;
-            l_prm.who_zayavka_id    := null;
-            l_prm.who_zayavka       := :p_who_zayavka;
+            l_prm.who_looked_id     := :p_who_looked;
+            l_prm.who_looked        := null;
+            l_prm.who_start_id      := :p_who_start;
+            l_prm.who_start         := null;
+            l_prm.who_end_id        := :p_who_end;
+            l_prm.who_end           := null;
+            l_prm.who_zayavka_id    := :p_who_zayavka;
+            l_prm.who_zayavka       := null;
 
             :p_result := xx_dislocation.change_cars_weight_net(l_prm, x_out_loading_tbl);
         end;
@@ -1445,30 +1439,30 @@ if ($_POST['ajax_action'] === 'change_cars_weight_net') {
 
         $oci_request = oci_parse($conn, $sql);
 
-        $user_id           = $auth->getUserId();
-        $cars_with_weight  = filter_input(INPUT_POST, 'cars_with_weight');
-        $date_post         = filter_input(INPUT_POST, 'date_post');
-        $date_start        = filter_input(INPUT_POST, 'date_start');
-        $date_end          = filter_input(INPUT_POST, 'date_end');
+        $user_id = $auth->getUserId();
+        $cars_with_weight = filter_input(INPUT_POST, 'cars_with_weight');
+        $date_post = filter_input(INPUT_POST, 'date_post');
+        $date_start = filter_input(INPUT_POST, 'date_start');
+        $date_end = filter_input(INPUT_POST, 'date_end');
         $date_zayavka_uvod = filter_input(INPUT_POST, 'date_zayavka_uvod');
-        $date_uvod         = filter_input(INPUT_POST, 'date_uvod');
-        $who_looked        = filter_input(INPUT_POST, 'who_looked');
-        $who_start         = filter_input(INPUT_POST, 'who_start');
-        $who_end           = filter_input(INPUT_POST, 'who_end');
-        $who_zayavka       = filter_input(INPUT_POST, 'who_zayavka');
+        $date_uvod = filter_input(INPUT_POST, 'date_uvod');
+        $who_looked = filter_input(INPUT_POST, 'who_looked');
+        $who_start = filter_input(INPUT_POST, 'who_start');
+        $who_end = filter_input(INPUT_POST, 'who_end');
+        $who_zayavka = filter_input(INPUT_POST, 'who_zayavka');
 
-        oci_bind_by_name($oci_request, ':p_result',            $result,            10000);
-        oci_bind_by_name($oci_request, ':p_user_id',           $user_id);
-        oci_bind_by_name($oci_request, ':p_cars_with_weight',  $cars_with_weight,  4000);
-        oci_bind_by_name($oci_request, ':p_date_post',         $date_post,         30);
-        oci_bind_by_name($oci_request, ':p_date_start',        $date_start,        30);
-        oci_bind_by_name($oci_request, ':p_date_end',          $date_end,          30);
+        oci_bind_by_name($oci_request, ':p_result', $result, 10000);
+        oci_bind_by_name($oci_request, ':p_user_id', $user_id);
+        oci_bind_by_name($oci_request, ':p_cars_with_weight', $cars_with_weight, 4000);
+        oci_bind_by_name($oci_request, ':p_date_post', $date_post, 30);
+        oci_bind_by_name($oci_request, ':p_date_start', $date_start, 30);
+        oci_bind_by_name($oci_request, ':p_date_end', $date_end, 30);
         oci_bind_by_name($oci_request, ':p_date_zayavka_uvod', $date_zayavka_uvod, 30);
-        oci_bind_by_name($oci_request, ':p_date_uvod',         $date_uvod,         30);
-        oci_bind_by_name($oci_request, ':p_who_looked',        $who_looked,        200);
-        oci_bind_by_name($oci_request, ':p_who_start',         $who_start,         200);
-        oci_bind_by_name($oci_request, ':p_who_end',           $who_end,           200);
-        oci_bind_by_name($oci_request, ':p_who_zayavka',       $who_zayavka,       200);
+        oci_bind_by_name($oci_request, ':p_date_uvod', $date_uvod, 30);
+        oci_bind_by_name($oci_request, ':p_who_looked', $who_looked, 200);
+        oci_bind_by_name($oci_request, ':p_who_start', $who_start, 200);
+        oci_bind_by_name($oci_request, ':p_who_end', $who_end, 200);
+        oci_bind_by_name($oci_request, ':p_who_zayavka', $who_zayavka, 200);
 
         oci_execute($oci_request);
 
@@ -1947,7 +1941,7 @@ if ($_POST['ajax_action'] === 'delete_dev_inspection') {
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
 
-        $inspection_id =  filter_input(INPUT_POST, 'inspection_id');
+        $inspection_id = filter_input(INPUT_POST, 'inspection_id');
 
         $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.delete_dev_inspection(:bind2); end;');
         oci_bind_by_name($oci_request, ":bind1", $result, 10000);
@@ -1967,10 +1961,10 @@ if ($_POST['ajax_action'] === 'create_work_request') {
                 $e = oci_error();
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
-        
+
         $userID = $auth->getUserId();
         $inspection_id = filter_input(INPUT_POST, 'inspection_id');
-        
+
         $oci_request = oci_parse($conn, 'begin xx_dislocation.create_work_request(:bind1,:bind2,:bind3,:bind4); end;');
         oci_bind_by_name($oci_request, ":bind1", $userID);
         oci_bind_by_name($oci_request, ":bind2", $inspection_id);
@@ -2362,7 +2356,7 @@ if ($_POST['ajax_action'] === 'save_processing_status') {
         $res_err_log;
         $userID = $auth->getUserId();
         $request_id = filter_input(INPUT_POST, 'request_id');
-        
+
         $oci_request = oci_parse($conn, 'begin :bind1 := xx_dislocation.save_processing_status(:bind2,:bind3); end;');
         oci_bind_by_name($oci_request, ":bind1", $result, 10000);
         oci_bind_by_name($oci_request, ":bind2", $userID);
@@ -2604,8 +2598,10 @@ if ($_POST['ajax_action'] === 'add_docs_for_inspection') {
         $upload_dir_base_add = $upload_dir_base . $ins_id . '/';
 
         // Создадим папку если её нет
-        if (!is_dir($upload_dir_base)) mkdir($upload_dir_base, 0777);
-        if (!is_dir($upload_dir_base_add)) mkdir($upload_dir_base_add, 0777);
+        if (!is_dir($upload_dir_base))
+                mkdir($upload_dir_base, 0777);
+        if (!is_dir($upload_dir_base_add))
+                mkdir($upload_dir_base_add, 0777);
 
         // переместим файлы из временной директории в указанную
         foreach ($_FILES as $file) {
@@ -2614,11 +2610,12 @@ if ($_POST['ajax_action'] === 'add_docs_for_inspection') {
                 oci_execute($oci_request);
 
                 $uploaddir = $upload_dir_base_add . $ins_doc_id . '/';
-                if (!is_dir($uploaddir)) mkdir($uploaddir, 0777);
+                if (!is_dir($uploaddir))
+                        mkdir($uploaddir, 0777);
 
                 if (move_uploaded_file($file['tmp_name'], $uploaddir . basename($file['name']))) {
                         $real_path = $uploaddir . $file['name'];
-                        
+
                         $oci_request = oci_parse($conn, "begin  :bind1 := xx_dislocation.add_doc_for_inspection(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7); end;");
                         oci_bind_by_name($oci_request, ":bind1", $res, 100);
                         oci_bind_by_name($oci_request, ":bind2", $ins_id);
@@ -2746,7 +2743,7 @@ if ($_POST['ajax_action'] === 'get_info_for_car_request') {
 
         $car_number = filter_input(INPUT_POST, 'car_number');
         $info_type = filter_input(INPUT_POST, 'info_type');
-        
+
         $oci_request = oci_parse($conn, 'begin :bind1 := xx_dislocation.get_info_for_car_request(:bind2,:bind3); end;');
         oci_bind_by_name($oci_request, ":bind1", $res, 10000);
         oci_bind_by_name($oci_request, ":bind2", $car_number);
@@ -3524,13 +3521,13 @@ if ($_POST['ajax_action'] === 'get_suitable_claims') {
 }
 
 if ($_POST['ajax_action'] === 'register_notification_gu') {
-    $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
+        $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
+        if (!$conn) {
+                $e = oci_error();
+                trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+        }
 
-    $sql = '
+        $sql = '
     declare
         p_data xx_dislocation.t_regit_row;
     begin
@@ -3550,44 +3547,38 @@ if ($_POST['ajax_action'] === 'register_notification_gu') {
     end;
     ';
 
-    $oci_request = oci_parse($conn, $sql);
+        $oci_request = oci_parse($conn, $sql);
 
-    $user_id = $auth->getUserId();
-    $not_id = filter_input(INPUT_POST, 'not_id') ?? '';
-    $cars = filter_input(INPUT_POST, 'cars') ?? '';
-    $not_number = filter_input(INPUT_POST, 'num') ?? '';
-    $notification_time = filter_input(INPUT_POST, 'notification_time') ?? '';
-    $notification_person_from = filter_input(INPUT_POST, 'notification_person_from') ?? '';
-    $pcomment = filter_input(INPUT_POST, 'comment') ?? '';
-    $notification_time_fact = filter_input(INPUT_POST, 'notification_time_fact') ?? '';
-    $notification_person_to = filter_input(INPUT_POST, 'notification_person_to') ?? '';
-    $crg_pcalid = filter_input(INPUT_POST, 'crg_pcalid') ?? '';
-    //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
-    $gu_type = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
-    if (!in_array($gu_type, array('2b', '2d'), true)) {
+        $user_id = $auth->getUserId();
+        $not_id = filter_input(INPUT_POST, 'not_id') ?? '';
+        $cars = filter_input(INPUT_POST, 'cars') ?? '';
+        $not_number = filter_input(INPUT_POST, 'num') ?? '';
+        $notification_time = filter_input(INPUT_POST, 'notification_time') ?? '';
+        $notification_person_from = filter_input(INPUT_POST, 'notification_person_from') ?? '';
+        $pcomment = filter_input(INPUT_POST, 'comment') ?? '';
+        $notification_time_fact = filter_input(INPUT_POST, 'notification_time_fact') ?? '';
+        $notification_person_to = filter_input(INPUT_POST, 'notification_person_to') ?? '';
+        $crg_pcalid = filter_input(INPUT_POST, 'crg_pcalid') ?? '';
+        $gu_type = filter_input(INPUT_POST, 'type_gu') ?? '';
+
+        oci_bind_by_name($oci_request, ':p_result', $result, 4000);
+        oci_bind_by_name($oci_request, ':p_user_id', $user_id);
+        oci_bind_by_name($oci_request, ':p_not_id', $not_id);
+        oci_bind_by_name($oci_request, ':p_cars', $cars, 4000);
+        oci_bind_by_name($oci_request, ':p_not_number', $not_number, 4000);
+        oci_bind_by_name($oci_request, ':p_notification_time', $notification_time, 150);
+        oci_bind_by_name($oci_request, ':p_notification_person_from', $notification_person_from);
+        oci_bind_by_name($oci_request, ':p_pcomment', $pcomment, 4000);
+        oci_bind_by_name($oci_request, ':p_notification_time_fact', $notification_time_fact, 150);
+        oci_bind_by_name($oci_request, ':p_notification_person_to', $notification_person_to, 150);
+        oci_bind_by_name($oci_request, ':p_crg_pcalid', $crg_pcalid);
+        oci_bind_by_name($oci_request, ':p_gu_type', $gu_type, 50);
+
+        oci_execute($oci_request);
+
         oci_close($conn);
-        echo 'fail|unknown type_gu=' . $gu_type;
-        return;
-    }
 
-    oci_bind_by_name($oci_request, ':p_result', $result, 4000);
-    oci_bind_by_name($oci_request, ':p_user_id', $user_id);
-    oci_bind_by_name($oci_request, ':p_not_id', $not_id);
-    oci_bind_by_name($oci_request, ':p_cars', $cars, 4000);
-    oci_bind_by_name($oci_request, ':p_not_number', $not_number, 4000);
-    oci_bind_by_name($oci_request, ':p_notification_time', $notification_time, 150);
-    oci_bind_by_name($oci_request, ':p_notification_person_from', $notification_person_from);
-    oci_bind_by_name($oci_request, ':p_pcomment', $pcomment, 4000);
-    oci_bind_by_name($oci_request, ':p_notification_time_fact', $notification_time_fact, 150);
-    oci_bind_by_name($oci_request, ':p_notification_person_to', $notification_person_to, 150);
-    oci_bind_by_name($oci_request, ':p_crg_pcalid', $crg_pcalid);
-    oci_bind_by_name($oci_request, ':p_gu_type', $gu_type, 50);
-
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+        echo $result;
 }
 
 if ($_POST['ajax_action'] === 'export_notif_etran') {
@@ -3600,13 +3591,7 @@ if ($_POST['ajax_action'] === 'export_notif_etran') {
         $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.export_gu_to_etran(:bind2,:bind3,:bind4,:bind5); end;');
         $not_id = filter_input(INPUT_POST, 'not_id');
         $pcalid = filter_input(INPUT_POST, 'pcalid');
-        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
-        $ptype_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
-        if (!in_array($ptype_gu, array('2b', '2d'), true)) {
-                oci_close($conn);
-                echo 'fail|unknown type_gu=' . $ptype_gu;
-                return;
-        }
+        $ptype_gu = filter_input(INPUT_POST, 'type_gu');
         oci_bind_by_name($oci_request, ":bind1", $result, 4000);
         oci_bind_by_name($oci_request, ":bind2", $userID);
         oci_bind_by_name($oci_request, ":bind3", $not_id);
@@ -3628,13 +3613,7 @@ if ($_POST['ajax_action'] === 'get_notification_gu') {
 
         $arrChild = array();
         $not_id = filter_input(INPUT_POST, 'not_id');
-        //add 02.07.2026 BekmansurovRR. Проверка типа уведомления ГУ
-        $type_gu = strtolower(filter_input(INPUT_POST, 'type_gu') ?? '2b');
-        if (!in_array($type_gu, array('2b', '2d'), true)) {
-                oci_close($conn);
-                echo json_encode($arrChild);
-                return;
-        }
+        $type_gu = filter_input(INPUT_POST, 'type_gu');
         $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_notification_gu(:bind1, :bind2))');
         oci_bind_by_name($oci_child, ":bind1", $not_id);
         oci_bind_by_name($oci_child, ":bind2", $type_gu);
@@ -4087,7 +4066,7 @@ if ($_POST['ajax_action'] === 'get_other_actions') {
         $oper = filter_input(INPUT_POST, 'oper') ?? '';
         $route = filter_input(INPUT_POST, 'route') ?? '';
         $action_id = filter_input(INPUT_POST, 'action_id') ?? '';
-        
+
         $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_other_actions(:bind1,:bind2,:bind3,:bind4,:bind5,:bind6))');
 
         oci_bind_by_name($oci_request, ":bind1", $date_from);
@@ -5378,11 +5357,11 @@ if ($_POST['ajax_action'] === 'save_control_car') {
 Параметры:
  * 
 Возвращаемые данные:
-	INVENTORY_ITEM_ID 	- ID ГП позиции
-	ITEM_NAME			- Код позиции
-	FREIGHT_NAME		- Наименование груза
-	CODE_BASE			- Код основания
-	FREIGHT_SELECTED	- Сопоставленный груз с параметром [@FREIGHT_NAME]. 0 - не сопоставлен, 1 - сопоставлен
+        INVENTORY_ITEM_ID 	- ID ГП позиции
+        ITEM_NAME			- Код позиции
+        FREIGHT_NAME		- Наименование груза
+        CODE_BASE			- Код основания
+        FREIGHT_SELECTED	- Сопоставленный груз с параметром [@FREIGHT_NAME]. 0 - не сопоставлен, 1 - сопоставлен
 /*******************************************************************************/
 if ($_POST['ajax_action'] === 'get_disl_freight_oebs') {
         $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
@@ -5408,13 +5387,13 @@ if ($_POST['ajax_action'] === 'get_disl_freight_oebs') {
 Функция возвращает список данных по вагону для формы "Обработка вагонов"
 Параметры:
  * params - массив данных в формет JSON 
-		{car_number} - номер вагона
-		{inventory_item_id} - ID позиции
-		{trx_date_begin} - Дата начала обработки
-		{trx_date_end} - Дата окончания обработки
-		
+                {car_number} - номер вагона
+                {inventory_item_id} - ID позиции
+                {trx_date_begin} - Дата начала обработки
+                {trx_date_end} - Дата окончания обработки
+
 Возвращаемые данные:
-	disl_hdr_id			- ID заголовка формы "Обработки вагонов"
+        disl_hdr_id			- ID заголовка формы "Обработки вагонов"
     created_by			- ID пользователя (создатель записи)
     created_fio			- ФИО пользователя (создатель записи)
     creation_date		- дата создания 
@@ -5460,18 +5439,18 @@ if ($_POST['ajax_action'] === 'get_process_of_wagons') {
 Функция возвращает список данных по вагону для формы "Обработка вагонов (историческая таблица)"
 Параметры:
  * params - массив данных в формет JSON 
-		{inventory_item_id} - ID позиции
-		{trx_date_begin} - Дата начала обработки
-		{trx_date_end} - Дата окончания обработки
-		
+                {inventory_item_id} - ID позиции
+                {trx_date_begin} - Дата начала обработки
+                {trx_date_end} - Дата окончания обработки
+
 Возвращаемые данные:
-	product					- Продукт (Позиция)
+        product					- Продукт (Позиция)
     lot_number				- Партия (Вагон/Контейнер)
     begin_transaction_date	- Дата/время начала 
     end_transaction_date	- Дата/время завершения 
     qty_production			- Кол-во выработка 
     qty_write_off			- Кол-во списание 
-	
+
  *******************************************************************************/
 if ($_POST['ajax_action'] === 'get_process_of_wagons_history') {
         $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
@@ -5500,20 +5479,20 @@ if ($_POST['ajax_action'] === 'get_process_of_wagons_history') {
 Параметры:
  * IN p_user_id - ID пользователя
  * IN params - массив данных в формет JSON
-				{
-					header_id			- ID заголовка 
-					trx_date_begin		- Дата начала обработки (формат даты: DD.MM.YYYY HH24:MI)
-					trx_date_end		- Дата окончания обработки (формат даты: DD.MM.YYYY HH24:MI)
-					opm_trx_lines		- массив строк
-										{
-											line_id			- ID строки
-											round_id		- ID оборота (вагон/платформы)
-											car_number		- Номер вагона/платформы
-											cont_number		- Номер контейнера
-											freight_name	- Название груза
-											item_id			- ID позиции
-										}
-				}
+                                {
+                                        header_id			- ID заголовка 
+                                        trx_date_begin		- Дата начала обработки (формат даты: DD.MM.YYYY HH24:MI)
+                                        trx_date_end		- Дата окончания обработки (формат даты: DD.MM.YYYY HH24:MI)
+                                        opm_trx_lines		- массив строк
+                                                                                {
+                                                                                        line_id			- ID строки
+                                                                                        round_id		- ID оборота (вагон/платформы)
+                                                                                        car_number		- Номер вагона/платформы
+                                                                                        cont_number		- Номер контейнера
+                                                                                        freight_name	- Название груза
+                                                                                        item_id			- ID позиции
+                                                                                }
+                                }
  * OUT p_result - результат выполнения (массив): done - успешно
                                     fail$MessageError - Ошибка$текст_ошибки
  *******************************************************************************/
@@ -5540,7 +5519,7 @@ if ($_POST['ajax_action'] === 'save_process_of_wagons') {
 Параметры:
  * p_user_id - пользователь
  * p_add_data - массив данных в формет JSON
-			{header_id} - ID заголовка 
+                        {header_id} - ID заголовка 
  * p_result - результат выполнения (массив): done$Message - успешно$Номер_задания
                                     fail$MessageError - ошибка$текст_ошибки
  *******************************************************************************/
@@ -5565,14 +5544,14 @@ if ($_POST['ajax_action'] === 'run_process_of_wagons') {
 Функция возвращает список вагонов для формы "Обработка вагонов"
 Параметры:
  * p_params - массив данных в формет JSON 
-		{car_number} - номер вагона
-		
+                {car_number} - номер вагона
+
 Возвращаемые данные:
-	disl_lines_id		- ID строки формы "Обработки вагонов"
+        disl_lines_id		- ID строки формы "Обработки вагонов"
     car_number			- Номер вагона/платформы
     cont_number			- Номер контейнера
     freight_name		- Наименование груза
-	batch_num			- Номер задания
+        batch_num			- Номер задания
  *******************************************************************************/
 if ($_POST['ajax_action'] === 'add_car_for_process_of_wagons') {
         $conn = oci_connect($user, $pwd, $db, "AL32UTF8");
@@ -5777,7 +5756,7 @@ if ($_POST['ajax_action'] === 'get_contract_default_for_gu') {
 }
 /*
 if ($_GET['action']==='xx_akm_mail_weight') {
-	date_default_timezone_set('Asia/Yekaterinburg');
+        date_default_timezone_set('Asia/Yekaterinburg');
     $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
     if (!$conn) {
             $e = oci_error();
