@@ -35,30 +35,32 @@ class AuthClass {
                 $err[] = "Логин может состоять только из букв английского алфавита и цифр";
         } 
 	else {
-            $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-            if (!$conn) {
-                    $e = oci_error();
-                    trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-            }
-
-            $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.return_user_data_new(:bind1))');
-            OCIBindByName($oci_request, ":bind1", $login);
-            oci_execute($oci_request);
-
-            $user_rows = array();
-            while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-                $user_rows[] = $tmp;
-            }
-			oci_close($conn);
+            $user_rows = $this->getUserRows($login); // add 08.07.2026 Bekmansurovrr
 
             $_SESSION["is_auth"] = false;
             $_SESSION['is_auth_admin'] = false;
+            $ldap_authenticated = false; // add 08.07.2026 Bekmansurovrr
 
             if (count($user_rows) === 0) {
-                return false;
+                // add 08.07.2026 Bekmansurovrr
+                $ldap_result = $this->authLdap($login, $password);
+                if (empty($ldap_result['ok'])) {
+                    return false;
+                }
+                $ldap_authenticated = true;
+
+                $full_name = !empty($ldap_result['name']) ? $ldap_result['name'] : $login;
+                if (!$this->createLdapUser($login, $full_name)) {
+                    return false;
+                }
+
+                $user_rows = $this->getUserRows($login);
+                if (count($user_rows) === 0) {
+                    return false;
+                }
             }
 
-            $password_ok = false;
+            $password_ok = $ldap_authenticated;
             foreach ($user_rows as $tmp) {
                 if ($tmp['PASSWORD'] === md5((string)$password)) {
                     $password_ok = true;
@@ -67,7 +69,8 @@ class AuthClass {
             }
 
             if (!$password_ok) {
-                $password_ok = $this->authLdap($login, $password);
+                $ldap_result = $this->authLdap($login, $password); // add 08.07.2026 Bekmansurovrr
+                $password_ok = !empty($ldap_result['ok']);
             }
 
             if (!$password_ok) {
@@ -94,22 +97,86 @@ class AuthClass {
         }
     }
 
+    // add 08.07.2026 Bekmansurovrr
+    private function getUserRows($login) {
+        global $user;
+        global $pwd;
+        global $db;
+
+        $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
+        if (!$conn) {
+            $e = oci_error();
+            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+        }
+
+        $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.return_user_data_new(:bind1))');
+        OCIBindByName($oci_request, ":bind1", $login);
+        oci_execute($oci_request);
+
+        $user_rows = array();
+        while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
+            $user_rows[] = $tmp;
+        }
+        oci_close($conn);
+
+        return $user_rows;
+    }
+
+    // add 08.07.2026 Bekmansurovrr
+    private function createLdapUser($login, $full_name) {
+        global $user;
+        global $pwd;
+        global $db;
+
+        $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
+        if (!$conn) {
+            $e = oci_error();
+            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+        }
+
+        $enterprise = null;
+        $division = null;
+        $change_pwd = 'N';
+        $open = 'Y';
+        $phone_num = null;
+        $default_station = 1;
+        $stations = '1|';
+        $credentials = '';
+
+        $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.add_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11); end;');
+        OCIBindByName($oci_request, ":bind1", $result,1000000);
+        OCIBindByName($oci_request, ":bind2", $login);
+        OCIBindByName($oci_request, ":bind3", $full_name);
+        OCIBindByName($oci_request, ":bind4", $enterprise);
+        OCIBindByName($oci_request, ":bind5", $division);
+        OCIBindByName($oci_request, ":bind6", $change_pwd);
+        OCIBindByName($oci_request, ":bind7", $open);
+        OCIBindByName($oci_request, ":bind8", $phone_num);
+        OCIBindByName($oci_request, ":bind9", $default_station);
+        OCIBindByName($oci_request, ":bind10", $stations);
+        OCIBindByName($oci_request, ":bind11", $credentials);
+        oci_execute($oci_request);
+        oci_close($conn);
+
+        return ((int)$result) > 0;
+    }
+
+    // add 08.07.2026 Bekmansurovrr
     private function authLdap($login, $password) {
         $config_file = __DIR__ . '/ldap_config.php';
         if (!file_exists($config_file)) {
-            return false;
+            return array('ok' => false);
         }
 
         $cfg = include($config_file);
         if (!is_array($cfg) || empty($cfg['enabled'])) {
-            return false;
+            return array('ok' => false);
         }
 
         require_once __DIR__ . '/lib/LdapAuth.php';
         $ldap = new LdapAuth($cfg);
-        $result = $ldap->verify($login, $password);
 
-        return !empty($result['ok']);
+        return $ldap->verify($login, $password);
     }
     
     public function change_pwd($new_pwd) {
