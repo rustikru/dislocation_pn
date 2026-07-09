@@ -54,7 +54,7 @@ if (!$auth->isAuthAdmin()){
         
         <link rel="stylesheet" href="modules/periods/periods.css" type="text/css">
         <script type="text/javascript" src="modules/periods/periods.js" ></script>
-        <link rel="stylesheet" href="adm_refresh.css?ver=1" type="text/css">
+        <link rel="stylesheet" href="adm_refresh.css?ver=2" type="text/css">
 
     </head>
     <body>
