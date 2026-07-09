@@ -426,6 +426,9 @@ section {
   z-index: 50;
 }
 .request-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
   border-bottom: 1px solid var(--nt-line);
   border-radius: 0;
@@ -434,6 +437,23 @@ section {
   font-family: var(--nt-sans);
   font-weight: 600;
   padding: 10px 12px;
+}
+/* Старые кнопки титлбара позиционировались через position:absolute с
+   магическим right:34.4em, рассчитанным под старую ширину окна 550px —
+   при новой ширине (520px) это уводило кнопку "добавить" почти
+   полностью за пределы окна и обрезало заголовок "Заявки".
+   Переводим на нормальный flex-поток. */
+.request-titlebar .request-title {
+  float: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.request-titlebar .request-button {
+  position: relative;
+  top: auto;
+  right: auto;
+  margin: 0;
+  flex: 0 0 auto;
 }
 .request-content {
   padding: 8px;
