@@ -55,9 +55,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-/* Во весь экран. Flex-каркас: шапка и поиск сверху фиксированной высоты,
-   ряд колонок (.main-cols) занимает остаток — низ панелей и строка «Итого»
-   всегда видны, ничего не уезжает за экран. */
+/* Во весь экран — без пустых зон по бокам.
+   Flex-каркас: шапка и поиск сверху, колонки занимают ровно остаток высоты,
+   поэтому нижние границы панелей видны и не уезжают за экран. */
 .wrapper {
   width: 100%;
   height: calc(100vh - 4px);
@@ -71,18 +71,20 @@ body {
 .wrapper > .options {
   flex: 0 0 auto;
 }
+/* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту */
 .main-cols {
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
-  gap: 6px;
-  padding-top: 6px;
+  gap: 8px;
+  padding: 8px 0 0;
 }
 .main-cols > aside {
   float: none;
-  width: 22%;
+  width: 20%;
   height: auto;
-  flex: 0 0 22%;
+  flex: 0 0 20%;
+  box-sizing: border-box;
 }
 .main-cols > section {
   float: none;
@@ -90,6 +92,7 @@ body {
   height: auto;
   flex: 1 1 auto;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 /* =====================================================================
@@ -257,7 +260,6 @@ aside {
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);   /* очерченная область, не «бесконечная» */
   border-radius: 8px;
-  box-sizing: border-box;
 }
 
 /* Панель «Доп. кнопки» */
@@ -330,13 +332,10 @@ section {
   border: 1px solid var(--nt-line);
   border-radius: 8px;
   background: var(--nt-bg);
-  padding: 8px 8px 0;     /* без нижнего паддинга: строка «Итого» прижата к низу */
-  box-sizing: border-box;
+  padding: 8px;
 }
 
 .addInfoTable {
-  width: auto;              /* ширина по содержимому, без растягивания на всю секцию */
-  table-layout: auto;      /* колонки — по содержимому, а не по заголовку */
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);
   border-radius: 8px;
@@ -357,18 +356,16 @@ section {
   font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .2px;
+  letter-spacing: .3px;
   text-align: left;
   padding: 9px 10px;
   border-bottom: 1px solid var(--nt-line);
   vertical-align: middle;
-  white-space: normal;     /* заголовок переносится и не диктует ширину колонки */
 }
 .addInfoTable tbody td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--nt-line-soft);
   vertical-align: middle;
-  white-space: nowrap;     /* данные в одну строку — ширина колонки по содержимому */
 }
 /* Нейтральная зебра вместо зелёной */
 .addInfoTable tbody tr:nth-child(odd)  { background: var(--nt-panel); }
