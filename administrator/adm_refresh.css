@@ -1,3 +1,31 @@
+:root {
+    --bg: #e9edf1;
+    --panel: #ffffff;
+    --panel-2: #f5f7f9;
+    --line: #d7dee5;
+    --line-soft: #e6ebf0;
+
+    --ink: #1d2733;
+    --ink-2: #4a5666;
+    --ink-3: #7c8896;
+
+    --accent: oklch(0.50 0.085 158);
+    --accent-deep: oklch(0.40 0.075 158);
+    --accent-soft: oklch(0.95 0.025 158);
+    --accent-line: oklch(0.86 0.045 158);
+
+    --err: oklch(0.55 0.16 25);
+    --err-bg: oklch(0.94 0.05 25);
+
+    --sel-bg: oklch(0.93 0.04 158);
+
+    --shadow: 0 1px 2px rgba(20, 30, 45, .05), 0 6px 20px rgba(20, 30, 45, .07);
+    --shadow-pop: 0 8px 28px rgba(20, 30, 45, .18);
+
+    --r: 7px;
+    --sans: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+}
+
 html,
 body {
     min-height: 100%;
@@ -7,9 +35,9 @@ body {
 body {
     margin: 0;
     border-top: 0;
-    background: #f3f0ea;
-    color: #263a33;
-    font: 13px/1.35 "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font: 13px/1.4 var(--sans);
     overflow: hidden;
 }
 
@@ -17,7 +45,7 @@ button,
 input,
 select,
 textarea {
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: var(--sans);
 }
 
 .wrapper {
@@ -29,10 +57,10 @@ textarea {
     min-height: 620px;
     margin: 10px auto;
     overflow: hidden;
-    background: #ffffff;
-    border: 1px solid #dbeae3;
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(45, 58, 50, .08);
+    box-shadow: var(--shadow);
 }
 
 header {
@@ -40,8 +68,8 @@ header {
     height: 52px;
     overflow: hidden;
     border: 0;
-    border-bottom: 1px solid #e1ebe6;
-    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
 }
 
 .headerlt {
@@ -67,15 +95,15 @@ header {
     height: 8px;
     margin: 0 10px 0 0;
     border-radius: 50%;
-    background: #82c4a5;
+    background: var(--accent);
     vertical-align: middle;
 }
 
 .menu:after {
     content: "Внутренняя дислокация";
     display: inline-block;
-    color: #5b8c73;
-    font: 700 12px/36px "Segoe UI", Arial, sans-serif;
+    color: var(--ink-2);
+    font: 600 12px/36px var(--sans);
     vertical-align: middle;
 }
 
@@ -88,23 +116,23 @@ header {
     margin: 0;
     padding: 0 12px;
     border: 0;
-    color: #5b8c73;
-    font: 700 12px/36px "Segoe UI", Arial, sans-serif;
+    color: var(--ink-2);
+    font: 600 12px/36px var(--sans);
     text-shadow: none;
 }
 
 .menu li:hover > a {
-    color: #2c9362;
+    color: var(--accent-deep);
 }
 
 .menu ul {
     top: 36px;
     min-width: 190px;
     overflow: hidden;
-    background: #ffffff;
-    border: 1px solid #d9ebe3;
-    border-radius: 8px;
-    box-shadow: 0 16px 36px rgba(39, 56, 47, .16);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-pop);
 }
 
 .menu ul li {
@@ -115,16 +143,16 @@ header {
 .menu ul li a {
     height: auto;
     padding: 6px 14px;
-    color: #40584c;
-    border-bottom: 1px solid #edf4f0;
-    font: 600 13px/1.3 "Segoe UI", Arial, sans-serif;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line-soft);
+    font: 500 13px/1.3 var(--sans);
     text-shadow: none;
 }
 
 .headerrt {
     position: absolute;
     right: 24px;
-    bottom: 14px;
+    bottom: 15px;
     float: right;
     margin: 0;
 }
@@ -139,20 +167,21 @@ header {
     margin: 0 0 0 14px;
     padding: 0;
     border: 0;
-    color: #63786e;
-    font: 700 13px/1 "Segoe UI", Arial, sans-serif;
+    color: var(--ink-2);
+    font: 500 12.5px/1 var(--sans);
     text-shadow: none;
 }
 
 .logoutbtn input[type="submit"] {
     padding: 0;
-    color: #299261;
-    font: 800 13px/1 "Segoe UI", Arial, sans-serif;
+    color: var(--accent-deep);
+    font: 600 12.5px/1 var(--sans);
     text-decoration: none !important;
 }
 
 .logoutbtn input[type="submit"]:hover {
-    color: #177b4e;
+    color: var(--accent);
+    text-decoration: underline !important;
 }
 
 header:after {
@@ -160,20 +189,20 @@ header:after {
     position: absolute;
     left: 24px;
     bottom: 14px;
-    color: #243830;
+    color: var(--ink);
     font-size: 16px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1;
 }
 
 header:before {
     content: "Справка";
     position: absolute;
-    left: 258px;
-    bottom: 14px;
-    color: #7f978b;
-    font-size: 12px;
-    font-weight: 700;
+    left: 292px;
+    bottom: 15px;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    font-weight: 500;
     line-height: 1;
 }
 
@@ -183,24 +212,24 @@ header:before {
     padding: 0;
     border: 0;
     border-radius: 0;
-    background: #ffffff;
-    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--panel);
+    font-family: var(--sans);
 }
 
 .ui-tabs .ui-tabs-nav {
     height: 40px;
     margin: 0;
-    padding: 0 24px;
+    padding: 0 14px;
     border: 0;
-    border-bottom: 1px solid #e1ebe6;
+    border-bottom: 1px solid var(--line);
     border-radius: 0;
-    background: #ffffff;
+    background: var(--panel);
 }
 
 .ui-tabs .ui-tabs-nav li {
     top: 0;
     height: 40px;
-    margin: 0 20px 0 0;
+    margin: 0 2px;
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -208,21 +237,22 @@ header:before {
 }
 
 .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
-    padding: 0 2px;
-    color: #80958b;
+    padding: 0 14px;
+    color: var(--ink-2);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 40px;
     outline: 0;
 }
 
 .ui-tabs .ui-tabs-nav li.ui-tabs-active {
     margin-bottom: 0;
-    border-bottom: 2px solid #2d9662;
+    border-bottom: 2px solid var(--accent);
 }
 
 .ui-tabs .ui-tabs-nav li.ui-tabs-active .ui-tabs-anchor {
-    color: #2d9662;
+    color: var(--accent-deep);
+    font-weight: 600;
 }
 
 .ui-tabs .ui-tabs-panel {
@@ -231,7 +261,7 @@ header:before {
     padding: 0 !important;
     overflow: hidden;
     border: 0;
-    background: #ffffff;
+    background: var(--bg);
 }
 
 .aside,
@@ -240,61 +270,112 @@ header:before {
     height: 100%;
     min-height: 0;
     border: 0;
-    background: #ffffff;
 }
 
 .aside {
     float: left;
-    width: 25.5%;
-    min-width: 260px;
-    max-width: 380px;
-    padding: 12px 0;
-    overflow: auto;
-    border-right: 1px solid #e1ebe6;
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+}
+
+.aside > .buttonset {
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.aside > .buttonset .button {
+    width: 100%;
+    padding: 8px 0;
+    background: var(--panel-2);
+    color: var(--ink-2);
+    font-weight: 600;
+}
+
+.aside > .buttonset .button:hover {
+    background: var(--panel);
+    border-color: var(--accent);
+    color: var(--accent-deep);
 }
 
 .section {
     float: none;
     width: auto;
-    margin-left: 25.5%;
-    padding: 16px 20px;
+    margin-left: 300px;
+    padding: 14px 18px;
     overflow: auto;
+    background: var(--bg);
 }
 
 .buttonset[style] {
-    margin: 0 14px 12px 14px !important;
+    margin: 10px 0 0 !important;
 }
 
 .button {
-    min-height: 28px;
+    min-height: 30px;
     padding: 0 14px;
-    border: 1px solid #bfe2d2;
-    border-radius: 6px;
-    background: #f5fbf8;
-    color: #2d9662;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--panel);
+    color: var(--ink);
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 500;
     box-shadow: none;
 }
 
 .button:hover {
-    border-color: #94d1b6;
-    background: #edf8f2;
+    background: var(--panel-2);
+    border-color: var(--ink-3);
+}
+
+.button[id^="save_new_"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.button[id^="save_new_"]:hover {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+}
+
+.button[id^="delete_"]:hover {
+    background: var(--err-bg);
+    border-color: var(--err);
+    color: var(--err);
 }
 
 .button-text,
 .button-text-size,
 .button-text-size-1 {
     color: inherit;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 12.5px;
+    font-weight: inherit;
 }
 
 #credential_list,
 #users_list,
 #railways_list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
     margin: 0;
-    padding: 0;
+    padding: 6px;
+}
+
+#credential_list .tree_Node,
+#users_list .tree_Node {
+    margin-left: 0;
 }
 
 .tree_Node {
@@ -305,11 +386,12 @@ header:before {
     display: block;
     min-height: 20px;
     margin-left: 0;
-    padding: 4px 14px 4px 18px;
-    color: #344a41;
-    border-left: 3px solid transparent;
-    font-size: 13px;
-    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--ink);
+    border-left: 0;
+    font-size: 12.5px;
+    font-weight: 400;
     line-height: 1.3;
     cursor: pointer;
 }
@@ -323,97 +405,115 @@ header:before {
 }
 
 .tree_Content:hover {
-    background: #f4faf7;
-    color: #22362f;
+    background: var(--panel-2);
 }
 
 .tree_selected {
-    background: #eff8f3;
-    border-left-color: #2d9662;
-    color: #243830;
-    font-weight: 800;
+    background: var(--sel-bg);
+    color: var(--accent-deep);
+    font-weight: 600;
+}
+
+/* Классический квадратный twisty вместо картинок */
+.tree_Expand {
+    box-sizing: border-box;
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    border: 1px solid var(--ink-3) !important;
+    border-radius: 3px;
+    background: var(--panel) !important;
+    position: relative;
+}
+
+.tree_Expand::before,
+.tree_Expand::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ink-2);
+}
+
+.tree_Expand::before {
+    width: 8px;
+    height: 1.6px;
+}
+
+.tree_Expand::after {
+    width: 1.6px;
+    height: 8px;
+}
+
+.tree_ExpandOpen > .tree_Expand::after {
+    display: none;
+}
+
+.tree_ExpandLeaf > .tree_Expand {
+    visibility: hidden;
 }
 
 .new_font {
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: var(--sans);
     font-size: 13px;
 }
 
-.credential-descr {
-    float: none;
-    display: block;
-    width: 320px;
-    max-width: 100%;
-    margin: 0 0 14px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-}
-
-.credential-descr > div {
-    clear: none;
-    text-align: left;
-}
-
-.credential-descr > div:not(:first-child) {
-    margin-top: 10px;
-}
-
+.credential-descr,
 .user-descr {
     box-sizing: border-box;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 18px;
+    display: block;
+    float: none;
     width: 100%;
-    max-width: 1280px;
+    max-width: 640px;
     margin: 0 0 14px;
-    padding: 12px 16px;
-    border: 1px solid #dbeae3;
-    border-radius: 8px;
-    background: #fbfefd;
+    padding: 2px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--panel);
+    box-shadow: var(--shadow);
 }
 
+.credential-descr > div,
 .user-descr > div {
     display: flex;
     align-items: center;
-    clear: none;
-    text-align: left;
-    gap: 8px;
-    flex: 1 1 230px;
-    max-width: 280px;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.credential-descr > div:last-child,
+.user-descr > div:last-child {
+    border-bottom: 0;
 }
 
 .user-descr > .buttonset {
-    flex: 1 0 100%;
-    max-width: 100%;
-}
-
-.credential-descr > div > label {
-    float: none;
     display: block;
-    margin: 0 0 4px;
-    padding: 0;
-    color: #5f746a;
-    font-size: 12px;
-    font-weight: 700;
+    border-bottom: 0 !important;
+    padding-top: 4px !important;
 }
 
+.credential-descr > div > label,
 .user-descr > div > label {
-    flex: 0 0 auto;
+    width: 190px;
+    flex-shrink: 0;
     margin: 0;
     padding: 0;
-    color: #5f746a;
+    color: var(--ink-2);
     font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
+    font-weight: 500;
+    white-space: normal;
 }
 
+.credential-descr > div > input.text,
+.credential-descr > div > select,
 .user-descr > div > input.text,
 .user-descr > div > select {
     flex: 1 1 auto;
     width: auto;
     min-width: 0;
+    max-width: 360px;
 }
 
 input.text,
@@ -421,24 +521,34 @@ input.text,
 select,
 textarea {
     box-sizing: border-box;
-    min-height: 28px;
+    min-height: 30px;
     width: 100%;
     max-width: 320px;
-    padding: 4px 8px;
-    border: 1px solid #cfe6dc;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #263a33;
-    font-size: 13px;
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 12.5px;
     outline: 0;
     box-shadow: none;
+}
+
+select {
+    appearance: none;
+    padding-right: 30px;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
 }
 
 input.text:focus,
 select:focus,
 textarea:focus {
-    border-color: #8bc7aa;
-    box-shadow: 0 0 0 3px rgba(45, 150, 98, .12);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 div[style*="display: table"],
@@ -449,68 +559,79 @@ div[style*="display:table"] {
 
 div.border {
     box-sizing: border-box;
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    align-content: start;
+    display: block;
     width: 100%;
-    max-width: 1280px;
+    max-width: 640px;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
     margin: 0 0 14px;
-    padding: 0 6px 6px;
-    overflow: hidden;
-    border: 1px solid #dbeae3;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(45, 58, 50, .05);
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--panel);
+    box-shadow: var(--shadow);
 }
 
 div.border div.header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     box-sizing: border-box;
-    grid-column: 1 / -1;
     width: auto !important;
-    margin: 0 -6px 6px !important;
-    padding: 9px 16px !important;
+    margin: 0 !important;
+    padding: 7px 12px !important;
     border: 0 !important;
-    border-bottom: 1px solid #eef3ef !important;
-    background: #f6faf8 !important;
-    color: #45594e !important;
+    border-bottom: 1px solid var(--line) !important;
+    background: var(--panel-2) !important;
+    color: var(--ink-2) !important;
     font-size: 11px !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     text-transform: uppercase;
-    letter-spacing: .05em;
-    line-height: 1.3 !important;
-    z-index: auto !important;
+    letter-spacing: .3px;
+    line-height: 1.4 !important;
 }
 
 .credential-checkbox,
 .checkbox-label {
     display: flex;
     align-items: center;
-    min-height: 20px;
-    margin: 1px 0;
-    padding: 5px 10px;
-    border-radius: 6px;
+    gap: 8px;
+    min-height: 18px;
+    margin: 2px 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
     text-indent: 0;
-    color: #2e423a;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 18px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    cursor: pointer;
 }
 
 .credential-checkbox:hover,
 .checkbox-label:hover {
-    background: #f3faf6;
+    background: var(--panel-2);
 }
 
 .credential-input,
 .checkbox-input {
-    accent-color: #2d9662;
-    width: 15px;
-    height: 15px;
-    margin: 0 8px 0 0;
+    accent-color: var(--accent);
+    width: 13px;
+    height: 13px;
+    margin: 0;
     padding: 0;
     vertical-align: middle;
     position: static;
     flex: 0 0 auto;
+    cursor: pointer;
+}
+
+/* Станции — компактный горизонтальный ряд вместо вертикального списка */
+#user_stations .checkbox-label {
+    display: inline-flex;
+    margin: 3px 4px;
+    margin-right: 20px;
 }
 
 footer {
@@ -533,7 +654,7 @@ footer {
 .ui-widget select,
 .ui-widget textarea,
 .ui-widget button {
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: var(--sans);
 }
 
 @media (max-width: 1180px) {
@@ -548,12 +669,13 @@ footer {
     }
 
     .aside {
-        width: 34%;
-        min-width: 240px;
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
     }
 
     .section {
-        margin-left: 34%;
-        padding: 20px;
+        margin-left: 260px;
+        padding: 14px;
     }
 }
