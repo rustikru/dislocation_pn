@@ -170,13 +170,27 @@ class AuthClass {
 
         $cfg = include($config_file);
         if (!is_array($cfg) || empty($cfg['enabled'])) {
+            $this->authLog(is_array($cfg) ? $cfg : array(), 'LDAP disabled or bad config for login: ' . $login); // add 08.07.2026 Bekmansurovrr
             return array('ok' => false);
         }
 
         require_once __DIR__ . '/lib/LdapAuth.php';
         $ldap = new LdapAuth($cfg);
 
-        return $ldap->verify($login, $password);
+        $result = $ldap->verify($login, $password);
+        $this->authLog($cfg, 'LDAP result for login ' . $login . ': ' . (!empty($result['ok']) ? 'OK' : 'FAIL') . ' ' . ($result['msg'] ?? '')); // add 08.07.2026 Bekmansurovrr
+
+        return $result;
+    }
+
+    // add 08.07.2026 Bekmansurovrr
+    private function authLog($cfg, $message) {
+        if (empty($cfg['debug'])) {
+            return;
+        }
+
+        $file = !empty($cfg['auth_log_file']) ? $cfg['auth_log_file'] : '/tmp/auth_debug.log';
+        @file_put_contents($file, '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, FILE_APPEND);
     }
     
     public function change_pwd($new_pwd) {

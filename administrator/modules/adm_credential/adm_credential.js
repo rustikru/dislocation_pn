@@ -211,6 +211,7 @@ $(document).ready(function() {
                        ,ajax_action: 'get_credential_descr'
                       },
                 success: function (data) {
+                    //console.log(data);
                     var l_credential_descr = JSON.parse(data);
                     l_credential_descr.forEach(function(item){
 

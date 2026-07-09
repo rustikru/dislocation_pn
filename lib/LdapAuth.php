@@ -26,6 +26,8 @@ class LdapAuth
             'attributes' => array('dn', 'cn', 'mail', 'displayName'),
             'bind_format' => '',
             'bind_formats' => array(),
+            'debug' => false, // add 08.07.2026 Bekmansurovrr
+            'log_file' => '/tmp/ldap_debug.log', // add 08.07.2026 Bekmansurovrr
         ), $cfg);
     }
 
@@ -39,38 +41,46 @@ class LdapAuth
         $password = (string) $password;
 
         if (empty($this->cfg['enabled'])) {
+            $this->log('LDAP disabled'); // add 08.07.2026 Bekmansurovrr
             return $this->fail('LDAP отключен');
         }
 
         if ($login === '' || $password === '') {
+            $this->log('Empty login or password'); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Логин и пароль обязательны');
         }
 
         if (!function_exists('ldap_connect')) {
+            $this->log('PHP LDAP extension not installed'); // add 08.07.2026 Bekmansurovrr
             return $this->fail('PHP LDAP extension не установлен');
         }
 
         $ldap = $this->connect();
         if (!$ldap) {
+            $this->log('LDAP connect failed'); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Не удалось подключиться к LDAP');
         }
 
         if (!$this->hasSearchBind()) {
             foreach ($this->bindNames($login) as $bindName) {
+                $this->log('Trying user bind: ' . $bindName); // add 08.07.2026 Bekmansurovrr
                 if (@ldap_bind($ldap, $bindName, $password)) {
+                    $this->log('User bind success: ' . $bindName); // add 08.07.2026 Bekmansurovrr
+                    $user = $this->findBoundUser($ldap, $login); // add 08.07.2026 Bekmansurovrr
                     ldap_unbind($ldap);
 
                     return array(
                         'ok' => true,
-                        'dn' => $bindName,
-                        'name' => $login,
-                        'mail' => '',
+                        'dn' => !empty($user['dn']) ? $user['dn'] : $bindName,
+                        'name' => !empty($user['name']) ? $user['name'] : $login,
+                        'mail' => !empty($user['mail']) ? $user['mail'] : '',
                         'msg' => '',
                     );
                 }
             }
 
             ldap_unbind($ldap);
+            $this->log('User bind failed for login: ' . $login); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Неверный пароль или не настроен способ LDAP bind');
         }
 
@@ -82,10 +92,12 @@ class LdapAuth
 
         if (!@ldap_bind($ldap, $user['dn'], $password)) {
             ldap_unbind($ldap);
+            $this->log('Re-bind failed for DN: ' . $user['dn']); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Неверный пароль');
         }
 
         ldap_unbind($ldap);
+        $this->log('LDAP verify success for login: ' . $login); // add 08.07.2026 Bekmansurovrr
 
         return array(
             'ok' => true,
@@ -99,8 +111,10 @@ class LdapAuth
     private function connect()
     {
         foreach ($this->hosts() as $host) {
+            $this->log('Connecting to LDAP host: ' . $host); // add 08.07.2026 Bekmansurovrr
             $ldap = @ldap_connect($host);
             if (!$ldap) {
+                $this->log('ldap_connect returned false: ' . $host); // add 08.07.2026 Bekmansurovrr
                 continue;
             }
 
@@ -109,6 +123,7 @@ class LdapAuth
             ldap_set_option($ldap, LDAP_OPT_NETWORK_TIMEOUT, (int) $this->cfg['network_timeout']);
 
             if (!empty($this->cfg['start_tls']) && !@ldap_start_tls($ldap)) {
+                $this->log('ldap_start_tls failed: ' . $host); // add 08.07.2026 Bekmansurovrr
                 ldap_unbind($ldap);
                 continue;
             }
@@ -126,10 +141,12 @@ class LdapAuth
         $bindPassword = $this->cfg['bind_password'] ?: $this->cfg['admin_pw'];
 
         if (!@ldap_bind($ldap, $bindDn, $bindPassword)) {
+            $this->log('Service bind failed: ' . $bindDn); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Ошибка подключения к LDAP');
         }
 
         if (trim($this->cfg['base_dn']) === '') {
+            $this->log('LDAP base_dn is empty'); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Не указан base_dn для поиска LDAP-пользователя');
         }
 
@@ -141,13 +158,17 @@ class LdapAuth
 
         $search = @ldap_search($ldap, $this->cfg['base_dn'], $filter, $this->cfg['attributes']);
         if (!$search) {
+            $this->log('LDAP search failed. base_dn=' . $this->cfg['base_dn'] . ' filter=' . $filter); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Ошибка поиска в LDAP');
         }
 
         $entries = ldap_get_entries($ldap, $search);
         if (empty($entries['count'])) {
+            $this->log('LDAP user not found. filter=' . $filter); // add 08.07.2026 Bekmansurovrr
             return $this->fail('Пользователь не найден в LDAP');
         }
+
+        $this->log('LDAP user found. dn=' . $entries[0]['dn']); // add 08.07.2026 Bekmansurovrr
 
         return array(
             'ok' => true,
@@ -155,6 +176,42 @@ class LdapAuth
             'name' => $this->entryValue($entries[0], 'displayname', $this->entryValue($entries[0], 'cn', $login)),
             'mail' => $this->entryValue($entries[0], 'mail', ''),
             'msg' => '',
+        );
+    }
+
+    // add 08.07.2026 Bekmansurovrr
+    private function findBoundUser($ldap, $login)
+    {
+        if (trim($this->cfg['base_dn']) === '') {
+            $this->log('Skip bound user search: base_dn is empty');
+            return array('ok' => false);
+        }
+
+        $filter = str_replace(
+            array('{login}', '{login_escaped}'),
+            array($this->escapeFilter($login), $this->escapeFilter($login)),
+            $this->cfg['user_filter']
+        );
+
+        $search = @ldap_search($ldap, $this->cfg['base_dn'], $filter, $this->cfg['attributes']);
+        if (!$search) {
+            $this->log('Bound user search failed. base_dn=' . $this->cfg['base_dn'] . ' filter=' . $filter);
+            return array('ok' => false);
+        }
+
+        $entries = ldap_get_entries($ldap, $search);
+        if (empty($entries['count'])) {
+            $this->log('Bound user search returned 0 rows. filter=' . $filter);
+            return array('ok' => false);
+        }
+
+        $this->log('Bound user found. dn=' . $entries[0]['dn']);
+
+        return array(
+            'ok' => true,
+            'dn' => $entries[0]['dn'],
+            'name' => $this->entryValue($entries[0], 'displayname', $this->entryValue($entries[0], 'cn', $login)),
+            'mail' => $this->entryValue($entries[0], 'mail', ''),
         );
     }
 
@@ -239,5 +296,16 @@ class LdapAuth
     private function fail($message)
     {
         return array('ok' => false, 'msg' => $message, 'dn' => '', 'name' => '', 'mail' => '');
+    }
+
+    // add 08.07.2026 Bekmansurovrr
+    private function log($message)
+    {
+        if (empty($this->cfg['debug'])) {
+            return;
+        }
+
+        $file = !empty($this->cfg['log_file']) ? $this->cfg['log_file'] : '/tmp/ldap_debug.log';
+        @file_put_contents($file, '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, FILE_APPEND);
     }
 }

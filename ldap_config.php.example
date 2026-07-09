@@ -5,12 +5,14 @@
  */
 return array(
     'enabled' => false,
+    'debug' => false,
+    'auth_log_file' => '/tmp/auth_debug.log',
+    'log_file' => '/tmp/ldap_debug.log',
 
     // Можно указать один host или несколько hosts для резервирования.
-    'host' => 'dc.company.local',
+    'host' => 'ldap://172.16.0.192:389',
     'hosts' => array(
-        // 'dc1.company.local',
-        // 'dc2.company.local',
+        // 'ldap://172.16.0.192:389',
     ),
     'port' => 389,
     'use_ssl' => false,
@@ -18,15 +20,15 @@ return array(
     'network_timeout' => 3,
 
     // Вариант 1: сервисный bind + поиск пользователя, затем bind найденного DN.
-    'base_dn' => 'dc=company,dc=local',
-    'bind_dn' => 'CN=ldap-reader,OU=Service Accounts,DC=company,DC=local',
-    'bind_password' => 'change_me',
+    'domain' => 'mf.metafrax.ru',
+    'base_dn' => 'DC=mf,DC=metafrax,DC=ru',
+    'bind_dn' => '',
+    'bind_password' => '',
     'user_filter' => '(sAMAccountName={login})',
 
     // Вариант 2: прямой bind без сервисной учетной записи.
     // Используется только если bind_dn/bind_password пустые.
     'bind_formats' => array(
-        // 'COMPANY\\{login}',
-        // '{login}@company.local',
+        '{login}@mf.metafrax.ru',
     ),
 );
