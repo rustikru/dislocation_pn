@@ -314,8 +314,12 @@ header:before {
     cursor: pointer;
 }
 
-.tree_Expand + .tree_Content {
+.tree_Expand ~ .tree_Content {
     padding-left: 4px;
+}
+
+.tree_img {
+    margin-left: 0;
 }
 
 .tree_Content:hover {
