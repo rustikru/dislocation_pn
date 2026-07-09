@@ -304,6 +304,7 @@ header:before {
 .tree_Content {
     display: block;
     min-height: 20px;
+    margin-left: 0;
     padding: 4px 14px 4px 18px;
     color: #344a41;
     border-left: 3px solid transparent;
@@ -311,6 +312,10 @@ header:before {
     font-weight: 600;
     line-height: 1.3;
     cursor: pointer;
+}
+
+.tree_Expand + .tree_Content {
+    padding-left: 4px;
 }
 
 .tree_Content:hover {
