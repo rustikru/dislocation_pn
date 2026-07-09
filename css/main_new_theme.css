@@ -54,6 +54,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* страница не скроллится целиком: единственные вертикальные скроллы —
+     внутри дерева (aside) и таблицы (section); иначе окно «Заявки»
+     (absolute к документу) съезжает относительно строки «Итого» */
+  overflow: hidden;
 }
 /* Во весь экран — без пустых зон по бокам.
    Flex-каркас: шапка и поиск сверху, колонки занимают ровно остаток высоты,
@@ -81,18 +85,28 @@ body {
   min-height: 0;
   gap: 8px;
   padding: 8px 0 52px;
+  overflow: hidden;
 }
+/* height:100% (а не auto) принципиален: с height:auto высота flex-строки
+   считается по контенту колонок, и длинное дерево вагонов (сотни узлов)
+   раздувает ряд — секция с таблицей уезжает за нижний край окна вместе
+   со строкой «Итого». Жёсткая высота заставляет дерево и таблицу
+   скроллиться каждый внутри своей колонки. */
 .main-cols > aside {
   float: none;
   width: 20%;
-  height: auto;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   flex: 0 0 20%;
   box-sizing: border-box;
 }
 .main-cols > section {
   float: none;
   width: auto;
-  height: auto;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   flex: 1 1 auto;
   min-width: 0;
   box-sizing: border-box;
