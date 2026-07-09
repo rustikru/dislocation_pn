@@ -71,13 +71,16 @@ body {
 .wrapper > .options {
   flex: 0 0 auto;
 }
-/* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту */
+/* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту.
+   Нижний отступ 52px резервирует полосу под свёрнутое окно «Заявки»
+   (position:absolute, bottom:5px, высота ~44px), чтобы оно не
+   перекрывало прижатую к низу строку «Итого» таблицы. */
 .main-cols {
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
   gap: 8px;
-  padding: 8px 0 0;
+  padding: 8px 0 52px;
 }
 .main-cols > aside {
   float: none;
@@ -389,6 +392,34 @@ section {
 .true-car-number  { border: 1px solid var(--nt-ok)  !important; }
 .wrong-car-number { border: 1px solid var(--nt-err) !important; }
 .FromUgl { color: #2f6bdd; }
+
+/* Метки статусов вагона (колонка «Статус»): Годен — зелёная,
+   Не годен — красная, Ограничение/ремонт — жёлтая. Пилюля с точкой,
+   как в макете (.tag). Разметку добавляет status_tag_html()
+   в context_menu.js. */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.status-tag .d {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.status-tag.ok   { color: var(--nt-ok);  background: var(--nt-ok-bg);  border-color: #bfdec9; }
+.status-tag.ok .d   { background: var(--nt-ok); }
+.status-tag.warn { color: #7a5a17;       background: var(--nt-warn-bg); border-color: #e3cf9a; }
+.status-tag.warn .d { background: var(--nt-warn); }
+.status-tag.err  { color: var(--nt-err); background: var(--nt-err-bg); border-color: #e7bdb3; }
+.status-tag.err .d  { background: var(--nt-err); }
 
 /* Отступ между деревом путей и таблицей задаётся gap у .main-cols */
 

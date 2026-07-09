@@ -5437,6 +5437,33 @@ function addInfoAjax(clickedElem, ctrlKey, p_station_id) {
     },
   })
 }
+// Статус вагона -> цветная метка (Годен - зелёная, Не годен - красная,
+// Ограничение/ремонт - жёлтая). Прочие статусы выводятся как есть.
+function status_tag_html(p_status) {
+  if (p_status === null || p_status === '') {
+    return ''
+  }
+  var l_status = String(p_status)
+  var s = l_status.toLowerCase()
+  var cls = ''
+  if (s.indexOf('не годен') === 0) {
+    cls = 'err'
+  } else if (s.indexOf('годен') === 0) {
+    cls = 'ok'
+  } else if (s.indexOf('ограничение') === 0 || s.indexOf('ремонт') !== -1) {
+    cls = 'warn'
+  }
+  if (cls === '') {
+    return l_status
+  }
+  return (
+    '<span class="status-tag ' +
+    cls +
+    '"><span class="d"></span>' +
+    l_status +
+    '</span>'
+  )
+}
 // Информация по выделнному вагону
 function addInfo(data, ctrlKey) {
   //alert(data);
@@ -5464,7 +5491,7 @@ function addInfo(data, ctrlKey) {
       tr.append(
         '<td>' + (child.CAR_TYPE !== null ? child.CAR_TYPE : '') + '</td>',
       )
-      tr.append('<td>' + (child.STATUS !== null ? child.STATUS : '') + '</td>')
+      tr.append('<td>' + status_tag_html(child.STATUS) + '</td>')
       tr.append('<td>' + (child.STATE !== null ? child.STATE : '') + '</td>')
       tr.append(
         '<td>' +
