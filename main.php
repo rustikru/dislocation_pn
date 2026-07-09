@@ -11,32 +11,8 @@ if (isset($_POST["logout"])) {
 }
 if ($auth->isAuth()&&$auth->getStationId() !== null){
     $rights = $auth->getRights();
-    // add 08.07.2026 Bekmansurovrr
-    if (!$auth->hasAnyRights($rights)) {
-        ?>
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Внутренняя дислокация</title>
-                <link rel="stylesheet" href="css/site_layout.css?ver=2" type="text/css">
-                <link type="image/x-icon" href="img/ico/ico-road.ico" rel="shortcut icon">
-                <link type="Image/x-icon" href="img/ico/ico-road.ico" rel="icon">
-            </head>
-            <body>
-                <div style="margin: 40px; font-size: 16px;">
-                    У пользователя не назначены полномочия. Обратитесь к администратору системы.
-                    <form action="" method="post" style="margin-top: 20px;">
-                        <input type="submit" name="logout" value="Выйти">
-                    </form>
-                </div>
-            </body>
-        </html>
-        <?php
-        exit();
-    }
 //echo '<pre>';
-//print_r($_SESSION); //
+//print_r($_SESSION); // 
 //echo '</pre>';
 ?>
 <!DOCTYPE html>
@@ -55,9 +31,6 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
         <link rel="stylesheet" href="css/request_window.css?ver=0" type="text/css">
         <link type="text/css" href="jquery/jquery-ui.min.css" rel="Stylesheet" />
         <link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
-        <!-- НОВАЯ ТЕМА главной: верхнее меню, дерево путей, таблица вагонов (заявки не затрагиваются).
-             Быстрое переключение на старый вид — закомментируйте строку ниже. -->
-        <link rel="stylesheet" href="css/main_new_theme.css?ver=8" type="text/css">
         <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
         <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="js/tree.js"></script>
@@ -81,7 +54,6 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
                     <!--<input class="btnFind" type="button" size="15" value="Тек. user_id" onclick="test_btn()">-->
                 </div>
             </div>
-            <div class="main-cols">
             <aside>
 				<div>
 					<div class="add-btn-window">
@@ -129,11 +101,14 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
 							<?php if ($auth->getStationId()==='2' && $rights['register_notification']==='Y') {?>
 								<input id= "notification_btn" class="btnFind" style="display:none" type="button" size="15" value="Регистрация уведомлений" onclick="create_modal_dialog_notification();">
 							<?php }?>
+							
 							<?php if (($auth->getStationId()==='2' && $rights['register_notification_gu']==='Y') || ($rights['administrator']==='Y')) {?>
-								<input id= "notification_gu_btn" class="btnFind" type="button" size="15" value="Регистрация ГУ" onclick="show_notification_gu_type_menu(this, 'register');">
+								<input id= "notification_gu_btn" class="btnFind" type="button" size="15" value="Регистрация Уведомление ГУ-2б" onclick="create_modal_dialog_notification_gu(null, '2b');">
+								<input id= "notification_gu_2d_btn" class="btnFind" type="button" size="15" value="Регистрация Уведомление ГУ-2д" onclick="create_modal_dialog_notification_gu(null, '2d');">
 							<?php }?>
 							<?php if (($auth->getStationId()==='2' && $rights['export_notification_gu']==='Y') || ($rights['administrator']==='Y')) {?>
-								<input id= "open_notification_gu_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ" onclick="show_notification_gu_type_menu(this, 'open');">
+								<input id= "open_notification_gu_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ-2б" onclick="create_modal_dialog_list_notification_gu('2b');">
+								<input id= "open_notification_gu_2d_btn" class="btnFind" type="button" size="15" value="Уведомления ГУ-2д" onclick="create_modal_dialog_list_notification_gu('2d');">
 							<?php }?>   
 						</div>
 					</div>
@@ -198,7 +173,6 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
                     </thead>
                 </table>
             </section>
-            </div>
             <div class="loadImg">
                 <img src="img/ajax-loader.gif" />
             </div>
