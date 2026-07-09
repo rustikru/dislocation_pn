@@ -349,6 +349,7 @@ section {
   font-size: 12.5px;
   color: var(--nt-ink);
 }
+/* Шапка в одну строку (br из разметки убраны), компактная — как в макете */
 .addInfoTable th {
   height: auto;
   position: sticky;
@@ -357,18 +358,21 @@ section {
   background: var(--nt-panel-2);
   color: var(--nt-ink-2);
   font-weight: 600;
-  font-size: 11px;
+  font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: .3px;
   text-align: left;
-  padding: 9px 10px;
+  padding: 8px 9px;
   border-bottom: 1px solid var(--nt-line);
   vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 .addInfoTable tbody td {
-  padding: 7px 10px;
+  padding: 6px 9px;
   border-bottom: 1px solid var(--nt-line-soft);
   vertical-align: middle;
+  white-space: nowrap;
 }
 /* Нейтральная зебра вместо зелёной */
 .addInfoTable tbody tr:nth-child(odd)  { background: var(--nt-panel); }

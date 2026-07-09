@@ -33,7 +33,7 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
         <link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
         <!-- НОВАЯ ТЕМА главной: верхнее меню, дерево путей, таблица вагонов (заявки не затрагиваются).
              Быстрое переключение на старый вид — закомментируйте строку ниже. -->
-        <link rel="stylesheet" href="css/main_new_theme.css?ver=9" type="text/css">
+        <link rel="stylesheet" href="css/main_new_theme.css?ver=10" type="text/css">
         <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
         <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="js/tree.js"></script>
@@ -163,16 +163,16 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
                             <th>Статус</th>
                             <th>Сост.</th>
                             <th>Наим. груза</th>
-                            <th>Вес <br>груза</th>
+                            <th>Вес груза</th>
                             <th>Тара</th>
-                            <th>Вес <br>брутто</th>
-                            <th>Вес <br>с весов</th>
-                            <th>№ <br>накладной</th>
-                            <th>№ <br>контейнера</th>
+                            <th>Вес брутто</th>
+                            <th>Вес с весов</th>
+                            <th>№ накладной</th>
+                            <th>№ контейнера</th>
                             <th>Пред.</th>
-                            <th>Дата <br>прибытия <br>(Угл, мск)</th>
-                            <th>Дата <br>посл. <br>опер.</th>
-                            <th>Дата операций <br>на произв. площадке</th>
+                            <th>Дата прибытия (Угл, мск)</th>
+                            <th>Дата посл. опер.</th>
+                            <th>Дата операций на произв. площадке</th>
                         </tr>
                     </thead>
                 </table>
