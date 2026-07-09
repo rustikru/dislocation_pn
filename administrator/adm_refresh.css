@@ -233,6 +233,7 @@ header:before {
 }
 
 .ui-tabs .ui-tabs-panel {
+    clear: both;
     height: calc(100% - 50px);
     padding: 0 !important;
     overflow: hidden;
@@ -336,8 +337,7 @@ header:before {
     font-size: 14px;
 }
 
-.credential-descr,
-.user-descr {
+.credential-descr {
     float: none;
     display: block;
     width: 360px;
@@ -348,15 +348,40 @@ header:before {
     border-radius: 0;
 }
 
-.credential-descr > div,
-.user-descr > div {
+.credential-descr > div {
     clear: none;
     text-align: left;
 }
 
-.credential-descr > div:not(:first-child),
-.user-descr > div:not(:first-child) {
+.credential-descr > div:not(:first-child) {
     margin-top: 12px;
+}
+
+.user-descr {
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px 28px;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 0 18px;
+    padding: 18px 24px;
+    border: 1px solid #dbeae3;
+    border-radius: 8px;
+    background: #fbfefd;
+}
+
+.user-descr > div {
+    clear: none;
+    text-align: left;
+    flex: 1 1 200px;
+    max-width: 260px;
+}
+
+.user-descr > .buttonset {
+    flex: 1 0 100%;
+    max-width: 100%;
 }
 
 .credential-descr > div > label,
