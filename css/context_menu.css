@@ -32,17 +32,3 @@
 .context-menu ul li:hover { 
 	background-color: #eee; 
 }
-#dropdownMenu {
-    display: none;
-    position: absolute;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    list-style-type: none;
-    padding: 10px;
-    margin: 0;
-}
-
-#dropdownMenu.active {
-    display: block;
-}
