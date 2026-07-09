@@ -176,7 +176,7 @@ header:after {
 header:before {
     content: "Справка";
     position: absolute;
-    left: 264px;
+    left: 310px;
     bottom: 16px;
     color: #7f978b;
     font-size: 13px;
