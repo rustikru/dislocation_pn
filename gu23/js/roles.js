@@ -43,12 +43,12 @@ function loadMatrix() {
       )
       return
     }
-    buildMatrixData(resp.rows || [])
-    renderMatrix()
+    fillMatrixData(resp.rows || [])
+    showMatrix()
   })
 }
 
-function buildMatrixData(rows) {
+function fillMatrixData(rows) {
   const rolesMap = {}
   const permsMap = {}
   const cells = {} // cells[perm_id][role_id] = 'Y'/'N'
@@ -75,7 +75,7 @@ function buildMatrixData(rows) {
   }
 }
 
-function renderMatrix() {
+function showMatrix() {
   if (!matrixData) return
   const { roles, perms, cells } = matrixData
 
@@ -230,7 +230,7 @@ function loadUsers() {
       )
       return
     }
-    renderUsers(
+    showUsers(
       resp.users || [],
       resp.roles || [],
       resp.total || 0,
@@ -240,7 +240,7 @@ function loadUsers() {
   })
 }
 
-function renderUsers(users, roles, total, page, pageSize) {
+function showUsers(users, roles, total, page, pageSize) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
 
   const thRoles = roles
@@ -253,12 +253,12 @@ function renderUsers(users, roles, total, page, pageSize) {
     .join('')
 
   const tbody = users.length
-    ? users.map((u) => renderUserRow(u, roles)).join('')
+    ? users.map((u) => makeUserRow(u, roles)).join('')
     : `<tr><td colspan="${2 + roles.length}" class="muted" style="text-align:center;padding:30px">
         Пользователи не найдены
        </td></tr>`
 
-  const pagination = renderPagination(page, pages, total)
+  const pagination = makePages(page, pages, total)
 
   $('#roles-users-wrap').html(`
     <div class="card">
@@ -326,7 +326,7 @@ function renderUsers(users, roles, total, page, pageSize) {
   })
 }
 
-function renderUserRow(u, roles) {
+function makeUserRow(u, roles) {
   const assignedIds = new Set(u.roles.map((r) => String(r.role_id)))
   const cells = roles
     .map((r) => {
@@ -350,7 +350,7 @@ function renderUserRow(u, roles) {
   </tr>`
 }
 
-function renderPagination(page, pages, total) {
+function makePages(page, pages, total) {
   if (pages <= 1) return ''
 
   const btns = []

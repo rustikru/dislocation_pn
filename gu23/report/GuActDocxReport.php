@@ -64,7 +64,7 @@ class GuActDocxReport
                 throw new \RuntimeException('document.xml не найден в шаблоне');
             }
 
-            $xml = $this->process($xml, $act, $wagons, $signers);
+            $xml = $this->fillDocumentXml($xml, $act, $wagons, $signers);
 
             $zip->addFromString('word/document.xml', $xml);
             $zip->close();
@@ -89,10 +89,10 @@ class GuActDocxReport
     }
 
     /* ---------------------------------------------------------------------- */
-    /* Обработка XML                                                           */
+    /* Заполнение XML                                                          */
     /* ---------------------------------------------------------------------- */
 
-    private function process(string $xml, array $act, array $wagons, array $signers): string
+    private function fillDocumentXml(string $xml, array $act, array $wagons, array $signers): string
     {
         $printSigners = $this->getPrintSigners($act, $signers);
 
@@ -516,17 +516,17 @@ class GuActDocxReport
 
         if (empty($wagons)) {
             // Нет вагонов — пустая строка
-            $filledRows = $this->buildWagonRow($rowTemplate, 1, []);
+            $filledRows = $this->fillWagonRow($rowTemplate, 1, []);
         } else {
             foreach ($wagons as $idx => $wagon) {
-                $filledRows .= $this->buildWagonRow($rowTemplate, $idx + 1, $wagon);
+                $filledRows .= $this->fillWagonRow($rowTemplate, $idx + 1, $wagon);
             }
         }
 
         return str_replace($rowTemplate, $filledRows, $xml);
     }
 
-    private function buildWagonRow(string $rowTemplate, int $idx, array $wagon): string
+    private function fillWagonRow(string $rowTemplate, int $idx, array $wagon): string
     {
         $map = [
             '{{WAGON_IDX}}' => (string) $idx,

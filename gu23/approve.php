@@ -33,7 +33,7 @@ $signerIp = !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
 // Если ссылка невалидна — показываем ошибку и выходим
 // -------------------------------------------------------------------
 if (!$verify['ok']) {
-    renderPage('Ошибка', '<p class="err">' . htmlspecialchars($verify['msg']) . '</p>');
+    showPage('Ошибка', '<p class="err">' . htmlspecialchars($verify['msg']) . '</p>');
     exit;
 }
 
@@ -42,7 +42,7 @@ $act = $repo->getAct($actId);
 $name = $repo->getApproverName($approverId);
 
 if (!$act) {
-    renderPage('Акт не найден', '<p class="err">Акт ГУ-23 № ' . $actId . ' не найден.</p>');
+    showPage('Акт не найден', '<p class="err">Акт ГУ-23 № ' . $actId . ' не найден.</p>');
     exit;
 }
 
@@ -50,14 +50,14 @@ $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? '#' . $actId);
 
 // Если статус акта аннулирован, мы его не подписываем
 if ($act['STATUS'] === 'annulled'){
-    renderPage('Акт аннулирован', "
+    showPage('Акт аннулирован', "
         <p>Акт уже аннулирован.</p>
     ");
     exit;
 }
 
 if ($act['STATUS'] === 'closed'){
-    renderPage('Акт закрыт', "
+    showPage('Акт закрыт', "
         <p>Акт уже закрыт.</p>
     ");
     exit;
@@ -70,7 +70,7 @@ $existing = $repo->getStatusByIds($actId, $approverId);
 if ($existing && $existing['STATUS'] !== 'pending') {
     $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
     $decidedAt = $existing['DECIDED_AT'] ?? '';
-    renderPage('Уже обработано', "
+    showPage('Уже обработано', "
         <p>Вы уже подписали акт ранее <b>{$actNumber}</b>.</p>
         <p style=\"margin-top: 12px;\">Статус: <span class=\"status-badge\">{$statusLabel}</span>" . ($decidedAt ? " <span class=\"muted\">({$decidedAt})</span>" : '') . "</p>
     ");
@@ -88,13 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
     }
     $ok = $repo->saveDecision($actId, $approverId, 'rejected', $comment, $sig, $signerIp);
     if ($ok) {
-        renderPage('Акт отклонён', "
+        showPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
             <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
             <p class=\"ok\">Сохранено.</p>
         ");
     } else {
-        renderPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
+        showPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
     }
     exit;
 }
@@ -105,12 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
 if ($action === 'approve') {
     $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig, $signerIp);
     if ($ok) {
-        renderPage('Акт подписан', "
+        showPage('Акт подписан', "
             <p>Вы подписали акт <b>{$actNumber}</b>.</p>
             <p class=\"ok\" style=\"margin-top: 15px;\">Спасибо!</p>
         ");
     } else {
-        renderPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
+        showPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
     }
     exit;
 }
@@ -123,7 +123,7 @@ if ($action === 'reject') {
     exit;
 }
 
-renderPage('Неизвестное действие', '<p class="err">Недопустимое действие.</p>');
+showPage('Неизвестное действие', '<p class="err">Недопустимое действие.</p>');
 
 // ===================================================================
 // Доп функции
@@ -134,7 +134,7 @@ function showRejectForm(string $actNumber, string $name, int $actId, int $approv
     // Передаём все оригинальные GET-параметры чтобы сохранить ts и sig для проверки HMAC при POST
     $qs = http_build_query(array_filter($_GET, fn($k) => in_array($k, ['act', 'uid', 'action', 'ts', 'sig']), ARRAY_FILTER_USE_KEY));
     $errorHtml = $error ? "<p class=\"err\" style=\"margin-bottom: 15px;\">{$error}</p>" : '';
-    renderPage('Отклонение акта', "
+    showPage('Отклонение акта', "
         {$errorHtml}
         <p style=\"margin-bottom: 20px;\">Отклонить акт <b>{$actNumber}</b></p>
         <form method=\"post\" action=\"/gu23/approve.php?{$qs}\">
@@ -152,7 +152,7 @@ function showRejectForm(string $actNumber, string $name, int $actId, int $approv
     ");
 }
 
-function renderPage(string $title, string $body): void
+function showPage(string $title, string $body): void
 {
     echo <<<HTML
 <!DOCTYPE html>

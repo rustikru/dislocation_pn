@@ -1170,6 +1170,15 @@ function showFormButtons() {
 
 function validateForm(checkSigners) {
   const errors = []
+
+  checkMainFields(errors)
+  checkActDates(errors)
+  if (checkSigners) checkRequiredSigners(errors)
+
+  return errors
+}
+
+function checkMainFields(errors) {
   if (!activeDraft.departmentCode) errors.push('Не указан цех')
   if (!activeDraft.reasonId) errors.push('Не указана причина составления')
   if (!String(activeDraft.circumstances).trim())
@@ -1188,6 +1197,9 @@ function validateForm(checkSigners) {
   /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
     errors.push('Не указана ст. назначения') */
   if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
+}
+
+function checkActDates(errors) {
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
   if (activeDraft.type === 'other' && !activeDraft.startAt)
@@ -1205,35 +1217,46 @@ function validateForm(checkSigners) {
       errors.push('Дата окончания меньше даты начала')
     }
   }
-  // Проверка подписантов
-  if (checkSigners) {
-    const isFilledSigner = (s) => {
-      if (!s || !s.fio || !s.fio.trim()) return false
-      if (s.manual) return !!(s.post && s.post.trim() && s.org && s.org.trim())
-      return true
-    }
+}
 
-    const signerSlots = getSignerSlots(activeDraft.type)
-    const emptySlot = signerSlots.findIndex(
-      (slotCfg, slot) =>
-        slotCfg.required && !isFilledSigner(activeDraft.signers[slot]),
-    )
-    if (emptySlot >= 0) errors.push(`Не указан подписант ${emptySlot + 1}`)
-  }
-  return errors
+function checkRequiredSigners(errors) {
+  const signerSlots = getSignerSlots(activeDraft.type)
+  const emptySlot = signerSlots.findIndex(
+    (slotCfg, slot) =>
+      slotCfg.required && !isFilledSigner(activeDraft.signers[slot]),
+  )
+  if (emptySlot >= 0) errors.push(`Не указан подписант ${emptySlot + 1}`)
+}
+
+function isFilledSigner(signer) {
+  if (!signer || !signer.fio || !signer.fio.trim()) return false
+  if (signer.manual)
+    return !!(signer.post && signer.post.trim() && signer.org && signer.org.trim())
+  return true
 }
 // Созраняем акт в БД
 function saveActToServer(status, skipWarning = false) {
-  const errors =
-    status === 'active'
-      ? validateForm(true)
-      : activeDraft.departmentCode
-        ? []
-        : ['Не указан цех']
+  const errors = getSaveErrors(status)
   if (errors.length) return showToast(errors[0], 'err')
 
-  // Карточка Акта со всякими атрибутами и конфигами
-  const payload = {
+  sendApiRequest('gu23_save_act', makeActPayload(status, skipWarning)).done(
+    (response) => {
+      if (response && response.ok) {
+        afterActSaved(status, response)
+      } else {
+        showSaveError(status, response)
+      }
+    },
+  )
+}
+
+function getSaveErrors(status) {
+  if (status === 'active') return validateForm(true)
+  return activeDraft.departmentCode ? [] : ['Не указан цех']
+}
+
+function makeActPayload(status, skipWarning) {
+  return {
     id: activeDraft.id || 0,
     type: activeDraft.type,
     status: status,
@@ -1252,46 +1275,37 @@ function saveActToServer(status, skipWarning = false) {
     signers: JSON.stringify(activeDraft.signers.filter(Boolean)),
     force: skipWarning ? 'Y' : 'N',
   }
+}
 
-  sendApiRequest('gu23_save_act', payload).done((response) => {
-    if (response && response.ok) {
-      setActiveDraft(null)
-      if (status === 'active') {
-        sendApiRequest('gu23_send_approval', {
-          act_id: response.id,
-        }).done((approvalResp) => {
-          const approvalMsg =
-            approvalResp && approvalResp.ok
-              ? approvalResp.msg || 'Письма отправлены'
-              : approvalResp && approvalResp.msg
-                ? 'Письма: ' + approvalResp.msg
-                : 'Письма не отправлены'
-          showToast(
-            //`Акт зарегистрирован${response.number ? ', № ' + response.number : ''}. ${approvalMsg}`,
-            `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`,
-            'ok',
-          )
-          navigateTo('card', response.id)
-        })
-      } else {
-        const msg =
-          status === 'active'
-            ? `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`
-            : 'Проект сохранён'
-        showToast(msg, 'ok')
-        navigateTo('card', response.id)
-      }
-    } else {
-      const msg = (response && response.msg) || 'Ошибка сохранения'
-      if (/уже есть открытый акт начала/.test(msg)) {
-        showConfirmBox(
-          'Дубль открытого простоя',
-          `${msg}. Зарегистрировать акт?`,
-          () => saveActToServer(status, true),
-        )
-      } else {
-        showToast(msg, 'err')
-      }
-    }
-  })
+function afterActSaved(status, response) {
+  setActiveDraft(null)
+
+  if (status === 'active') {
+    sendApiRequest('gu23_send_approval', {
+      act_id: response.id,
+    }).done(() => {
+      showToast(
+        `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`,
+        'ok',
+      )
+      navigateTo('card', response.id)
+    })
+    return
+  }
+
+  showToast('Проект сохранён', 'ok')
+  navigateTo('card', response.id)
+}
+
+function showSaveError(status, response) {
+  const msg = (response && response.msg) || 'Ошибка сохранения'
+  if (/уже есть открытый акт начала/.test(msg)) {
+    showConfirmBox(
+      'Дубль открытого простоя',
+      `${msg}. Зарегистрировать акт?`,
+      () => saveActToServer(status, true),
+    )
+  } else {
+    showToast(msg, 'err')
+  }
 }

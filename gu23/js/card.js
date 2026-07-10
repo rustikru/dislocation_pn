@@ -22,11 +22,11 @@ export function showCard(container) {
       $(container).append('<div class="empty-state">Акт не найден</div>')
       return
     }
-    buildCardView(container, data)
+    showCardView(container, data)
   })
 }
 
-function buildCardView(container, data) {
+function showCardView(container, data) {
   const act = data.act
 
   $(container).html(`
@@ -427,7 +427,7 @@ function showAttachmentsBlock(act, files) {
     </div>
   `
 
-  const renderSection = (label, items) => {
+  const showFileSection = (label, items) => {
     if (!items.length) return ''
     const rows = items
       .map((file) => {
@@ -454,7 +454,7 @@ function showAttachmentsBlock(act, files) {
   const signed = files.filter((f) => f.FILE_CATEGORY === 'signed')
 
   const bodyHtml = files.length
-    ? renderSection('ОБЩИЕ', general) + renderSection('ПОДПИСАННЫЕ', signed)
+    ? showFileSection('ОБЩИЕ', general) + showFileSection('ПОДПИСАННЫЕ', signed)
     : '<div class="muted" style="font-size:12.5px">Файлы не прикреплены.</div>'
 
   const $block = $(`

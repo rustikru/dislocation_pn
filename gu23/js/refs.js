@@ -79,9 +79,8 @@ function fetchTab() {
     }
     currentItems = data.items || []
     refsPageSize = data.page_size || REFS_PAGE_SIZE
-    if (refsTab === 'signers')
-      renderSigners(currentItems, data.total, data.page)
-    else renderReasons(currentItems, data.total, data.page)
+    if (refsTab === 'signers') showSignersList(currentItems, data.total, data.page)
+    else showReasonsList(currentItems, data.total, data.page)
   })
 }
 
@@ -101,7 +100,7 @@ function tabStyle(active) {
         'background:var(--surface2,#f7f7f4);color:var(--muted,#888);font-weight:500'
 }
 
-function renderPager(total, page) {
+function makePager(total, page) {
   const pages = Math.ceil(total / refsPageSize)
   if (pages <= 1)
     return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
@@ -123,7 +122,7 @@ function renderPager(total, page) {
 // Подписанты РЖД
 // ─────────────────────────────────────────────
 
-function renderSigners(items, total, page) {
+function showSignersList(items, total, page) {
   const rows = items
     .map((s) => {
       const active = s.ACTIVE === 'Y'
@@ -161,7 +160,7 @@ function renderSigners(items, total, page) {
         </table>
       </div>
     </div>
-    ${renderPager(total, page)}
+    ${makePager(total, page)}
   `)
 
   $('#refs-body')
@@ -276,7 +275,7 @@ const KIND_LABELS = {
   any: 'Любой',
 }
 
-function renderReasons(items, total, page) {
+function showReasonsList(items, total, page) {
   const rows = items
     .map((r) => {
       const active = r.ACTIVE === 'Y'
@@ -310,7 +309,7 @@ function renderReasons(items, total, page) {
         </table>
       </div>
     </div>
-    ${renderPager(total, page)}
+    ${makePager(total, page)}
   `)
 
   $('#refs-body')
