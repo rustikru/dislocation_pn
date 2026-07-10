@@ -17,8 +17,10 @@ if (isset($_POST["logout"])) {
 
 // Сохраняем текущий URL для редиректа 
 if (!$auth->isAuth()) {
-    if (strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false && 
-        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false) {
+    if (
+        strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false &&
+        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false
+    ) {
         $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
     }
 }
@@ -54,7 +56,7 @@ if ($auth->isAuth()) {
         <body>
             <header>
                 <?php
-                include('../modules/site/main-top.php');
+                //include('../modules/site/main-top.php');
                 ?>
             </header>
             <div class="app">
