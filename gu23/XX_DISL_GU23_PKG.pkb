@@ -28,9 +28,11 @@ as
         g_client_ip := p_ip;
     end;
 
+    -- add 10.07.2026 BekmansurovRR
     procedure log_act_history (p_act_id    in number,
                                p_user_id   in number,
-                               p_text      in varchar2)
+                               p_text      in varchar2,
+                               p_ip        in varchar2 default null)
     is
     begin
         insert into xx_disl_gu23_hist (id,
@@ -44,7 +46,7 @@ as
                      SYSDATE,
                      p_user_id,
                      p_text,
-                     g_client_ip);
+                     nvl(p_ip, g_client_ip));
     end;
 
     -- Возврат ответа для php или другим системам
@@ -1499,6 +1501,7 @@ as
         v_tot          number;
         v_closed       number;
         v_cur_status   varchar2 (16);
+        v_created_by    number;
         v_len          pls_integer;
         v_from         pls_integer;
         v_to           pls_integer;
@@ -1658,8 +1661,8 @@ as
         else
             -- редактировать можно ТОЛЬКО Проект
             begin
-                select act_number, status
-                  into v_number, v_cur_status
+                select act_number, status, created_by
+                  into v_number, v_cur_status, v_created_by
                   from xx_disl_gu23_act
                  where id = v_id;
             exception
@@ -1673,6 +1676,12 @@ as
             then
                 return format_error (
                            'Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
+            end if;
+
+            if     NVL (v_created_by, -1) <> NVL (p_data.p_user_id, -1)
+               and gu23_is_admin (p_data.p_user_id) <> 'Y'
+            then
+                return format_error ('Редактировать Проект может только создатель акта');
             end if;
 
             --  Разрешить администратору правку акта "на подписании":
@@ -2507,9 +2516,11 @@ as
 
         if v_hist_txt is not null
         then
+            -- add 10.07.2026 BekmansurovRR
             log_act_history (p_act_id    => p_act_id,
                              p_user_id   => p_approver_id,
-                             p_text      => v_hist_txt);
+                             p_text      => v_hist_txt,
+                             p_ip        => p_signer_ip);
         end if;
 
         -- Автоматически обновить статус акта
@@ -2664,16 +2675,19 @@ as
                     else p_status
                 end;
 
+            -- add 10.07.2026 BekmansurovRR
             insert into xx_disl_gu23_hist (id,
                                            act_id,
                                            ts,
                                            usr,
-                                           txt)
+                                           txt,
+                                           ip)
                  values (xx_disl_gu23_hist_seq.NEXTVAL,
                          p_act_id,
                          SYSDATE,
                          p_user_id,
-                         v_txt);
+                         v_txt,
+                         p_signer_ip);
         end;
 
         -- Автоматически обновить статус акта

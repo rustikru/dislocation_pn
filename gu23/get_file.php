@@ -31,21 +31,40 @@ oci_execute($st);
 $row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
 oci_close($conn);
 
-if (!$row || !is_file($row['REAL_PATH'])) {
+if (!$row) {
     http_response_code(404);
     echo 'Файл не найден';
     exit;
 }
 
-$path = $row['REAL_PATH'];
+$savedPath = (string) ($row['REAL_PATH'] ?? '');
+if ($savedPath !== '' && $savedPath[0] !== '/' && !preg_match('/^[A-Za-z]:[\/\\\\]/', $savedPath)) {
+    $savedPath = __DIR__ . '/' . ltrim($savedPath, '/\\');
+}
+
+if (!is_file($savedPath)) {
+    http_response_code(404);
+    echo 'Файл не найден';
+    exit;
+}
+
+$path = $savedPath;
 $name = $row['FILE_NAME'] ?: basename($path);
 $mime = $row['MIME_TYPE'] ?: 'application/octet-stream';
+$fallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $name);
+if ($fallbackName === '' || $fallbackName === null) {
+    $fallbackName = 'file';
+}
 
 if (ob_get_level()) {
     ob_end_clean();
 }
 header('Content-Type: ' . $mime);
-header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . rawurlencode($name) . '"');
+header(
+    'Content-Disposition: ' . ($inline ? 'inline' : 'attachment')
+    . '; filename="' . $fallbackName . '"'
+    . "; filename*=UTF-8''" . rawurlencode($name)
+);
 header('Content-Length: ' . filesize($path));
 header('Cache-Control: must-revalidate');
 header('Pragma: public');

@@ -82,14 +82,20 @@ class GuActDocxReport
 
     private function process(string $xml, array $act, array $wagons, array $signers): string
     {
+        $printSigners = $this->getPrintSigners($act, $signers);
+
         // Убираем маркеры проверки орфографии — они разбивают слова на несколько ранов
         $xml = preg_replace('#<w:proofErr[^>]*/>#', '', $xml);
 
         // Склеиваем соседние раны в каждом параграфе
         $xml = $this->mergeRuns($xml);
 
+        // Динамический список подписантов в шаблонах, где есть {{SIGNER_LINE}} / {{SIGNER_FIO}}
+        $xml = $this->fillSignerLines($xml, $printSigners);
+        $xml = $this->fillSignerRows($xml, $printSigners);
+
         // Простая замена плейсхолдеров
-        $xml = $this->replacePlaceholders($xml, $act, $signers);
+        $xml = $this->replacePlaceholders($xml, $act, $printSigners);
 
         // Автоподбор ширины колонок таблицы вагонов по содержимому
         // (до размножения строк, пока в таблице ещё есть маркер {{WAGON_NO}})
@@ -99,6 +105,136 @@ class GuActDocxReport
         $xml = $this->fillWagonRows($xml, $wagons);
 
         return $xml;
+    }
+
+    private function getPrintSigners(array $act, array $signers): array
+    {
+        $actType = strtolower((string) ($act['ACT_TYPE'] ?? ''));
+        $ownLimit = 2;
+        $rzdLimit = 1;
+        $own = [];
+        $rzd = [];
+
+        foreach ($signers as $signer) {
+            $stype = strtolower((string) ($signer['STYPE'] ?? ''));
+            if ($stype === 'rzd') {
+                if (count($rzd) < $rzdLimit) {
+                    $rzd[] = $signer;
+                }
+            } elseif (count($own) < $ownLimit) {
+                $own[] = $signer;
+            }
+        }
+
+        if (!$own && !$rzd) {
+            return array_slice($signers, 0, $actType === 'other' ? 2 : 3);
+        }
+
+        return array_merge($own, $rzd);
+    }
+
+    private function fillSignerLines(string $xml, array $signers): string
+    {
+        if (!str_contains($xml, '{{SIGNER_LINE}}')) {
+            return $xml;
+        }
+
+        if (!preg_match('#(<w:p\b(?![^>]*/>)[^>]*>(?:(?!</w:p>).)*\{\{SIGNER_LINE\}\}(?:(?!</w:p>).)*</w:p>)#s', $xml, $m)) {
+            return $xml;
+        }
+
+        $rowTemplate = $m[1];
+        $rows = '';
+        foreach ($signers as $signer) {
+            if (strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd') {
+                $rows .= $this->makeParagraphText($rowTemplate, 'Участник:', true);
+                $rows .= $this->makeParagraphText($rowTemplate, $this->getSignerLineText($signer), false);
+            } else {
+                $rows .= $this->makeParagraphText($rowTemplate, $this->getSignerLineText($signer), false);
+            }
+        }
+
+        return str_replace($rowTemplate, $rows, $xml);
+    }
+
+    private function fillSignerRows(string $xml, array $signers): string
+    {
+        if (!str_contains($xml, '{{SIGNER_FIO}}')) {
+            return $xml;
+        }
+
+        $pattern = '#(<w:tr\b(?:(?!</w:tr>).)*\{\{SIGNER_POST\}\}(?:(?!</w:tr>).)*\{\{SIGNER_FIO\}\}(?:(?!</w:tr>).)*</w:tr>)(\s*<w:tr\b(?:(?!</w:tr>).)*</w:tr>)#s';
+        if (!preg_match($pattern, $xml, $m)) {
+            return $xml;
+        }
+
+        $rowTemplate = $m[1] . $m[2];
+        $rows = '';
+        foreach ($signers as $signer) {
+            $row = $rowTemplate;
+            if (strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd') {
+                $row = $this->replaceSignerPostRun($row, (string) ($signer['POST'] ?? ''));
+            } else {
+                $row = $this->replaceTextInXml($row, '{{SIGNER_POST}}', (string) ($signer['POST'] ?? ''));
+            }
+            $row = $this->replaceTextInXml($row, '{{SIGNER_FIO}}', (string) ($signer['FIO'] ?? ''));
+            $rows .= $row;
+        }
+
+        return str_replace($rowTemplate, $rows, $xml);
+    }
+
+    private function replaceTextInXml(string $xml, string $placeholder, string $value): string
+    {
+        return str_replace($placeholder, htmlspecialchars($value, ENT_XML1, 'UTF-8'), $xml);
+    }
+
+    private function makeParagraphText(string $paragraphXml, string $text, bool $bold): string
+    {
+        $run = '<w:r>';
+        if ($bold) {
+            $run .= '<w:rPr><w:b/></w:rPr>';
+        }
+        $run .= '<w:t xml:space="preserve">' . htmlspecialchars($text, ENT_XML1, 'UTF-8') . '</w:t></w:r>';
+
+        if (preg_match('#^(<w:p\b(?![^>]*/>)[^>]*>(?:<w:pPr\b(?:(?!</w:pPr>).)*</w:pPr>)?)(.*)(</w:p>)$#s', $paragraphXml, $m)) {
+            return $m[1] . $run . $m[3];
+        }
+
+        return $this->replaceTextInXml($paragraphXml, '{{SIGNER_LINE}}', $text);
+    }
+
+    private function replaceSignerPostRun(string $xml, string $post): string
+    {
+        $post = trim($post);
+        $runs = '<w:r><w:rPr><w:b/></w:rPr><w:t>Участник:</w:t></w:r>';
+        if ($post !== '') {
+            $runs .= '<w:r><w:br/></w:r><w:r><w:t xml:space="preserve">'
+                . htmlspecialchars($post, ENT_XML1, 'UTF-8')
+                . '</w:t></w:r>';
+        }
+
+        return preg_replace(
+            '#<w:r\b(?:(?!</w:r>).)*<w:t[^>]*>\{\{SIGNER_POST\}\}</w:t>(?:(?!</w:r>).)*</w:r>#s',
+            $runs,
+            $xml,
+            1
+        ) ?? $xml;
+    }
+
+    private function getSignerLineText(array $signer): string
+    {
+        $post = trim((string) ($signer['POST'] ?? ''));
+        $fio = trim((string) ($signer['FIO'] ?? ''));
+        if (strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd') {
+            return $post !== ''
+                ? 'Должность: ' . $post . '    Ф.И.О.: ' . $fio
+                : 'Ф.И.О.: ' . $fio;
+        }
+
+        return $post !== ''
+            ? 'Должность: ' . $post . '    Ф.И.О.: ' . $fio
+            : 'Ф.И.О.: ' . $fio;
     }
 
     /**

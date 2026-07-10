@@ -288,7 +288,7 @@ function renderReasons(items, total, page) {
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
             <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
-            ${active ? 'Активна' : 'Неактивна'}
+            ${active ? 'Активн' : 'Неактивен'}
           </span>
         </td>
       </tr>`
@@ -376,9 +376,7 @@ function showReasonForm(reason) {
 
   $modal.find('.rf-toggle').on('click', () => {
     const msg =
-      reason?.ACTIVE === 'Y'
-        ? 'Отключить причину?'
-        : 'Активировать причину?'
+      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
         if (r && r.ok) {

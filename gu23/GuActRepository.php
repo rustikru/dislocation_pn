@@ -20,6 +20,7 @@ if (!function_exists('mb_strlen')) {
 }
 
 require_once __DIR__ . '/Gu23Logger.php';
+require_once __DIR__ . '/lib/text_clean.php';
 
 class GuActRepository
 {
@@ -300,7 +301,7 @@ class GuActRepository
         foreach ($rows as $row) {
             $vals = [];
             foreach ($fields as $f) {
-                $v = isset($row[$f]) ? (string) $row[$f] : '';
+                $v = isset($row[$f]) ? $this->cleanTextForOracle((string) $row[$f]) : '';
                 // подстрахуемся: вычистим управляющие разделители из данных
                 $v = str_replace([self::RS, self::US], ' ', $v);
                 $vals[] = $v;
@@ -308,6 +309,24 @@ class GuActRepository
             $out[] = implode(self::US, $vals);
         }
         return implode(self::RS, $out);
+    }
+
+    private function cleanTextForOracle(string $text): string
+    {
+        return gu23_clean_text_for_oracle($text);
+    }
+
+    private function getFileDiskPath(string $path): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        if ($path[0] === '/' || preg_match('/^[A-Za-z]:[\/\\\\]/', $path)) {
+            return $path;
+        }
+
+        return __DIR__ . '/' . ltrim($path, '/\\');
     }
 
     /** Вызвать функцию пакета, вернуть скалярный результат. */
@@ -450,6 +469,16 @@ class GuActRepository
             [':b1' => $id, ':b2' => $userId]
         );
         $isUserSignerCnt = (int) ($signerCheck[0]['CNT'] ?? 0);
+        $isAdmin = $this->isGu23Admin();
+        $editCheck = $this->pipe(
+            "SELECT COUNT(*) AS CNT
+               FROM xx_disl_gu23_act
+              WHERE id = :b1
+                AND status = 'draft'
+                AND (created_by = :b2 OR :b3 = 'Y')",
+            [':b1' => $id, ':b2' => $userId, ':b3' => $isAdmin ? 'Y' : 'N']
+        );
+        $canEditDraft = (int) ($editCheck[0]['CNT'] ?? 0) > 0;
 
         echo json_encode([
             'ok' => true,
@@ -457,7 +486,8 @@ class GuActRepository
             'currentUserId' => (int) $userId,
             'myApproval' => $myStatus ?: 'none',
             'isUserSigner' => $isUserSignerCnt > 0,
-            'isAdmin' => $this->isGu23Admin() ? true : false,
+            'isAdmin' => $isAdmin,
+            'canEditDraft' => $canEditDraft,
             'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
             'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
@@ -498,9 +528,9 @@ class GuActRepository
     private function getWagonInfo(): void
     {
         $wagonsJson = filter_input(INPUT_POST, 'wagons'); // Список вагонов
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: ''; // Накладаная
+        $waybillNo = $this->cleanTextForOracle((string) (filter_input(INPUT_POST, 'waybill_no') ?: '')); // Накладаная
         $destStation = filter_input(INPUT_POST, 'dest_station') ?: ''; // Станция назначения
-        $cardoName = filter_input(INPUT_POST, 'cardo_name') ?: ''; // Название груза
+        $cardoName = $this->cleanTextForOracle((string) (filter_input(INPUT_POST, 'cardo_name') ?: '')); // Название груза
         $wagonsJson = filter_input(INPUT_POST, 'wagons'); // add 29.06.2026 Тип акта
 
         $list = json_decode((string) $wagonsJson, true) ?: [];
@@ -544,7 +574,9 @@ class GuActRepository
     /** Создание или обновление акта. Вагоны и подписанты передаются CLOB-ом через packRows. */
     private function saveAct(): void
     {
-        if (!$this->hasPerm('CREATE_ACT')) {
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $needPerm = $id > 0 ? 'EDIT_OWN_ACT' : 'CREATE_ACT';
+        if (!$this->hasPerm($needPerm)) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -560,17 +592,22 @@ class GuActRepository
             'clob' => substr($signerClob, 0, 400),
         ]);*/
 
-        $id = (int) filter_input(INPUT_POST, 'id');
         $type = filter_input(INPUT_POST, 'type');
         $status = filter_input(INPUT_POST, 'status');
         $dept = filter_input(INPUT_POST, 'dept');           // CODE цеха
         $station = filter_input(INPUT_POST, 'station') ?: null; // station_id as string
         $stFrom = filter_input(INPUT_POST, 'st_from') ?: null; // st_from_id as string
         $stTo = filter_input(INPUT_POST, 'st_to') ?: null; // st_to_id as string
-        $waybillNo = filter_input(INPUT_POST, 'waybill_no') ?: null;
-        $cargoRef = filter_input(INPUT_POST, 'cargo_ref') ?: null;
+        $waybillNoRaw = filter_input(INPUT_POST, 'waybill_no');
+        $cargoRefRaw = filter_input(INPUT_POST, 'cargo_ref');
+        $waybillNo = $waybillNoRaw === null || $waybillNoRaw === ''
+            ? null
+            : $this->cleanTextForOracle((string) $waybillNoRaw);
+        $cargoRef = $cargoRefRaw === null || $cargoRefRaw === ''
+            ? null
+            : $this->cleanTextForOracle((string) $cargoRefRaw);
         $reason = filter_input(INPUT_POST, 'reason');
-        $circ = filter_input(INPUT_POST, 'circumstances');
+        $circ = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'circumstances'));
         $startAt = filter_input(INPUT_POST, 'start_at') ?: null;
         $endAt = filter_input(INPUT_POST, 'end_at') ?: null;
         $linkedRaw = filter_input(INPUT_POST, 'linked_start_id');
@@ -705,7 +742,8 @@ class GuActRepository
         }
 
         // Файлы хранятся в разрезе типа акта с ID записи из таблицы
-        $baseDir = __DIR__ . '/act_data/' . $actType . '/' . $actId . '/';
+        $basePath = 'act_data/' . $actType . '/' . $actId . '/';
+        $baseDir = __DIR__ . '/' . $basePath;
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
@@ -727,6 +765,7 @@ class GuActRepository
             $ext = pathinfo($orig, PATHINFO_EXTENSION);
             $mime = $file['type'] ?? '';
             $disk = $baseDir . $fileId . ($ext ? '.' . $ext : '');
+            $savePath = $basePath . $fileId . ($ext ? '.' . $ext : '');
 
             if (!move_uploaded_file($file['tmp_name'], $disk)) {
                 $errors[] = $orig;
@@ -754,14 +793,15 @@ class GuActRepository
             oci_bind_by_name($st, ':name', $orig);
             oci_bind_by_name($st, ':ext', $ext);
             oci_bind_by_name($st, ':mime', $mime);
-            oci_bind_by_name($st, ':path', $disk);
+            oci_bind_by_name($st, ':path', $savePath);
             oci_bind_by_name($st, ':uid', $userId);
             oci_bind_by_name($st, ':cat', $category);
-            oci_execute($st);
+            $ok = @oci_execute($st);
 
-            if (strpos($res, 'done') === 0) {
+            if ($ok && strpos($res, 'done') === 0) {
                 $saved[] = ['id' => $fileId, 'name' => $orig];
             } else {
+                @unlink($disk);
                 $errors[] = $orig;
             }
         }
@@ -782,7 +822,7 @@ class GuActRepository
         oci_bind_by_name($stP, ':b1', $fileId);
         oci_execute($stP);
         if ($row = oci_fetch_array($stP, OCI_ASSOC + OCI_RETURN_NULLS)) {
-            $path = $row['REAL_PATH'];
+            $path = $this->getFileDiskPath((string) $row['REAL_PATH']);
         }
 
         $uid = $this->auth->getUserId();
@@ -819,7 +859,7 @@ class GuActRepository
         }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $decision = filter_input(INPUT_POST, 'decision') ?: '';
-        $comment = trim((string) filter_input(INPUT_POST, 'comment'));
+        $comment = trim($this->cleanTextForOracle((string) filter_input(INPUT_POST, 'comment')));
         $userId = $this->auth->getUserId();
 
         if (!$actId || !in_array($decision, ['approved', 'rejected'], true)) {
@@ -1133,25 +1173,24 @@ class GuActRepository
         if ($tab === 'signers') {
             $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_signers_all())');
             if ($search !== '') {
-                $s = mb_strtoupper($search);
-                $all = array_values(array_filter(
-                    $all,
-                    fn($r) =>
-                    str_contains(mb_strtoupper((string) ($r['FIO'] ?? '')), $s) ||
-                    str_contains(mb_strtoupper((string) ($r['POST'] ?? '')), $s) ||
-                    str_contains(mb_strtoupper((string) ($r['ORG'] ?? '')), $s) ||
-                    str_contains(mb_strtoupper((string) ($r['UNIT'] ?? '')), $s)
-                ));
+                $pattern = '/' . preg_quote($search, '/') . '/iu';
+                $all = array_values(array_filter($all, function ($r) use ($pattern) {
+                    $fields = ['FIO', 'POST', 'ORG', 'UNIT'];
+                    foreach ($fields as $field) {
+                        if (preg_match($pattern, (string) ($r[$field] ?? ''))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }));
             }
         } else {
             $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
             if ($search !== '') {
-                $s = mb_strtoupper($search);
-                $all = array_values(array_filter(
-                    $all,
-                    fn($r) =>
-                    str_contains(mb_strtoupper((string) ($r['NAME'] ?? '')), $s)
-                ));
+                $pattern = '/' . preg_quote($search, '/') . '/iu';
+                $all = array_values(array_filter($all, function ($r) use ($pattern) {
+                    return preg_match($pattern, (string) ($r['NAME'] ?? ''));
+                }));
             }
         }
 
@@ -1173,10 +1212,10 @@ class GuActRepository
             return;
         }
         $id = (int) filter_input(INPUT_POST, 'id');
-        $fio = (string) filter_input(INPUT_POST, 'fio');
-        $post = (string) filter_input(INPUT_POST, 'post');
-        $org = (string) filter_input(INPUT_POST, 'org');
-        $unit = (string) filter_input(INPUT_POST, 'unit');
+        $fio = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'fio'));
+        $post = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'post'));
+        $org = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'org'));
+        $unit = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'unit'));
         $res = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
             [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
@@ -1208,7 +1247,7 @@ class GuActRepository
             return;
         }
         $id = (int) filter_input(INPUT_POST, 'id');
-        $name = (string) filter_input(INPUT_POST, 'name');
+        $name = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'name'));
         $actKind = (string) filter_input(INPUT_POST, 'act_kind');
         $res = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',

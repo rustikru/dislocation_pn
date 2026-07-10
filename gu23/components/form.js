@@ -222,7 +222,7 @@ function showFormFields() {
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
-  // Причина — только из списка 
+  // Причина — только из списка
   initListAutocomplete(
     $('#auto-reason'),
     $('#reason-dropdown'),
@@ -358,7 +358,7 @@ function applySelectedStartAct(id, filterNums = null) {
     from: w.ST_FROM,
     to: w.ST_TO,
     cargo: w.CARGO,
-    weight: w.WEIGHT
+    weight: w.WEIGHT,
   }))
 
   if (filterNums) {
@@ -613,7 +613,7 @@ function loadWagonsDataFromDislocation() {
   */
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
-  
+
   // Синхронизируем поле накладной из DOM до перерисовки
   activeDraft.waybillNumber = $('#inp-waybill').val() || ''
   if (!inputNums.length && !activeDraft.waybillNumber)
@@ -662,8 +662,7 @@ function loadWagonsDataFromDislocation() {
             from: row.ST_FROM,
             to: row.ST_TO,
             cargo: row.CARGO,
-            weight: row.WEIGHT
-
+            weight: row.WEIGHT,
           })
           existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
@@ -689,7 +688,7 @@ function loadWagonsDataFromDislocation() {
     // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
-        activeDraft.cargoReference = firstFound.CARGO  //  груз
+        activeDraft.cargoReference = firstFound.CARGO //  груз
       if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
@@ -857,6 +856,52 @@ function showWagonsTable() {
 
   showSignersFields()
 }
+// Конфиг подписантов для актов
+const signerConfig = {
+  other: {
+    ownCount: 3,
+    ownRequired: 2,
+    rzdCount: 0,
+    rzdRequired: 0,
+    ownLabels: [
+      'Представитель предприятия',
+      'Второй подписант',
+      'Третий подписант',
+    ],
+    rzdLabel: 'Работник станции ОАО "РЖД"',
+  },
+  default: {
+    ownCount: 2,
+    ownRequired: 2,
+    rzdCount: 1,
+    rzdRequired: 1,
+    ownLabels: ['Работник предприятия', 'Работник предприятия'],
+    rzdLabel: 'Работник станции ОАО "РЖД"',
+  },
+}
+
+function getSignerSlots(actType) {
+  const cfg = signerConfig[actType] || signerConfig.default
+  const slots = []
+
+  for (let i = 0; i < cfg.ownCount; i++) {
+    slots.push({
+      type: 'own',
+      required: i < cfg.ownRequired,
+      helpText: cfg.ownLabels[i] || 'Работник предприятия',
+    })
+  }
+
+  for (let i = 0; i < cfg.rzdCount; i++) {
+    slots.push({
+      type: 'rzd',
+      required: i < cfg.rzdRequired,
+      helpText: cfg.rzdLabel,
+    })
+  }
+
+  return slots
+}
 
 function showSignersFields() {
   const $container = $('#signers-container')
@@ -864,7 +909,7 @@ function showSignersFields() {
     .append(
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
     )
-  const countNeeded = activeDraft.type === 'other' ? 2 : 3
+  const signerSlots = getSignerSlots(activeDraft.type)
 
   const dept = activeDraft.departmentCode
   // Временно отключаем фильтрацию по цеху
@@ -895,22 +940,10 @@ function showSignersFields() {
 
   const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
 
-  for (let i = 0; i < countNeeded; i++) {
-    let signersList = []
-    let helpText = ''
-
-    if (activeDraft.type === 'other') {
-      signersList = ownFiltered
-      helpText = i === 0 ? 'Представитель предприятия' : 'Второй подписант'
-    } else {
-      if (i < 2) {
-        signersList = ownFiltered
-        helpText = 'Работник предприятия'
-      } else {
-        signersList = references.signersRzdList || []
-        helpText = 'Работник станции ОАО «РЖД»'
-      }
-    }
+  for (let i = 0; i < signerSlots.length; i++) {
+    const slotCfg = signerSlots[i]
+    const signersList =
+      slotCfg.type === 'rzd' ? references.signersRzdList || [] : ownFiltered
 
     // ID подписантов, уже выбранных в других слотах (чтобы исключить дубли)
     const usedIds = activeDraft.signers
@@ -969,8 +1002,9 @@ function showSignersFields() {
 
     $container.append(
       showFormField(
-        `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${helpText}</span>`,
+        `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${slotCfg.helpText}</span>`,
         `<div>${toggleHtml}${inputHtml}</div>`,
+        slotCfg.required,
       ),
     )
   }
@@ -996,12 +1030,11 @@ function showSignersFields() {
   $('.signer-select').on('change', function () {
     const slot = $(this).data('slot')
     const value = this.value
+    const slotCfg = getSignerSlots(activeDraft.type)[slot]
     const pool =
-      activeDraft.type === 'other'
-        ? ownFiltered
-        : slot < 2
-          ? ownFiltered
-          : references.signersRzdList
+      slotCfg && slotCfg.type === 'rzd'
+        ? references.signersRzdList
+        : ownFiltered
     const matched = pool.find((x) => String(x.ID) === value)
     const stype = pool === references.signersRzdList ? 'rzd' : 'own'
     activeDraft.signers[slot] = matched
@@ -1036,7 +1069,7 @@ function showSignersFields() {
   })
 
   // Автокомплит для ручного ввода подписанта: по ФИО или должности.
-  // ФИО/должность/организацию 
+  // ФИО/должность/организацию
   manualSlots.forEach(({ slot, source }) => {
     const items = (source || []).map((s) => ({
       // label содержит и ФИО, и должность — поиск работает по обоим
@@ -1112,8 +1145,7 @@ function validateForm(checkSigners) {
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
   /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
     errors.push('Не указана ст. назначения') */
-  if (!activeDraft.stationToId)
-    errors.push('Не указана ст. назначения')
+  if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
   if (activeDraft.type === 'other' && !activeDraft.startAt)
@@ -1133,14 +1165,18 @@ function validateForm(checkSigners) {
   }
   // Проверка подписантов
   if (checkSigners) {
-    const needed = activeDraft.type === 'other' ? 2 : 3
-    const filled = activeDraft.signers.filter((s) => {
+    const isFilledSigner = (s) => {
       if (!s || !s.fio || !s.fio.trim()) return false
       if (s.manual) return !!(s.post && s.post.trim() && s.org && s.org.trim())
       return true
-    }).length
-    if (filled < needed)
-      errors.push(`Указано подписантов ${filled} из ${needed}`)
+    }
+
+    const signerSlots = getSignerSlots(activeDraft.type)
+    const emptySlot = signerSlots.findIndex(
+      (slotCfg, slot) =>
+        slotCfg.required && !isFilledSigner(activeDraft.signers[slot]),
+    )
+    if (emptySlot >= 0) errors.push(`Не указан подписант ${emptySlot + 1}`)
   }
   return errors
 }

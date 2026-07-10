@@ -7,6 +7,7 @@ ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../connection.php';
 require_once __DIR__ . '/lib/HmacApproval.php';
+require_once __DIR__ . '/lib/text_clean.php';
 require_once __DIR__ . '/ApprovalRepository.php';
 
 $hmacSecret = '';
@@ -80,7 +81,7 @@ if ($existing && $existing['STATUS'] !== 'pending') {
 // POST: подтверждение отклонения с причиной
 // -------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
-    $comment = trim((string) ($_POST['comment'] ?? ''));
+    $comment = trim(gu23_clean_text_for_oracle((string) ($_POST['comment'] ?? '')));
     if ($comment === '') {
         showRejectForm($actNumber, $name, $actId, $approverId, $sig, 'Укажите причину отклонения');
         exit;

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/lib/text_clean.php';
+
 /**
  * ApprovalRepository — для подписания актов ГУ-23
  */
@@ -104,6 +106,7 @@ class ApprovalRepository
         string $tokenSig,
         string $signerIp = ''
     ): bool {
+        $comment = gu23_clean_text_for_oracle($comment);
         $result = null;
         $st = oci_parse(
             $this->conn,

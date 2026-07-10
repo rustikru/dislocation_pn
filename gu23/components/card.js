@@ -11,6 +11,8 @@ import {
 } from './ui.js'
 import { setActiveDraft, hasPerm, isAdmin } from './state.js'
 
+const activeUploads = new Set()
+
 export function showCard(container) {
   const currentId = $('#view').data('selected-id')
 
@@ -75,7 +77,7 @@ function showActionsMenu(act, data) {
 
   // --- черновик: редактирование / удаление ---
   // Редактировать и удалять можно только Проект (draft).
-  if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT')) {
+  if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT') && data.canEditDraft) {
     addItem('Редактировать', () => editDraftAct(data))
     addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
   }
@@ -465,8 +467,11 @@ function showAttachmentsBlock(act, files) {
 
   $('#card-right-column').append($block)
 
-  $('.file-cat-input').on('change', function () {
-    uploadFilesToServer(act.ID, this.files, $(this).data('cat'))
+  $block.find('.file-cat-input').off('change.gu23Upload').on('change.gu23Upload', function () {
+    const files = Array.from(this.files || [])
+    const category = $(this).data('cat')
+    this.value = ''
+    uploadFilesToServer(act.ID, files, category)
   })
 
   $('.img-preview').on('click', function () {
@@ -691,6 +696,10 @@ function resendApprovalLinks(act, signers, approvals) {
 // Загрузка файла на сервер (приложение)
 function uploadFilesToServer(actId, files, category) {
   if (!files || !files.length) return
+  const uploadKey = `${actId}:${category || 'general'}`
+  if (activeUploads.has(uploadKey)) return
+  activeUploads.add(uploadKey)
+
   const formData = new FormData()
   formData.append('ajax_action', 'gu23_upload_file')
   formData.append('act_id', actId)
@@ -707,11 +716,15 @@ function uploadFilesToServer(actId, files, category) {
     processData: false,
     contentType: false,
     dataType: 'json',
-  }).done((response) => {
-    if (response && response.ok) showToast('Файлы загружены', 'ok')
-    else showToast('Часть файлов не загружена', 'err')
-    navigateTo('card', actId)
   })
+    .done((response) => {
+      if (response && response.ok) showToast('Файлы загружены', 'ok')
+      else showToast('Часть файлов не загружена', 'err')
+      navigateTo('card', actId)
+    })
+    .always(() => {
+      activeUploads.delete(uploadKey)
+    })
 }
 // Удаляем (приложение)
 function deleteAttachedFile(fileId, actId) {
