@@ -20,7 +20,7 @@ if (!function_exists('mb_strlen')) {
 }
 
 require_once __DIR__ . '/Gu23Logger.php';
-require_once __DIR__ . '/lib/text_clean.php';
+require_once __DIR__ . '/../lib/text_clean.php';
 
 class GuActRepository
 {
@@ -118,7 +118,7 @@ class GuActRepository
     {
         static $cfg = null;
         if ($cfg === null) {
-            $path = __DIR__ . '/config.php';
+            $path = dirname(__DIR__) . '/config.php';
             $cfg = file_exists($path) ? (array) (require $path) : [];
         }
         if (!empty($cfg['mail_mode'])) {
@@ -326,7 +326,7 @@ class GuActRepository
             return $path;
         }
 
-        return __DIR__ . '/' . ltrim($path, '/\\');
+        return dirname(__DIR__) . '/' . ltrim($path, '/\\');
     }
 
     /** Вызвать функцию пакета, вернуть скалярный результат. */
@@ -743,7 +743,7 @@ class GuActRepository
 
         // Файлы хранятся в разрезе типа акта с ID записи из таблицы
         $basePath = 'act_data/' . $actType . '/' . $actId . '/';
-        $baseDir = __DIR__ . '/' . $basePath;
+        $baseDir = dirname(__DIR__) . '/' . $basePath;
         if (!is_dir($baseDir)) {
             mkdir($baseDir, 0777, true);
         }
@@ -1116,8 +1116,8 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     private function loadMailer(): ApprovalMailer
     {
-        require_once __DIR__ . '/lib/HmacApproval.php';
-        require_once __DIR__ . '/lib/ApprovalMailer.php';
+        require_once __DIR__ . '/../lib/HmacApproval.php';
+        require_once __DIR__ . '/../lib/ApprovalMailer.php';
 
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
             . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');

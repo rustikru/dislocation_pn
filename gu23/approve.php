@@ -8,7 +8,7 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/../connection.php';
 require_once __DIR__ . '/lib/HmacApproval.php';
 require_once __DIR__ . '/lib/text_clean.php';
-require_once __DIR__ . '/ApprovalRepository.php';
+require_once __DIR__ . '/classes/ApprovalRepository.php';
 
 $hmacSecret = '';
 $_st = @oci_parse($conn1, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');

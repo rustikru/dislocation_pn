@@ -13,7 +13,7 @@ class Gu23Logger
     private static function dir(): string
     {
         if (self::$logDir === '') {
-            self::$logDir = __DIR__ . '/log';
+            self::$logDir = dirname(__DIR__) . '/log';
             if (!is_dir(self::$logDir)) {
                 @mkdir(self::$logDir, 0755, true);
             }

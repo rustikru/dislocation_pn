@@ -32,7 +32,7 @@ if (!in_array($format, ['docx', 'pdf'], true)) {
 }
 
 // Подключаем репозиторий и читаем данные акта
-require_once __DIR__ . '/../GuActRepository.php';
+require_once __DIR__ . '/../classes/GuActRepository.php';
 require_once __DIR__ . '/GuActDocxReport.php';
 
 // Доступ к модулю ГУ-23 (а не только факт авторизации)

@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Блокируем устаревшие браузеры (старый Firefox и пр.)
-require_once __DIR__ . '/browser_check.php';
+require_once __DIR__ . '/debug/browser_check.php';
 
 include('../login.php');
 include('../connection.php');
@@ -24,7 +24,7 @@ if (!$auth->isAuth()) {
         $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
     }
 }
-require_once __DIR__ . '/GuActRepository.php';
+require_once __DIR__ . '/classes/GuActRepository.php';
 
 if ($auth->isAuth()) {
     if (GuActRepository::canAccess($conn1, $auth)) {
