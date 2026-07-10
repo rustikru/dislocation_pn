@@ -29,14 +29,15 @@ class GuActDocxReport
     }
 
     /**
-     * Сформировать DOCX 
+     * Сформировать DOCX/PDF
      *
      * @param array $act     Строка акта (ACT_NUMBER, DEPT, ACT_TYPE, START_AT …)
      * @param array $wagons  Массив вагонов  (WAGON_NO, KIND, CARGO, WEIGHT, OWNER …)
      * @param array $signers Массив подписантов (FIO, POST, ORG …)
      */
-    public function download(array $act, array $wagons, array $signers): void
+    public function download(array $act, array $wagons, array $signers, string $format = 'docx'): void
     {
+        $format = strtolower($format) === 'pdf' ? 'pdf' : 'docx';
         $actType = strtolower($act['ACT_TYPE'] ?? 'other');
         $templateName = self::TEMPLATES[$actType] ?? 'act23_general.docx';
         $templatePath = $this->templateDir . $templateName;
@@ -68,7 +69,18 @@ class GuActDocxReport
             $zip->addFromString('word/document.xml', $xml);
             $zip->close();
 
-            $this->streamFile($tmp, $act);
+            if ($format === 'pdf') {
+                $pdfPath = $this->makePdf($tmp);
+                try {
+                    $this->streamFile($pdfPath, $act, 'pdf');
+                } finally {
+                    if (file_exists($pdfPath)) {
+                        unlink($pdfPath);
+                    }
+                }
+            } else {
+                $this->streamFile($tmp, $act, 'docx');
+            }
         } finally {
             if (file_exists($tmp)) {
                 unlink($tmp);
@@ -254,34 +266,65 @@ class GuActDocxReport
                     return $tbl; // не таблица вагонов — не трогаем
                 }
 
-                // Предпочтительная ширина таблицы -> авто
+                $widths = [520, 1100, 1500, 1250, 1800, 900, 1250];
+                $tableWidth = array_sum($widths);
+
                 $tbl = preg_replace(
                     '/<w:tblW\b[^>]*\/>/',
-                    '<w:tblW w:w="0" w:type="auto"/>',
+                    '<w:tblW w:w="' . $tableWidth . '" w:type="dxa"/>',
                     $tbl,
                     1
                 );
 
-                // Раскладка -> автоподбор (если ещё не задана — добавляем перед tblLook)
                 if (str_contains($tbl, '<w:tblLayout')) {
                     $tbl = preg_replace(
                         '/<w:tblLayout\b[^>]*\/>/',
-                        '<w:tblLayout w:type="autofit"/>',
+                        '<w:tblLayout w:type="fixed"/>',
                         $tbl
                     );
                 } else {
                     $tbl = preg_replace(
                         '/(<w:tblLook\b)/',
-                        '<w:tblLayout w:type="autofit"/>$1',
+                        '<w:tblLayout w:type="fixed"/>$1',
                         $tbl,
                         1
                     );
                 }
 
-                // Ширина каждой ячейки -> авто (по содержимому)
-                $tbl = preg_replace(
+                $tbl = preg_replace_callback(
+                    '/<w:tblGrid>.*?<\/w:tblGrid>/s',
+                    static function () use ($widths): string {
+                        $cols = '';
+                        foreach ($widths as $width) {
+                            $cols .= '<w:gridCol w:w="' . $width . '"/>';
+                        }
+                        return '<w:tblGrid>' . $cols . '</w:tblGrid>';
+                    },
+                    $tbl,
+                    1
+                );
+
+                $cellIndex = 0;
+                $tbl = preg_replace_callback(
                     '/<w:tcW\b[^>]*\/>/',
-                    '<w:tcW w:w="0" w:type="auto"/>',
+                    static function () use ($widths, &$cellIndex): string {
+                        $width = $widths[$cellIndex % count($widths)];
+                        $cellIndex++;
+                        return '<w:tcW w:w="' . $width . '" w:type="dxa"/>';
+                    },
+                    $tbl
+                );
+
+                $tbl = preg_replace_callback(
+                    '/<w:rPr\b[^>]*>.*?<\/w:rPr>|<w:t\b/s',
+                    static function (array $r): string {
+                        if (str_starts_with($r[0], '<w:rPr')) {
+                            return str_contains($r[0], '<w:sz ')
+                                ? preg_replace('/<w:sz\b[^>]*\/>/', '<w:sz w:val="18"/>', $r[0])
+                                : str_replace('</w:rPr>', '<w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>', $r[0]);
+                        }
+                        return '<w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>' . $r[0];
+                    },
                     $tbl
                 );
 
@@ -363,7 +406,7 @@ class GuActDocxReport
             return $para; // Ничего не слилось
         }
 
-       // Собираем новый XML параграфа
+        // Собираем новый XML параграфа
         $firstOffset = $runs[0][1];
         $lastRun = end($runs);
         $lastEnd = $lastRun[1] + strlen($lastRun[0]);
@@ -497,8 +540,8 @@ class GuActDocxReport
             '{{WAGON_WAYBILL_NO}}' => $wagon['WAYBILL_NO'] ?? '',
             '{{WAGON_ACT_START}}' => $wagon['ACT_START_NUM'] ?? '',
             '{{WAGON_DUR_TOTAL_H}}' => $wagon['DUR_TOTAL_H'] ?? '',
-            
-            
+
+
         ];
 
         $row = $rowTemplate;
@@ -507,7 +550,7 @@ class GuActDocxReport
         }
         return $row;
     }
-    
+
     private function fmtDate(string $d): string
     {
         if (preg_match('/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/', $d, $m)) {
@@ -516,14 +559,122 @@ class GuActDocxReport
         return $d;
     }
 
-    private function streamFile(string $path, array $act): void
+    private function makePdf(string $docxPath): string
+    {
+        $soffice = $this->findSoffice();
+        if ($soffice === '') {
+            throw new \RuntimeException('LibreOffice не найден для формирования PDF');
+        }
+
+        $outDir = sys_get_temp_dir();
+        $homeDir = $this->makeTempDir('gu23_lo_home_');
+        $profileDir = $this->makeTempDir('gu23_lo_profile_');
+        $cmd = escapeshellarg($soffice)
+            . ' -env:UserInstallation=file://' . $profileDir
+            . ' --headless --nologo --nofirststartwizard --convert-to pdf'
+            . ' --outdir ' . escapeshellarg($outDir)
+            . ' ' . escapeshellarg($docxPath);
+        $oldHome = getenv('HOME');
+        putenv('HOME=' . $homeDir);
+
+        try {
+            exec($cmd, $output, $code);
+
+            $pdfPath = $outDir . '/' . pathinfo($docxPath, PATHINFO_FILENAME) . '.pdf';
+            if ($code !== 0 || !is_file($pdfPath)) {
+                throw new \RuntimeException('Не удалось сформировать PDF');
+            }
+
+            return $pdfPath;
+        } finally {
+            if ($oldHome !== false) {
+                putenv('HOME=' . $oldHome);
+            }
+            $this->removeDir($homeDir);
+            $this->removeDir($profileDir);
+        }
+    }
+
+    private function findSoffice(): string
+    {
+        $config = $this->loadConfig();
+        $candidates = [
+            (string) ($config['soffice_path'] ?? ''),
+            getenv('SOFFICE_PATH') ?: '',
+
+        ];
+
+        foreach ($candidates as $path) {
+            if ($path !== '' && is_executable($path)) {
+                return $path;
+            }
+        }
+
+        $which = trim((string) shell_exec('command -v soffice 2>/dev/null'));
+        return $which !== '' ? $which : '';
+    }
+
+    private function loadConfig(): array
+    {
+        $path = __DIR__ . '/../config.php';
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $config = require $path;
+        return is_array($config) ? $config : [];
+    }
+
+    private function makeTempDir(string $prefix): string
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
+        if ($path === false) {
+            throw new \RuntimeException('Не удалось создать временную папку');
+        }
+        unlink($path);
+        mkdir($path, 0777, true);
+        return $path;
+    }
+
+    private function removeDir(string $path): void
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+        if ($items === false) {
+            return;
+        }
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $child = $path . '/' . $item;
+            if (is_dir($child) && !is_link($child)) {
+                $this->removeDir($child);
+            } else {
+                @unlink($child);
+            }
+        }
+        @rmdir($path);
+    }
+
+    private function streamFile(string $path, array $act, string $format): void
     {
         $raw = $act['ACT_NUMBER'] ?? ($act['ID'] ?? 'act');
+        $safeName = preg_replace('/[^\w\-]/u', '_', $raw);
+        $filename = 'act_gu23_' . $safeName . '.' . $format;
+        $fallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $filename) ?: 'act_gu23.' . $format;
+        $contentType = $format === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-        $filename = 'act_gu23_' . preg_replace('/[^\w\-]/u', '_', $raw) . '.docx';
-
-        header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Type: ' . $contentType);
+        header(
+            'Content-Disposition: attachment; filename="' . $fallbackName . '"'
+            . "; filename*=UTF-8''" . rawurlencode($filename)
+        );
         header('Content-Length: ' . filesize($path));
         header('Cache-Control: private, no-cache');
         readfile($path);

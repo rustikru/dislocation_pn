@@ -42,7 +42,7 @@ if ($auth->isAuth()) {
             <!-- jQuery 3.7.1 (+migrate)  -->
             <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
             <script src="../js/general_function.js" type="text/javascript"></script>
-            <script type="module" src="components/app.js"></script>
+            <script type="module" src="js/app.js"></script>
             <script>
                 window.GU23_SESSION = {
                     login: <?= json_encode($_SESSION['login'] ?? '') ?>,

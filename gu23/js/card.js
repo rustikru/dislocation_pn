@@ -201,6 +201,9 @@ function showDetailsBlock(act) {
     act.STATUS !== 'rejected' // отклонен
       ? `<a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
            <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
+         </a>
+         <a class="btn report-pdf" target="_blank" title="Скачать акт в PDF" href="report/report.php?id=${act.ID}&format=pdf">
+           <img src="/img/ms_pdf.svg" alt="PDF" width="18" height="18" style="flex-shrink:0">
          </a>`
       : ''
 

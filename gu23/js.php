@@ -3,18 +3,18 @@ header('Content-Type: application/javascript; charset=utf-8');
 
 $base = __DIR__;
 $files = [
-    $base . '/components/state.js',
-    $base . '/components/utils.js',
-    $base . '/components/ui.js',
-    $base . '/components/api.js',
-    $base . '/components/nav.js',
-    $base . '/components/registry.js',
-    $base . '/components/wagonSearch.js',
-    $base . '/components/form.js',
-    $base . '/components/card.js',
-    $base . '/components/refs.js',
-    $base . '/components/roles.js',
-    $base . '/components/app.js',
+    $base . '/js/state.js',
+    $base . '/js/utils.js',
+    $base . '/js/ui.js',
+    $base . '/js/api.js',
+    $base . '/js/nav.js',
+    $base . '/js/registry.js',
+    $base . '/js/wagonSearch.js',
+    $base . '/js/form.js',
+    $base . '/js/card.js',
+    $base . '/js/refs.js',
+    $base . '/js/roles.js',
+    $base . '/js/app.js',
 ];
 
 foreach ($files as $file) {

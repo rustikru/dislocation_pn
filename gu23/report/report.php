@@ -4,7 +4,8 @@
  *
  * Эндпоинт генерации DOCX-отчёта для акта ГУ-23.
  * Параметры GET:
- *   id=<int>  — ID акта
+ *   id=<int>       — ID акта
+ *   format=<docx|pdf>
  *
  * Пример: GET /gu23/report/report.php?id=42
  */
@@ -24,6 +25,10 @@ $actId = (int) ($_GET['id'] ?? 0);
 if ($actId <= 0) {
     http_response_code(400);
     exit('Не указан ID акта');
+}
+$format = strtolower((string) ($_GET['format'] ?? 'docx'));
+if (!in_array($format, ['docx', 'pdf'], true)) {
+    $format = 'docx';
 }
 
 // Подключаем репозиторий и читаем данные акта
@@ -71,7 +76,7 @@ try {
     $signers = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
 
     $generator = new GuActDocxReport();
-    $generator->download($act, $wagons, $signers);
+    $generator->download($act, $wagons, $signers, $format);
 } catch (Throwable $e) {
     http_response_code(500);
     echo 'Ошибка генерации отчёта: ' . htmlspecialchars($e->getMessage());

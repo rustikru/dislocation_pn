@@ -68,21 +68,31 @@ function showTypeSwitcher() {
 function showFormFields() {
   const $body = $('#form-body')
 
+  showEndActChoice($body)
+  showDateField($body)
+  showMainFields($body)
+  showReasonFields($body)
+  showWagonBlock($body)
+}
+
+function showEndActChoice($body) {
   // Особенность для "акта Окончания простоя"
   // Акт окончания простоя создается только на основе акта на начало простоя
-  if (activeDraft.type === 'end') {
-    $body.append(`
-      <div class="banner info">Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.</div>
-      <div class="frow">
-        <label>Открытый акт начала простоя <span class="req">*</span></label>
-        <select class="inp" id="select-linked-start">
-          <option value="">— выберите открытый акт начала —</option>
-        </select>
-      </div>
-    `)
-    loadOpenStartsList()
-  }
+  if (activeDraft.type !== 'end') return
 
+  $body.append(`
+    <div class="banner info">Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.</div>
+    <div class="frow">
+      <label>Открытый акт начала простоя <span class="req">*</span></label>
+      <select class="inp" id="select-linked-start">
+        <option value="">— выберите открытый акт начала —</option>
+      </select>
+    </div>
+  `)
+  loadOpenStartsList()
+}
+
+function showDateField($body) {
   // Строка Даты
   let dateRowHtml = ''
   if (activeDraft.type === 'start') {
@@ -124,7 +134,9 @@ function showFormFields() {
 
   $body.append('<div id="duration-banner-place"></div>')
   showDurationBanner()
+}
 
+function showMainFields($body) {
   // Строка Цех + Станции
   const deptsHtml = references.departmentsList
     .map(
@@ -183,9 +195,6 @@ function showFormFields() {
   `)
 
   initStationAutocomplete()
-  $('#inp-waybill').on('input', function () {
-    activeDraft.waybillNumber = this.value
-  })
 
   // Груз — автокомплит по списку, допускается и свободный ввод
   const cargoItems = references.cargosList.map((c) => ({
@@ -204,7 +213,9 @@ function showFormFields() {
       activeDraft.cargoReference = $('#auto-cargo').val()
     },
   )
+}
 
+function showReasonFields($body) {
   // Причина и обстоятельства
   const reasonItems = references.reasonsList.map((r) => ({
     label: r.NAME || r.CODE,
@@ -239,7 +250,12 @@ function showFormFields() {
   $('#txt-circumstances').on('change', function () {
     activeDraft.circumstances = this.value
   })
+  $('#inp-waybill').on('input', function () {
+    activeDraft.waybillNumber = this.value
+  })
+}
 
+function showWagonBlock($body) {
   // Вагоны
   $body.append(`
     <div style="height:6px"></div>
@@ -910,105 +926,125 @@ function showSignersFields() {
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
     )
   const signerSlots = getSignerSlots(activeDraft.type)
+  const ownFiltered = getOwnSignersForAct()
 
-  const dept = activeDraft.departmentCode
+  fillFirstSigner(ownFiltered)
+
+  const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
+  for (let i = 0; i < signerSlots.length; i++) {
+    showSignerSlot($container, i, signerSlots[i], ownFiltered, manualSlots)
+  }
+
+  bindSignerModeButtons()
+  bindSignerSelects(ownFiltered)
+  bindManualSignerInputs()
+  bindManualSignerTips(manualSlots)
+}
+
+function getOwnSignersForAct() {
+  // const dept = activeDraft.departmentCode
   // Временно отключаем фильтрацию по цеху
-
-  const ownFiltered = references.signersOwnList || []
   /*const ownFiltered = (references.signersOwnList || []).filter(
     // Фильтрация по цеху составления
     (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
   )*/
+  return references.signersOwnList || []
+}
 
+function fillFirstSigner(ownFiltered) {
   // Автоподстановка: для нового акта слот 0 заполняем текущим пользователем
-  if (!activeDraft.id && !activeDraft.signers[0]) {
-    const myId = (window.GU23_SESSION || {}).user_id
-    const me = myId
-      ? ownFiltered.find((s) => String(s.ID) === String(myId))
-      : null
-    if (me) {
-      activeDraft.signers[0] = {
-        id: me.ID,
-        fio: me.FIO,
-        post: me.POST,
-        org: me.ORG,
-        manual: false,
-        stype: 'own',
-      }
-    }
+  if (activeDraft.id || activeDraft.signers[0]) return
+
+  const myId = (window.GU23_SESSION || {}).user_id
+  const me = myId
+    ? ownFiltered.find((s) => String(s.ID) === String(myId))
+    : null
+  if (!me) return
+
+  activeDraft.signers[0] = {
+    id: me.ID,
+    fio: me.FIO,
+    post: me.POST,
+    org: me.ORG,
+    manual: false,
+    stype: 'own',
   }
+}
 
-  const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
+function showSignerSlot($container, i, slotCfg, ownFiltered, manualSlots) {
+  const signersList =
+    slotCfg.type === 'rzd' ? references.signersRzdList || [] : ownFiltered
 
-  for (let i = 0; i < signerSlots.length; i++) {
-    const slotCfg = signerSlots[i]
-    const signersList =
-      slotCfg.type === 'rzd' ? references.signersRzdList || [] : ownFiltered
+  // ID подписантов, уже выбранных в других слотах (чтобы исключить дубли)
+  const usedIds = activeDraft.signers
+    .map((s, idx) => (idx !== i && s && !s.manual ? String(s.id) : null))
+    .filter(Boolean)
 
-    // ID подписантов, уже выбранных в других слотах (чтобы исключить дубли)
-    const usedIds = activeDraft.signers
-      .map((s, idx) => (idx !== i && s && !s.manual ? String(s.id) : null))
-      .filter(Boolean)
+  const signer = activeDraft.signers[i]
+  const isManual = signer && signer.manual === true
 
-    const signer = activeDraft.signers[i]
-    const isManual = signer && signer.manual === true
+  const toggleHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button type="button" class="btn sm signer-mode-btn ${!isManual ? 'primary' : ''}" data-slot="${i}" data-mode="ref">Из справочника</button>
+      <button type="button" class="btn sm signer-mode-btn ${isManual ? 'primary' : ''}" data-slot="${i}" data-mode="manual">Вручную</button>
+    </div>
+  `
 
-    const toggleHtml = `
-      <div style="display:flex;gap:6px;margin-bottom:6px">
-        <button type="button" class="btn sm signer-mode-btn ${!isManual ? 'primary' : ''}" data-slot="${i}" data-mode="ref">Из справочника</button>
-        <button type="button" class="btn sm signer-mode-btn ${isManual ? 'primary' : ''}" data-slot="${i}" data-mode="manual">Вручную</button>
+  const inputHtml = isManual
+    ? makeManualSignerInput(i, signer, manualSlots)
+    : makeSignerSelect(i, signer, signersList, usedIds)
+
+  $container.append(
+    showFormField(
+      `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${slotCfg.helpText}</span>`,
+      `<div>${toggleHtml}${inputHtml}</div>`,
+      slotCfg.required,
+    ),
+  )
+}
+
+function makeManualSignerInput(i, signer, manualSlots) {
+  // подсказки для ручного ввода — ТОЛЬКО ранее введённые вручную записи
+  // (из истории актов), без справочника предприятия/РЖД
+  manualSlots.push({ slot: i, source: references.signersManualList })
+  const ddStyle =
+    'display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;'
+  return `
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px">
+      <div style="position:relative">
+        <input class="inp signer-fio" data-slot="${i}" id="signer-fio-${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
+        <div class="dropdown" id="signer-fio-dd-${i}" style="${ddStyle}"></div>
       </div>
-    `
+      <div style="position:relative">
+        <input class="inp signer-post" data-slot="${i}" id="signer-post-${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
+        <div class="dropdown" id="signer-post-dd-${i}" style="${ddStyle}"></div>
+      </div>
+      <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
+    </div>
+  `
+}
 
-    let inputHtml = ''
-    if (isManual) {
-      // подсказки для ручного ввода — ТОЛЬКО ранее введённые вручную записи
-      // (из истории актов), без справочника предприятия/РЖД
-      manualSlots.push({ slot: i, source: references.signersManualList })
-      const ddStyle =
-        'display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;'
-      inputHtml = `
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px">
-          <div style="position:relative">
-            <input class="inp signer-fio" data-slot="${i}" id="signer-fio-${i}" placeholder="ФИО" value="${escapeHtml(signer.fio || '')}">
-            <div class="dropdown" id="signer-fio-dd-${i}" style="${ddStyle}"></div>
-          </div>
-          <div style="position:relative">
-            <input class="inp signer-post" data-slot="${i}" id="signer-post-${i}" placeholder="Должность" value="${escapeHtml(signer.post || '')}">
-            <div class="dropdown" id="signer-post-dd-${i}" style="${ddStyle}"></div>
-          </div>
-          <input class="inp signer-org" data-slot="${i}" placeholder="Организация" value="${escapeHtml(signer.org || '')}">
-        </div>
-      `
-    } else {
-      const optionsHtml = signersList
-        .filter(
-          (s) =>
-            !usedIds.includes(String(s.ID)) ||
-            (signer && String(signer.id) === String(s.ID)),
-        )
-        .map(
-          (s) =>
-            `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
-        )
-        .join('')
-      inputHtml = `
-        <select class="inp signer-select" data-slot="${i}">
-          <option value="">— выберите —</option>
-          ${optionsHtml}
-        </select>
-      `
-    }
-
-    $container.append(
-      showFormField(
-        `Подписант ${i + 1} <span class="muted" style="font-weight:400">· ${slotCfg.helpText}</span>`,
-        `<div>${toggleHtml}${inputHtml}</div>`,
-        slotCfg.required,
-      ),
+function makeSignerSelect(i, signer, signersList, usedIds) {
+  const optionsHtml = signersList
+    .filter(
+      (s) =>
+        !usedIds.includes(String(s.ID)) ||
+        (signer && String(signer.id) === String(s.ID)),
     )
-  }
+    .map(
+      (s) =>
+        `<option value="${s.ID}" ${signer && String(signer.id) === String(s.ID) ? 'selected' : ''}>${s.FIO} · ${s.POST || ''} · ${s.ORG || ''}</option>`,
+    )
+    .join('')
+  return `
+    <select class="inp signer-select" data-slot="${i}">
+      <option value="">— выберите —</option>
+      ${optionsHtml}
+    </select>
+  `
+}
 
+function bindSignerModeButtons() {
   $('.signer-mode-btn').on('click', function () {
     const slot = $(this).data('slot')
     const mode = $(this).data('mode')
@@ -1026,7 +1062,9 @@ function showSignersFields() {
     }
     showSignersFields()
   })
+}
 
+function bindSignerSelects(ownFiltered) {
   $('.signer-select').on('change', function () {
     const slot = $(this).data('slot')
     const value = this.value
@@ -1050,7 +1088,9 @@ function showSignersFields() {
     // перерисовываем, чтобы обновить доступные варианты в других слотах
     showSignersFields()
   })
+}
 
+function bindManualSignerInputs() {
   $('.signer-fio, .signer-post, .signer-org').on('input', function () {
     const slot = $(this).data('slot')
     if (!activeDraft.signers[slot])
@@ -1067,7 +1107,9 @@ function showSignersFields() {
       activeDraft.signers[slot].post = this.value
     else activeDraft.signers[slot].org = this.value
   })
+}
 
+function bindManualSignerTips(manualSlots) {
   // Автокомплит для ручного ввода подписанта: по ФИО или должности.
   // ФИО/должность/организацию
   manualSlots.forEach(({ slot, source }) => {

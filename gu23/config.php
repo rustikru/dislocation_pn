@@ -8,4 +8,9 @@ return [
     //   'send_mail' — реальная отправка через Oracle UTL_MAIL (прод)
     //   'send_file' — сохранять HTML письма в папку gu23/mail/ (для отладки)
     'mail_mode' => 'send_file',
+
+    // Путь к LibreOffice 
+    'soffice_path' => '/Users/ru.bekmansurov/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice',
+    ///usr/bin/soffice
+
 ];
