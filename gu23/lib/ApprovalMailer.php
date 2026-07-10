@@ -12,7 +12,7 @@ class ApprovalMailer
   public function __construct(
     string $secret,
     string $baseUrl,
-    string $from = 'noreply@test.ru',
+    string $from = 'noreply@company.ru',
     int $ttlDays = 1,
     string $mailDir = ''
   ) {

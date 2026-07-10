@@ -36,34 +36,14 @@ class GuActRepository
         $this->auth = $auth;
     }
 
-    private static function hasLocalConfig(): bool
-    {
-        return file_exists(dirname(__DIR__) . '/db_config.local.php');
-    }
-
-    private function allPerms(): array
-    {
-        return [
-            'CREATE_ACT',
-            'EDIT_OWN_ACT',
-            'SEND_APPROVAL',
-            'SIGN_ACT',
-            'VIEW_ALL_ACTS',
-            'MANAGE_REFS',
-            'MANAGE_ROLES',
-            'CLOSE_ACT',
-            'DELETE_ACT',
-            'ANNUL_ACT',
-        ];
-    }
-
     /** Есть ли у пользователя хотя бы одна роль в ГУ-23 (доступ к модулю). */
     public static function canAccess($conn, AuthClass $auth): bool
     {
         if ($auth->isAuthAdmin()) {
             return true;
         }
-        if (self::hasLocalConfig()) {
+        // DEV: если есть локальный конфиг — пропускаем без Oracle
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return true;
         }
         $userId = $auth->getUserId();
@@ -90,9 +70,6 @@ class GuActRepository
         if ($this->auth->isAuthAdmin()) {
             return true;
         }
-        if (self::hasLocalConfig()) {
-            return true;
-        }
         $userId = $this->auth->getUserId();
         if (!$userId) {
             return false;
@@ -111,7 +88,8 @@ class GuActRepository
         if ($this->auth->isAuthAdmin()) {
             return true;
         }
-        if (self::hasLocalConfig()) {
+        // DEV: локальный конфиг — все полномочия открыты
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return true;
         }
         $userId = $this->auth->getUserId();
@@ -131,9 +109,9 @@ class GuActRepository
     }
 
     /**
-     * Режим рассылки писем 
-     *   из gu23/config.php ('mail_mode');
-     *   → 'send_file', иначе 'send_mail'.
+     * Режим рассылки писем — определяется сервером, НЕ клиентом.
+     *   Читается из gu23/config.php ('mail_mode');
+     *   если не задан — dev (есть db_config.local.php) → 'send_file', иначе 'send_mail'.
      */
     private function mailMode(): string
     {
@@ -145,7 +123,7 @@ class GuActRepository
         if (!empty($cfg['mail_mode'])) {
             return $cfg['mail_mode'];
         }
-        if (self::hasLocalConfig()) {
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return 'send_file';
         }
         return 'send_mail';
@@ -153,7 +131,7 @@ class GuActRepository
 
     public function handle(string $action, array $post): void
     {
-        ini_set('display_errors', '0');  // PHP-warning отключаем
+        ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
         ob_start();
         //Gu23Logger::info('action', ['action' => $action]);
         try {
@@ -357,7 +335,7 @@ class GuActRepository
         return $ret;
     }
 
-    /** Привязать строку CLOB. */
+    /** Привязать строку как временный CLOB. */
     private function bindClob($st, string $name, string $value)
     {
         $lob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
@@ -370,19 +348,16 @@ class GuActRepository
     /* справочники                                                        */
     /* ----------------------------------------------------------------- */
 
-    /** справочники для формы: цеха, станции, причины, подписанты, права пользователя. */
+    /** Все справочники для формы: цеха, станции, причины, подписанты, права пользователя. */
     private function getRefs(): void
     {
         $userId = $this->auth->getUserId();
-        if ($this->auth->isAuthAdmin() || self::hasLocalConfig()) {
-            $perms = $this->allPerms();
-        } else {
-            $permRows = $this->pipe(
-                'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
-                [':b1' => $userId]
-            );
-            $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
-        }
+        $permRows = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
+            [':b1' => $userId]
+        );
+        // pipe возвращает однострочные строки — extracting значение из первого поля
+        $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
 
         echo json_encode([
             'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
@@ -430,7 +405,7 @@ class GuActRepository
             40
         );
 
-        // Только нужная страница 
+        // Только нужная страница — пагинация на стороне БД
         $acts = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
             [

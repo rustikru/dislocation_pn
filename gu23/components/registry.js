@@ -41,7 +41,8 @@ export function showArchive(container) {
   }
   let searchTimeout = null
 
-  // Позиционируем меню по левому краю кнопки,
+  // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
+  // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
   const positionMenu = ($btn, $menu) => {
     const r = $btn[0].getBoundingClientRect()
     const mw = $menu.outerWidth()
@@ -66,7 +67,7 @@ export function showArchive(container) {
     )
     const $menu = $('<div class="ms-menu"></div>')
 
-    // значения
+    // реальные значения
     const realCount = options.filter((v) => v !== '').length
 
     // поиск внутри списка
@@ -84,7 +85,7 @@ export function showArchive(container) {
       $menu.append($search)
     }
 
-    // чекбоксы для значений
+    // чекбоксы для  значений
     options.forEach((val, idx) => {
       if (val === '') return
       $menu.append(
@@ -122,7 +123,7 @@ export function showArchive(container) {
       const willOpen = !$menu.is(':visible')
       $('.ms-menu').hide() // закрыть все
       if (willOpen) {
-        $menu.show()
+        $menu.show() // показать, чтобы измерить ширину
         positionMenu($btn, $menu)
       }
     })
@@ -158,7 +159,7 @@ export function showArchive(container) {
     'dept',
   )
 
-  // закрытие выпадающих меню
+  // закрытие выпадающих меню по клику вне
   $(document)
     .off('click.msfilter')
     .on('click.msfilter', () => $('.ms-menu').hide())
@@ -190,7 +191,7 @@ export function showArchive(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
-  // Доп. фильтры: «Приложение» — Все / Подписанный документ
+  // Доп. фильтры (поповер): «Приложение» — Все / Подписанный документ
   const $extraWrap = $('<div class="ms-filter"></div>')
   const $extraBtn = $(
     '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
@@ -224,7 +225,7 @@ export function showArchive(container) {
   $extraWrap.append($extraBtn, $extraMenu)
   $('#archive-filters').append($extraWrap)
 
-  // Кнопка сброса
+  // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))
 
   // Поиск с задержкой
@@ -242,9 +243,10 @@ export function showArchive(container) {
         resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []
       const total = resp && resp.total ? resp.total : acts.length
       const page = resp && resp.page ? resp.page : 1
+      // размер страницы берём из ответа сервера (не из клиентской константы)
       const pageSize = (resp && resp.page_size) || acts.length || 1
 
-      // Построение дерева
+      // Построение дерева связей
       const rootActs = []
       const childActsMap = {}
       const independentActs = []
@@ -323,7 +325,7 @@ export function showArchive(container) {
       // Номера актов начала
       const rootNumbers = new Set(rootActs.map((a) => a.ACT_NUMBER))
 
-      // Собираем иерархию
+      // Собираем иерархию (по умолчанию все развернуты)
       rootActs.forEach((rootAct) => {
         rowsHtml += generateRowHtml(rootAct, false)
         const children = childActsMap[rootAct.ACT_NUMBER] || []
@@ -333,6 +335,7 @@ export function showArchive(container) {
       })
 
       //акты окончания: их родитель (акт начала)
+      // Выводим их отдельными строками,
       Object.keys(childActsMap).forEach((parentNum) => {
         if (rootNumbers.has(parentNum)) return
         childActsMap[parentNum].forEach((childAct) => {
@@ -340,7 +343,7 @@ export function showArchive(container) {
         })
       })
 
-      // Добавляем прочие акты
+      // Добавляем прочие/одиночные акты
       independentActs.forEach((act) => {
         if (act.ACT_START_NUMBER && childActsMap[act.ACT_START_NUMBER]) return
         rowsHtml += generateRowHtml(act, false)
@@ -439,6 +442,7 @@ export function showArchive(container) {
           }
         }
 
+        // проваливаемся в карточку акта
         navigateTo('card', $tr.data('id'))
       })
     })

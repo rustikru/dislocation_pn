@@ -1,6 +1,6 @@
 <?php
 session_start();
-// Блокируем устаревшие браузеры
+// Блокируем устаревшие браузеры (старый Firefox и пр.)
 require_once __DIR__ . '/browser_check.php';
 
 include('../login.php');
@@ -9,7 +9,7 @@ $auth = new AuthClass();
 
 if (isset($_POST["logout"])) {
     $auth->out();
-    // При выходе очищаем редирект после авторизации, чтобы не было зацикливания
+    // При выходе очищаем redirect_after_auth
     unset($_SESSION['redirect_after_auth']);
     header("location: /index.php");
     exit();
@@ -17,10 +17,8 @@ if (isset($_POST["logout"])) {
 
 // Сохраняем текущий URL для редиректа 
 if (!$auth->isAuth()) {
-    if (
-        strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false &&
-        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false
-    ) {
+    if (strpos($_SERVER['REQUEST_URI'], '/select_station.php') === false && 
+        strpos($_SERVER['REQUEST_URI'], '/gu23/') === false) {
         $_SESSION['redirect_after_auth'] = $_SERVER['REQUEST_URI'];
     }
 }
@@ -28,10 +26,6 @@ require_once __DIR__ . '/GuActRepository.php';
 
 if ($auth->isAuth()) {
     if (GuActRepository::canAccess($conn1, $auth)) {
-        $jsVersion = @filemtime(__DIR__ . '/js.php') ?: time();
-        foreach (glob(__DIR__ . '/components/*.js') ?: [] as $jsFile) {
-            $jsVersion = max($jsVersion, @filemtime($jsFile) ?: $jsVersion);
-        }
         ?>
         <!DOCTYPE html>
         <html lang="ru">
@@ -46,8 +40,7 @@ if ($auth->isAuth()) {
             <!-- jQuery 3.7.1 (+migrate)  -->
             <script src="../jquery/jquery-3.7.1.js" type="text/javascript"></script>
             <script src="../js/general_function.js" type="text/javascript"></script>
-            <script src="js.php?v=<?= htmlspecialchars((string) $jsVersion, ENT_QUOTES, 'UTF-8') ?>"
-                type="text/javascript"></script>
+            <script type="module" src="components/app.js"></script>
             <script>
                 window.GU23_SESSION = {
                     login: <?= json_encode($_SESSION['login'] ?? '') ?>,
@@ -61,7 +54,7 @@ if ($auth->isAuth()) {
         <body>
             <header>
                 <?php
-                //include('../modules/site/main-top.php');
+                include('../modules/site/main-top.php');
                 ?>
             </header>
             <div class="app">
@@ -79,7 +72,7 @@ if ($auth->isAuth()) {
         </html>
         <?php
     } else {
-        // Нет доступа к модулю
+        // Нет доступа к модулю 
         ?>
         <!DOCTYPE html>
         <html lang="ru">
@@ -100,6 +93,7 @@ if ($auth->isAuth()) {
                     нет роли в модуле ГУ-23.<br>
                     Обратитесь к администратору.
                 </p>
+                <!-- <a href="/index.php" style="color:var(--info,#566b86);font-size:13px">← На главную</a> -->
             </div>
         </body>
 
@@ -108,6 +102,7 @@ if ($auth->isAuth()) {
         exit();
     }
 } else {
+
     $_SESSION['redirect_after_auth'] = '/gu23/index.php';
     header("location: /index.php");
     exit();

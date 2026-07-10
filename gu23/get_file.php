@@ -1,9 +1,9 @@
 <?php
 /**
- * get_file.php — скачивание/просмотр.
+ * get_file.php — отдача приложения акта ГУ-23 на скачивание/просмотр.
+ * По образцу /get_document.php.
  *
  *   GET /gu23/get_file.php?id=<file_id>[&inline=1]
- * 
  */
 session_start();
 include('../login.php');

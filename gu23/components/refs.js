@@ -189,7 +189,7 @@ function showSignerForm(signer) {
       <div class="card" style="width:520px;max-width:96vw;padding:28px;position:relative">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <b style="font-size:16px">Подписант</b>
-          <button type="button" class="sf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
+          <button class="sf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
         <div class="frow" style="margin-bottom:14px">
           <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">ФИО</label>
@@ -208,9 +208,9 @@ function showSignerForm(signer) {
           <input class="inp sf-unit" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" class="btn ghost sf-cancel">Отмена</button>
-          ${!isNew ? `<button type="button" class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
-          <button type="button" class="btn sf-save">Сохранить</button>
+          <button class="btn ghost sf-cancel">Отмена</button>
+          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn sf-save">Сохранить</button>
         </div>
       </div>
     </div>
@@ -220,13 +220,8 @@ function showSignerForm(signer) {
   $modal.find('.sf-fio').focus()
 
   const close = () => $modal.remove()
-  const closeByButton = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    close()
-  }
 
-  $modal.find('.sf-close, .sf-cancel').on('click', closeByButton)
+  $modal.find('.sf-close, .sf-cancel').on('click', close)
   $modal.on('click', (e) => {
     if ($(e.target).is($modal)) close()
   })
@@ -234,7 +229,7 @@ function showSignerForm(signer) {
   $modal.find('.sf-toggle').on('click', () => {
     const msg =
       signer?.ACTIVE === 'Y'
-        ? 'Отключить подписанта?'
+        ? 'Деактивировать подписанта?'
         : 'Активировать подписанта?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
@@ -350,7 +345,7 @@ function showReasonForm(reason) {
       <div class="card" style="width:480px;max-width:96vw;padding:28px;position:relative">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <b style="font-size:16px">Причина составления</b>
-          <button type="button" class="rf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
+          <button class="rf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
         <div class="frow" style="margin-bottom:14px">
           <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Название <span style="color:red">*</span></label>
@@ -361,9 +356,9 @@ function showReasonForm(reason) {
           <select class="inp rf-kind" style="font-size:14px;padding:8px 10px">${kindOptions}</select>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" class="btn ghost rf-cancel">Отмена</button>
-          ${!isNew ? `<button type="button" class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
-          <button type="button" class="btn rf-save">Сохранить</button>
+          <button class="btn ghost rf-cancel">Отмена</button>
+          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          <button class="btn rf-save">Сохранить</button>
         </div>
       </div>
     </div>
@@ -373,20 +368,17 @@ function showReasonForm(reason) {
   $modal.find('.rf-name').focus()
 
   const close = () => $modal.remove()
-  const closeByButton = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    close()
-  }
 
-  $modal.find('.rf-close, .rf-cancel').on('click', closeByButton)
+  $modal.find('.rf-close, .rf-cancel').on('click', close)
   $modal.on('click', (e) => {
     if ($(e.target).is($modal)) close()
   })
 
   $modal.find('.rf-toggle').on('click', () => {
     const msg =
-      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
+      reason?.ACTIVE === 'Y'
+        ? 'Отключить причину?'
+        : 'Активировать причину?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
         if (r && r.ok) {

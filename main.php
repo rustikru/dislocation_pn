@@ -33,7 +33,7 @@ if ($auth->isAuth()&&$auth->getStationId() !== null){
         <link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
         <!-- НОВАЯ ТЕМА главной: верхнее меню, дерево путей, таблица вагонов (заявки не затрагиваются).
              Быстрое переключение на старый вид — закомментируйте строку ниже. -->
-        <link rel="stylesheet" href="css/main_new_theme.css?ver=11" type="text/css">
+        <link rel="stylesheet" href="css/main_new_theme.css?ver=14" type="text/css">
         <script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
         <script src="jquery/jquery-ui.js" type="text/javascript"></script>
         <script src="js/tree.js"></script>

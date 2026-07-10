@@ -5,7 +5,7 @@ export function escapeHtml(string) {
   })
 }
 
-// Из формата (YYYY-MM-DD HH:MM:SS) в формат (dd.mm.yyyy HH:MM)
+// Из формата БД (YYYY-MM-DD HH:MM:SS) в формат поля ввода (dd.mm.yyyy HH:MM)
 export function formatToInputDate(databaseDateStr) {
   if (!databaseDateStr) return ''
   const match = String(databaseDateStr).match(
@@ -16,7 +16,7 @@ export function formatToInputDate(databaseDateStr) {
     : ''
 }
 
-// Из формата (dd.mm.yyyy HH:MM) в формат (YYYY-MM-DD HH:MM)
+// Из формата поля ввода (dd.mm.yyyy HH:MM) в формат БД (YYYY-MM-DD HH:MM)
 export function formatToDatabaseDate(inputDateStr) {
   if (!inputDateStr) return ''
   const match = String(inputDateStr).match(
@@ -44,7 +44,7 @@ export function formatDate(databaseDateStr) {
   return match ? `${match[3]}.${match[2]}.${match[1]}` : '—'
 }
 
-//  миллисекунд из строки (локальное время)
+// Парсинг миллисекунд из строки формата ввода (локальное время)
 export function parseTimeToMilliseconds(inputDateStr) {
   const match = String(inputDateStr).match(
     /(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})/,
@@ -74,7 +74,7 @@ export function calculateDuration(startTimestamp, endTimestamp) {
   }
 }
 
-// Извлечение номеров вагонов из любого текста (из Excel, через запятую и т.д.)
+// Извлечение корректных номеров вагонов из любого текста (из Excel, через запятую и т.д.)
 export function parseWagonsFromText(rawText) {
   const seenWagons = {}
   const result = []

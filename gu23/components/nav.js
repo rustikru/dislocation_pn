@@ -10,18 +10,10 @@ export function drawNav() {
     navigationItems.push({ page: 'new', icon: 'add.svg', label: 'Создать акт' })
   }
 
-  navigationItems.push({
-    page: 'archive',
-    icon: 'archive.svg',
-    label: 'Архив актов',
-  })
+  navigationItems.push({ page: 'archive', icon: 'archive.svg', label: 'Архив актов' })
 
   if (hasPerm('MANAGE_REFS')) {
-    navigationItems.push({
-      page: 'refs',
-      icon: 'agenda.svg',
-      label: 'Справочники',
-    })
+    navigationItems.push({ page: 'refs', icon: 'agenda.svg', label: 'Справочники' })
   }
 
   if (hasPerm('MANAGE_ROLES')) {
@@ -34,7 +26,7 @@ export function drawNav() {
   const collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
   $nav.toggleClass('collapsed', collapsed)
 
-  // кнопка-переключатель
+  // кнопка-переключатель (иконка, как в Gemini)
   const $toggle = $(`
     <button class="navtoggle" title="${collapsed ? 'Развернуть меню' : 'Свернуть меню'}">
       <img src="/img/nav/sidebar.svg" alt="" width="22" height="22" style="flex-shrink:0">
@@ -65,4 +57,32 @@ export function drawNav() {
     })
     $nav.append($button)
   })
+
+  const $foot = $('<div class="foot"></div>')
+
+  // Показываем текущего пользователя
+  const sess = window.GU23_SESSION || {}
+  if (sess.login) {
+    const $user = $(`
+      <div style="padding:8px 11px 4px;border-top:1px solid var(--line);margin-top:6px">
+        <div style="font-size:11px;color:var(--muted);line-height:1.4">
+          <div style="font-weight:600;color:var(--ink2);font-size:12px">${sess.full_name || sess.login}</div>
+          <div style="font-family:var(--mono);font-size:10.5px">${sess.login}${sess.is_admin ? ' · admin' : ''}</div>
+        </div>
+      </div>
+    `)
+    $foot.append($user)
+  }
+
+  const $logout = $(`
+    <form method="post" action="index.php" style="margin-top:4px">
+      <input type="hidden" name="logout" value="1">
+      <button type="submit" class="navbtn" title="Выход" style="color:var(--rej);width:100%">
+        <span class="ic">⎋</span>
+        <span>Выход</span>
+      </button>
+    </form>
+  `)
+  //$foot.append($logout)
+  //$nav.append($foot)
 }

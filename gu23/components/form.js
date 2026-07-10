@@ -68,6 +68,7 @@ function showTypeSwitcher() {
 function showFormFields() {
   const $body = $('#form-body')
 
+  // Особенность для "акта Окончания простоя"
   // Акт окончания простоя создается только на основе акта на начало простоя
   if (activeDraft.type === 'end') {
     $body.append(`
@@ -106,10 +107,12 @@ function showFormFields() {
 
   if (dateRowHtml) {
     $body.append(`<div class="cols">${dateRowHtml}<div></div></div>`)
+    // Подключаем маску/обработку из внешних модулей для дат, которые используются в general_function.js
     if (typeof init_date_time_input === 'function') {
       init_date_time_input($('.datetime-inp'))
     }
 
+    // Послушаем дату
     $('#inp-startAt').on('blur', function () {
       activeDraft.startAt = validateAndGetDate($(this))
     })
@@ -135,7 +138,7 @@ function showFormFields() {
         `<option value="${s.CODE}" ${activeDraft.stationId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
     )
     .join('')
-  // Имя станции отправления для начального значения
+  // Имя станции отправления для начального значения автокомплита
   const stationFromName = (() => {
     const s = (references.stationsFromList || []).find(
       (s) => String(s.CODE) === String(activeDraft.stationFromId),
@@ -155,7 +158,7 @@ function showFormFields() {
     const prev = activeDraft.departmentCode
     activeDraft.departmentCode = this.value
     if (prev !== this.value) {
-      // Сбрасываем подписантов предприятия
+      // Сбрасываем подписантов предприятия — они могут не входить в новый цех
       activeDraft.signers = activeDraft.signers.map((s) =>
         s && !s.manual ? null : s,
       )
@@ -184,7 +187,7 @@ function showFormFields() {
     activeDraft.waybillNumber = this.value
   })
 
-  // Груз — по списку
+  // Груз — автокомплит по списку, допускается и свободный ввод
   const cargoItems = references.cargosList.map((c) => ({
     label: c.NAME || c.CODE,
     value: c.NAME || c.CODE,
@@ -197,6 +200,7 @@ function showFormFields() {
       activeDraft.cargoReference = it.value
     },
     function () {
+      // свободный ввод тоже сохраняем
       activeDraft.cargoReference = $('#auto-cargo').val()
     },
   )
@@ -218,7 +222,7 @@ function showFormFields() {
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
-  // Причина — из списка
+  // Причина — только из списка 
   initListAutocomplete(
     $('#auto-reason'),
     $('#reason-dropdown'),
@@ -354,7 +358,7 @@ function applySelectedStartAct(id, filterNums = null) {
     from: w.ST_FROM,
     to: w.ST_TO,
     cargo: w.CARGO,
-    weight: w.WEIGHT,
+    weight: w.WEIGHT
   }))
 
   if (filterNums) {
@@ -454,7 +458,7 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   )
 }
 
-// Инициализирует станции (gu23_search_station)
+// Инициализирует автокомплит станции (gu23_search_station)
 function initStationAC($inp, $dropdown, onSelect, onClear) {
   let timer = null
   let activeIdx = -1
@@ -536,7 +540,7 @@ function initStationAC($inp, $dropdown, onSelect, onClear) {
   )
 }
 
-// для станций отправления и назначения
+// Автокомплит для станций отправления и назначения
 function initStationAutocomplete() {
   initStationAC(
     $('#auto-stationTo'),
@@ -609,7 +613,7 @@ function loadWagonsDataFromDislocation() {
   */
   const rawText = $('#txt-wagons').val()
   const inputNums = parseWagonsFromText(rawText)
-
+  
   // Синхронизируем поле накладной из DOM до перерисовки
   activeDraft.waybillNumber = $('#inp-waybill').val() || ''
   if (!inputNums.length && !activeDraft.waybillNumber)
@@ -658,9 +662,10 @@ function loadWagonsDataFromDislocation() {
             from: row.ST_FROM,
             to: row.ST_TO,
             cargo: row.CARGO,
-            weight: row.WEIGHT,
+            weight: row.WEIGHT
+
           })
-          existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов
+          existingNumbers.add(wagonNumber) // Обновляем Set для проверки дубликатов внутри текущей партии
           addedCount++
         }
       } else if (wagonNumber && !existingNumbers.has(wagonNumber)) {
@@ -684,7 +689,7 @@ function loadWagonsDataFromDislocation() {
     // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
-        activeDraft.cargoReference = firstFound.CARGO //  груз
+        activeDraft.cargoReference = firstFound.CARGO  //  груз
       if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
@@ -697,7 +702,7 @@ function loadWagonsDataFromDislocation() {
         (b) =>
           `${b.n} (${b.by === 'waybill' ? 'накладная' : 'вагон'} — акт ${b.act})`,
       )
-      busyText = ` Пропущено: ${busy.length} — ${parts.join(', ')}.`
+      busyText = ` Пропущено занятых: ${busy.length} — ${parts.join(', ')}.`
     }
 
     // Текст про вагоны, добавленные без данных (не нашлись в дислокации)
@@ -714,7 +719,7 @@ function loadWagonsDataFromDislocation() {
       noData: noDataCount,
       text:
         `Запрошено ${inputNums.length} вагонов, найдено ${foundCount}, добавлено ${addedCount} новых.` +
-        //noDataText +
+        noDataText +
         busyText,
     }
 
@@ -870,7 +875,7 @@ function showSignersFields() {
     (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
   )*/
 
-  // Автоподстановка: для нового акта 0 заполняем текущим пользователем
+  // Автоподстановка: для нового акта слот 0 заполняем текущим пользователем
   if (!activeDraft.id && !activeDraft.signers[0]) {
     const myId = (window.GU23_SESSION || {}).user_id
     const me = myId
@@ -888,7 +893,7 @@ function showSignersFields() {
     }
   }
 
-  const manualSlots = [] // слоты в ручном режиме — для ФИО/должности
+  const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
 
   for (let i = 0; i < countNeeded; i++) {
     let signersList = []
@@ -907,7 +912,7 @@ function showSignersFields() {
       }
     }
 
-    // ID подписантов, уже выбранных в других списках (чтобы исключить дубли)
+    // ID подписантов, уже выбранных в других слотах (чтобы исключить дубли)
     const usedIds = activeDraft.signers
       .map((s, idx) => (idx !== i && s && !s.manual ? String(s.id) : null))
       .filter(Boolean)
@@ -924,7 +929,7 @@ function showSignersFields() {
 
     let inputHtml = ''
     if (isManual) {
-      // ранее введённые вручную записи
+      // подсказки для ручного ввода — ТОЛЬКО ранее введённые вручную записи
       // (из истории актов), без справочника предприятия/РЖД
       manualSlots.push({ slot: i, source: references.signersManualList })
       const ddStyle =
@@ -1009,6 +1014,7 @@ function showSignersFields() {
           stype: stype,
         }
       : null
+    // перерисовываем, чтобы обновить доступные варианты в других слотах
     showSignersFields()
   })
 
@@ -1030,8 +1036,7 @@ function showSignersFields() {
   })
 
   // Автокомплит для ручного ввода подписанта: по ФИО или должности.
-  // Совпадения ищутся из справочника соответствующего слота; выбор заполняет
-  // ФИО/должность/организацию (режим остаётся «Вручную», можно поправить).
+  // ФИО/должность/организацию 
   manualSlots.forEach(({ slot, source }) => {
     const items = (source || []).map((s) => ({
       // label содержит и ФИО, и должность — поиск работает по обоим
@@ -1094,7 +1099,8 @@ function validateForm(checkSigners) {
   if (!activeDraft.reasonId) errors.push('Не указана причина составления')
   if (!String(activeDraft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')
-
+  // Вагоны обязательны (добавляются из таблицы дислокации), груз — тоже.
+  // Накладная и груз — лишь помощники поиска вагонов, но груз обязателен к заполнению.
   if (!activeDraft.wagons.length)
     errors.push('Добавьте хотя бы один вагон (из таблицы дислокации)')
   if (
@@ -1106,7 +1112,8 @@ function validateForm(checkSigners) {
   if (!activeDraft.stationFromId) errors.push('Не указана ст. отправления')
   /* if (!activeDraft.stationToId && !activeDraft.waybillNumber)
     errors.push('Не указана ст. назначения') */
-  if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
+  if (!activeDraft.stationToId)
+    errors.push('Не указана ст. назначения')
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
   if (activeDraft.type === 'other' && !activeDraft.startAt)

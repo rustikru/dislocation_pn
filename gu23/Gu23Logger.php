@@ -63,7 +63,7 @@ class Gu23Logger
         self::write('DEBUG', $message, $context);
     }
 
-    /** Логировать исключение. */
+    /** Логировать исключение с трейсом. */
     public static function exception(\Throwable $e, string $action = ''): void
     {
         self::write('ERROR', get_class($e) . ': ' . $e->getMessage(), [

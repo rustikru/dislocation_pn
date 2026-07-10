@@ -1,6 +1,6 @@
 <?php
 /**
- * approve.php — согласования акта ГУ-23 по HMAC-ссылке из письма.
+ * approve.php — страница согласования акта ГУ-23 по HMAC-ссылке из письма.
  * 
  */
 ini_set('display_errors', '0');
@@ -48,14 +48,14 @@ if (!$act) {
 $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? '#' . $actId);
 
 // Если статус акта аннулирован, мы его не подписываем
-if ($act['STATUS'] === 'annulled') {
+if ($act['STATUS'] === 'annulled'){
     renderPage('Акт аннулирован', "
         <p>Акт уже аннулирован.</p>
     ");
     exit;
 }
 
-if ($act['STATUS'] === 'closed') {
+if ($act['STATUS'] === 'closed'){
     renderPage('Акт закрыт', "
         <p>Акт уже закрыт.</p>
     ");

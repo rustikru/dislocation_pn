@@ -76,15 +76,14 @@ body {
   flex: 0 0 auto;
 }
 /* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту.
-   Нижний отступ 52px резервирует полосу под свёрнутое окно «Заявки»
-   (position:absolute, bottom:5px, высота ~44px), чтобы оно не
-   перекрывало прижатую к низу строку «Итого» таблицы. */
+   Окно «Заявки» поднято отдельно, поэтому низ таблицы не резервируется
+   пустой полосой. */
 .main-cols {
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
   gap: 8px;
-  padding: 8px 0 52px;
+  padding: 8px 0 8px;
   overflow: hidden;
 }
 /* height:100% (а не auto) принципиален: с height:auto высота flex-строки
@@ -277,15 +276,28 @@ aside {
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);   /* очерченная область, не «бесконечная» */
   border-radius: 8px;
+  overflow: hidden;
+}
+aside > div {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Панель «Доп. кнопки» */
 .add-btn-window {
+  flex: 0 0 auto;
   border: 1px solid var(--nt-line);
   background: var(--nt-panel-2);
   border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 8px;
 }
 .add-btn-titlebar {
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 5px 8px;
   border: 0;
   border-bottom: 1px solid var(--nt-line-soft);
   background: transparent;
@@ -297,6 +309,11 @@ aside {
   border: 1px solid var(--nt-line);
   background: var(--nt-panel);
   border-radius: 6px;
+}
+.contex-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* Селектор станции в дереве */
@@ -349,19 +366,24 @@ section {
   border: 1px solid var(--nt-line);
   border-radius: 8px;
   background: var(--nt-bg);
-  padding: 8px;
+  padding: 0;
+  overflow: auto;
 }
 
 .addInfoTable {
   background: var(--nt-panel);
-  border: 1px solid var(--nt-line);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   border-spacing: 0;
-  border-collapse: separate;
+  border-collapse: collapse;
   text-align: left;
   font-family: var(--nt-sans);
   font-size: 12.5px;
   color: var(--nt-ink);
+  float: left;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 /* Шапка в одну строку (br из разметки убраны), компактная — как в макете */
 .addInfoTable th {
@@ -378,23 +400,30 @@ section {
   text-align: left;
   padding: 8px 9px;
   border-bottom: 1px solid var(--nt-line);
+  border-right: 1px solid var(--nt-line-soft);
   vertical-align: middle;
   white-space: nowrap;
   line-height: 1.2;
+  background-clip: padding-box;
 }
 .addInfoTable tbody td {
   padding: 6px 9px;
   border-bottom: 1px solid var(--nt-line-soft);
+  border-right: 1px solid var(--nt-line-soft);
   vertical-align: middle;
   white-space: nowrap;
+  background-clip: padding-box;
 }
-/* Нейтральная зебра вместо зелёной */
-.addInfoTable tbody tr:nth-child(odd)  { background: var(--nt-panel); }
-.addInfoTable tbody tr:nth-child(even) { background: var(--nt-panel-2); }
+/* Нейтральная зебра на ячейках, а не на tr: так не появляются щели. */
+.addInfoTable tbody tr:nth-child(odd) td  { background: var(--nt-panel); }
+.addInfoTable tbody tr:nth-child(even) td { background: var(--nt-panel-2); }
 .addInfoTable tbody tr:hover td { background: var(--nt-sel-bg); }
 
-/* Итоговая строка — закреплена снизу, хорошо заметна */
-.addInfoTable tbody tr#addInfoTableTotalTr,
+/* Итоговая строка: sticky только на ячейках. Sticky на tr в таблицах
+   в Chrome/Safari даёт рассинхрон колонок и визуальные щели. */
+.addInfoTable tbody tr#addInfoTableTotalTr {
+  position: static;
+}
 .addInfoTable tbody tr#addInfoTableTotalTr td {
   position: sticky;
   bottom: 0;
@@ -403,7 +432,22 @@ section {
   color: var(--nt-accent-deep);
   font-weight: 700;
   border-top: 2px solid var(--nt-accent);
+  border-bottom: 0;
   box-shadow: 0 -3px 8px rgba(20,30,45,.10);
+}
+
+.addInfoTable th:last-child,
+.addInfoTable td:last-child {
+  border-right: 0;
+}
+
+.addInfoTable .yellow_row,
+.yellow_row {
+  display: inline-block;
+  min-width: 64px;
+  padding: 0 3px;
+  background: #e5ff63;
+  line-height: 1.25;
 }
 
 /* Сохраняем семантические пометки номеров вагонов */
@@ -442,34 +486,43 @@ section {
 /* Отступ между деревом путей и таблицей задаётся gap у .main-cols */
 
 /* =====================================================================
-   5. «Доп. кнопки» — аккуратная сетка чипов
+   5. «Доп. кнопки» — компактный список команд
    ===================================================================== */
 #add_btn_content {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px;
-  align-items: flex-start;
+  max-height: 178px;
+  overflow: auto;
+  padding: 6px;
 }
 #add_btn_content .btnFind {
-  margin: 0;
-  flex: 0 0 auto;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  margin: 0 0 5px;
+  padding: 4px 10px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.2;
+}
+#add_btn_content .btnFind:last-child {
+  margin-bottom: 0;
 }
 
 /* =====================================================================
    6. ЗАЯВКИ — в той же теме (расположение как раньше)
    ===================================================================== */
 .request-window {
-  right: 0;
-  bottom: 5px;                  /* как в оригинале */
+  right: 8px;
+  bottom: 40px;                 /* вплотную над sticky-итогами таблицы */
   width: 520px;
   font-family: var(--nt-sans);
   font-size: 12.5px;
   color: var(--nt-ink);
   background: var(--nt-panel);
   border: 1px solid var(--nt-line);
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgba(20,30,45,.18);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 10px rgba(20,30,45,.10);
   padding: 0;
   overflow: hidden;
   z-index: 50;

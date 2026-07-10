@@ -1,0 +1,589 @@
+/* =====================================================================
+   НОВАЯ ТЕМА главной страницы (main.php)
+   Накладной слой поверх site_layout.css / tree.css.
+   Охват: верхнее меню (шапка), иерархия ж/д путей (дерево), таблица
+   вагонов (.addInfoTable) + общий фон/шрифты.
+   НЕ затрагивает: заявки (request_window.css / .request-*).
+   Быстрое переключение: закомментировать <link> на этот файл в main.php.
+   Палитра — промышленный зелёный (Метафракс); цвета в hex для
+   совместимости со старыми браузерами.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --nt-bg:        #e9edf1;
+  --nt-panel:     #ffffff;
+  --nt-panel-2:   #f5f7f9;
+  --nt-line:      #d7dee5;
+  --nt-line-soft: #e6ebf0;
+
+  --nt-ink:   #1d2733;
+  --nt-ink-2: #4a5666;
+  --nt-ink-3: #7c8896;
+
+  --nt-accent:      #3d7a5f;
+  --nt-accent-deep: #2f5f49;
+  --nt-accent-soft: #e7f1ec;
+  --nt-accent-line: #c2dccf;
+
+  --nt-ok:     #3f8a5a;
+  --nt-ok-bg:  #e6f4ea;
+  --nt-warn:   #a9791f;
+  --nt-warn-bg:#f6ecd4;
+  --nt-err:    #bb4a36;
+  --nt-err-bg: #f7e4df;
+
+  --nt-sel-bg: #e0eee7;
+  --nt-hi:     #f2e24a;
+
+  --nt-shadow: 0 1px 2px rgba(20,30,45,.05), 0 6px 20px rgba(20,30,45,.07);
+  --nt-r: 7px;
+  --nt-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --nt-sans: "IBM Plex Sans", system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+
+/* ============ Общий фон / шрифт ============ */
+body {
+  font-family: var(--nt-sans);
+  font-weight: 400;
+  background-color: var(--nt-bg);
+  color: var(--nt-ink);
+  border-top: 4px solid var(--nt-accent);
+  /* сглаживание — без него шрифт выглядит толще, чем в прототипе */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* страница не скроллится целиком: единственные вертикальные скроллы —
+     внутри дерева (aside) и таблицы (section); иначе окно «Заявки»
+     (absolute к документу) съезжает относительно строки «Итого» */
+  overflow: hidden;
+}
+/* Во весь экран — без пустых зон по бокам.
+   Flex-каркас: шапка и поиск сверху, колонки занимают ровно остаток высоты,
+   поэтому нижние границы панелей видны и не уезжают за экран. */
+.wrapper {
+  width: 100%;
+  height: calc(100vh - 4px);
+  margin: 0;
+  background-color: var(--nt-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.wrapper > header,
+.wrapper > .options {
+  flex: 0 0 auto;
+}
+/* Ряд колонок: дерево путей + таблица — занимает всю оставшуюся высоту.
+   Окно «Заявки» поднято отдельно, поэтому низ таблицы не резервируется
+   пустой полосой. */
+.main-cols {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px 0 8px;
+  overflow: hidden;
+}
+/* height:100% (а не auto) принципиален: с height:auto высота flex-строки
+   считается по контенту колонок, и длинное дерево вагонов (сотни узлов)
+   раздувает ряд — секция с таблицей уезжает за нижний край окна вместе
+   со строкой «Итого». Жёсткая высота заставляет дерево и таблицу
+   скроллиться каждый внутри своей колонки. */
+.main-cols > aside {
+  float: none;
+  width: 20%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 0 0 20%;
+  box-sizing: border-box;
+}
+.main-cols > section {
+  float: none;
+  width: auto;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* =====================================================================
+   1. ВЕРХНЕЕ МЕНЮ (шапка)
+   ===================================================================== */
+header {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+}
+
+/* Полоса навигации */
+.menu {
+  height: auto;
+  min-height: 42px;
+  background: var(--nt-panel);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.menu li { z-index: 10; }
+
+.menu li a {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 15px;
+  line-height: 42px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-family: var(--nt-sans);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--nt-ink-2);
+  text-shadow: none;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.menu li:hover > a {
+  color: var(--nt-ink);
+  background: var(--nt-panel-2);
+}
+.menu li.active > a,
+.menu li:first-child > a {        /* первый пункт подсвечен как активный раздел */
+  color: var(--nt-accent-deep);
+  border-bottom-color: var(--nt-accent);
+  font-weight: 600;
+}
+.menu-station,
+.menu-heading {
+  color: var(--nt-accent-deep) !important;
+  font-size: 14px !important;
+}
+
+/* Выпадающие подменю */
+.menu ul {
+  top: 42px;
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  box-shadow: var(--nt-shadow);
+  padding: 4px;
+}
+.menu ul li a {
+  width: 210px;
+  border: 0;
+  border-radius: 6px;
+  line-height: 32px;
+  padding: 0 12px;
+  margin: 0;
+}
+.menu li:hover > ul li { height: 34px; }
+.menu li:hover > ul li a:hover { background: var(--nt-sel-bg); color: var(--nt-accent-deep); }
+
+/* Правый блок: приветствие + выход */
+.headerstation { line-height: normal; }
+.headerfullname {
+  border: 0;
+  text-shadow: none;
+  color: var(--nt-ink-2);
+  font-family: var(--nt-sans);
+  font-weight: 500;
+  font-size: 12.5px;
+  line-height: 42px;
+  padding: 0 14px;
+  margin: 0;
+}
+.logoutbtn { line-height: 42px; margin-right: 16px; }
+.logoutbtn input[type="submit"] {
+  color: var(--nt-accent-deep);
+  font-family: var(--nt-sans);
+  font-weight: 600;
+  font-size: 12.5px;
+  text-decoration: none !important;
+}
+.logoutbtn input[type="submit"]:hover { text-decoration: underline !important; }
+
+.headermt {                       /* строка тех. обслуживания — оставляем заметной */
+  color: var(--nt-err);
+  font-size: 16px;
+}
+
+/* =====================================================================
+   2. ТУЛБАР / ПОИСК (.options)
+   ===================================================================== */
+.options {
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+  background: var(--nt-panel-2);
+  padding: 9px 16px;
+}
+.options label {
+  color: var(--nt-ink-2);
+  font-size: 12.5px;
+  margin-right: 8px;
+}
+.inputFind {
+  height: auto;
+  text-align: left;
+  font-family: var(--nt-mono);
+  font-size: 13px;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: var(--nt-r);
+  padding: 6px 10px;
+  transition: border-color .12s, box-shadow .12s;
+}
+.inputFind:focus {
+  outline: 0;
+  border-color: var(--nt-accent);
+  box-shadow: 0 0 0 3px var(--nt-accent-soft);
+}
+
+/* Кнопки (поиск и доп. кнопки) — единый современный вид */
+.btnFind {
+  height: auto;
+  line-height: 1.3;
+  font-family: var(--nt-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btnFind:hover { background: var(--nt-panel-2); border-color: var(--nt-ink-3); }
+/* Кнопка «Поиск» в тулбаре — акцентная */
+.options .btnFind {
+  background: var(--nt-accent);
+  border-color: var(--nt-accent);
+  color: #fff;
+}
+.options .btnFind:hover {
+  background: var(--nt-accent-deep);
+  border-color: var(--nt-accent-deep);
+}
+
+/* =====================================================================
+   3. ИЕРАРХИЯ Ж/Д ПУТЕЙ (дерево)
+   ===================================================================== */
+aside {
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);   /* очерченная область, не «бесконечная» */
+  border-radius: 8px;
+  overflow: hidden;
+}
+aside > div {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Панель «Доп. кнопки» */
+.add-btn-window {
+  flex: 0 0 auto;
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel-2);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 8px;
+}
+.add-btn-titlebar {
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--nt-line-soft);
+  background: transparent;
+  color: var(--nt-ink);
+  border-radius: 8px 8px 0 0;
+}
+.request-title { font-family: var(--nt-sans); font-weight: 600; }
+.add-btn-button {
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel);
+  border-radius: 6px;
+}
+.contex-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Селектор станции в дереве */
+.selectStationClass {
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-radius: var(--nt-r);
+  padding: 5px 8px;
+}
+
+/* Узлы дерева */
+.tree_Content {
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin-left: 0.4em;
+}
+.tree_content_railway { font-weight: 500; color: var(--nt-accent-deep); }
+.tree_Content:hover { background: var(--nt-panel-2); }
+
+/* Выделение узла / результат поиска */
+.tree_selected,
+.tree_selected > .tree_Content,
+li.tree_Node.tree_selected > .tree_Content {
+  background: var(--nt-sel-bg) !important;
+  color: var(--nt-accent-deep);
+  border-radius: 5px;
+}
+.tree_selectedFind,
+.tree_selectedFind > .tree_Content {
+  background: var(--nt-hi) !important;
+  border-radius: 5px;
+}
+
+/* Подсветка узлов, требующих внимания (сохраняем смысл, делаем мягче) */
+.need_fill_attr > div.tree_Content { background-color: var(--nt-err-bg); color: var(--nt-err); }
+.wrong_number   > div.tree_Content { background-color: var(--nt-warn-bg); color: var(--nt-warn); }
+
+/* =====================================================================
+   4. ДЕТАЛЬНАЯ ТАБЛИЦА ПО ВАГОНУ (.addInfoTable)
+   ===================================================================== */
+/* Очерченная область таблицы: серое «полотно» с рамкой, белая таблица-карточка */
+section {
+  border: 1px solid var(--nt-line);
+  border-radius: 8px;
+  background: var(--nt-bg);
+  padding: 0;
+  overflow: auto;
+}
+
+.addInfoTable {
+  background: var(--nt-panel);
+  border: 0;
+  border-radius: 0;
+  border-spacing: 0;
+  border-collapse: collapse;
+  text-align: left;
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+  float: left;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+/* Шапка в одну строку (br из разметки убраны), компактная — как в макете */
+.addInfoTable th {
+  height: auto;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--nt-panel-2);
+  color: var(--nt-ink-2);
+  font-weight: 600;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  text-align: left;
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--nt-line);
+  border-right: 1px solid var(--nt-line-soft);
+  vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.2;
+  background-clip: padding-box;
+}
+.addInfoTable tbody td {
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--nt-line-soft);
+  border-right: 1px solid var(--nt-line-soft);
+  vertical-align: middle;
+  white-space: nowrap;
+  background-clip: padding-box;
+}
+/* Нейтральная зебра на ячейках, а не на tr: так не появляются щели. */
+.addInfoTable tbody tr:nth-child(odd) td  { background: var(--nt-panel); }
+.addInfoTable tbody tr:nth-child(even) td { background: var(--nt-panel-2); }
+.addInfoTable tbody tr:hover td { background: var(--nt-sel-bg); }
+
+/* Итоговая строка: sticky только на ячейках. Sticky на tr в таблицах
+   в Chrome/Safari даёт рассинхрон колонок и визуальные щели. */
+.addInfoTable tbody tr#addInfoTableTotalTr {
+  position: static;
+}
+.addInfoTable tbody tr#addInfoTableTotalTr td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: var(--nt-accent-soft);
+  color: var(--nt-accent-deep);
+  font-weight: 700;
+  border-top: 2px solid var(--nt-accent);
+  border-bottom: 0;
+  box-shadow: 0 -3px 8px rgba(20,30,45,.10);
+}
+
+.addInfoTable th:last-child,
+.addInfoTable td:last-child {
+  border-right: 0;
+}
+
+.addInfoTable .yellow_row,
+.yellow_row {
+  display: inline-block;
+  min-width: 64px;
+  padding: 0 3px;
+  background: #e5ff63;
+  line-height: 1.25;
+}
+
+/* Сохраняем семантические пометки номеров вагонов */
+.true-car-number  { border: 1px solid var(--nt-ok)  !important; }
+.wrong-car-number { border: 1px solid var(--nt-err) !important; }
+.FromUgl { color: #2f6bdd; }
+
+/* Метки статусов вагона (колонка «Статус»): Годен — зелёная,
+   Не годен — красная, Ограничение/ремонт — жёлтая. Пилюля с точкой,
+   как в макете (.tag). Разметку добавляет status_tag_html()
+   в context_menu.js. */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.status-tag .d {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.status-tag.ok   { color: var(--nt-ok);  background: var(--nt-ok-bg);  border-color: #bfdec9; }
+.status-tag.ok .d   { background: var(--nt-ok); }
+.status-tag.warn { color: #7a5a17;       background: var(--nt-warn-bg); border-color: #e3cf9a; }
+.status-tag.warn .d { background: var(--nt-warn); }
+.status-tag.err  { color: var(--nt-err); background: var(--nt-err-bg); border-color: #e7bdb3; }
+.status-tag.err .d  { background: var(--nt-err); }
+
+/* Отступ между деревом путей и таблицей задаётся gap у .main-cols */
+
+/* =====================================================================
+   5. «Доп. кнопки» — компактный список команд
+   ===================================================================== */
+#add_btn_content {
+  max-height: 178px;
+  overflow: auto;
+  padding: 6px;
+}
+#add_btn_content .btnFind {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  margin: 0 0 5px;
+  padding: 4px 10px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.2;
+}
+#add_btn_content .btnFind:last-child {
+  margin-bottom: 0;
+}
+
+/* =====================================================================
+   6. ЗАЯВКИ — в той же теме (расположение как раньше)
+   ===================================================================== */
+.request-window {
+  right: 8px;
+  bottom: 40px;                 /* вплотную над sticky-итогами таблицы */
+  width: 520px;
+  font-family: var(--nt-sans);
+  font-size: 12.5px;
+  color: var(--nt-ink);
+  background: var(--nt-panel);
+  border: 1px solid var(--nt-line);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 10px rgba(20,30,45,.10);
+  padding: 0;
+  overflow: hidden;
+  z-index: 50;
+}
+.request-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-bottom: 1px solid var(--nt-line);
+  border-radius: 0;
+  background: var(--nt-panel-2);
+  color: var(--nt-ink);
+  font-family: var(--nt-sans);
+  font-weight: 600;
+  padding: 10px 12px;
+}
+/* Старые кнопки титлбара позиционировались через position:absolute с
+   магическим right:34.4em, рассчитанным под старую ширину окна 550px —
+   при новой ширине (520px) это уводило кнопку "добавить" почти
+   полностью за пределы окна и обрезало заголовок "Заявки".
+   Переводим на нормальный flex-поток. */
+.request-titlebar .request-title {
+  float: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.request-titlebar .request-button {
+  position: relative;
+  top: auto;
+  right: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.request-content {
+  padding: 8px;
+  max-height: 26em;
+}
+.request-item {
+  border: 1px solid var(--nt-line-soft);
+  border-radius: 8px;
+  height: auto;
+  min-height: 2em;
+  margin-top: 6px;
+  background: var(--nt-panel);
+  transition: border-color .12s;
+}
+.request-item:first-child { margin-top: 0; }
+.request-item:hover { border-color: var(--nt-ink-3); }
+.request-item-title { font-weight: 600; color: var(--nt-ink); }
+.request-item-need-close { background-color: var(--nt-ok-bg); border-color: var(--nt-ok); }
+.request-item-title-criticality { background-color: var(--nt-err); }
+
+/* Кнопки в заявках (свернуть/добавить/просмотр) — в стиле темы */
+.request-button {
+  border: 1px solid var(--nt-line);
+  background: var(--nt-panel);
+  border-radius: 6px;
+}
+.request-button:hover {
+  border-color: var(--nt-ink-3);
+  background: var(--nt-panel-2);
+}
+.request-button-active { border-color: var(--nt-accent) !important; }

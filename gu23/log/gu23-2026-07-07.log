@@ -1,0 +1,4 @@
+[2026-07-07 09:37:32] [ERROR] user=- ip=172.16.25.132 uri=/data.php | action_failed | {"action":"gu23_save_act","msg":"Недостаточно прав"}
+[2026-07-07 09:44:07] [ERROR] user=- ip=172.16.25.132 uri=/data.php | action_failed | {"action":"gu23_role_perms","msg":"Недостаточно прав"}
+[2026-07-07 09:44:08] [ERROR] user=- ip=172.16.25.132 uri=/data.php | action_failed | {"action":"gu23_roles_users","msg":"Недостаточно прав"}
+[2026-07-07 15:29:21] [ERROR] user=KATKOVAEG ip=172.16.5.166 uri=/data.php | action_failed | {"action":"gu23_del_act","msg":"Недостаточно прав"}
