@@ -24,9 +24,6 @@ class Gu23Logger
     private static function write(string $level, string $message, array $context = []): void
     {
         $dir = self::dir();
-        if (!is_dir($dir)) {
-            return; //
-        }
 
         $file = $dir . '/gu23-' . date('Y-m-d') . '.log';
         $ts = date('Y-m-d H:i:s');
@@ -40,7 +37,13 @@ class Gu23Logger
             $line .= ' | ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
-        @file_put_contents($file, $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+        $written = false;
+        if (is_dir($dir)) {
+            $written = @file_put_contents($file, $line . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
+        }
+        if (!$written) {
+            error_log('[GU23] ' . $line);
+        }
     }
 
     public static function error(string $message, array $context = []): void
@@ -94,8 +97,16 @@ class Gu23Logger
         $skip = ['password', 'pwd', 'token', 'token_sig', 'secret'];
         $out = [];
         foreach ($_POST as $k => $v) {
-            $out[$k] = in_array(strtolower($k), $skip, true) ? '***' : (is_string($v) ? mb_substr($v, 0, 200) : $v);
+            $out[$k] = in_array(strtolower($k), $skip, true) ? '***' : (is_string($v) ? self::cut($v, 200) : $v);
         }
         return $out;
+    }
+
+    private static function cut(string $value, int $length): string
+    {
+        if (function_exists('mb_substr')) {
+            return mb_substr($value, 0, $length);
+        }
+        return substr($value, 0, $length);
     }
 }
