@@ -1,4 +1,0 @@
-[2026-07-08 17:27:51] [ERROR] user=- ip=172.16.5.201 uri=/data.php | action_failed | {"action":"gu23_roles_users","msg":"Недостаточно прав"}
-[2026-07-08 17:27:51] [ERROR] user=- ip=172.16.5.201 uri=/data.php | action_failed | {"action":"gu23_roles_users","msg":"Недостаточно прав"}
-[2026-07-08 17:27:55] [ERROR] user=- ip=172.16.5.201 uri=/data.php | action_failed | {"action":"gu23_roles_users","msg":"Недостаточно прав"}
-[2026-07-08 17:27:56] [ERROR] user=- ip=172.16.5.201 uri=/data.php | action_failed | {"action":"gu23_role_perms","msg":"Недостаточно прав"}

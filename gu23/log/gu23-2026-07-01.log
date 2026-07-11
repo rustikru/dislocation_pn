@@ -1,1 +1,0 @@
-[2026-07-01 13:27:17] [ERROR] user=user1 ip=172.16.25.132 uri=/data.php | action_failed | {"action":"gu23_get_act","msg":"Акт не найден"}
