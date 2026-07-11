@@ -429,7 +429,7 @@ class GuActRepository
         $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
         $hasSigned = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
-        $limit = 50;
+        $limit = 20;
 
         // Общее количество под фильтры (для пагинации)
         $total = (int) $this->callFunc(
