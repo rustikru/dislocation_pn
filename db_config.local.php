@@ -39,6 +39,8 @@ if (empty($_SESSION['is_auth'])) {
     $_SESSION['is_auth_admin'] = true;
     $_SESSION['login'] = 'USER1';
     $_SESSION['user_id'] = 1;
+    //$_SESSION['login'] = 'BOYKOAD';
+    //$_SESSION['user_id'] = 247;
     $_SESSION['full_name'] = 'Локальный';
     $_SESSION['enterprise'] = 'МТФ';
     $_SESSION['flag_change_pwd'] = 'N';

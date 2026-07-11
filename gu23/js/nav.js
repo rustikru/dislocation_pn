@@ -96,6 +96,6 @@ export function drawNav() {
       </button>
     </form>
   `)
-  //$foot.append($logout)
-  //$nav.append($foot)
+  $foot.append($logout)
+  $nav.append($foot)
 }

@@ -22,7 +22,7 @@ export const applicationState = {
 
 /** Проверить наличие полномочия у текущего пользователя */
 export function hasPerm(code) {
-  return applicationState.userPerms.has(code)
+  return applicationState.isAdmin === true || applicationState.userPerms.has(code)
 }
 
 /** Текущий пользователь — администратор */
