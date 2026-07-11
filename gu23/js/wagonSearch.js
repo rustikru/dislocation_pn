@@ -4,20 +4,10 @@ import { parseWagonsFromText, escapeHtml, formatDate } from './utils.js'
 import { showStatusChip, showTypeChip } from './ui.js'
 
 export function showWagonSearch(container) {
-  $(container).html(`
-    <div class="phead">
-      <h1>Поиск по вагону</h1>
-      <p>Все акты, где участвовал вагон</p>
-    </div>
-    <div class="filters">
-      <div class="searchbox">
-        <input type="text" class="inp" id="wagon-search-input" placeholder="Номер вагона…">
-      </div>
-      <button class="btn" id="btn-wagon-search-run">Найти</button>
-    </div>
-    <div id="wagon-search-results"></div>
-  `)
+  $(container).load('pages/wagon_search.php', showWagonSearchPage)
+}
 
+function showWagonSearchPage() {
   const runSearch = () => {
     const rawValue = $('#wagon-search-input').val()
     const parsedNumber = parseWagonsFromText(rawValue)[0] || rawValue.trim()

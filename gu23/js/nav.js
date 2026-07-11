@@ -1,22 +1,34 @@
 import { applicationState, setActiveDraft, hasPerm } from './state.js'
 import { navigateTo } from './app.js'
 
-const NAV_COLLAPSE_KEY = 'gu23_nav_collapsed'
+const NAV_COLLAPSE_KEY = 'gu23_nav_collapsed' // хранения состояния «свёрнутости»
 
+// Рисуем навигацию
 export function drawNav() {
   const navigationItems = []
 
   if (hasPerm('CREATE_ACT')) {
+    // Создать акт
     navigationItems.push({ page: 'new', icon: 'add.svg', label: 'Создать акт' })
   }
-
-  navigationItems.push({ page: 'archive', icon: 'archive.svg', label: 'Архив актов' })
+  // Архив актов
+  navigationItems.push({
+    page: 'archive',
+    icon: 'archive.svg',
+    label: 'Архив актов',
+  })
 
   if (hasPerm('MANAGE_REFS')) {
-    navigationItems.push({ page: 'refs', icon: 'agenda.svg', label: 'Справочники' })
+    // Справочники
+    navigationItems.push({
+      page: 'refs',
+      icon: 'agenda.svg',
+      label: 'Справочники',
+    })
   }
 
   if (hasPerm('MANAGE_ROLES')) {
+    // Роли
     navigationItems.push({ page: 'roles', icon: 'user.svg', label: 'Роли' })
   }
 
@@ -26,7 +38,7 @@ export function drawNav() {
   const collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === '1'
   $nav.toggleClass('collapsed', collapsed)
 
-  // кнопка-переключатель (иконка, как в Gemini)
+  // кнопка-переключатель (боковая)
   const $toggle = $(`
     <button class="navtoggle" title="${collapsed ? 'Развернуть меню' : 'Свернуть меню'}">
       <img src="/img/nav/sidebar.svg" alt="" width="22" height="22" style="flex-shrink:0">
@@ -52,6 +64,7 @@ export function drawNav() {
     `)
 
     $button.on('click', () => {
+      // Если нажали на «Создать акт», то сбрасываем активный черновик
       if (item.page === 'new') setActiveDraft(null)
       navigateTo(item.page)
     })

@@ -22,26 +22,16 @@ export function showCard(container) {
       $(container).append('<div class="empty-state">Акт не найден</div>')
       return
     }
-    showCardView(container, data)
+    $(container).load('pages/card.php', () => {
+      showCardView(data)
+    })
   })
 }
 
-function showCardView(container, data) {
+function showCardView(data) {
   const act = data.act
 
-  $(container).html(`
-    <div class="phead">
-      <button class="btn ghost" id="btn-back-to-archive">Назад</button>
-      <h1 style="font-family:var(--mono);font-size:18px; margin-left: 16px;">${act.ACT_NUMBER}</h1>
-      <div class="spacer"></div>
-    </div>
-    <div id="annulled-banner-place"></div>
-    <div class="grid-layout" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
-      <div id="card-left-column"></div>
-      <div id="card-right-column"></div>
-    </div>
-  `)
-
+  $('#card-act-number').text(act.ACT_NUMBER)
   $('#btn-back-to-archive').on('click', () => navigateTo('archive'))
 
   showDetailsBlock(act)
@@ -207,24 +197,9 @@ function showDetailsBlock(act) {
          </a>`
       : ''
 
-  $('#card-left-column')
-    .append(
-      `
-    <div class="card">
-      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <b>Реквизиты акта</b>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${downloadHtml}
-          <div class="actions-dd" id="actions-dd" style="display:none">
-            <button class="btn icon-btn" id="btn-actions" title="Ещё действия">...</button>
-            <div class="actions-menu" id="actions-menu"></div>
-          </div>
-        </div>
-      </div>
-      <dl class="kv" style="padding:16px 18px">${dlHtml}</dl>
-    </div>
-  `,
-    )
+  $('#card-report-buttons').html(downloadHtml)
+  $('#card-details-list')
+    .html(dlHtml)
     .find('.link-act')
     .on('click', function (e) {
       e.preventDefault()
@@ -251,27 +226,8 @@ function showWagonsBlock(wagons) {
     )
     .join('')
 
-  $('#card-left-column').append(`
-    <div class="card" style="margin-top:16px">
-      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Вагоны (${wagons.length})</b></div>
-      <div style="overflow:auto;max-height:calc(100vh - 220px);min-height:360px">
-        <table class="tbl">
-          <thead>
-           
-            <tr><th>№ вагона</th>
-            <th>Накладная</th>
-            <th>Собственник</th>
-            <th>Род</th>
-            <th>Ст. отпр.</th><th>
-            Ст. назн.</th><th>Груз</th>
-            <th>Вес(кг)</th>
-            
-            </tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    </div>
-  `)
+  $('#card-wagons-title').text(`Вагоны (${wagons.length})`)
+  $('#card-wagons-rows').html(rowsHtml)
 }
 
 function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
@@ -359,15 +315,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       </div>`
   }
 
-  $('#card-right-column').append(`
-    <div class="card">
-      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>Подписанты</b></div>
-      <div style="padding:8px 16px 4px">
-        ${myBannerHtml}
-        ${listHtml}
-      </div>
-    </div>
-  `)
+  $('#card-signers-body').html(`${myBannerHtml}${listHtml}`)
 
   if (canSign) {
     $('#btn-sign-approve').on('click', () =>
@@ -457,18 +405,9 @@ function showAttachmentsBlock(act, files) {
     ? showFileSection('ОБЩИЕ', general) + showFileSection('ПОДПИСАННЫЕ', signed)
     : '<div class="muted" style="font-size:12.5px">Файлы не прикреплены.</div>'
 
-  const $block = $(`
-    <div class="card" style="margin-top:16px">
-      <div class="cardpad" style="border-bottom:1px solid var(--line);display:flex;align-items:center">
-        <b>Приложения</b>
-        <div style="flex:1"></div>
-        ${addBtn}
-      </div>
-      <div class="cardpad">${bodyHtml}</div>
-    </div>
-  `)
-
-  $('#card-right-column').append($block)
+  $('#card-files-buttons').html(addBtn)
+  $('#card-files-body').html(bodyHtml)
+  const $block = $('#card-files-block')
 
   $block.find('.file-cat-input').off('change.gu23Upload').on('change.gu23Upload', function () {
     const files = Array.from(this.files || [])
@@ -497,14 +436,7 @@ function showHistoryBlock(history) {
     )
     .join('')
 
-  $('#card-right-column').append(`
-    <div class="card" style="margin-top:16px">
-      <div class="cardpad" style="border-bottom:1px solid var(--line)"><b>История</b></div>
-      <div class="hist-container">
-        <ul class="hist" style="padding:0 18px">${itemsHtml}</ul>
-      </div>
-    </div>
-  `)
+  $('#card-history-list').html(itemsHtml)
 }
 
 function editDraftAct(data) {

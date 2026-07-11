@@ -16,35 +16,30 @@ export function showRefs(container) {
   refsPage = 1
   currentItems = []
 
-  $(container).html(`
-    <div class="phead" style="padding-bottom:10px">
-      <h2 style="margin:0;font-size:16px">Справочники</h2>
-    </div>
-    <div id="refs-tabs" style="display:flex;gap:3px;margin-bottom:10px;border-bottom:1px solid var(--line2)">
-      <button class="refs-tab" data-tab="signers" style="${tabStyle(true)}">Подписанты</button>
-      <button class="refs-tab" data-tab="reasons" style="${tabStyle(false)}">Причины</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <input class="inp" id="refs-search" value="" placeholder="Поиск…" style="flex:1;font-size:13px;height:34px;padding:0 10px;box-sizing:border-box">
-      <button class="btn sm" id="btn-add-ref" style="font-size:13px;height:34px;padding:0 14px;box-sizing:border-box;white-space:nowrap">+ Добавить</button>
-    </div>
-    <div id="refs-body"><div class="muted" style="font-size:13px">Загрузка…</div></div>
-  `)
+  $(container)
+    .load('pages/refs.php', () => {
+      bindRefsPage(container)
+      fetchTab()
+    })
+}
 
-  $(container).on('click', '.refs-tab', function () {
+function bindRefsPage(container) {
+  $(container).off('.refs')
+
+  setActiveTab()
+
+  $(container).on('click.refs', '.refs-tab', function () {
     const tab = $(this).data('tab')
     if (tab === refsTab) return
     refsTab = tab
     refsSearch = ''
     refsPage = 1
     $('#refs-search').val('')
-    $('.refs-tab').each(function () {
-      $(this).attr('style', tabStyle($(this).data('tab') === refsTab))
-    })
+    setActiveTab()
     fetchTab()
   })
 
-  $(container).on('input', '#refs-search', function () {
+  $(container).on('input.refs', '#refs-search', function () {
     clearTimeout(searchTimer)
     const val = $(this).val()
     searchTimer = setTimeout(() => {
@@ -54,12 +49,10 @@ export function showRefs(container) {
     }, 400)
   })
 
-  $(container).on('click', '#btn-add-ref', () => {
+  $(container).on('click.refs', '#btn-add-ref', () => {
     if (refsTab === 'signers') showSignerForm(null)
     else showReasonForm(null)
   })
-
-  fetchTab()
 }
 
 function fetchTab() {
@@ -79,7 +72,8 @@ function fetchTab() {
     }
     currentItems = data.items || []
     refsPageSize = data.page_size || REFS_PAGE_SIZE
-    if (refsTab === 'signers') showSignersList(currentItems, data.total, data.page)
+    if (refsTab === 'signers')
+      showSignersList(currentItems, data.total, data.page)
     else showReasonsList(currentItems, data.total, data.page)
   })
 }
@@ -88,19 +82,13 @@ function reloadRefs() {
   fetchTab()
 }
 
-function tabStyle(active) {
-  // активная карточка
-  const base = 'padding:8px 20px;font-size:13px;border-radius:0;cursor:pointer;'
-  return active
-    ? base +
-        'border:1px solid var(--line2);border-bottom-color:var(--surface,#fff);' +
-        'background:var(--surface,#fff);color:var(--ink);font-weight:600;margin-bottom:-1px'
-    : base +
-        'border:1px solid var(--line);border-bottom:none;' +
-        'background:var(--surface2,#f7f7f4);color:var(--muted,#888);font-weight:500'
+function setActiveTab() {
+  $('.refs-tab').each(function () {
+    $(this).toggleClass('refs-tab-active', $(this).data('tab') === refsTab)
+  })
 }
 
-function makePager(total, page) {
+function pagerHtml(total, page) {
   const pages = Math.ceil(total / refsPageSize)
   if (pages <= 1)
     return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
@@ -160,7 +148,7 @@ function showSignersList(items, total, page) {
         </table>
       </div>
     </div>
-    ${makePager(total, page)}
+    ${pagerHtml(total, page)}
   `)
 
   $('#refs-body')
@@ -208,7 +196,7 @@ function showSignerForm(signer) {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost sf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn sf-save">Сохранить</button>
         </div>
       </div>
@@ -228,7 +216,7 @@ function showSignerForm(signer) {
   $modal.find('.sf-toggle').on('click', () => {
     const msg =
       signer?.ACTIVE === 'Y'
-        ? 'Деактивировать подписанта?'
+        ? 'Отключить подписанта?'
         : 'Активировать подписанта?'
     showConfirmBox('Изменить статус', msg, () => {
       sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
@@ -309,7 +297,7 @@ function showReasonsList(items, total, page) {
         </table>
       </div>
     </div>
-    ${makePager(total, page)}
+    ${pagerHtml(total, page)}
   `)
 
   $('#refs-body')
@@ -356,7 +344,7 @@ function showReasonForm(reason) {
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost rf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Деактивировать' : 'Активировать'}</button>` : ''}
+          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn rf-save">Сохранить</button>
         </div>
       </div>

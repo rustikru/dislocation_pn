@@ -56,7 +56,7 @@ class ApprovalMailer
    * @param array  $signers        Строки из gu23_get_signers (FIO, POST, ORG, STYPE, SIGNER_REF_ID)
    * @param array  $approvals      Строки из gu23_get_approvals (APPROVER_ID, FULL_NAME, STATUS, DECIDED_AT, COMMENT_TXT)
    */
-  public function makeHtml(
+  public function getHtml(
     string $recipientName,
     int $actId,
     string $approveLink,
@@ -68,8 +68,8 @@ class ApprovalMailer
     $name = htmlspecialchars($recipientName, ENT_QUOTES);
     $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? "№ {$actId}", ENT_QUOTES);
 
-    $actDetailsHtml = $this->makeActDetails($act);
-    $signersHtml = $this->makeSignersTable($signers, $approvals);
+    $actDetailsHtml = $this->actDetailsHtml($act);
+    $signersHtml = $this->signersTableHtml($signers, $approvals);
 
     return <<<HTML
 <!DOCTYPE html>
@@ -149,7 +149,7 @@ HTML;
   /**
    * HTML-блок с реквизитами акта.
    */
-  private function makeActDetails(array $act): string
+  private function actDetailsHtml(array $act): string
   {
     if (empty($act)) {
       return '';
@@ -204,7 +204,7 @@ HTML;
   /**
    * HTML-таблица подписантов со статусом согласования.
    */
-  private function makeSignersTable(array $signers, array $approvals): string
+  private function signersTableHtml(array $signers, array $approvals): string
   {
     if (empty($signers)) {
       return '';

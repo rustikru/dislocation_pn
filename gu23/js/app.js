@@ -27,14 +27,14 @@ export function showApplication() {
   if (!container) return
 
   const screens = {
-    archive: showArchive,
-    new: showForm,
-    card: showCard,
-    wsearch: showWagonSearch,
+    archive: showArchive, // Реестр
+    new: showForm, // Новая форма
+    card: showCard, // Карточка вагона
+    wsearch: showWagonSearch, // Поиск вагонов
     refs: showRefs, // Справочники
     roles: showRoles, // Роли и бла бла
   }
-
+  // Если текущая страница не найдена, показываем реестр
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive
   showCurrentScreen(container)
 }

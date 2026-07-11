@@ -5,20 +5,10 @@ import { escapeHtml, formatDate, formatDateTime } from './utils.js'
 import { showStatusChip, showTypeChip } from './ui.js'
 
 export function showArchive(container) {
-  $(container).html(
-    '<div class="phead">' +
-      '<h1>Архив актов</h1>' +
-      '<div class="spacer"></div>' +
-      '<button class="btn ghost" id="btn-reset-filters" title="Сбросить фильтры" style="color:var(--muted);margin-right:9px">Сбросить</button>' +
-      '</div>' +
-      '<div class="filters" id="archive-filters">' +
-      '<div class="searchbox">' +
-      '<input type="text" class="inp" id="search-input" placeholder="Номер акта, номер вагона, причина…">' +
-      '</div>' +
-      '</div>' +
-      '<div class="card" id="acts-table-container"></div>',
-  )
+  $(container).load('pages/archive.php', () => showArchivePage(container))
+}
 
+function showArchivePage(container) {
   // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
   const pad2 = (n) => String(n).padStart(2, '0')
   const toInputDate = (d) =>

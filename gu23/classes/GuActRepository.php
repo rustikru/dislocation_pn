@@ -978,7 +978,7 @@ class GuActRepository
             );
             oci_commit($this->conn);
 
-            $html = $mailer->makeHtml(
+            $html = $mailer->getHtml(
                 $fullName,
                 $actId,
                 $links['approve_link'],
@@ -1057,7 +1057,7 @@ class GuActRepository
         $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
         $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
 
-        $html = $mailer->makeHtml(
+        $html = $mailer->getHtml(
             $fullName,
             $actId,
             $links['approve_link'],

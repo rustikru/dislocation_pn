@@ -1240,6 +1240,25 @@ textarea.inp {
   }
 }
 /* ─── Roles page: permission matrix & user table ─── */
+.refs-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  border-radius: 0;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: var(--surface2, #f7f7f4);
+  color: var(--muted, #888);
+  font-weight: 500;
+}
+.refs-tab-active {
+  border-color: var(--line2);
+  border-bottom-color: var(--surface, #fff);
+  background: var(--surface, #fff);
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: -1px;
+}
 .perm-matrix tr {
   cursor: default;
 }

@@ -22,18 +22,13 @@ export function showForm(container) {
 
   //console.log('stationToName:', activeDraft.stationToName)
 
-  $(container).html(`
-    <div class="phead">
-      <h1>${activeDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23'}</h1>
-      <div class="spacer"></div>
-    </div>
-    <div class="seg" id="type-switcher" style="margin-bottom:18px"></div>
-    <div class="card" id="form-card">
-      <div class="cardpad" id="form-body"></div>
-      <div class="cardpad" id="form-footer" style="border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end"></div>
-    </div>
-  `)
+  $(container).load('pages/form.php', showFormPage)
+}
 
+function showFormPage() {
+  $('#form-title').text(
+    activeDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23',
+  )
   showTypeSwitcher()
   showFormFields()
   showFormButtons()
@@ -412,7 +407,7 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
     }
   }
 
-  function render(q) {
+  function showMatches(q) {
     const ql = (q || '').trim().toLowerCase()
     const matches = ql
       ? items.filter((it) => it.label.toLowerCase().indexOf(ql) !== -1)
@@ -443,11 +438,11 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   }
 
   $inp.on('focus', function () {
-    render($(this).val())
+    showMatches($(this).val())
   })
   $inp.on('input', function () {
     if (onInput) onInput()
-    render($(this).val())
+    showMatches($(this).val())
   })
   $inp.on('keydown', function (e) {
     if (!$dropdown.is(':visible')) return
@@ -991,8 +986,8 @@ function showSignerSlot($container, i, slotCfg, ownFiltered, manualSlots) {
   `
 
   const inputHtml = isManual
-    ? makeManualSignerInput(i, signer, manualSlots)
-    : makeSignerSelect(i, signer, signersList, usedIds)
+    ? manualSignerInputHtml(i, signer, manualSlots)
+    : signerSelectHtml(i, signer, signersList, usedIds)
 
   $container.append(
     showFormField(
@@ -1003,7 +998,7 @@ function showSignerSlot($container, i, slotCfg, ownFiltered, manualSlots) {
   )
 }
 
-function makeManualSignerInput(i, signer, manualSlots) {
+function manualSignerInputHtml(i, signer, manualSlots) {
   // подсказки для ручного ввода — ТОЛЬКО ранее введённые вручную записи
   // (из истории актов), без справочника предприятия/РЖД
   manualSlots.push({ slot: i, source: references.signersManualList })
@@ -1024,7 +1019,7 @@ function makeManualSignerInput(i, signer, manualSlots) {
   `
 }
 
-function makeSignerSelect(i, signer, signersList, usedIds) {
+function signerSelectHtml(i, signer, signersList, usedIds) {
   const optionsHtml = signersList
     .filter(
       (s) =>
@@ -1239,7 +1234,7 @@ function saveActToServer(status, skipWarning = false) {
   const errors = getSaveErrors(status)
   if (errors.length) return showToast(errors[0], 'err')
 
-  sendApiRequest('gu23_save_act', makeActPayload(status, skipWarning)).done(
+  sendApiRequest('gu23_save_act', getActDataForSave(status, skipWarning)).done(
     (response) => {
       if (response && response.ok) {
         afterActSaved(status, response)
@@ -1255,7 +1250,7 @@ function getSaveErrors(status) {
   return activeDraft.departmentCode ? [] : ['Не указан цех']
 }
 
-function makeActPayload(status, skipWarning) {
+function getActDataForSave(status, skipWarning) {
   return {
     id: activeDraft.id || 0,
     type: activeDraft.type,
