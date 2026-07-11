@@ -61,21 +61,20 @@ function showTypeSwitcher() {
 }
 
 function showFormFields() {
-  const $body = $('#form-body')
-
-  showEndActChoice($body)
-  showDateField($body)
-  showMainFields($body)
-  showReasonFields($body)
-  showWagonBlock($body)
+  showEndActChoice()
+  showDateField()
+  showMainFields()
+  showReasonFields()
+  showWagonBlock()
 }
 
-function showEndActChoice($body) {
+function showEndActChoice() {
+  const $place = $('#form-linked-start-place').empty()
   // Особенность для "акта Окончания простоя"
   // Акт окончания простоя создается только на основе акта на начало простоя
   if (activeDraft.type !== 'end') return
 
-  $body.append(`
+  $place.html(`
     <div class="banner info">Акт «Окончание простоя» закрывает ранее открытый акт начала. Выберите открытый акт — данные подтянутся автоматически.</div>
     <div class="frow">
       <label>Открытый акт начала простоя <span class="req">*</span></label>
@@ -87,7 +86,8 @@ function showEndActChoice($body) {
   loadOpenStartsList()
 }
 
-function showDateField($body) {
+function showDateField() {
+  const $place = $('#form-date-place').empty()
   // Строка Даты
   let dateRowHtml = ''
   if (activeDraft.type === 'start') {
@@ -111,7 +111,7 @@ function showDateField($body) {
   }
 
   if (dateRowHtml) {
-    $body.append(`<div class="cols">${dateRowHtml}<div></div></div>`)
+    $place.html(`<div class="cols">${dateRowHtml}<div></div></div>`)
     // Подключаем маску/обработку из внешних модулей для дат, которые используются в general_function.js
     if (typeof init_date_time_input === 'function') {
       init_date_time_input($('.datetime-inp'))
@@ -127,11 +127,11 @@ function showDateField($body) {
     })
   }
 
-  $body.append('<div id="duration-banner-place"></div>')
   showDurationBanner()
 }
 
-function showMainFields($body) {
+function showMainFields() {
+  const $place = $('#form-main-fields-place').empty()
   // Строка Цех + Станции
   const deptsHtml = references.departmentsList
     .map(
@@ -153,7 +153,7 @@ function showMainFields($body) {
     return s ? s.NAME : activeDraft.stationFromName || ''
   })()
 
-  $body.append(`
+  $place.append(`
     <div class="cols">
       ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
       ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
@@ -177,7 +177,7 @@ function showMainFields($body) {
   })
 
   // Строка: Ст. отправления + Ст. назначения (рядом), Груз — строкой ниже
-  $body.append(`
+  $place.append(`
     <div class="cols">
       ${showFormField('Ст. отправления', `<div style="position:relative"><input class="inp" id="auto-stationFrom" placeholder="Введите название (мин. 3 символа)…" value="${escapeHtml(stationFromName)}"><div class="dropdown" id="from-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
 
@@ -210,7 +210,8 @@ function showMainFields($body) {
   )
 }
 
-function showReasonFields($body) {
+function showReasonFields() {
+  const $place = $('#form-reason-place').empty()
   // Причина и обстоятельства
   const reasonItems = references.reasonsList.map((r) => ({
     label: r.NAME || r.CODE,
@@ -223,7 +224,7 @@ function showReasonFields($body) {
     return r ? r.NAME || r.CODE : activeDraft.reasonName || ''
   })()
 
-  $body.append(`
+  $place.html(`
     ${showFormField('Причина составления', `<div style="position:relative"><input class="inp" id="auto-reason" placeholder="Начните вводить…" value="${escapeHtml(reasonInitLabel)}"><div class="dropdown" id="reason-dropdown" style="display:none;position:absolute;z-index:99;background:var(--surface);border:1px solid var(--line);width:100%;max-height:200px;overflow-y:auto;"></div></div>`, true)}
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
@@ -250,16 +251,16 @@ function showReasonFields($body) {
   })
 }
 
-function showWagonBlock($body) {
+function showWagonBlock() {
+  const $place = $('#form-wagons-place').empty()
   // Вагоны
-  $body.append(`
+  $place.html(`
     <div style="height:6px"></div>
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Вагоны</label>
     <textarea class="inp" id="txt-wagons" style="min-height:56px" placeholder="Введите номера вагонов: через запятую, пробел, построчно…"></textarea>
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin:10px 0" id="wagon-actions"></div>
     <div id="wagon-summary-place"></div>
     <div id="wagons-table-place"></div>
-    <div id="signers-container"></div>
   `)
 
   showWagonActions()
@@ -275,7 +276,7 @@ function validateAndGetDate($inp) {
 }
 
 function showDurationBanner() {
-  const $place = $('#duration-banner-place')
+  const $place = $('#form-duration-place')
   if (activeDraft.type !== 'end') return $place.empty()
 
   if (!activeDraft.startAt || !activeDraft.endAt) {
@@ -915,7 +916,7 @@ function getSignerSlots(actType) {
 }
 
 function showSignersFields() {
-  const $container = $('#signers-container')
+  const $container = $('#form-signers-place')
     .empty()
     .append(
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
