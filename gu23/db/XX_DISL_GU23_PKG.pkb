@@ -968,6 +968,43 @@ as
         return;
     end;
 
+    function gu23_file_info (p_file_id in number)
+        return varchar2
+    is
+        v_act_id     number;
+        v_path       varchar2 (1024);
+        v_category   varchar2 (16);
+        v_name       varchar2 (512);
+        v_mime       varchar2 (128);
+    begin
+        select act_id,
+               real_path,
+               NVL (file_category, 'general'),
+               file_name,
+               mime_type
+          into v_act_id,
+               v_path,
+               v_category,
+               v_name,
+               v_mime
+          from xx_disl_gu23_file
+         where id = p_file_id;
+
+        return    v_act_id
+               || c_us
+               || v_path
+               || c_us
+               || v_category
+               || c_us
+               || v_name
+               || c_us
+               || v_mime;
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
+
     -- Подписанты
     function gu23_get_signers (p_act_id in number)
         return xx_disl_gu23_signer_tab
@@ -1397,6 +1434,42 @@ as
         select xx_disl_gu23_file_seq.NEXTVAL into v from DUAL;
 
         return v;
+    end;
+
+    function gu23_act_type (p_act_id in number)
+        return varchar2
+    is
+        v_type   varchar2 (16);
+    begin
+        select act_type
+          into v_type
+          from xx_disl_gu23_act
+         where id = p_act_id;
+
+        return v_type;
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
+
+    function gu23_can_change_files (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_act
+         where     id = p_act_id
+               and status not in ('closed', 'annulled')
+               and (created_by = p_user_id or gu23_is_admin (p_user_id) = 'Y');
+
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
     end;
 
     -- Добавление файла
@@ -2604,6 +2677,63 @@ as
         end loop;
 
         return;
+    end;
+
+    function gu23_is_act_signer (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_signer s
+         where     s.act_id = p_act_id
+               and s.signer_ref_id = p_user_id
+               and s.stype = 'own';
+
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end;
+
+    function gu23_can_edit_draft (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_act
+         where     id = p_act_id
+               and status = 'draft'
+               and (created_by = p_user_id or gu23_is_admin (p_user_id) = 'Y');
+
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end;
+
+    function gu23_set_approval_token (p_act_id       in number,
+                                      p_approver_id  in number,
+                                      p_token_sig    in varchar2)
+        return varchar2
+    is
+    begin
+        update xx_disl_gu23_approval
+           set token_sig = p_token_sig
+         where act_id = p_act_id and approver_id = p_approver_id;
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
     end;
 
     function gu23_direct_decision (p_act_id      in number,

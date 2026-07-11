@@ -37,7 +37,12 @@ if (isset($routes[$action])) {
                 $e = oci_error();
                 trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
         }
-        (new $class($conn, $auth))->handle($action, $_POST);
+        $repo = new $class($conn, $auth);
+        if (method_exists($repo, 'runAction')) {
+                $repo->runAction($action, $_POST);
+        } else {
+                $repo->handle($action, $_POST);
+        }
         oci_close($conn);
         exit;
 }

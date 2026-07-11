@@ -24,20 +24,21 @@ if (!$conn) {
 $fileId = (int) ($_GET['id'] ?? 0);
 $inline = !empty($_GET['inline']);
 
-$st = oci_parse($conn, 'select real_path, file_name, mime_type
-                          from xx_disl_gu23_file where id = :b1');
-oci_bind_by_name($st, ':b1', $fileId);
+$st = oci_parse($conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_file_info(:fid); END;');
+$fileInfo = '';
+oci_bind_by_name($st, ':r', $fileInfo, 4000);
+oci_bind_by_name($st, ':fid', $fileId);
 oci_execute($st);
-$row = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS);
 oci_close($conn);
 
-if (!$row) {
+if (!$fileInfo) {
     http_response_code(404);
     echo 'Файл не найден';
     exit;
 }
 
-$savedPath = (string) ($row['REAL_PATH'] ?? '');
+$parts = explode("\x1F", $fileInfo);
+$savedPath = (string) ($parts[1] ?? '');
 if ($savedPath !== '' && $savedPath[0] !== '/' && !preg_match('/^[A-Za-z]:[\/\\\\]/', $savedPath)) {
     $savedPath = __DIR__ . '/' . ltrim($savedPath, '/\\');
 }
@@ -49,8 +50,8 @@ if (!is_file($savedPath)) {
 }
 
 $path = $savedPath;
-$name = $row['FILE_NAME'] ?: basename($path);
-$mime = $row['MIME_TYPE'] ?: 'application/octet-stream';
+$name = ($parts[3] ?? '') ?: basename($path);
+$mime = ($parts[4] ?? '') ?: 'application/octet-stream';
 $fallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $name);
 if ($fallbackName === '' || $fallbackName === null) {
     $fallbackName = 'file';

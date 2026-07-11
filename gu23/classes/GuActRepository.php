@@ -109,6 +109,12 @@ class GuActRepository
         }
     }
 
+    private function canSendApprovalLinks(): bool
+    {
+        $login = strtoupper((string) $this->auth->getLogin());
+        return $this->isGu23Admin() || $login === 'USER1';
+    }
+
     /**
      * Режим рассылки писем — определяется сервером, НЕ клиентом.
      *   Читается из gu23/config.php ('mail_mode');
@@ -130,7 +136,7 @@ class GuActRepository
         return 'send_mail';
     }
 
-    public function handle(string $action, array $post): void
+    public function runAction(string $action, array $post): void
     {
         ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
         ob_start();
@@ -329,6 +335,22 @@ class GuActRepository
         return dirname(__DIR__) . '/' . ltrim($path, '/\\');
     }
 
+    /** Файлы можно менять, пока акт не закрыт и не аннулирован. */
+    private function canChangeFiles(int $actId, int $userId): bool
+    {
+        if ($actId <= 0 || $userId <= 0) {
+            return false;
+        }
+
+        $result = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_can_change_files(:act, :uid)',
+            [':act' => $actId, ':uid' => $userId],
+            2
+        );
+
+        return $result === 'Y';
+    }
+
     /** Вызвать функцию пакета, вернуть скалярный результат. */
     private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
     {
@@ -459,35 +481,29 @@ class GuActRepository
             16
         );
 
-        // Является ли текущий пользователь подписантом-предприятием этого акта
-        // (signer_ref_id для сотрудников предприятия = user_id; исключаем РЖД-подписантов)
-        $signerCheck = $this->pipe(
-            "SELECT COUNT(*) AS CNT FROM xx_disl_gu23_signer s
-              WHERE s.act_id = :b1
-                AND s.signer_ref_id = :b2
-                AND s.stype = 'own'",
-            [':b1' => $id, ':b2' => $userId]
+        $isUserSigner = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_is_act_signer(:act, :uid)',
+            [':act' => $id, ':uid' => $userId],
+            2
         );
-        $isUserSignerCnt = (int) ($signerCheck[0]['CNT'] ?? 0);
         $isAdmin = $this->isGu23Admin();
-        $editCheck = $this->pipe(
-            "SELECT COUNT(*) AS CNT
-               FROM xx_disl_gu23_act
-              WHERE id = :b1
-                AND status = 'draft'
-                AND (created_by = :b2 OR :b3 = 'Y')",
-            [':b1' => $id, ':b2' => $userId, ':b3' => $isAdmin ? 'Y' : 'N']
+        $canEditDraft = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_can_edit_draft(:act, :uid)',
+            [':act' => $id, ':uid' => $userId],
+            2
         );
-        $canEditDraft = (int) ($editCheck[0]['CNT'] ?? 0) > 0;
+        $canChangeFiles = $this->canChangeFiles($id, (int) $userId);
 
         echo json_encode([
             'ok' => true,
             'act' => $act[0],
             'currentUserId' => (int) $userId,
             'myApproval' => $myStatus ?: 'none',
-            'isUserSigner' => $isUserSignerCnt > 0,
+            'isUserSigner' => $isUserSigner === 'Y',
             'isAdmin' => $isAdmin,
-            'canEditDraft' => $canEditDraft,
+            'canEditDraft' => $canEditDraft === 'Y',
+            'canChangeFiles' => $canChangeFiles,
+            'canSendApprovalLinks' => $this->canSendApprovalLinks(),
             'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
             'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
@@ -732,13 +748,18 @@ class GuActRepository
         if (!in_array($category, ['general', 'signed'], true))
             $category = 'general';
 
-        // Сначала определяем тип акта для формирования корректного пути
-        $actType = 'other'; // значение по умолчанию
-        $stType = oci_parse($this->conn, 'select act_type from xx_disl_gu23_act where id = :b1');
-        oci_bind_by_name($stType, ':b1', $actId);
-        oci_execute($stType);
-        if ($rType = oci_fetch_array($stType, OCI_ASSOC)) {
-            $actType = strtolower($rType['ACT_TYPE']);
+        if (!$this->canChangeFiles($actId, (int) $userId)) {
+            echo json_encode(['ok' => false, 'msg' => 'Нет прав на прикрепление файлов']);
+            return;
+        }
+
+        $actType = strtolower((string) $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_act_type(:act)',
+            [':act' => $actId],
+            16
+        ));
+        if ($actType === '') {
+            $actType = 'other';
         }
 
         // Файлы хранятся в разрезе типа акта с ID записи из таблицы
@@ -813,19 +834,31 @@ class GuActRepository
     private function delFile(): void
     {
         $fileId = (int) filter_input(INPUT_POST, 'file_id');
-        // удалим физический файл
-        $path = '';
-        $stP = oci_parse(
-            $this->conn,
-            'select real_path from xx_disl_gu23_file where id = :b1'
+        $info = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_file_info(:fid)',
+            [':fid' => $fileId],
+            4000
         );
-        oci_bind_by_name($stP, ':b1', $fileId);
-        oci_execute($stP);
-        if ($row = oci_fetch_array($stP, OCI_ASSOC + OCI_RETURN_NULLS)) {
-            $path = $this->getFileDiskPath((string) $row['REAL_PATH']);
+        if (!$info) {
+            echo json_encode(['ok' => false, 'msg' => 'Файл не найден']);
+            return;
         }
+        $fileInfo = explode(self::US, $info);
+        $actId = (int) ($fileInfo[0] ?? 0);
+        $path = $this->getFileDiskPath((string) ($fileInfo[1] ?? ''));
+        $category = (string) ($fileInfo[2] ?? 'general');
 
         $uid = $this->auth->getUserId();
+        $isAdmin = $this->isGu23Admin();
+        if (!$this->canChangeFiles($actId, (int) $uid)) {
+            echo json_encode(['ok' => false, 'msg' => 'Нет прав на удаление файлов']);
+            return;
+        }
+        if ($category === 'signed' && !$isAdmin) {
+            echo json_encode(['ok' => false, 'msg' => 'Подписанные файлы может удалять только администратор']);
+            return;
+        }
+
         $delSql = 'declare
                         v_d xx_etw.xx_disl_gu23_pkg.t_gu23_del_file;
                     begin
@@ -914,6 +947,10 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
+        if (!$this->canSendApprovalLinks()) {
+            echo json_encode(['ok' => false, 'msg' => 'Рассылка доступна только администратору или USER1']);
+            return;
+        }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
         $mode = $this->mailMode(); // режим определяется сервером, не клиентом
@@ -933,7 +970,7 @@ class GuActRepository
             return;
         }
 
-        // 1. Создаём pending-записи в xx_disl_gu23_approval (через пакет)
+        // 1. Создаём pending-записи согласования через пакет
         $initResult = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
             [':act' => $actId, ':by' => $userId],
@@ -972,11 +1009,11 @@ class GuActRepository
 
             $links = $mailer->generateLinks($actId, $approverId);
 
-            $this->pipe(
-                'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
-                [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
+            $this->callFunc(
+                'xx_disl_gu23_pkg.gu23_set_approval_token(:act, :approver, :token)',
+                [':act' => $actId, ':approver' => $approverId, ':token' => $links['token_sig']],
+                4000
             );
-            oci_commit($this->conn);
 
             $html = $mailer->getHtml(
                 $fullName,
@@ -1019,6 +1056,10 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
+        if (!$this->canSendApprovalLinks()) {
+            echo json_encode(['ok' => false, 'msg' => 'Рассылка доступна только администратору или USER1']);
+            return;
+        }
 
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = (int) filter_input(INPUT_POST, 'user_id');
@@ -1047,11 +1088,11 @@ class GuActRepository
 
         $links = $mailer->generateLinks($actId, $approverId);
 
-        $this->pipe(
-            'UPDATE xx_disl_gu23_approval SET token_sig = :b1 WHERE act_id = :b2 AND approver_id = :b3',
-            [':b1' => $links['token_sig'], ':b2' => $actId, ':b3' => $approverId]
+        $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_set_approval_token(:act, :approver, :token)',
+            [':act' => $actId, ':approver' => $approverId, ':token' => $links['token_sig']],
+            4000
         );
-        oci_commit($this->conn);
 
         $actRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))', [':id' => $actId]);
         $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);

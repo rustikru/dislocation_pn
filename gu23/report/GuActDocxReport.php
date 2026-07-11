@@ -70,7 +70,7 @@ class GuActDocxReport
             $zip->close();
 
             if ($format === 'pdf') {
-                $pdfPath = $this->makePdf($tmp);
+                $pdfPath = $this->savePdfFile($tmp);
                 try {
                     $this->streamFile($pdfPath, $act, 'pdf');
                 } finally {
@@ -159,10 +159,10 @@ class GuActDocxReport
         $rows = '';
         foreach ($signers as $signer) {
             if (strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd') {
-                $rows .= $this->makeParagraphText($rowTemplate, 'Участник:', true);
-                $rows .= $this->makeParagraphText($rowTemplate, $this->getSignerLineText($signer), false);
+                $rows .= $this->paragraphText($rowTemplate, 'Участник:', true);
+                $rows .= $this->paragraphText($rowTemplate, $this->getSignerLineText($signer), false);
             } else {
-                $rows .= $this->makeParagraphText($rowTemplate, $this->getSignerLineText($signer), false);
+                $rows .= $this->paragraphText($rowTemplate, $this->getSignerLineText($signer), false);
             }
         }
 
@@ -201,7 +201,7 @@ class GuActDocxReport
         return str_replace($placeholder, htmlspecialchars($value, ENT_XML1, 'UTF-8'), $xml);
     }
 
-    private function makeParagraphText(string $paragraphXml, string $text, bool $bold): string
+    private function paragraphText(string $paragraphXml, string $text, bool $bold): string
     {
         $run = '<w:r>';
         if ($bold) {
@@ -452,10 +452,10 @@ class GuActDocxReport
             '{{ST_TO}}' => $act['ST_TO'] ?? '',
             '{{REASON_NAME}}' => $act['REASON_NAME'] ?? '',
             '{{CARGO_REF}}' => $act['CARGO_REF'] ?? '',
-            '{{START_AT}}' => $this->fmtDate($act['START_AT'] ?? ''),
-            '{{END_AT}}' => $this->fmtDate($act['END_AT'] ?? ''),
+            '{{START_AT}}' => $this->formatDate($act['START_AT'] ?? ''),
+            '{{END_AT}}' => $this->formatDate($act['END_AT'] ?? ''),
             '{{CIRCUMSTANCES}}' => $act['CIRCUMSTANCES'] ?? '',
-            '{{CREATED_AT}}' => $this->fmtDate($act['CREATED_AT'] ?? ''),
+            '{{CREATED_AT}}' => $this->formatDate($act['CREATED_AT'] ?? ''),
             '{{SIGNER_1_POST}}' => $s($signers, 0, 'POST'),
             '{{SIGNER_1_FIO}}' => $s($signers, 0, 'FIO'),
             '{{SIGNER_2_POST}}' => $s($signers, 1, 'POST'),
@@ -551,7 +551,7 @@ class GuActDocxReport
         return $row;
     }
 
-    private function fmtDate(string $d): string
+    private function formatDate(string $d): string
     {
         if (preg_match('/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/', $d, $m)) {
             return "$m[3].$m[2].$m[1] $m[4]:$m[5]";
@@ -559,7 +559,7 @@ class GuActDocxReport
         return $d;
     }
 
-    private function makePdf(string $docxPath): string
+    private function savePdfFile(string $docxPath): string
     {
         $soffice = $this->findSoffice();
         if ($soffice === '') {
@@ -567,8 +567,8 @@ class GuActDocxReport
         }
 
         $outDir = sys_get_temp_dir();
-        $homeDir = $this->makeTempDir('gu23_lo_home_');
-        $profileDir = $this->makeTempDir('gu23_lo_profile_');
+        $homeDir = $this->createTempDir('gu23_lo_home_');
+        $profileDir = $this->createTempDir('gu23_lo_profile_');
         $cmd = escapeshellarg($soffice)
             . ' -env:UserInstallation=file://' . $profileDir
             . ' --headless --nologo --nofirststartwizard --convert-to pdf'
@@ -625,7 +625,7 @@ class GuActDocxReport
         return is_array($config) ? $config : [];
     }
 
-    private function makeTempDir(string $prefix): string
+    private function createTempDir(string $prefix): string
     {
         $path = tempnam(sys_get_temp_dir(), $prefix);
         if ($path === false) {

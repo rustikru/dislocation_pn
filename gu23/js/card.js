@@ -44,7 +44,7 @@ function showCardView(data) {
     data.myApproval || 'none',
     !!data.isUserSigner,
   )
-  showAttachmentsBlock(act, data.files)
+  showAttachmentsBlock(act, data.files, !!data.canChangeFiles, !!data.isAdmin)
   showHistoryBlock(data.history)
 }
 
@@ -81,6 +81,7 @@ function showActionsMenu(act, data) {
   if (
     act.STATUS === 'active' &&
     hasPerm('SEND_APPROVAL') &&
+    data.canSendApprovalLinks &&
     data.signers &&
     data.signers.length
   ) {
@@ -354,13 +355,11 @@ function submitInAppDecision(actId, decision, comment) {
   })
 }
 
-function showAttachmentsBlock(act, files) {
-  const isAnnulled = act.STATUS === 'annulled'
+function showAttachmentsBlock(act, files, canChangeFiles, userIsAdmin) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
-  const addBtn = isAnnulled
-    ? ''
-    : `
+  const addBtn = canChangeFiles
+    ? `
     <div style="display:flex;gap:4px">
       <label title="Прикрепить общий файл" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--ink2);line-height:1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
@@ -374,12 +373,15 @@ function showAttachmentsBlock(act, files) {
       </label>
     </div>
   `
+    : ''
 
   const showFileSection = (label, items) => {
     if (!items.length) return ''
     const rows = items
       .map((file) => {
         const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
+        const isSignedFile = file.FILE_CATEGORY === 'signed'
+        const canDeleteFile = canChangeFiles && (!isSignedFile || userIsAdmin)
         return `
         <div style="display:flex;gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
           ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;cursor:pointer">` : ''}
@@ -387,7 +389,7 @@ function showAttachmentsBlock(act, files) {
             <a href="get_file.php?id=${file.ID}">${escapeHtml(file.FILE_NAME)}</a>
             <div class="muted" style="font-size:11px">${formatDateTime(file.CREATED_AT)} · ${escapeHtml(file.CREATED_BY || '')}</div>
           </div>
-          ${!isAnnulled ? `<button class="delx file-delete-btn" data-id="${file.ID}">×</button>` : ''}
+          ${canDeleteFile ? `<button class="delx file-delete-btn" data-id="${file.ID}">×</button>` : ''}
         </div>`
       })
       .join('')

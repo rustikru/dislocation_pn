@@ -301,6 +301,9 @@ as
         return xx_disl_gu23_file_tab
         pipelined;
 
+    function gu23_file_info (p_file_id in number)
+        return varchar2;
+
     function gu23_get_signers (p_act_id in number)
         return xx_disl_gu23_signer_tab
         pipelined;
@@ -361,6 +364,12 @@ as
     -- получить id для нового файла
     function gu23_new_file_id
         return number;
+
+    function gu23_act_type (p_act_id in number)
+        return varchar2;
+
+    function gu23_can_change_files (p_act_id in number, p_user_id in number)
+        return varchar2;
 
     function gu23_add_file (p_data in t_gu23_add_file)
         return varchar2;
@@ -460,6 +469,17 @@ as
     function gu23_get_approvals (p_act_id in number)
         return t_gu23_approval_tab
         pipelined;
+
+    function gu23_is_act_signer (p_act_id in number, p_user_id in number)
+        return varchar2;
+
+    function gu23_can_edit_draft (p_act_id in number, p_user_id in number)
+        return varchar2;
+
+    function gu23_set_approval_token (p_act_id       in number,
+                                      p_approver_id  in number,
+                                      p_token_sig    in varchar2)
+        return varchar2;
 
     -- Подписать акт напрямую (без email-ссылки, из интерфейса)
     -- Возвращает 'OK' или 'ERR'||CHR(31)||текст

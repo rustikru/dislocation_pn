@@ -170,8 +170,8 @@ HTML;
       ['Ст. назначения', $act['ST_TO'] ?? ''],
       ['Груз', $act['CARGO_REF'] ?? ''],
       ['Причина', $act['REASON_NAME'] ?? ''],
-      ['Начало простоя', $this->fmtDate($act['START_AT'] ?? '')],
-      ['Окончание', $this->fmtDate($act['END_AT'] ?? '')],
+      ['Начало простоя', $this->formatDate($act['START_AT'] ?? '')],
+      ['Окончание', $this->formatDate($act['END_AT'] ?? '')],
       ['Вагонов', $act['WAGON_CNT'] > 0 ? (string) (int) $act['WAGON_CNT'] : ''],
       ['Обстоятельства', $act['CIRCUMSTANCES'] ?? ''],
     ];
@@ -277,13 +277,13 @@ HTML;
   {
     switch ($status) {
       case 'approved':
-        $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
+        $date = $appr ? htmlspecialchars($this->formatDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
         $pill = '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Подписано</span>';
         $note = $date ? "<br><span style=\"color:#888;font-size:11px\">{$date}</span>" : '';
         return [$pill, $note];
 
       case 'rejected':
-        $date = $appr ? htmlspecialchars($this->fmtDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
+        $date = $appr ? htmlspecialchars($this->formatDate($appr['DECIDED_AT'] ?? ''), ENT_QUOTES) : '';
         $comment = $appr ? htmlspecialchars($appr['COMMENT_TXT'] ?? '', ENT_QUOTES) : '';
         $pill = '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Отклонено</span>';
         $note = ($date || $comment)
@@ -300,7 +300,7 @@ HTML;
   /**
    * Форматировать дату «YYYY-MM-DD HH:MM:SS» → «DD.MM.YYYY HH:MM».
    */
-  private function fmtDate(string $dt): string
+  private function formatDate(string $dt): string
   {
     if (!$dt) {
       return '';
