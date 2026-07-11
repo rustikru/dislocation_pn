@@ -94,7 +94,7 @@ function showActionsMenu(act, data) {
       const appr = approvalMap[s.USER_ID]
       return !appr || appr.STATUS !== 'approved'
     })
-    
+
     if (hasUnsigned) {
       addItem('Рассылка ссылок на подписание', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
@@ -247,7 +247,7 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> В процессе</span>'
     return ''
   }
-  // Версия документа 
+  // Версия документа
   const versionBadge = (approval) => {
     if (!approval || approval.STATUS !== 'approved') return ''
     const sv = approval.SIGNED_VERSION
@@ -270,8 +270,8 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
             : isRzd
               ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
               : // own-подписант с привязкой к пользователю, но без решения:
-              // на акте «на подписании» показываем «В процессе»
-              s.USER_ID && act.STATUS === 'active'
+                // на акте «на подписании» показываем «В процессе»
+                s.USER_ID && act.STATUS === 'active'
                 ? statusPill('pending')
                 : ''
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
@@ -411,12 +411,15 @@ function showAttachmentsBlock(act, files, canChangeFiles, userIsAdmin) {
   $('#card-files-body').html(bodyHtml)
   const $block = $('#card-files-block')
 
-  $block.find('.file-cat-input').off('change.gu23Upload').on('change.gu23Upload', function () {
-    const files = Array.from(this.files || [])
-    const category = $(this).data('cat')
-    this.value = ''
-    uploadFilesToServer(act.ID, files, category)
-  })
+  $block
+    .find('.file-cat-input')
+    .off('change.gu23Upload')
+    .on('change.gu23Upload', function () {
+      const files = Array.from(this.files || [])
+      const category = $(this).data('cat')
+      this.value = ''
+      uploadFilesToServer(act.ID, files, category)
+    })
 
   $('.img-preview').on('click', function () {
     window.open(`get_file.php?inline=1&id=${$(this).data('id')}`)
@@ -440,7 +443,7 @@ function showHistoryBlock(history) {
 
   $('#card-history-list').html(itemsHtml)
 }
-
+// --- редактирование черновика ---
 function editDraftAct(data) {
   const act = data.act
   //console.log('ST_TO => :', act.ST_TO)
@@ -487,7 +490,7 @@ function editDraftAct(data) {
   })
   navigateTo('new')
 }
-
+// --- удаление черновика ---
 function deleteDraftAct(act) {
   showConfirmBox(
     'Удаление черновика',
@@ -504,7 +507,7 @@ function deleteDraftAct(act) {
     },
   )
 }
-
+// --- аннулирование акта ---
 function annulActiveAct(act) {
   showPromptBox(
     'Аннулирование акта',
@@ -524,7 +527,7 @@ function annulActiveAct(act) {
     },
   )
 }
-
+// --- закрытие акта окончания ---
 function closeAct(act) {
   showConfirmBox(
     'Закрыть акт',
@@ -541,7 +544,7 @@ function closeAct(act) {
     },
   )
 }
-
+// --- рассылка ссылок на подписание ---
 function resendApprovalLinks(act, signers, approvals) {
   const approvalMap = {}
   ;(approvals || []).forEach((a) => {

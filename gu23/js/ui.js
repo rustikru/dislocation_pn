@@ -55,7 +55,6 @@ export function showFormField(label, inputHtml, isRequired = false) {
 
 // Уведомления
 export function showToast(message, type) {
-  // ошибки висят дольше — их важнее заметить
   const duration = type === 'err' ? 7000 : type === 'ok' ? 4500 : 5000
   const $toast = $(
     `<div class="toast ${type || ''}" role="alert">${escapeHtml(message)}</div>`,

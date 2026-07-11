@@ -42,20 +42,20 @@ export function showApplication() {
 $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
     // Загружаем глобальные справочники данными
-    references.departmentsList = (response && response.cexes) || []
-    references.reasonsList = (response && response.reasons) || []
-    references.stationsList = (response && response.stations) || []
-    references.stationsFromList = (response && response.stations_from) || []
-    references.ownersList = (response && response.owners) || []
-    references.wagonKindsList = (response && response.kinds) || []
-    references.cargosList = (response && response.cargos) || []
-    references.signersOwnList = (response && response.signersOwn) || []
-    references.signersRzdList = (response && response.signersRzd) || []
-    references.signersManualList = (response && response.signersManual) || []
-    applicationState.isAdmin = !!(response && response.isAdmin)
-    applicationState.userPerms = new Set((response && response.perms) || [])
+    references.departmentsList = (response && response.cexes) || [] // Цеха
+    references.reasonsList = (response && response.reasons) || [] // Причины
+    references.stationsList = (response && response.stations) || [] // Станции
+    references.stationsFromList = (response && response.stations_from) || [] // Станции отправления
+    references.ownersList = (response && response.owners) || [] // Владельцы
+    references.wagonKindsList = (response && response.kinds) || [] // Виды вагонов
+    references.cargosList = (response && response.cargos) || [] // Грузы
+    references.signersOwnList = (response && response.signersOwn) || [] // Подписанты (собственные)
+    references.signersRzdList = (response && response.signersRzd) || [] // Подписанты (РЖД)
+    references.signersManualList = (response && response.signersManual) || [] // Подписанты (ручные)
+    applicationState.isAdmin = !!(response && response.isAdmin) // Админ или нет
+    applicationState.userPerms = new Set((response && response.perms) || []) // Разрешения пользователя
 
     // Показываем страничку
-    showApplication()
+    showApplication() //
   })
 })

@@ -33,7 +33,7 @@ function showFormPage() {
   showFormFields()
   showFormButtons()
 }
-
+// --- переключатель типа акта ---
 function showTypeSwitcher() {
   if (activeDraft.id) return // При редактировании тип менять нельзя
 
@@ -59,7 +59,7 @@ function showTypeSwitcher() {
       showForm($('#view')[0])
     })
 }
-
+// --- отрисовка полей формы ---
 function showFormFields() {
   showEndActChoice()
   showDateField()
@@ -617,7 +617,7 @@ function showWagonActions() {
     $actions.append($btnClear)
   }
 }
-
+// --- загрузка данных о вагонах из дислокации ---
 function loadWagonsDataFromDislocation() {
   /*console.log('activeDraft.type='+activeDraft.type);
   console.log('activeDraft.stationToName='+activeDraft.stationToName);
@@ -1227,7 +1227,12 @@ function checkRequiredSigners(errors) {
 function isFilledSigner(signer) {
   if (!signer || !signer.fio || !signer.fio.trim()) return false
   if (signer.manual)
-    return !!(signer.post && signer.post.trim() && signer.org && signer.org.trim())
+    return !!(
+      signer.post &&
+      signer.post.trim() &&
+      signer.org &&
+      signer.org.trim()
+    )
   return true
 }
 // Созраняем акт в БД
