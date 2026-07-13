@@ -28,6 +28,11 @@ require_once __DIR__ . '/classes/GuActRepository.php';
 
 if ($auth->isAuth()) {
     if (GuActRepository::canAccess($conn1, $auth)) {
+        $startPage = $_GET['page'] ?? '';
+        $allowedPages = ['archive', 'new', 'wsearch', 'refs', 'roles'];
+        if (!in_array($startPage, $allowedPages, true)) {
+            $startPage = '';
+        }
         ?>
         <!DOCTYPE html>
         <html lang="ru">
@@ -44,6 +49,9 @@ if ($auth->isAuth()) {
             <script src="../js/general_function.js" type="text/javascript"></script>
             <script type="module" src="js/app.js"></script>
             <script>
+                window.GU23_START = {
+                    page: <?= json_encode($startPage) ?>
+                };
                 window.GU23_SESSION = {
                     login: <?= json_encode($_SESSION['login'] ?? '') ?>,
                     full_name: <?= json_encode($_SESSION['full_name'] ?? '') ?>,

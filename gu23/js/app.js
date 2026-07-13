@@ -11,6 +11,16 @@ import { showRoles } from './roles.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
+  if (pageName === 'card' && selectedId) {
+    window.location.href = `card.php?id=${encodeURIComponent(selectedId)}`
+    return
+  }
+
+  if ((window.GU23_START || {}).page === 'card' && pageName !== 'card') {
+    window.location.href = `index.php?page=${encodeURIComponent(pageName)}`
+    return
+  }
+
   applicationState.currentPage = pageName
 
   // Сохраняем выбранный ID
@@ -29,7 +39,7 @@ export function showApplication() {
   const screens = {
     archive: showArchive, // Реестр
     new: showForm, // Новая форма
-    card: showCard, // Карточка вагона
+    card: showCard, // Карточка акта
     wsearch: showWagonSearch, // Поиск вагонов
     refs: showRefs, // Справочники
     roles: showRoles, // Роли и бла бла
@@ -54,6 +64,14 @@ $(document).ready(() => {
     references.signersManualList = (response && response.signersManual) || [] // Подписанты (ручные)
     applicationState.isAdmin = !!(response && response.isAdmin) // Админ или нет
     applicationState.userPerms = new Set((response && response.perms) || []) // Разрешения пользователя
+
+    const start = window.GU23_START || {}
+    if (start.page) {
+      applicationState.currentPage = start.page
+      if (start.id) {
+        $('#view').data('selected-id', start.id)
+      }
+    }
 
     // Показываем страничку
     showApplication() //
