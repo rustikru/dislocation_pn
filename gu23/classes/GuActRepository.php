@@ -1160,10 +1160,27 @@ class GuActRepository
         require_once __DIR__ . '/../lib/HmacApproval.php';
         require_once __DIR__ . '/../lib/ApprovalMailer.php';
 
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-            . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $baseUrl = $this->siteBaseUrl();
 
         return new ApprovalMailer($this->getHmacSecret(), $baseUrl);
+    }
+
+    private function siteBaseUrl(): string
+    {
+        $configPath = dirname(__DIR__) . '/config.php';
+        $config = file_exists($configPath) ? (array) require $configPath : [];
+        $baseUrl = trim((string) ($config['base_url'] ?? ''));
+        if ($baseUrl !== '') {
+            return rtrim($baseUrl, '/');
+        }
+
+        $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+        if ($proto === '') {
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        }
+
+        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        return rtrim($proto . '://' . $host, '/');
     }
 
     private function getHmacSecret(): string

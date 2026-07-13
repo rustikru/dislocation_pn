@@ -922,6 +922,7 @@ function showSignersFields() {
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
     )
   const signerSlots = getSignerSlots(activeDraft.type)
+  putSignersToSlots(signerSlots)
   const ownFiltered = getOwnSignersForAct()
 
   fillFirstSigner(ownFiltered)
@@ -935,6 +936,44 @@ function showSignersFields() {
   bindSignerSelects(ownFiltered)
   bindManualSignerInputs()
   bindManualSignerTips(manualSlots)
+}
+
+function putSignersToSlots(signerSlots) {
+  const current = activeDraft.signers || []
+  if (!current.length) return
+
+  const result = new Array(signerSlots.length).fill(null)
+  const moved = new Set()
+
+  current.forEach((signer, index) => {
+    if (!signer || !signerSlots[index]) return
+    if (!signerMatchesSlot(signer, signerSlots[index])) return
+
+    result[index] = signer
+    moved.add(index)
+  })
+
+  current.forEach((signer, index) => {
+    if (!signer || moved.has(index)) return
+
+    const freeIndex = result.findIndex(
+      (item, slotIndex) =>
+        !item && signerMatchesSlot(signer, signerSlots[slotIndex]),
+    )
+
+    if (freeIndex >= 0) {
+      result[freeIndex] = signer
+    }
+  })
+
+  activeDraft.signers = result
+}
+
+function signerMatchesSlot(signer, slot) {
+  if (!slot) return false
+  if (signer.manual) return true
+  if (!signer.stype) return slot.type === 'own'
+  return signer.stype === slot.type
 }
 
 function getOwnSignersForAct() {

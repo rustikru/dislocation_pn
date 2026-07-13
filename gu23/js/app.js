@@ -1,5 +1,5 @@
 import { sendApiRequest } from './api.js'
-import { applicationState, references, setActiveDraft } from './state.js'
+import { applicationState, references, activeDraft } from './state.js'
 import { hasPerm } from './state.js'
 import { drawNav } from './nav.js'
 import { showArchive } from './registry.js'
@@ -16,7 +16,11 @@ export function navigateTo(pageName, selectedId = null) {
     return
   }
 
-  if ((window.GU23_START || {}).page === 'card' && pageName !== 'card') {
+  if (
+    (window.GU23_START || {}).page === 'card' &&
+    pageName !== 'card' &&
+    !(pageName === 'new' && activeDraft)
+  ) {
     window.location.href = `index.php?page=${encodeURIComponent(pageName)}`
     return
   }

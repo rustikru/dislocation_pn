@@ -29,14 +29,8 @@ class ApprovalMailer
    */
   public function generateLinks(int $actId, int $approverId): array
   {
-    parse_str(
-      parse_url($this->hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY),
-      $ap
-    );
-    parse_str(
-      parse_url($this->hmac->generate($actId, $approverId, 'reject'), PHP_URL_QUERY),
-      $rp
-    );
+    parse_str($this->hmac->generateQuery($actId, $approverId, 'approve'), $ap);
+    parse_str($this->hmac->generateQuery($actId, $approverId, 'reject'), $rp);
 
     return [
       'token_sig' => $ap['sig'] ?? '',

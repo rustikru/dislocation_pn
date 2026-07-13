@@ -18,19 +18,21 @@ class HmacApproval
      */
     public function generate(int $actId, int $approverId, string $action = 'approve'): string
     {
+        return '/gu23/approve.php?' . $this->generateQuery($actId, $approverId, $action);
+    }
+
+    public function generateQuery(int $actId, int $approverId, string $action = 'approve'): string
+    {
         $ts = time();
         $sig = $this->sign($actId, $approverId, $action, $ts);
 
-        // Формируем штатными средствами массив в URL-кодированную строку запроса
-        $params = http_build_query([
+        return http_build_query([
             'act' => $actId,
             'uid' => $approverId,
             'action' => $action,
             'ts' => $ts,
             'sig' => $sig,
         ]);
-
-        return "https://system.company.local/approve?{$params}";
     }
 
     /**

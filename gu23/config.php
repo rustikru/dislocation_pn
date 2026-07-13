@@ -13,4 +13,9 @@ return [
     'soffice_path' => '/Users/ru.bekmansurov/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice',
     ///usr/bin/soffice
 
+    // Внешний адрес модуля для ссылок в письмах.
+    // На проде лучше указать явно: 'https://dislocation.mf.metafrax.ru'
+    // Если оставить пустым, адрес будет взят из текущего HTTP-запроса.
+    'base_url' => '',
+
 ];
