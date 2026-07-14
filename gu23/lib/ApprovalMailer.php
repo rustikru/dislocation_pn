@@ -12,7 +12,7 @@ class ApprovalMailer
   public function __construct(
     string $secret,
     string $baseUrl,
-    string $from = 'noreply@company.ru',
+    string $from = 'noreply@metafrax.ru',
     int $ttlDays = 1,
     string $mailDir = ''
   ) {
@@ -23,16 +23,23 @@ class ApprovalMailer
   }
 
   /**
-   * Сгенерировать ссылки подтверждения и отклонения + sig для сохранения в БД.
+   * Сгенерировать ссылки подтверждения и отклонения 
    *
    * @return array{token_sig: string, approve_link: string, reject_link: string}
    */
   public function generateLinks(int $actId, int $approverId): array
   {
-    parse_str($this->hmac->generateQuery($actId, $approverId, 'approve'), $ap);
-    parse_str($this->hmac->generateQuery($actId, $approverId, 'reject'), $rp);
+    parse_str(
+      parse_url($this->hmac->generate($actId, $approverId, 'approve'), PHP_URL_QUERY),
+      $ap
+    );
+    parse_str(
+      parse_url($this->hmac->generate($actId, $approverId, 'reject'), PHP_URL_QUERY),
+      $rp
+    );
 
     return [
+      'act_link_web'  => $this->baseUrl . '/gu23/card.php?id='.$actId,
       'token_sig' => $ap['sig'] ?? '',
       'approve_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($ap),
       'reject_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($rp),
@@ -44,8 +51,8 @@ class ApprovalMailer
    *
    * @param string $recipientName  ФИО получателя
    * @param int    $actId          ID акта
-   * @param string $approveLink    Ссылка «Подписать»
-   * @param string $rejectLink     Ссылка «Отклонить»
+   * @param string $approveLink    Ссылка Подписать
+   * @param string $rejectLink     Ссылка Отклонить
    * @param array  $act            Строка из gu23_get_act (ACT_NUMBER, ACT_TYPE, DEPT, STATION, …)
    * @param array  $signers        Строки из gu23_get_signers (FIO, POST, ORG, STYPE, SIGNER_REF_ID)
    * @param array  $approvals      Строки из gu23_get_approvals (APPROVER_ID, FULL_NAME, STATUS, DECIDED_AT, COMMENT_TXT)
@@ -57,14 +64,15 @@ class ApprovalMailer
     string $rejectLink,
     array $act = [],
     array $signers = [],
-    array $approvals = []
+    array $approvals = [],
+    string $ActLinkWeb
   ): string {
     $name = htmlspecialchars($recipientName, ENT_QUOTES);
     $actNumber = htmlspecialchars($act['ACT_NUMBER'] ?? "№ {$actId}", ENT_QUOTES);
 
     $actDetailsHtml = $this->actDetailsHtml($act);
     $signersHtml = $this->signersTableHtml($signers, $approvals);
-
+    
     return <<<HTML
 <!DOCTYPE html>
 <html lang="ru">
@@ -118,7 +126,8 @@ class ApprovalMailer
 
             <!-- Подписанты -->
             {$signersHtml}
-
+            <br>
+            <p style="margin:0;color:#888;font-size:12px;line-height:1.6">Подробная информация по акту доступна по адесу: <a href="{$ActLinkWeb}">{$actNumber}</a> </p>
           </td>
         </tr>
 
@@ -126,8 +135,8 @@ class ApprovalMailer
         <tr>
           <td style="background:#f4f5f7;padding:16px 32px;border-top:1px solid #e0e0e0">
             <p style="margin:0;color:#888;font-size:12px;line-height:1.6">
-              Ссылка действительна <b>1 день</b>.<br>
-              Это автоматическое сообщение — не отвечайте на него.
+              <!-- Ссылка действительна <b>1 день</b>.<br> -->
+              Это автоматическое сообщение - не отвечайте на него.
             </p>
           </td>
         </tr>
@@ -265,7 +274,7 @@ HTML;
   }
 
   /**
-   * HTML-пилюля статуса и дополнительная строка (дата / причина отклонения).
+   * HTML (дата / причина отклонения).
    */
   private function statusPill(string $status, ?array $appr): array
   {
@@ -305,7 +314,7 @@ HTML;
 
   /**
    * Сохранить письмо в файл 
-   * Отправка через Oracle: GuActRepository::sendMailViaOracle().
+   * Отправка через: GuActRepository::sendMailOracle().
    */
   public function send(string $to, string $subject, string $html, string $mode): bool
   {
@@ -326,6 +335,7 @@ HTML;
     $file = $this->mailDir . '/' . $ts . '_' . $safe . '.html';
     $content = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
     $res = @file_put_contents($file, $content);
+    
     if ($res === false) {
       $err = error_get_last();
       if (class_exists('Gu23Logger')) {
@@ -336,6 +346,8 @@ HTML;
       }
       return false;
     }
+
+
     return true;
   }
 }

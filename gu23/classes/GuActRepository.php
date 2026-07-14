@@ -116,9 +116,8 @@ class GuActRepository
     }
 
     /**
-     * Режим рассылки писем — определяется сервером, НЕ клиентом.
-     *   Читается из gu23/config.php ('mail_mode');
-     *   если не задан — dev (есть db_config.local.php) → 'send_file', иначе 'send_mail'.
+     * Режим рассылки писем 
+     *  из gu23/config.php ('mail_mode');
      */
     private function mailMode(): string
     {
@@ -135,6 +134,21 @@ class GuActRepository
         }
         return 'send_mail';
     }
+
+    private function getSubject(): string
+    {
+        static $cfg = null;
+        if ($cfg === null) {
+            $path = dirname(__DIR__) . '/config.php';
+            $cfg = file_exists($path) ? (array) (require $path) : [];
+        }
+        if (!empty($cfg['mail_subject'])) {
+            return $cfg['mail_subject'];
+        }
+        
+        return 'Дислокация.Уведомление "ГУ-23"';
+    }
+
 
     public function runAction(string $action, array $post): void
     {
@@ -953,7 +967,7 @@ class GuActRepository
         }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
-        $mode = $this->mailMode(); // режим определяется сервером, не клиентом
+        $mode = $this->mailMode(); // режим
 
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
@@ -985,8 +999,7 @@ class GuActRepository
 
         // 2. Получаем список подписантов с email
         $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))',
-            [':act_id' => $actId]
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))', [':act_id' => $actId]
         );
 
         if (empty($signers)) {
@@ -994,7 +1007,7 @@ class GuActRepository
             return;
         }
 
-        // 3. Полный список подписантов и текущих статусов согласования — для тела письма
+        // 3. Полный список подписантов и текущих статусов согласования для письма
         $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
         $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
 
@@ -1022,12 +1035,14 @@ class GuActRepository
                 $links['reject_link'],
                 $actRows[0] ?? [],
                 $allSigners,
-                $approvalRows
+                $approvalRows,
+                $links['act_link_web']
             );
-            $subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+            //$subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+            $subject = $this->getSubject(); // тема письма 
             // Если режим у нас отправка писем - отправляем письмо 
             $ok = $mode === 'send_mail'
-                ? $this->sendMailViaOracle($email, $subject, $html)
+                ? $this->sendMailOracle($email, $subject, $html)
                 : $mailer->send($email, $subject, $html, $mode);
 
             if ($ok) {
@@ -1105,11 +1120,13 @@ class GuActRepository
             $links['reject_link'],
             $actRows[0] ?? [],
             $allSigners,
-            $approvalRows
+            $approvalRows,
+            $links['act_link_web']
         );
-        $subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+        //$subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
+       $subject = $this->getSubject(); // тема письма 
         $ok = $mode === 'send_mail'
-            ? $this->sendMailViaOracle($email, $subject, $html)
+            ? $this->sendMailOracle($email, $subject, $html)
             : $mailer->send($email, $subject, $html, $mode);
 
         echo json_encode($ok
@@ -1118,22 +1135,22 @@ class GuActRepository
     }
 
     /* ----------------------------------------------------------------- */
-    /* отправка письма через Oracle UTL_MAIL                             */
+    /* отправка письма через Oracle                                      */
     /* ----------------------------------------------------------------- */
-    private function sendMailViaOracle(string $to, string $subject, string $html): bool
+    private function sendMailOracle(string $to, string $subject, string $html): bool
     {
         $st = @oci_parse(
             $this->conn,
             'BEGIN xx_disl_gu23_pkg.gu23_send_mail(:to, :subj, :body); END;'
         );
         if (!$st) {
-            Gu23Logger::error('sendMailViaOracle: oci_parse failed', ['to' => $to]);
+            Gu23Logger::error('sendMailOracle: oci_parse failed', ['to' => $to]);
             return false;
         }
 
         $clob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
         if (!$clob) {
-            Gu23Logger::error('sendMailViaOracle: oci_new_descriptor failed', ['to' => $to]);
+            Gu23Logger::error('sendMailOracle: oci_new_descriptor failed', ['to' => $to]);
             return false;
         }
 
@@ -1147,7 +1164,7 @@ class GuActRepository
 
         if (!$ok) {
             $e = oci_error($st);
-            Gu23Logger::error('sendMailViaOracle: execute failed', ['to' => $to, 'err' => $e['message'] ?? '?']);
+            Gu23Logger::error('sendMailOracle: execute failed', ['to' => $to, 'err' => $e['message'] ?? '?']);
         }
         return (bool) $ok;
     }
@@ -1160,27 +1177,10 @@ class GuActRepository
         require_once __DIR__ . '/../lib/HmacApproval.php';
         require_once __DIR__ . '/../lib/ApprovalMailer.php';
 
-        $baseUrl = $this->siteBaseUrl();
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+            . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
         return new ApprovalMailer($this->getHmacSecret(), $baseUrl);
-    }
-
-    private function siteBaseUrl(): string
-    {
-        $configPath = dirname(__DIR__) . '/config.php';
-        $config = file_exists($configPath) ? (array) require $configPath : [];
-        $baseUrl = trim((string) ($config['base_url'] ?? ''));
-        if ($baseUrl !== '') {
-            return rtrim($baseUrl, '/');
-        }
-
-        $proto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
-        if ($proto === '') {
-            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        }
-
-        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        return rtrim($proto . '://' . $host, '/');
     }
 
     private function getHmacSecret(): string

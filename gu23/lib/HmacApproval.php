@@ -10,7 +10,7 @@ class HmacApproval
     public function __construct(string $secret, int $ttlDays = 1)
     {
         $this->secret = $secret;
-        $this->ttl = $ttlDays * 86400; // Срок действия ссылки на подписание
+        $this->ttl = $ttlDays * 86400; // Срок действия ссылки на подписание (1 день)
     }
 
     /**
@@ -18,21 +18,19 @@ class HmacApproval
      */
     public function generate(int $actId, int $approverId, string $action = 'approve'): string
     {
-        return '/gu23/approve.php?' . $this->generateQuery($actId, $approverId, $action);
-    }
-
-    public function generateQuery(int $actId, int $approverId, string $action = 'approve'): string
-    {
         $ts = time();
         $sig = $this->sign($actId, $approverId, $action, $ts);
 
-        return http_build_query([
+        // Формируем массив в URL
+        $params = http_build_query([
             'act' => $actId,
             'uid' => $approverId,
             'action' => $action,
             'ts' => $ts,
             'sig' => $sig,
         ]);
+
+        return "https://system.company.local/approve?{$params}";
     }
 
     /**

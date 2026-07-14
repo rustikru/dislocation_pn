@@ -459,8 +459,7 @@ function editDraftAct(data) {
     stationFromName: act.ST_FROM || '',
     stationToId: String(act.ST_TO_ID || ''),
     stationToName: act.ST_TO || '',
-    waybillNumber:
-      act.WAYBILL_NO || (firstWagon && firstWagon.WAYBILL_NO) || '',
+    waybillNumber: act.WAYBILL_NO || (firstWagon && firstWagon.WAYBILL_NO) || '',
     cargoReference: act.CARGO_REF || '',
     reasonId: String(act.REASON_ID || ''),
     reasonName: act.REASON_NAME,

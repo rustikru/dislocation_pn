@@ -2,12 +2,11 @@
 /**
  * report.php
  *
- * Эндпоинт генерации DOCX-отчёта для акта ГУ-23.
+ * генерации DOCX-отчёта для акта ГУ-23.
  * Параметры GET:
  *   id=<int>       — ID акта
  *   format=<docx|pdf>
- *
- * Пример: GET /gu23/report/report.php?id=42
+
  */
 
 session_start();
@@ -34,7 +33,6 @@ if (!in_array($format, ['docx', 'pdf'], true)) {
 // Подключаем репозиторий и читаем данные акта
 require_once __DIR__ . '/../classes/GuActRepository.php';
 require_once __DIR__ . '/GuActDocxReport.php';
-require_once __DIR__ . '/GuActPdfReport.php';
 
 // Доступ к модулю ГУ-23 (а не только факт авторизации)
 if (!GuActRepository::canAccess($conn1, $auth)) {
@@ -76,18 +74,8 @@ try {
     $wagons  = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',    [':b1' => $actId]);
     $signers = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
 
-    if ($format === 'pdf') {
-        try {
-            $generator = new GuActDocxReport();
-            $generator->download($act, $wagons, $signers, 'pdf');
-        } catch (Throwable $docxPdfError) {
-            $generator = new GuActPdfReport();
-            $generator->download($act, $wagons, $signers);
-        }
-    } else {
-        $generator = new GuActDocxReport();
-        $generator->download($act, $wagons, $signers, 'docx');
-    }
+    $generator = new GuActDocxReport();
+    $generator->download($act, $wagons, $signers, $format);
 } catch (Throwable $e) {
     http_response_code(500);
     echo 'Ошибка генерации отчёта: ' . htmlspecialchars($e->getMessage());

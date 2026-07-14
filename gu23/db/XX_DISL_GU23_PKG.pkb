@@ -1,1596 +1,1324 @@
-create or replace package body xx_disl_gu23_pkg as
+CREATE OR REPLACE package body XX_ETW.xx_disl_gu23_pkg
+as
     /******************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
-     PURPOSE:   РђРєС‚С‹: СЃРѕСЃС‚Р°РІР»РµРЅРёРµ Р°РєС‚РѕРІ (С„РѕСЂРјР° Р“РЈ-23)
+     PURPOSE:   Акты: составление актов (форма ГУ-23)
      REVISIONS:
      Ver        Date        Author           Description
      ---------  ----------  ---------------  ------------------------------------
      1.0        23.06.2026  BekmansurovRR    1. Created this package.
-     1.1        23.06.2026  BekmansurovRR    2. РќРѕРІС‹Рµ РїРѕР»СЏ Р°РєС‚Р°: st_from, st_to,
+     1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
                                                waybill_no, cargo_ref;
-                                               СЂР°Р·РґРµР»СЊРЅС‹Рµ СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№ Рё РїРѕРґРїРёСЃР°РЅС‚РѕРІ;
-                                               СЃРїСЂР°РІРѕС‡РЅРёРє РіСЂСѓР·РѕРІ.
+                                               раздельные справочники станций и подписантов;
+                                               справочник грузов.
   ******************************************************************************/
-   c_package     constant varchar2(30) := 'xx_disl_gu23_pkg';
-   c_dtf         constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us          constant char(1) := chr(31);        -- СЂР°Р·РґРµР»РёС‚РµР»СЊ РїРѕР»РµР№
-   c_rs          constant char(1) := chr(30);      -- СЂР°Р·РґРµР»РёС‚РµР»СЊ Р·Р°РїРёСЃРµР№
-   g_client_ip   varchar2(64) := null; -- IP РєР»РёРµРЅС‚Р° С‚РµРєСѓС‰РµРіРѕ Р·Р°РїСЂРѕСЃР°
+    c_package       constant varchar2 (30) := 'xx_disl_gu23_pkg';
+    c_dtf           constant varchar2 (30) := 'YYYY-MM-DD HH24:MI:SS';
+    c_us            constant char (1) := CHR (31);        -- разделитель полей
+    c_rs            constant char (1) := CHR (30);      -- разделитель записей
+    g_client_ip              varchar2 (64) := null; -- IP клиента текущего запроса
+    g_server_host   varchar2(240):=sys_context('USERENV','SERVER_HOST');
 
-    -- РЎРµРєСЂРµС‚РЅС‹Р№ РєР»СЋС‡ HMAC РґР»СЏ СЃСЃС‹Р»РѕРє СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ.
-    -- РЎРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ: SELECT dbms_random.string('x', 64) FROM dual;
-   g_hmac_secret constant varchar2(128) := 'РЈРІРµРґРѕРјР»РµРЅРёСЏ-Р“РЈ-23';
+    -- Секретный ключ HMAC для ссылок согласования.
+    -- Сгенерировать: SELECT dbms_random.string('x', 64) FROM dual;
+    g_hmac_secret   constant varchar2 (128) := 'Уведомления-ГУ-23';
 
-   procedure gu23_set_client_ip (
-      p_ip in varchar2
-   ) is
-   begin
-      g_client_ip := p_ip;
-   end gu23_set_client_ip;
+    procedure gu23_set_client_ip (p_ip in varchar2)
+    is
+    begin
+        g_client_ip := p_ip;
+    end;
 
     -- add 10.07.2026 BekmansurovRR
-   procedure log_act_history (
-      p_act_id  in number,
-      p_user_id in number,
-      p_text    in varchar2,
-      p_ip      in varchar2
-   ) is
-   begin
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt,
-         ip
-      ) values
-         ( xx_disl_gu23_hist_seq.nextval,
-           p_act_id,
-           sysdate,
-           p_user_id,
-           p_text,
-           nvl(
-              p_ip,
-              g_client_ip
-           ) );
-   end log_act_history;
+    procedure log_act_history (p_act_id    in number,
+                               p_user_id   in number,
+                               p_text      in varchar2,
+                               p_ip        in varchar2 default null)
+    is
+    begin
+        insert into xx_disl_gu23_hist (id,
+                                       act_id,
+                                       ts,
+                                       usr,
+                                       txt,
+                                       ip)
+             values (xx_disl_gu23_hist_seq.NEXTVAL,
+                     p_act_id,
+                     SYSDATE,
+                     p_user_id,
+                     p_text,
+                     nvl(p_ip, g_client_ip));
+    end;
 
-   procedure log_act_history (
-      p_act_id  in number,
-      p_user_id in number,
-      p_text    in varchar2
-   ) is
-   begin
-      log_act_history(
-         p_act_id,
-         p_user_id,
-         p_text,
-         null
-      );
-   end log_act_history;
+    -- Возврат ответа для php или другим системам
+    function format_error (p_msg in varchar2 default null)
+        return varchar2
+    is
+    begin
+        -- Если передали свой текст, отдаем его, иначе отдаем системный sqlerrm
+        return 'ERR' || c_us || NVL (p_msg, SQLERRM);
+    end format_error;
 
-   function format_error (
-      p_msg in varchar2
-   ) return varchar2 is
-   begin
-        -- If custom text is passed, return it; otherwise return SQLERRM.
-      return 'ERR'
-             || c_us
-             || nvl(
-         p_msg,
-         sqlerrm
-      );
-   end format_error;
+    procedure log_new (p_function_name in varchar2, p_text in varchar2)
+    is
+        pragma autonomous_transaction;
+    begin
+        insert into xx_disl_log_new (log_function, descr)
+             values (c_package || '->' || p_function_name, p_text);
 
+        commit;
+    end;
 
-   procedure log_new (
-      p_function_name in varchar2,
-      p_text          in varchar2
-   ) is
-      pragma autonomous_transaction;
-   begin
-      insert into xx_disl_log_new (
-         log_function,
-         descr
-      ) values
-         ( c_package
-           || '->'
-           || p_function_name,
-           p_text );
+    function g_user_name (p_user_id in number)
+        return varchar2
+    is
+        v   varchar2 (256);
+    begin
+        if p_user_id is null
+        then
+            return null;
+        end if;
 
-      commit;
-   end;
+        select full_name
+          into v
+          from xx_disl_users
+         where id = p_user_id;
 
-   function g_user_name (
-      p_user_id in number
-   ) return varchar2 is
-      v varchar2(256);
-   begin
-      if p_user_id is null then
-         return null;
-      end if;
-      select full_name
-        into v
-        from xx_disl_users
-       where id = p_user_id;
+        return v;
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
 
-      return v;
-   exception
-      when no_data_found then
-         return null;
-   end;
+    function fnc_boolean_num (p_bool in boolean)
+        return number
+    is
+    begin
+        if p_bool
+        then
+            return 1;
+        else
+            return 0;
+        end if;
 
-   function fnc_boolean_num (
-      p_bool in boolean
-   ) return number is
-   begin
-      if p_bool then
-         return 1;
-      else
-         return 0;
-      end if;
-      return 0;
-   end;
+        return 0;
+    end;
 
-   function get_last_bracket_text (
-      p_string in varchar2
-   ) return varchar2 is
-      v_start_pos number;
-      v_end_pos   number;
-      v_result    varchar2(1000);
-   begin
-        -- РќР°С…РѕРґРёРј РїРѕР·РёС†РёСЋ РїРѕСЃР»РµРґРЅРµР№ РѕС‚РєСЂС‹РІР°СЋС‰РµР№ СЃРєРѕР±РєРё
-      v_start_pos := instr(
-         p_string,
-         '(',
-         -1
-      );
+    function get_last_bracket_text(p_string in varchar2) return varchar2 
+    IS
+        v_start_pos NUMBER;
+        v_end_pos   NUMBER;
+        v_result    VARCHAR2(1000);
+    BEGIN
+        -- Находим позицию последней открывающей скобки
+        v_start_pos := INSTR(p_string, '(', -1);
+        
+        -- Если скобки не найдены, возвращаем NULL
+        IF v_start_pos = 0 THEN
+            RETURN NULL;
+        END IF;
+        
+        -- Находим позицию соответствующей закрывающей скобки после последней открывающей
+        v_end_pos := INSTR(p_string, ')', v_start_pos);
+        
+        -- Если закрывающая скобка не найдена, возвращаем NULL
+        IF v_end_pos = 0 THEN
+            RETURN NULL;
+        END IF;
+        
+        -- Извлекаем текст между скобками (исключая сами скобки)
+        v_result := SUBSTR(p_string, v_start_pos + 1, v_end_pos - v_start_pos - 1);
+        
+        -- Удаляем лишние пробелы в начале и конце
+        v_result := TRIM(v_result);
+        
+        RETURN v_result;
+    END get_last_bracket_text;
+    
+    function fnc_mapping_dept (p_dept_name in varchar2)
+        return varchar2
+    is
+        l_value   varchar2 (240);
+        l_text_brack varchar2 (240);
+    begin
+        l_value := p_dept_name;
+        l_text_brack := get_last_bracket_text(l_value);
+        
+        if    LOWER (l_value) like '%акм%'
+        then
+            l_value := 'АКМ';
+        elsif    LOWER (l_value) like '%метанол%'
+        then
+            l_value := 'Метанол';
+        elsif    LOWER (l_value) like '%формалин%'
+        then
+            l_value := 'Формалин';
+        elsif    LOWER (l_value) like '%помс%'
+        then
+            l_value := 'Помс';
+        else
+            l_value:= (nvl(l_text_brack,l_value));
+        end if;
 
-        -- Р•СЃР»Рё СЃРєРѕР±РєРё РЅРµ РЅР°Р№РґРµРЅС‹, РІРѕР·РІСЂР°С‰Р°РµРј NULL
-      if v_start_pos = 0 then
-         return null;
-      end if;
+        return upper(l_value);
+    end;
 
-        -- РќР°С…РѕРґРёРј РїРѕР·РёС†РёСЋ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РµР№ Р·Р°РєСЂС‹РІР°СЋС‰РµР№ СЃРєРѕР±РєРё РїРѕСЃР»Рµ РїРѕСЃР»РµРґРЅРµР№ РѕС‚РєСЂС‹РІР°СЋС‰РµР№
-      v_end_pos := instr(
-         p_string,
-         ')',
-         v_start_pos
-      );
+    -- n-е поле строки, разделители CHR(31)
+    function g_field (p_line in varchar2, p_idx in pls_integer)
+        return varchar2
+    is
+        v_from   pls_integer := 1;
+        v_to     pls_integer;
+        v_i      pls_integer := 1;
+    begin
+        loop
+            v_to :=
+                INSTR (p_line,
+                       c_us,
+                       1,
+                       v_i);
 
-        -- Р•СЃР»Рё Р·Р°РєСЂС‹РІР°СЋС‰Р°СЏ СЃРєРѕР±РєР° РЅРµ РЅР°Р№РґРµРЅР°, РІРѕР·РІСЂР°С‰Р°РµРј NULL
-      if v_end_pos = 0 then
-         return null;
-      end if;
-
-        -- РР·РІР»РµРєР°РµРј С‚РµРєСЃС‚ РјРµР¶РґСѓ СЃРєРѕР±РєР°РјРё (РёСЃРєР»СЋС‡Р°СЏ СЃР°РјРё СЃРєРѕР±РєРё)
-      v_result := substr(
-         p_string,
-         v_start_pos + 1,
-         v_end_pos - v_start_pos - 1
-      );
-
-        -- РЈРґР°Р»СЏРµРј Р»РёС€РЅРёРµ РїСЂРѕР±РµР»С‹ РІ РЅР°С‡Р°Р»Рµ Рё РєРѕРЅС†Рµ
-      v_result := trim(v_result);
-      return v_result;
-   end get_last_bracket_text;
-
-   function fnc_mapping_dept (
-      p_dept_name in varchar2
-   ) return varchar2 is
-      l_value      varchar2(240);
-      l_text_brack varchar2(240);
-   begin
-      l_value := p_dept_name;
-      l_text_brack := get_last_bracket_text(l_value);
-      if lower(l_value) like '%Р°РєРј%' then
-         l_value := 'РђРљРњ';
-      elsif lower(l_value) like '%РјРµС‚Р°РЅРѕР»%' then
-         l_value := 'РњРµС‚Р°РЅРѕР»';
-      elsif lower(l_value) like '%С„РѕСЂРјР°Р»РёРЅ%' then
-         l_value := 'Р¤РѕСЂРјР°Р»РёРЅ';
-      elsif lower(l_value) like '%РїРѕРјСЃ%' then
-         l_value := 'РџРѕРјСЃ';
-      else
-         l_value := ( nvl(
-            l_text_brack,
-            l_value
-         ) );
-      end if;
-
-      return upper(l_value);
-   end;
-
-    -- n-Рµ РїРѕР»Рµ СЃС‚СЂРѕРєРё, СЂР°Р·РґРµР»РёС‚РµР»Рё CHR(31)
-   function g_field (
-      p_line in varchar2,
-      p_idx  in pls_integer
-   ) return varchar2 is
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_i    pls_integer := 1;
-   begin
-      loop
-         v_to := instr(
-            p_line,
-            c_us,
-            1,
-            v_i
-         );
-         if v_i = p_idx then
-            if v_to = 0 then
-               return substr(
-                  p_line,
-                  v_from
-               );
-            else
-               return substr(
-                  p_line,
-                  v_from,
-                  v_to - v_from
-               );
+            if v_i = p_idx
+            then
+                if v_to = 0
+                then
+                    return SUBSTR (p_line, v_from);
+                else
+                    return SUBSTR (p_line, v_from, v_to - v_from);
+                end if;
             end if;
-         end if;
 
-         exit when v_to = 0;
-         v_from := v_to + 1;
-         v_i := v_i + 1;
-      end loop;
+            exit when v_to = 0;
+            v_from := v_to + 1;
+            v_i := v_i + 1;
+        end loop;
 
-      return null;
-   end;
+        return null;
+    end;
 
-   function g_to_date (
-      p_str in varchar2
-   ) return date is
-   begin
-      if p_str is null
-      or trim(p_str) is null then
-         return null;
-      end if;
-      return to_date ( substr(
-         replace(
-            p_str,
-            'T',
-            ' '
-         ),
-         1,
-         16
-      ),
-      'YYYY-MM-DD HH24:MI' );
-   end;
+    function g_to_date (p_str in varchar2)
+        return date
+    is
+    begin
+        if p_str is null or TRIM (p_str) is null
+        then
+            return null;
+        end if;
 
-    -- Р Р°Р·Р±РёСЂР°РµС‚ CLOB РІ С‚Р°Р±Р»РёС†Сѓ СЃС‚СЂРѕРє РІР°РіРѕРЅРѕРІ
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined
-   is
-      v_len  pls_integer := nvl(
-         dbms_lob.getlength(p_clob),
-         0
-      );
-      v_from pls_integer := 1;
-      v_to   pls_integer;
-      v_rec  varchar2(32767);
-      l_row  t_wagon_clob_row;
-   begin
-      while v_from <= v_len loop
-         v_to := instr(
-            p_clob,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_clob,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         l_row.wagon_no := trim(g_field(
-            v_rec,
-            1
-         ));
-         if l_row.wagon_no is not null then
-            l_row.owner := g_field(
-               v_rec,
-               2
-            );
-            l_row.kind := g_field(
-               v_rec,
-               3
-            );
-            l_row.st_from := g_field(
-               v_rec,
-               4
-            );
-            l_row.st_to := g_field(
-               v_rec,
-               5
-            );
-            l_row.cargo := g_field(
-               v_rec,
-               6
-            );
-            l_row.weight := g_field(
-               v_rec,
-               7
-            );
-            l_row.waybill_no := g_field(
-               v_rec,
-               8
-            );
-            pipe row ( l_row );
-         end if;
-      end loop;
+        return TO_DATE (SUBSTR (REPLACE (p_str, 'T', ' '), 1, 16),
+                        'YYYY-MM-DD HH24:MI');
+    end;
 
-      return;
-   end parse_wagon_clob;
+    -- Разбирает CLOB в таблицу строк вагонов
+    function parse_wagon_clob (p_clob in clob)
+        return t_wagon_clob_tab
+        pipelined
+    is
+        v_len    pls_integer := NVL (DBMS_LOB.getlength (p_clob), 0);
+        v_from   pls_integer := 1;
+        v_to     pls_integer;
+        v_rec    varchar2 (32767);
+        l_row    t_wagon_clob_row;
+    begin
+        while v_from <= v_len
+        loop
+            v_to := INSTR (p_clob, c_rs, v_from);
 
-    -- СЃР»РµРґСѓСЋС‰РёР№ СѓРЅРёРєР°Р»СЊРЅС‹Р№ РЅРѕРјРµСЂ Р°РєС‚Р° Р“РЈ23-Р¦Р•РҐ-Р“РћР”-000001
-   function g_next_number (
-      p_dept_id in number
-   ) return varchar2 is
-      v_yr        number := to_number ( to_char(
-         sysdate,
-         'YYYY'
-      ) );
-      v_cnt       number;
-      v_dept_code varchar2(32);
-      v_dept_id   number;
-   begin
-        --v_dept_id := p_dept_id; --rem 06.07.2026 BekmansurovRR РќРѕРјРµСЂ Р°РєС‚Р° РЅРµ РІ СЂР°Р·СЂРµР·Рµ С†РµС…Р°
+            if v_to = 0
+            then
+                v_to := v_len + 1;
+            end if;
+
+            v_rec := DBMS_LOB.SUBSTR (p_clob, v_to - v_from, v_from);
+            v_from := v_to + 1;
+            l_row.wagon_no := TRIM (g_field (v_rec, 1));
+
+            if l_row.wagon_no is not null
+            then
+                l_row.owner := g_field (v_rec, 2);
+                l_row.kind := g_field (v_rec, 3);
+                l_row.st_from := g_field (v_rec, 4);
+                l_row.st_to := g_field (v_rec, 5);
+                l_row.cargo := g_field (v_rec, 6);
+                l_row.weight := g_field (v_rec, 7);
+                l_row.waybill_no := g_field (v_rec, 8);
+                pipe row (l_row);
+            end if;
+        end loop;
+
+        return;
+    end parse_wagon_clob;
+
+    -- следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
+    function g_next_number (p_dept_id in number)
+        return varchar2
+    is
+        v_yr          number := TO_NUMBER (TO_CHAR (SYSDATE, 'YYYY'));
+        v_cnt         number;
+        v_dept_code   varchar2 (32);
+        v_dept_id     number;
+    begin
+        --v_dept_id := p_dept_id; --rem 06.07.2026 BekmansurovRR Номер акта не в разрезе цеха
         /*
         select code
           into v_dept_code
           from xx_disl_dept_v
          where id = p_dept_id;*/
+         
+         v_dept_id := 0;  --add 06.07.2026 BekmansurovRR
 
-      v_dept_id := 0;  --add 06.07.2026 BekmansurovRR
+           update xx_disl_gu23_counter
+              set cnt = cnt + 1
+            where dept_id = v_dept_id and yr = v_yr
+        returning cnt
+             into v_cnt;
 
-      update xx_disl_gu23_counter
-         set
-         cnt = cnt + 1
-       where dept_id = v_dept_id
-         and yr = v_yr returning cnt into v_cnt;
+        if sql%rowcount = 0
+        then
+            v_cnt := 1;
 
-      if sql%rowcount = 0 then
-         v_cnt := 1;
-         insert into xx_disl_gu23_counter (
-            id,
-            dept_id,
-            yr,
-            cnt
-         ) values
-            ( xx_disl_gu23_counter_seq.nextval,
-              v_dept_id,
-              v_yr,
-              v_cnt );
-      end if;
+            insert into xx_disl_gu23_counter (id,
+                                              dept_id,
+                                              yr,
+                                              cnt)
+                 values (xx_disl_gu23_counter_seq.NEXTVAL,
+                         v_dept_id,
+                         v_yr,
+                         v_cnt);
+        end if;
 
-      return 'Р“РЈ23-'
+        return    'ГУ23-'
                --|| v_dept_code || '-'  --rem 06.07.2026 BekmansurovRR
-             || v_yr
-             || '-'
-             || lpad(
-         v_cnt,
-         6,
-         '0'
-      );
-   end;
+               || v_yr
+               || '-'
+               || LPAD (v_cnt, 6, '0');
+    end;
 
-    -- СЃС‚СЂРѕРєР° Р°РєС‚Р° РІ RECORD
-   function g_act_row (
-      a in xx_disl_gu23_act_v%rowtype
-   ) return t_gu23_act_row is
-      o t_gu23_act_row;
-   begin
-      o.id := a.id;
-      o.act_start_number := a.act_start_number;
-      o.act_number := a.act_number;
-      o.act_type := a.act_type;
-      o.status := a.status;
-      o.dept_id := a.dept_id;
-      o.dept := a.dept_code;
-      o.station_id := a.station_id;
-      o.station := a.station;
-      o.st_from_id := a.st_from_id;
-      o.st_from := a.st_from;
-      o.st_to_id := a.st_to_id;
-      o.st_to := a.st_to;
-      o.cargo_ref := a.cargo_ref;
-      o.reason_id := a.reason_id;
-      o.reason_name := a.reason_name;
-      o.circumstances := a.circumstances;
-      o.start_at := to_char(
-         a.start_at,
-         c_dtf
-      );
-      o.end_at := to_char(
-         a.end_at,
-         c_dtf
-      );
-      o.dur_days := a.dur_days;
-      o.dur_hours := a.dur_hours;
-      o.dur_total_h := a.dur_total_h;
-      o.cal_days := a.cal_days;
-      o.linked_start_id := a.linked_start_id;
-      o.linked_start_number := a.linked_start_number;
-      o.wagon_cnt := a.wagon_cnt;
-      o.file_cnt := a.file_cnt;
-      o.annul_reason := a.annul_reason;
-      o.created_at := to_char(
-         a.created_at,
-         c_dtf
-      );
-      o.created_by := g_user_name(a.created_by);
-      o.modified_at := to_char(
-         a.modified_at,
-         c_dtf
-      );
-      o.content_version := nvl(
-         a.content_version,
-         1
-      );
-      return o;
-   end;
+    -- строка акта в RECORD
+    function g_act_row (a in xx_disl_gu23_act_v%rowtype)
+        return t_gu23_act_row
+    is
+        o   t_gu23_act_row;
+    begin
+        o.id := a.id;
+        o.act_start_number := a.act_start_number;
+        o.act_number := a.act_number;
+        o.act_type := a.act_type;
+        o.status := a.status;
+        o.dept_id := a.dept_id;
+        o.dept := a.dept_code;
+        o.station_id := a.station_id;
+        o.station := a.station;
+        o.st_from_id := a.st_from_id;
+        o.st_from := a.st_from;
+        o.st_to_id := a.st_to_id;
+        o.st_to := a.st_to;
+        o.cargo_ref := a.cargo_ref;
+        o.reason_id := a.reason_id;
+        o.reason_name := a.reason_name;
+        o.circumstances := a.circumstances;
+        o.start_at := TO_CHAR (a.start_at, c_dtf);
+        o.end_at := TO_CHAR (a.end_at, c_dtf);
+        o.dur_days := a.dur_days;
+        o.dur_hours := a.dur_hours;
+        o.dur_total_h := a.dur_total_h;
+        o.cal_days := a.cal_days;
+        o.linked_start_id := a.linked_start_id;
+        o.linked_start_number := a.linked_start_number;
+        o.wagon_cnt := a.wagon_cnt;
+        o.file_cnt := a.file_cnt;
+        o.annul_reason := a.annul_reason;
+        o.created_at := TO_CHAR (a.created_at, c_dtf);
+        o.created_by := g_user_name (a.created_by);
+        o.modified_at := TO_CHAR (a.modified_at, c_dtf);
+        o.content_version := NVL (a.content_version, 1);
+        return o;
+    end;
 
 
     -- ----------------------------------------------------------------
-    -- СЃРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… РІ С‚Р°Р±Р»РёС†С‹ (РѕР±С‰РёР№ API)
+    -- сохранение данных в таблицы (общий API)
     -- ----------------------------------------------------------------
 
-   procedure insert_act (
-      p_row in xx_disl_gu23_act%rowtype
-   ) is
-   begin
-      insert into xx_disl_gu23_act (
-         id,
-         act_number,
-         act_type,
-         status,
-         dept_id,
-         station_id,
-         st_from_id,
-         st_to_id,
-         cargo_ref,
-         reason,
-         circumstances,
-         start_at,
-         end_at,
-         dur_days,
-         dur_hours,
-         dur_total_h,
-         cal_days,
-         linked_start_id,
-         created_at,
-         created_by,
-         modified_at,
-         modified_by
-      ) values
-         ( p_row.id,
-           p_row.act_number,
-           p_row.act_type,
-           p_row.status,
-           p_row.dept_id,
-           p_row.station_id,
-           p_row.st_from_id,
-           p_row.st_to_id,
-           p_row.cargo_ref,
-           p_row.reason,
-           p_row.circumstances,
-           p_row.start_at,
-           p_row.end_at,
-           p_row.dur_days,
-           p_row.dur_hours,
-           p_row.dur_total_h,
-           p_row.cal_days,
-           p_row.linked_start_id,
-           p_row.created_at,
-           p_row.created_by,
-           p_row.modified_at,
-           p_row.modified_by );
-   end insert_act;
+    procedure insert_act (p_row in xx_disl_gu23_act%rowtype)
+    is
+    begin
+        insert into xx_disl_gu23_act (id,
+                                      act_number,
+                                      act_type,
+                                      status,
+                                      dept_id,
+                                      station_id,
+                                      st_from_id,
+                                      st_to_id,
+                                      cargo_ref,
+                                      reason,
+                                      circumstances,
+                                      start_at,
+                                      end_at,
+                                      dur_days,
+                                      dur_hours,
+                                      dur_total_h,
+                                      cal_days,
+                                      linked_start_id,
+                                      created_at,
+                                      created_by,
+                                      modified_at,
+                                      modified_by)
+             values (p_row.id,
+                     p_row.act_number,
+                     p_row.act_type,
+                     p_row.status,
+                     p_row.dept_id,
+                     p_row.station_id,
+                     p_row.st_from_id,
+                     p_row.st_to_id,
+                     p_row.cargo_ref,
+                     p_row.reason,
+                     p_row.circumstances,
+                     p_row.start_at,
+                     p_row.end_at,
+                     p_row.dur_days,
+                     p_row.dur_hours,
+                     p_row.dur_total_h,
+                     p_row.cal_days,
+                     p_row.linked_start_id,
+                     p_row.created_at,
+                     p_row.created_by,
+                     p_row.modified_at,
+                     p_row.modified_by);
+    end insert_act;
 
-   procedure update_act (
-      p_row in xx_disl_gu23_act%rowtype
-   ) is
-   begin
-      update xx_disl_gu23_act
-         set act_number = p_row.act_number,
-             act_type = p_row.act_type,
-             status = p_row.status,
-             dept_id = p_row.dept_id,
-             station_id = p_row.station_id,
-             st_from_id = p_row.st_from_id,
-             st_to_id = p_row.st_to_id,
-             cargo_ref = p_row.cargo_ref,
-             reason = p_row.reason,
-             circumstances = p_row.circumstances,
-             start_at = p_row.start_at,
-             end_at = p_row.end_at,
-             dur_days = p_row.dur_days,
-             dur_hours = p_row.dur_hours,
-             dur_total_h = p_row.dur_total_h,
-             cal_days = p_row.cal_days,
-             linked_start_id = p_row.linked_start_id,
-             modified_at = p_row.modified_at,
-             modified_by = p_row.modified_by
-       where id = p_row.id;
-   end update_act;
+    procedure update_act (p_row in xx_disl_gu23_act%rowtype)
+    is
+    begin
+        update xx_disl_gu23_act
+           set act_number = p_row.act_number,
+               act_type = p_row.act_type,
+               status = p_row.status,
+               dept_id = p_row.dept_id,
+               station_id = p_row.station_id,
+               st_from_id = p_row.st_from_id,
+               st_to_id = p_row.st_to_id,
+               cargo_ref = p_row.cargo_ref,
+               reason = p_row.reason,
+               circumstances = p_row.circumstances,
+               start_at = p_row.start_at,
+               end_at = p_row.end_at,
+               dur_days = p_row.dur_days,
+               dur_hours = p_row.dur_hours,
+               dur_total_h = p_row.dur_total_h,
+               cal_days = p_row.cal_days,
+               linked_start_id = p_row.linked_start_id,
+               modified_at = p_row.modified_at,
+               modified_by = p_row.modified_by
+         where id = p_row.id;
+    end update_act;
 
-   procedure insert_act_row (
-      p_row in xx_disl_gu23_act_row%rowtype
-   ) is
-   begin
-      insert into xx_disl_gu23_act_row (
-         id,
-         act_id,
-         wagon_no,
-         owner,
-         kind,
-         st_from,
-         st_to,
-         cargo,
-         weight,
-         waybill_no
-      ) values
-         ( p_row.id,
-           p_row.act_id,
-           p_row.wagon_no,
-           p_row.owner,
-           p_row.kind,
-           p_row.st_from,
-           p_row.st_to,
-           p_row.cargo,
-           p_row.weight,
-           p_row.waybill_no );
-   end insert_act_row;
+    procedure insert_act_row (p_row in xx_disl_gu23_act_row%rowtype)
+    is
+    begin
+        insert into xx_disl_gu23_act_row (id,
+                                          act_id,
+                                          wagon_no,
+                                          owner,
+                                          kind,
+                                          st_from,
+                                          st_to,
+                                          cargo,
+                                          weight,
+                                          waybill_no)
+             values (p_row.id,
+                     p_row.act_id,
+                     p_row.wagon_no,
+                     p_row.owner,
+                     p_row.kind,
+                     p_row.st_from,
+                     p_row.st_to,
+                     p_row.cargo,
+                     p_row.weight,
+                     p_row.waybill_no);
+    end insert_act_row;
 
-   procedure insert_signer (
-      p_row in xx_disl_gu23_signer%rowtype
-   ) is
-   begin
-      insert into xx_disl_gu23_signer (
-         id,
-         act_id,
-         signer_ref_id,
-         fio,
-         post,
-         org,
-         ord_no,
-         stype         -- 'own' / 'rzd' / NULL
-      ) values
-         ( p_row.id,
-           p_row.act_id,
-           p_row.signer_ref_id,
-           p_row.fio,
-           p_row.post,
-           p_row.org,
-           p_row.ord_no,
-           p_row.stype );
-   end insert_signer;
+    procedure insert_signer (p_row in xx_disl_gu23_signer%rowtype)
+    is
+    begin
+        insert into xx_disl_gu23_signer (id,
+                                         act_id,
+                                         signer_ref_id,
+                                         fio,
+                                         POST,
+                                         org,
+                                         ord_no,
+                                         stype         -- 'own' / 'rzd' / NULL
+                                              )
+             values (p_row.id,
+                     p_row.act_id,
+                     p_row.signer_ref_id,
+                     p_row.fio,
+                     p_row.POST,
+                     p_row.org,
+                     p_row.ord_no,
+                     p_row.stype);
+    end insert_signer;
 
     -- ----------------------------------------------------------------
-    -- СЃРїСЂР°РІРѕС‡РЅРёРєРё
+    -- справочники
     -- ----------------------------------------------------------------
-    -- Р¦РµС…Р°
-   function gu23_get_ref_cex return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select id,
-                code,
-                name
-           from xx_disl_dept_v
-          order by name
-      ) loop
-         l_row.id := r.id;
-         l_row.code := r.code;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+    -- Цеха
+    function gu23_get_ref_cex
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select id, code, name
+                      from xx_disl_dept_v
+                    
+                  order by name)
+        loop
+            l_row.id := r.id;
+            l_row.code := r.code;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- РџСЂРёС‡РёРЅС‹
-   function gu23_get_ref_reason (
-      p_kind in varchar2
-   ) return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select id,
-                name
-           from xx_disl_gu23_ref_reason
-          where active = 'Y'
-            and ( p_kind is null
-             or act_kind in ( 'any',
-                              p_kind ) )
-          order by name
-      ) loop
-         l_row.id := ( r.id );
-         l_row.code := to_char(r.id);
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+    -- Причины
+    function gu23_get_ref_reason (p_kind in varchar2 default null)
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r
+            in (  select id, name
+                    from xx_disl_gu23_ref_reason
+                   where     active = 'Y'
+                         and (p_kind is null or act_kind in ('any', p_kind))
+                order by name)
+        loop
+            l_row.id :=  (r.id);
+            l_row.code := TO_CHAR (r.id);
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
-   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select station_id,
-                name
-           from xx_disl_stations
-          order by name
-      ) loop
-         l_row.code := r.station_id;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+    -- ст. составления
+    function gu23_get_ref_station_compile
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select station_id, name
+                      from xx_disl_stations
+                  order by name)
+        loop
+            l_row.code := r.station_id;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
-   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select e_st_code as st_code,
-                st_name as name
-           from xx_etw.xx_etw_station_bi_v
-          where st_name like 'РЈР“Р›Р•РЈ%'
-          order by name
-      ) loop
-         l_row.code := r.st_code;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+    -- ст. отправления
+    function gu23_get_ref_st_from
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select e_st_code as st_code, st_name as name
+                      from xx_etw.xx_nsi_station_v
+                     where st_name like 'УГЛЕУ%'
+                  order by name)
+        loop
+            l_row.code := r.st_code;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
-   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select e_st_code as st_code,
-                st_name as name
-           from xx_etw.xx_etw_station_bi_v
-          order by name
-      ) loop
-         l_row.code := r.st_code;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+    -- ст. назначения
+    function gu23_get_ref_st_to
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (  select e_st_code as st_code, st_name as name
+                      from xx_etw.xx_nsi_station_v
+                  order by name)
+        loop
+            l_row.code := r.st_code;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- Р“СЂСѓР·
-   function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-   begin
-      for r in (
-         select fr_code_etsng as code,
-                fr_name as name
-           from etw_nsi_freight
-          where trunc(sysdate) between recdatebegin and recdateend /*and (   fr_name like UPPER ('%РњРµС‚Р°РЅРѕР»%')
-                                                                                            or fr_name like UPPER ('%РљР°СЂР±Р°РјРёРґ%')
-                                                                                            or fr_name like UPPER ('%РЈСЂРѕС‚СЂРѕРїРёРЅ%')
-                                                                                            or fr_name like UPPER ('%РњРµР»Р°РјРёРЅ%'))
+    -- Груз
+    function gu23_get_ref_cargo
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+    begin
+        for r in (select fr_code_etsng as code, fr_name as name
+                    from etw_nsi_freight
+                   where TRUNC (SYSDATE) between recdatebegin and recdateend /*and (   fr_name like UPPER ('%Метанол%')
+                                                                                            or fr_name like UPPER ('%Карбамид%')
+                                                                                            or fr_name like UPPER ('%Уротропин%')
+                                                                                            or fr_name like UPPER ('%Меламин%'))
                                                                                             */
-      ) loop
-         l_row.code := r.name;
-         l_row.name := r.name;
-         pipe row ( l_row );
-      end loop;
+                                                                            )
+        loop
+            l_row.code := r.name;
+            l_row.name := r.name;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- РїРѕРґРїРёСЃР°РЅС‚С‹ - СЂР°Р±РѕС‚РЅРёРєРё РїСЂРµРґРїСЂРёСЏС‚РёСЏ
-   function gu23_get_ref_signer_own (
-      p_dept_id in varchar2
-   ) return xx_disl_gu23_signer_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_signer_row;
-   begin
-      for r in (
-         select du.*
-           from xx_disl_users_emp_v du
-          where 1 = 1
-            and du.open = 'Y'
+    -- подписанты - работники предприятия
+    function gu23_get_ref_signer_own (p_dept_id in varchar2 default null)
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for r in (  select du.*
+                      from xx_disl_users_emp_v du
+                     where 1 = 1 and du.open = 'Y'
                   --and  prv.THEME like '%'||p_dept||'%'
-                  --and prv.THEME like '%Р–Р”Р¦%'
-          order by fio
-      ) loop
-         l_row.id := r.id;
-         l_row.fio := r.fio;
-         l_row.post := r.post;
-         l_row.org := r.org;
-         l_row.unit := r.unit;
-         l_row.stype := r.stype;
-         l_row.ord_no := null;
-         pipe row ( l_row );
-      end loop;
+                  --and prv.THEME like '%ЖДЦ%'
+                  order by fio)
+        loop
+            l_row.id := r.id;
+            l_row.fio := r.fio;
+            l_row.POST := r.POST;
+            l_row.org := r.org;
+            l_row.unit := r.unit;
+            l_row.stype := r.stype;
+            l_row.ord_no := null;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- РїРѕРґРїРёСЃР°РЅС‚С‹ - СЂР°Р±РѕС‚РЅРёРєРё СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р”
-   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_signer_row;
-   begin
-      for r in (
-         select id,
-                fio,
-                post,
-                org,
-                unit,
-                stype
-           from xx_disl_gu23_ref_signer
-          where active = 'Y'
-            and stype = 'Р Р°Р±РѕС‚РЅРёРє СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р”'
-          order by fio
-      ) loop
-         l_row.id := r.id;
-         l_row.fio := r.fio;
-         l_row.post := r.post;
-         l_row.org := r.org;
-         l_row.unit := r.unit;
-         l_row.stype := r.stype;
-         l_row.ord_no := null;
-         pipe row ( l_row );
-      end loop;
+    -- подписанты - работники станции ОАО РЖД
+    function gu23_get_ref_signer_rzd
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for r in (  select id,
+                           fio,
+                           POST,
+                           org,
+                           unit,
+                           stype
+                      from xx_disl_gu23_ref_signer
+                     where active = 'Y' and stype = 'Работник станции ОАО РЖД'
+                  order by fio)
+        loop
+            l_row.id := r.id;
+            l_row.fio := r.fio;
+            l_row.POST := r.POST;
+            l_row.org := r.org;
+            l_row.unit := r.unit;
+            l_row.stype := r.stype;
+            l_row.ord_no := null;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- Р Р°РЅРµРµ РІРІРµРґС‘РЅРЅС‹Рµ Р’Р РЈР§РќРЈР® РїРѕРґРїРёСЃР°РЅС‚С‹ (signer_ref_id is null)
-    -- СѓРЅРёРєР°Р»СЊРЅС‹Рµ Р¤РРћ/РґРѕР»Р¶РЅРѕСЃС‚СЊ/РѕСЂРіР°РЅРёР·Р°С†РёСЏ РёР· РёСЃС‚РѕСЂРёРё Р°РєС‚РѕРІ.
-   function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_signer_row;
-   begin
-      for r in (
-         select fio,
-                post,
-                org
-           from xx_disl_gu23_signer
-          where signer_ref_id is null
-            and fio is not null
-          group by fio,
-                   post,
-                   org
-          order by fio
-      ) loop
-         l_row.id := null;
-         l_row.signer_ref_id := null;
-         l_row.fio := r.fio;
-         l_row.post := r.post;
-         l_row.org := r.org;
-         l_row.unit := null;
-         l_row.stype := null;
-         l_row.ord_no := null;
-         l_row.user_id := null;
-         pipe row ( l_row );
-      end loop;
+    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null) 
+    -- уникальные ФИО/должность/организация из истории актов.
+    function gu23_get_ref_signer_manual
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for r in (  select fio, POST, org
+                      from xx_disl_gu23_signer
+                     where signer_ref_id is null and fio is not null
+                  group by fio, POST, org
+                  order by fio)
+        loop
+            l_row.id := null;
+            l_row.signer_ref_id := null;
+            l_row.fio := r.fio;
+            l_row.POST := r.POST;
+            l_row.org := r.org;
+            l_row.unit := null;
+            l_row.stype := null;
+            l_row.ord_no := null;
+            l_row.user_id := null;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
     -- ----------------------------------------------------------------
-    -- Р°РєС‚С‹
+    -- акты
     -- ----------------------------------------------------------------
-   function gu23_get_acts (
-      p_q          in varchar2,
-      p_type       in varchar2,
-      p_status     in varchar2,
-      p_dept_id    in varchar2,
-      p_date_from  in varchar2,
-      p_date_to    in varchar2,
-      p_has_signed in varchar2,
-      p_page       in number,
-      p_page_size  in number
-   ) return xx_disl_gu23_act_tab
-      pipelined
-   is
-      v_idx  number := 0;
-      v_q    varchar2(512) := lower(p_q);
-      v_from date :=
-         case
-            when p_date_from is not null then
-               to_date(p_date_from,
-                       'DD.MM.YYYY')
-         end;
-      v_to   date :=
-         case
-            when p_date_to is not null then
-               to_date(p_date_to,
-                       'DD.MM.YYYY') + 1
-         end;
-      v_size number := nvl(
-         p_page_size,
-         1000000
-      );
-      v_off  number := ( nvl(
-         p_page,
-         1
-      ) - 1 ) * v_size;
-      v_end  number := v_off + v_size;
-   begin
-      for a in (
-         select id,
-                act_number,
-                act_start_number,
-                act_type,
-                status,
-                dept_id,
-                dept_code,
-                dept_name,
-                station_id,
-                station,
-                st_from_id,
-                st_from,
-                st_to_id,
-                st_to,
-                cargo_ref,
-                reason_id,
-                reason_name,
-                circumstances,
-                start_at,
-                end_at,
-                dur_days,
-                dur_hours,
-                dur_total_h,
-                cal_days,
-                linked_start_id,
-                linked_start_number,
-                wagon_cnt,
-                file_cnt,
-                annul_reason,
-                created_at,
-                created_by,
-                modified_at,
-                modified_by,
-                content_version
-           from (
-            select a.*,
-                   rownum rn
-              from (
-               select *
-                 from xx_disl_gu23_act_v a
-                where ( p_type is null
-                   or instr(
-                  ','
-                  || p_type
-                  || ',',
-                  ','
-                  || a.act_type
-                  || ','
-               ) > 0 )
-                  and ( p_status is null
-                   or instr(
-                  ','
-                  || p_status
-                  || ',',
-                  ','
-                  || a.status
-                  || ','
-               ) > 0 )
-                  and ( p_dept_id is null
-                   or instr(
-                  ','
-                  || p_dept_id
-                  || ',',
-                  ','
-                  || a.dept_id
-                  || ','
-               ) > 0 )
-                                         -- РїРµСЂРёРѕРґ: РїРѕРїР°РґР°РЅРёРµ РїРѕ РґР°С‚Рµ РЅР°С‡Р°Р»Р° РР›Р РїРѕ РґР°С‚Рµ РѕРєРѕРЅС‡Р°РЅРёСЏ
-                  and ( ( v_from is null
-                  and v_to is null )
-                   or ( a.start_at is not null
-                  and ( v_from is null
-                   or nvl(
-                  a.start_at,
-                  v_from
-               ) >= v_from )
-                  and ( v_to is null
-                   or nvl(
-                  a.start_at,
-                  v_to
-               ) < v_to ) )
-                   or ( a.end_at is not null
-                  and ( v_from is null
-                   or nvl(
-                  a.end_at,
-                  v_from
-               ) >= v_from )
-                  and ( v_to is null
-                   or nvl(
-                  a.end_at,
-                  v_to
-               ) < v_to ) )
-                   or ( a.start_at is null
-                  and a.end_at is null
-                  and ( v_from is null
-                   or a.created_at >= v_from )
-                  and ( v_to is null
-                   or a.created_at < v_to ) ) )
-                                         -- РµСЃС‚СЊ РїСЂРёРєСЂРµРїР»С‘РЅРЅС‹Р№ РїРѕРґРїРёСЃР°РЅРЅС‹Р№ С„Р°Р№Р»
-                  and ( nvl(
-                  p_has_signed,
-                  'N'
-               ) <> 'Y'
-                   or exists (
-                  select 1
-                    from xx_disl_gu23_file f
-                   where f.act_id = a.id
-                     and f.file_category = 'signed'
-               ) )
-                  and ( v_q is null
-               or lower(a.act_number) like '%'
-                        || v_q
-                        || '%'
-               or lower(a.act_start_number) like '%'
-                        || v_q
-                        || '%'
-               or lower(a.reason_name) like '%'
-                                            || v_q
-                                            || '%'
-                   or exists (
-                  select 1
-                    from xx_disl_gu23_act_row r
-                   where r.act_id = a.id
-                     and r.wagon_no like '%'
-                                         || p_q
-                                         || '%'
-               ) )
-                order by a.created_at desc
-            ) a
-             where rownum <= v_end
-         )
-          where rn > v_off
-      ) loop
-         pipe row ( g_act_row(a) );
-      end loop;
+    function gu23_get_acts (p_q            in varchar2 default null,
+                            p_type         in varchar2 default null,
+                            p_status       in varchar2 default null,
+                            p_dept_id      in varchar2 default null,
+                            p_date_from    in varchar2 default null,
+                            p_date_to      in varchar2 default null,
+                            p_has_signed   in varchar2 default null,
+                            p_page         in number default 1,
+                            p_page_size    in number default null)
+        return xx_disl_gu23_act_tab
+        pipelined
+    is
+        v_idx    number := 0;
+        v_q      varchar2 (512) := LOWER (p_q);
+        v_from   date
+            := case
+                   when p_date_from is not null
+                   then
+                       TO_DATE (p_date_from, 'DD.MM.YYYY')
+               end;
+        v_to     date
+            := case
+                   when p_date_to is not null
+                   then
+                       TO_DATE (p_date_to, 'DD.MM.YYYY') + 1
+               end;
+        v_size   number := NVL (p_page_size, 1000000);
+        v_off    number := (NVL (p_page, 1) - 1) * v_size;
+        v_end    number := v_off + v_size;
+    begin
+        for a
+            in (select id,
+                       act_number,
+                       act_start_number,
+                       act_type,
+                       status,
+                       dept_id,
+                       dept_code,
+                       dept_name,
+                       station_id,
+                       station,
+                       st_from_id,
+                       st_from,
+                       st_to_id,
+                       st_to,
+                       cargo_ref,
+                       reason_id,
+                       reason_name,
+                       circumstances,
+                       start_at,
+                       end_at,
+                       dur_days,
+                       dur_hours,
+                       dur_total_h,
+                       cal_days,
+                       linked_start_id,
+                       linked_start_number,
+                       wagon_cnt,
+                       file_cnt,
+                       annul_reason,
+                       created_at,
+                       created_by,
+                       modified_at,
+                       modified_by,
+                       content_version
+                  from (select a.*, ROWNUM rn
+                          from (  select *
+                                    from xx_disl_gu23_act_v a
+                                   where     (   p_type is null
+                                              or INSTR (
+                                                     ',' || p_type || ',',
+                                                     ',' || a.act_type || ',') >
+                                                 0)
+                                         and (   p_status is null
+                                              or INSTR (',' || p_status || ',',
+                                                        ',' || a.status || ',') >
+                                                 0)
+                                         and (   p_dept_id is null
+                                              or INSTR (
+                                                     ',' || p_dept_id || ',',
+                                                     ',' || a.dept_id || ',') >
+                                                 0)
+                                         -- период: попадание по дате начала ИЛИ по дате окончания
+                                         and (   (    v_from is null
+                                                  and v_to is null)
+                                              or (    a.start_at is not null
+                                                  and (   v_from is null
+                                                       or NVL (a.start_at,
+                                                               v_from) >=
+                                                          v_from)
+                                                  and (   v_to is null
+                                                       or NVL (a.start_at,
+                                                               v_to) <
+                                                          v_to))
+                                              or (    a.end_at is not null
+                                                  and (   v_from is null
+                                                       or NVL (a.end_at,
+                                                               v_from) >=
+                                                          v_from)
+                                                  and (   v_to is null
+                                                       or NVL (a.end_at, v_to) <
+                                                          v_to))
+                                              or (    a.start_at is null
+                                                  and a.end_at is null))
+                                         -- есть прикреплённый подписанный файл
+                                         and (   NVL (p_has_signed, 'N') <> 'Y'
+                                              or exists
+                                                     (select 1
+                                                        from xx_disl_gu23_file
+                                                             f
+                                                       where     f.act_id =
+                                                                 a.id
+                                                             and f.file_category =
+                                                                 'signed'))
+                                         and (   v_q is null
+                                              or LOWER (a.act_number) like
+                                                     '%' || v_q || '%'
+                                              or LOWER (a.act_start_number) like
+                                                     '%' || v_q || '%'
+                                              or LOWER (a.reason_name) like
+                                                     '%' || v_q || '%'
+                                              or exists
+                                                     (select 1
+                                                        from xx_disl_gu23_act_row
+                                                             r
+                                                       where     r.act_id =
+                                                                 a.id
+                                                             and r.wagon_no like
+                                                                        '%'
+                                                                     || p_q
+                                                                     || '%'))
+                                order by a.created_at desc) a
+                         where ROWNUM <= v_end)
+                 where rn > v_off)
+        loop
+            pipe row (g_act_row (a));
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р°РєС‚РѕРІ
-   function gu23_count_acts (
-      p_q          in varchar2,
-      p_type       in varchar2,
-      p_status     in varchar2,
-      p_dept_id    in varchar2,
-      p_date_from  in varchar2,
-      p_date_to    in varchar2,
-      p_has_signed in varchar2
-   ) return number is
-      v_q    varchar2(512) := lower(p_q);
-      v_from date :=
-         case
-            when p_date_from is not null then
-               to_date(p_date_from,
-                       'DD.MM.YYYY')
-         end;
-      v_to   date :=
-         case
-            when p_date_to is not null then
-               to_date(p_date_to,
-                       'DD.MM.YYYY') + 1
-         end;
-      v_cnt  number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_act_v a
-       where ( p_type is null
-          or instr(
-         ','
-         || p_type
-         || ',',
-         ','
-         || a.act_type
-         || ','
-      ) > 0 )
-         and ( p_status is null
-          or instr(
-         ','
-         || p_status
-         || ',',
-         ','
-         || a.status
-         || ','
-      ) > 0 )
-         and ( p_dept_id is null
-          or instr(
-         ','
-         || p_dept_id
-         || ',',
-         ','
-         || a.dept_id
-         || ','
-      ) > 0 )
-         and ( ( v_from is null
-         and v_to is null )
-          or ( a.start_at is not null
-         and ( v_from is null
-          or a.start_at >= v_from )
-         and ( v_to is null
-          or a.start_at < v_to ) )
-          or ( a.end_at is not null
-         and ( v_from is null
-          or a.end_at >= v_from )
-         and ( v_to is null
-          or a.end_at < v_to ) )
-          or ( a.start_at is null
-         and a.end_at is null
-         and ( v_from is null
-          or a.created_at >= v_from )
-         and ( v_to is null
-          or a.created_at < v_to ) ) )
-         and ( nvl(
-         p_has_signed,
-         'N'
-      ) <> 'Y'
-          or exists (
-         select 1
-           from xx_disl_gu23_file f
-          where f.act_id = a.id
-            and f.file_category = 'signed'
-      ) )
-         and ( v_q is null
-      or lower(a.act_number) like '%'
-               || v_q
-               || '%'
-      or lower(a.act_start_number) like '%'
-               || v_q
-               || '%'
-      or lower(a.reason_name) like '%'
-                                   || v_q
-                                   || '%'
-          or exists (
-         select 1
-           from xx_disl_gu23_act_row r
-          where r.act_id = a.id
-            and r.wagon_no like '%'
-                                || p_q
-                                || '%'
-      ) );
+    -- количество актов 
+    function gu23_count_acts (p_q            in varchar2 default null,
+                              p_type         in varchar2 default null,
+                              p_status       in varchar2 default null,
+                              p_dept_id      in varchar2 default null,
+                              p_date_from    in varchar2 default null,
+                              p_date_to      in varchar2 default null,
+                              p_has_signed   in varchar2 default null)
+        return number
+    is
+        v_q      varchar2 (512) := LOWER (p_q);
+        v_from   date
+            := case
+                   when p_date_from is not null
+                   then
+                       TO_DATE (p_date_from, 'DD.MM.YYYY')
+               end;
+        v_to     date
+            := case
+                   when p_date_to is not null
+                   then
+                       TO_DATE (p_date_to, 'DD.MM.YYYY') + 1
+               end;
+        v_cnt    number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_act_v a
+         where     (   p_type is null
+                    or INSTR (',' || p_type || ',', ',' || a.act_type || ',') >
+                       0)
+               and (   p_status is null
+                    or INSTR (',' || p_status || ',', ',' || a.status || ',') >
+                       0)
+               and (   p_dept_id is null
+                    or INSTR (',' || p_dept_id || ',',
+                              ',' || a.dept_id || ',') >
+                       0)
+               and (   (v_from is null and v_to is null)
+                    or (    a.start_at is not null
+                        and (v_from is null or a.start_at >= v_from)
+                        and (v_to is null or a.start_at < v_to))
+                    or (    a.end_at is not null
+                        and (v_from is null or a.end_at >= v_from)
+                        and (v_to is null or a.end_at < v_to)))
+               and (   NVL (p_has_signed, 'N') <> 'Y'
+                    or exists
+                           (select 1
+                              from xx_disl_gu23_file f
+                             where     f.act_id = a.id
+                                   and f.file_category = 'signed'))
+               and (   v_q is null
+                    or LOWER (a.act_number) like '%' || v_q || '%'
+                    or LOWER (a.act_start_number) like '%' || v_q || '%'
+                    or LOWER (a.reason_name) like '%' || v_q || '%'
+                    or exists
+                           (select 1
+                              from xx_disl_gu23_act_row r
+                             where     r.act_id = a.id
+                                   and r.wagon_no like '%' || p_q || '%'));
 
-      return v_cnt;
-   end;
+        return v_cnt;
+    end;
 
-    -- РђРєС‚
-   function gu23_get_act (
-      p_id in number
-   ) return xx_disl_gu23_act_tab
-      pipelined
-   is
-   begin
-      for a in (
-         select *
-           from xx_disl_gu23_act_v a
-          where a.id = p_id
-          order by a.created_at desc,
-                   a.id desc
-      ) loop
-         pipe row ( g_act_row(a) );
-      end loop;
+    -- Акт
+    function gu23_get_act (p_id in number)
+        return xx_disl_gu23_act_tab
+        pipelined
+    is
+    begin
+        for a in (  select *
+                      from xx_disl_gu23_act_v a
+                     where a.id = p_id
+                  order by a.created_at desc, a.id desc)
+        loop
+            pipe row (g_act_row (a));
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-    -- РЎС‚СЂРѕРєРё Р°РєС‚Р° (РІР°РіРѕРЅС‹)
-   function gu23_get_rows (
-      p_act_id in number
-   ) return xx_disl_gu23_row_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_row;
-   begin
-      for r in (
-         select *
-           from xx_disl_gu23_act_row
-          where act_id = p_act_id
-          order by id
-      ) loop
-         l_row.id := r.id;
-         l_row.act_id := r.act_id;
-         l_row.wagon_no := r.wagon_no;
-         l_row.owner := r.owner;
-         l_row.kind := r.kind;
-         l_row.st_from := r.st_from;
-         l_row.st_to := r.st_to;
-         l_row.cargo := r.cargo;
-         l_row.weight := r.weight;
-         l_row.waybill_no := r.waybill_no;
-         begin
-            select act_start_number,
-                   dur_total_h
-              into
-               l_row.act_start_num,
-               l_row.dur_total_h
-              from xx_disl_gu23_act_v
-             where id = p_act_id;
-         exception
-            when others then
-               l_row.act_start_num := '-';
-         end;
+    -- Строки акта (вагоны)
+    function gu23_get_rows (p_act_id in number)
+        return xx_disl_gu23_row_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_row;
+    begin
+        for r in (  select *
+                      from xx_disl_gu23_act_row
+                     where act_id = p_act_id
+                  order by id)
+        loop
+            l_row.id := r.id;
+            l_row.act_id := r.act_id;
+            l_row.wagon_no := r.wagon_no;
+            l_row.owner := r.owner;
+            l_row.kind := r.kind;
+            l_row.st_from := r.st_from;
+            l_row.st_to := r.st_to;
+            l_row.cargo := r.cargo;
+            l_row.weight := r.weight;
+            l_row.waybill_no := r.waybill_no;
 
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-    -- Р¤Р°Р№Р»С‹
-   function gu23_get_files (
-      p_act_id in number
-   ) return xx_disl_gu23_file_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_file_row;
-   begin
-      for f in (
-         select *
-           from xx_disl_gu23_file
-          where act_id = p_act_id
-          order by id
-      ) loop
-         l_row.id := f.id;
-         l_row.act_id := f.act_id;
-         l_row.file_name := f.file_name;
-         l_row.file_ext := f.file_ext;
-         l_row.mime_type := f.mime_type;
-         l_row.real_path := f.real_path;
-         l_row.created_at := to_char(
-            f.created_at,
-            c_dtf
-         );
-         l_row.created_by := g_user_name(f.created_by);
-         l_row.file_category := nvl(
-            f.file_category,
-            'general'
-         );
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-   function gu23_file_info (
-      p_file_id in number
-   ) return varchar2 is
-      v_act_id   number;
-      v_path     varchar2(1024);
-      v_category varchar2(16);
-      v_name     varchar2(512);
-      v_mime     varchar2(128);
-   begin
-      select act_id,
-             real_path,
-             nvl(
-                file_category,
-                'general'
-             ),
-             file_name,
-             mime_type
-        into
-         v_act_id,
-         v_path,
-         v_category,
-         v_name,
-         v_mime
-        from xx_disl_gu23_file
-       where id = p_file_id;
-
-      return v_act_id
-             || c_us
-             || v_path
-             || c_us
-             || v_category
-             || c_us
-             || v_name
-             || c_us
-             || v_mime;
-   exception
-      when no_data_found then
-         return null;
-   end;
-
-    -- РџРѕРґРїРёСЃР°РЅС‚С‹
-   function gu23_get_signers (
-      p_act_id in number
-   ) return xx_disl_gu23_signer_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_signer_row;
-   begin
-      for s in (
-         select s.*,
-                case
-                   when s.stype = 'own' then
-                      s.signer_ref_id
-                   else
-                      null
-                end as ref_user_id,
-                nvl(
-                   du.full_name,
-                   s.fio
-                ) as fio_new
-           from xx_disl_gu23_signer s
-           left join xx_disl_users_emp_v du
-         on du.id = signer_ref_id
-            and s.stype = 'own'
-          where s.act_id = p_act_id
-          order by s.ord_no,
-                   s.id
-      ) loop
-         l_row.id := s.id;
-         l_row.signer_ref_id := s.signer_ref_id;
-         l_row.fio := s.fio_new;
-         l_row.post := s.post;
-         l_row.org := s.org;
-         l_row.unit := null;
-         l_row.stype := s.stype;
-         l_row.ord_no := s.ord_no;
-         l_row.user_id := s.ref_user_id;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-    -- РСЃС‚РѕСЂРёСЏ РёР·РјРµРЅРµРЅРёР№ РїРѕ Р°РєС‚Сѓ
-   function gu23_get_hist (
-      p_act_id in number
-   ) return xx_disl_gu23_hist_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_hist_row;
-   begin
-      for h in (
-         select *
-           from xx_disl_gu23_hist
-          where act_id = p_act_id
-          order by ts desc,
-                   id desc
-      ) loop
-         l_row.id := h.id;
-         l_row.act_id := h.act_id;
-         l_row.ts := to_char(
-            h.ts,
-            c_dtf
-         );
-         l_row.usr := g_user_name(h.usr);
-         l_row.txt := h.txt;
-         l_row.ip := h.ip;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-    -- РћС‚РєСЂС‹С‚С‹Рµ Р°РєС‚С‹ (Р°РєС‚ РЅР° РЅР°С‡Р°Р»Рѕ)
-   function gu23_get_open_starts return xx_disl_gu23_act_tab
-      pipelined
-   is
-   begin
-      for a in (
-         select *
-           from xx_disl_gu23_act_v a
-          where a.act_type = 'start'
-            and a.status in (                         --'active',
-             'signed' )
-                         -- РѕСЃС‚Р°Р»СЃСЏ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РЅРµР·Р°РєСЂС‹С‚С‹Р№ РІР°РіРѕРЅ
-            and exists (
-            select 1
-              from xx_disl_gu23_act_row sr
-             where sr.act_id = a.id
-               and not exists (
-               select 1
-                 from xx_disl_gu23_act e,
-                      xx_disl_gu23_act_row er
-                where er.act_id = e.id
-                  and e.act_type = 'end'
-                  and e.status in ( 'active',
-                                    'signed',
-                                    'closed' )
-                  and e.linked_start_id = a.id
-                  and er.wagon_no = sr.wagon_no
-            )
-         )
-          order by a.start_at
-      ) loop
-         pipe row ( g_act_row(a) );
-      end loop;
-
-      return;
-   end;
-
-    -- РѕС‚РєСЂС‹С‚С‹Рµ РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р° (РЅРµ Р·Р°РєСЂС‹С‚С‹Рµ РґРµР№СЃС‚РІСѓСЋС‰РёРј Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ)
-   function gu23_get_open_rows (
-      p_start_id in number
-   ) return xx_disl_gu23_row_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_row;
-   begin
-      for r in (
-         select *
-           from xx_disl_gu23_act_row sr
-          where sr.act_id = p_start_id
-            and not exists (
-            select 1
-              from xx_disl_gu23_act e,
-                   xx_disl_gu23_act_row er
-             where er.act_id = e.id
-               and e.act_type = 'end'
-               and e.status in ( 'active',
-                                 'signed',
-                                 'closed' ) -- Р·Р°РЅСЏС‚; rejected/annulled/draft ? СЃРІРѕР±РѕРґРµРЅ
-               and e.linked_start_id = p_start_id
-               and er.wagon_no = sr.wagon_no
-         )
-          order by sr.id
-      ) loop
-         l_row.id := r.id;
-         l_row.act_id := r.act_id;
-         l_row.wagon_no := r.wagon_no;
-         l_row.owner := r.owner;
-         l_row.kind := r.kind;
-         l_row.st_from := r.st_from;
-         l_row.st_to := r.st_to;
-         l_row.cargo := r.cargo;
-         l_row.weight := r.weight;
-         l_row.waybill_no := r.waybill_no;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end;
-
-    -- РїРѕРёСЃРє РїРѕ РІР°РіРѕРЅСѓ (РІ РєР°РєРёС… Р°РєС‚Р°С…)
-   function gu23_get_by_wagon (
-      p_wagon in varchar2
-   ) return xx_disl_gu23_act_tab
-      pipelined
-   is
-   begin
-      for a in (
-         select *
-           from xx_disl_gu23_act_v a
-          where exists (
-            select 1
-              from xx_disl_gu23_act_row r
-             where r.act_id = a.id
-               and r.wagon_no = p_wagon
-         )
-          order by a.created_at desc,
-                   a.id desc
-      ) loop
-         pipe row ( g_act_row(a) );
-      end loop;
-
-      return;
-   end;
-
-    -- ----------------------------------------------------------------
-    -- Р”Р°РЅРЅС‹Рµ РёР· РґРёСЃР»РѕРєР°С†РёРё (РІРЅРµС€РЅСЏСЏ РґРёСЃР»РѕРєР°С†РёСЏ РёР»Рё РїРѕ РЅР°РєР»Р°РґРЅС‹Рµ РёР· Р­РўР РђРќР°)
-    -- ----------------------------------------------------------------
-   function gu23_get_wagon_info (
-      p_wagons       in clob,
-      p_waybill_no   in varchar2,
-      p_dest_station in varchar2,
-      p_cargo_name   in varchar2,
-      p_act_type     in varchar2
-   ) return xx_disl_gu23_wagon_tab
-      pipelined
-   is
-      l_function varchar2(150) := 'gu23_get_wagon_info';
-      v_len      pls_integer := nvl(
-         dbms_lob.getlength(p_wagons),
-         0
-      );
-      v_from     pls_integer := 1;
-      v_to       pls_integer;
-      v_no       varchar2(32);
-      l_row      xx_disl_gu23_wagon_row;
-
-        -- РљСѓСЂСЃРѕСЂ РґР°РЅРЅС‹С…
-      cursor c_dislocation (
-         v_w_no         varchar2,              -- РІР°РіРѕРЅ
-         v_waybill_no   varchar2,          -- РЅР°РєР»Р°РґРЅР°СЏ
-         v_dest_station varchar2, -- СЃС‚Р°РЅС†РёСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ
-         v_cargo_name   varchar2                -- РіСЂСѓР·
-      ) is
-      select nvl(
-         ecar.car_number,
-         regexp_replace(
-                 eis.spc_custom_text,
-                 '[^[[:digit:]]]*'
-              )
-      ) as wagon_no,                                   -- РІР°РіРѕРЅ
-             (
-                select sum(ef.car_weight_net)
-                  from xx_etw.etw_inv_car ef
-                 where ef.front_end_id = ei.front_end_id
-                   and ef.car_number = nvl(
-                   ecar.car_number,
-                   regexp_replace(
-                              eis.spc_custom_text,
-                              '[^[[:digit:]]]*'
-                           )
-                )
-             ) as weight,
-             ecar.car_type_name as wagon_type_code,
-             ei.inv_number as waybill_no,                             -- РЅР°РєР»Р°РґРЅР°СЏ
-             eif.freight_name as cargo_name,                                  -- РіСЂСѓР·
-             ( ecar.car_owner_name ) as owner,                                 -- СЃРѕР±СЃС‚РІРµРЅРЅРє
-             inv_to_station_code as st_to_code,
-             upper(trim(inv_to_station_name)) as dest_station,                  -- СЃС‚Р°РЅС†РёСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ
-             upper(trim(inv_from_station_name)) as depart_station                -- СЃС‚Р°РЅС†РёСЏ РѕС‚РїСЂР°РІР»РµРЅРёСЏ
-        from xx_etw.etw_invoice ei,
-             xx_etw.etw_inv_car ecar,
-             xx_etw.etw_clm_otpr eco,
-             xx_etw.etw_clm_otpr_graph_pod gr,
-             xx_etw.etw_invoice_source src,
-             etw_inv_freight eif,
-             (
-                select front_end_id,
-                       spc_custom_text
-                  from etw_inv_spc
-                 where spc_transp_clause_id = 975
-                    or ( spc_transp_clause_id = 993
-                   and upper(spc_custom_text) like '%РџР›РђРўР¤РћР РњРђ%' )
-             ) eis
-       where ei.inv_claim_id = eco.claim_id (+)
-         and ei.inv_otpr_num = eco.otpr_nom (+)
-         and ei.inv_claim_id = gr.claim_id (+)
-         and ei.inv_otpr_num = gr.otpr_nom (+)
-         and ei.inv_pod_num = gr.gp_pod_num (+)
-         and nvl(
-         ecar.car_number,
-         regexp_replace(
-                 eis.spc_custom_text,
-                 '[^[[:digit:]]]*'
-              )
-      ) = nvl(
-         v_w_no,
-         nvl(
-                 ecar.car_number,
-                 regexp_replace(
-                        eis.spc_custom_text,
-                        '[^[[:digit:]]]*'
-                     )
-              )
-      )
-         and upper(inv_to_station_name) like '%'
-                                             || upper(v_dest_station)
-                                             || '%'
-         and ei.inv_number = nvl(
-         v_waybill_no,
-         ei.inv_number
-      )
-         and ei.front_end_id = ecar.front_end_id (+)
-         and ei.front_end_id = eis.front_end_id (+)
-         and ei.front_end_id = src.front_end_id (+)
-         and ei.front_end_id = eif.front_end_id (+)
-         and ei.invoice_state_id in ( 31,     --РќР°РєР»Р°РґРЅР°СЏ РїСЂРµРґСЉСЏРІР»РµРЅР°
-                                      44, --Р Р°Р±РѕС‚Р° СЃ РґРѕРєСѓРјРµРЅС‚РѕРј РѕРєРѕРЅС‡РµРЅР° (44)
-                                      439, -- РЎРѕРіР»Р°СЃРѕРІР°РЅРёРµ СѓРІРµРґРѕРјР»РµРЅРёСЏ
-                                      1116 -- РџСЂРёРµРјРѕСЃРґР°С‚С‡РёРєРѕРј РїСЂРёРЅСЏС‚Рѕ
-                                       )
-         and ei.inv_date_create > to_date('01.01.2026','dd.mm.rrrr')
-         and ei.inv_recip_name <> 'РћРђРћ "РњРµС‚Р°С„СЂР°РєСЃ"';
-
-        -- РџСЂРѕСЃС‚Р°РІР»СЏРµС‚ l_row.dup_act/dup_by, РµСЃР»Рё РїРѕ РІР°РіРѕРЅСѓ (РІ РїСЂРµРґРµР»Р°С… РјРµСЃСЏС†Р°)
-        -- РёР»Рё РЅР°РєР»Р°РґРЅРѕР№ (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ) СѓР¶Рµ РµСЃС‚СЊ Р·Р°РЅСЏС‚С‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р°.
-      procedure set_dup_flag is
-      begin
-         l_row.dup_act := null;
-         l_row.dup_by := null;
-         if l_row.found <> 1
-         or nvl(
-            p_act_type,
-            'start'
-         ) <> 'start' then
-            return;
-         end if;
-
-            -- РїРѕ РІР°РіРѕРЅСѓ РІ РїСЂРµРґРµР»Р°С… С‚РµРєСѓС‰РµРіРѕ РјРµСЃСЏС†Р°
-         begin
-            select a.act_number
-              into l_row.dup_act
-              from xx_disl_gu23_act a,
-                   xx_disl_gu23_act_row r
-             where r.act_id = a.id
-               and a.act_type = 'start'
-               and a.status in ( 'active',
-                                 'signed',
-                                 'closed' )
-               and r.wagon_no = l_row.wagon_no
-               and trunc(
-               a.start_at,
-               'MM'
-            ) = trunc(
-               sysdate,
-               'MM'
-            )
-               and rownum = 1;
-
-            l_row.dup_by := 'wagon';
-         exception
-            when no_data_found then
-               l_row.dup_act := null;
-         end;
-
-            -- РїРѕ РЅР°РєР»Р°РґРЅРѕР№ РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ
-         if
-            l_row.dup_act is null
-            and l_row.waybill_no is not null
-         then
             begin
-               select a.act_number
-                 into l_row.dup_act
-                 from xx_disl_gu23_act a,
-                      xx_disl_gu23_act_row r
-                where r.act_id = a.id
-                  and a.act_type = 'start'
-                  and a.status in ( 'active',
-                                    'signed',
-                                    'closed' )
-                  and r.waybill_no = l_row.waybill_no
-                  and a.start_at >= add_months(
-                  sysdate,
-                  -3
-               )
-                  and a.start_at <= add_months(
-                  sysdate,
-                  3
-               )
-                  and rownum = 1;
-
-               l_row.dup_by := 'waybill';
+                select act_start_number, dur_total_h
+                  into l_row.act_start_num, l_row.dur_total_h
+                  from xx_disl_gu23_act_v
+                 where id = p_act_id;
             exception
-               when no_data_found then
-                  l_row.dup_act := null;
+                when others
+                then
+                    l_row.act_start_num := '-';
             end;
-         end if;
-      end set_dup_flag;
-   begin
-      l_row.weight := null;
+
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- Файлы
+    function gu23_get_files (p_act_id in number)
+        return xx_disl_gu23_file_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_file_row;
+    begin
+        for f in (  select *
+                      from xx_disl_gu23_file
+                     where act_id = p_act_id
+                  order by id)
+        loop
+            l_row.id := f.id;
+            l_row.act_id := f.act_id;
+            l_row.file_name := f.file_name;
+            l_row.file_ext := f.file_ext;
+            l_row.mime_type := f.mime_type;
+            l_row.real_path := f.real_path;
+            l_row.created_at := TO_CHAR (f.created_at, c_dtf);
+            l_row.created_by := g_user_name (f.created_by);
+            l_row.file_category := NVL (f.file_category, 'general');
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_file_info (p_file_id in number)
+        return varchar2
+    is
+        v_act_id     number;
+        v_path       varchar2 (1024);
+        v_category   varchar2 (16);
+        v_name       varchar2 (512);
+        v_mime       varchar2 (128);
+    begin
+        select act_id,
+               real_path,
+               NVL (file_category, 'general'),
+               file_name,
+               mime_type
+          into v_act_id,
+               v_path,
+               v_category,
+               v_name,
+               v_mime
+          from xx_disl_gu23_file
+         where id = p_file_id;
+
+        return    v_act_id
+               || c_us
+               || v_path
+               || c_us
+               || v_category
+               || c_us
+               || v_name
+               || c_us
+               || v_mime;
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
+
+    -- Подписанты
+    function gu23_get_signers (p_act_id in number)
+        return xx_disl_gu23_signer_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_signer_row;
+    begin
+        for s
+            in (  select s.*,
+                         case
+                             when s.stype = 'own' then s.signer_ref_id
+                             else null
+                         end                          as ref_user_id,
+                         NVL (du.full_name, s.fio)    as fio_new
+                    from xx_disl_gu23_signer s
+                         left join xx_disl_users_emp_v du
+                             on du.id = signer_ref_id and s.stype = 'own'
+                   where s.act_id = p_act_id
+                order by s.ord_no, s.id)
+        loop
+            l_row.id := s.id;
+            l_row.signer_ref_id := s.signer_ref_id;
+            l_row.fio := s.fio_new;
+            l_row.POST := s.POST;
+            l_row.org := s.org;
+            l_row.unit := null;
+            l_row.stype := s.stype;
+            l_row.ord_no := s.ord_no;
+            l_row.user_id := s.ref_user_id;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- История изменений по акту
+    function gu23_get_hist (p_act_id in number)
+        return xx_disl_gu23_hist_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_hist_row;
+    begin
+        for h in (  select *
+                      from xx_disl_gu23_hist
+                     where act_id = p_act_id
+                  order by ts desc, id desc)
+        loop
+            l_row.id := h.id;
+            l_row.act_id := h.act_id;
+            l_row.ts := TO_CHAR (h.ts, c_dtf);
+            l_row.usr := g_user_name (h.usr);
+            l_row.txt := h.txt;
+            l_row.ip := h.ip;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- Открытые акты (акт на начало)
+    function gu23_get_open_starts
+        return xx_disl_gu23_act_tab
+        pipelined
+    is
+    begin
+        for a
+            in (  select *
+                    from xx_disl_gu23_act_v a
+                   where     a.act_type = 'start'
+                         and a.status in (                         --'active',
+                                          'signed')
+                         -- остался хотя бы один незакрытый вагон
+                         and exists
+                                 (select 1
+                                    from xx_disl_gu23_act_row sr
+                                   where     sr.act_id = a.id
+                                         and not exists
+                                                 (select 1
+                                                    from xx_disl_gu23_act e,
+                                                         xx_disl_gu23_act_row
+                                                         er
+                                                   where     er.act_id = e.id
+                                                         and e.act_type = 'end'
+                                                         and e.status in
+                                                                 ('active',
+                                                                  'signed',
+                                                                  'closed')
+                                                         and e.linked_start_id =
+                                                             a.id
+                                                         and er.wagon_no =
+                                                             sr.wagon_no))
+                order by a.start_at)
+        loop
+            pipe row (g_act_row (a));
+        end loop;
+
+        return;
+    end;
+
+    -- открытые вагоны акта начала (не закрытые действующим актом окончания)
+    function gu23_get_open_rows (p_start_id in number)
+        return xx_disl_gu23_row_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_row;
+    begin
+        for r
+            in (  select *
+                    from xx_disl_gu23_act_row sr
+                   where     sr.act_id = p_start_id
+                         and not exists
+                                 (select 1
+                                    from xx_disl_gu23_act    e,
+                                         xx_disl_gu23_act_row er
+                                   where     er.act_id = e.id
+                                         and e.act_type = 'end'
+                                         and e.status in
+                                                 ('active', 'signed', 'closed') -- занят; rejected/annulled/draft ? свободен
+                                         and e.linked_start_id = p_start_id
+                                         and er.wagon_no = sr.wagon_no)
+                order by sr.id)
+        loop
+            l_row.id := r.id;
+            l_row.act_id := r.act_id;
+            l_row.wagon_no := r.wagon_no;
+            l_row.owner := r.owner;
+            l_row.kind := r.kind;
+            l_row.st_from := r.st_from;
+            l_row.st_to := r.st_to;
+            l_row.cargo := r.cargo;
+            l_row.weight := r.weight;
+            l_row.waybill_no := r.waybill_no;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- поиск по вагону (в каких актах)
+    function gu23_get_by_wagon (p_wagon in varchar2)
+        return xx_disl_gu23_act_tab
+        pipelined
+    is
+    begin
+        for a
+            in (  select *
+                    from xx_disl_gu23_act_v a
+                   where exists
+                             (select 1
+                                from xx_disl_gu23_act_row r
+                               where r.act_id = a.id and r.wagon_no = p_wagon)
+                order by a.created_at desc, a.id desc)
+        loop
+            pipe row (g_act_row (a));
+        end loop;
+
+        return;
+    end;
+
+    -- ----------------------------------------------------------------
+    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
+    -- ----------------------------------------------------------------
+    function gu23_get_wagon_info (p_wagons         in clob,
+                                  p_waybill_no     in varchar2 default null,
+                                  p_dest_station   in varchar2 default null,
+                                  p_cargo_name     in varchar2 default null,
+                                  p_act_type       in varchar2 default null)
+        return xx_disl_gu23_wagon_tab
+        pipelined
+    is
+        l_function   varchar2 (150) := 'gu23_get_wagon_info';
+        v_len        pls_integer := NVL (DBMS_LOB.getlength (p_wagons), 0);
+        v_from       pls_integer := 1;
+        v_to         pls_integer;
+        v_no         varchar2 (32);
+        l_row        xx_disl_gu23_wagon_row;
+
+        -- Курсор данных
+        cursor c_dislocation (v_w_no           varchar2,              -- вагон
+                              v_waybill_no     varchar2,          -- накладная
+                              v_dest_station   varchar2, -- станция назначения
+                              v_cargo_name     varchar2                -- груз
+                                                       )
+        is
+            select NVL (
+                       ecar.car_number,
+                       REGEXP_REPLACE (eis.spc_custom_text,
+                                       '[^[[:digit:]]]*'))
+                       as wagon_no,                                   -- вагон
+                   (select SUM (ef.car_weight_net)
+                      from xx_etw.etw_inv_car ef
+                     where     ef.front_end_id = ei.front_end_id
+                           and ef.car_number =
+                               NVL (
+                                   ecar.car_number,
+                                   REGEXP_REPLACE (eis.spc_custom_text,
+                                                   '[^[[:digit:]]]*')))
+                       as weight,
+                   ecar.car_type_name
+                       as wagon_type_code,
+                   ei.inv_number
+                       as waybill_no,                             -- накладная
+                   eif.freight_name
+                       as cargo_name,                                  -- груз
+                   (ecar.car_owner_name)
+                       as owner,                                 -- собственнк
+                   inv_to_station_code
+                       as st_to_code,
+                   UPPER (TRIM (inv_to_station_name))
+                       as dest_station,                  -- станция назначения
+                   UPPER (TRIM (inv_from_station_name))
+                       as depart_station                -- станция отправления
+              from xx_etw.etw_invoice             ei,
+                   xx_etw.etw_inv_car             ecar,
+                   xx_etw.etw_clm_otpr            eco,
+                   xx_etw.etw_clm_otpr_graph_pod  gr,
+                   xx_etw.etw_invoice_source      src,
+                   etw_inv_freight                eif,
+                   (select front_end_id, spc_custom_text
+                      from etw_inv_spc
+                     where    spc_transp_clause_id = 975
+                           or (    spc_transp_clause_id = 993
+                               and UPPER (spc_custom_text) like '%ПЛАТФОРМА%'))
+                   eis
+             where     ei.inv_claim_id = eco.claim_id(+)
+                   and ei.inv_otpr_num = eco.otpr_nom(+)
+                   and ei.inv_claim_id = gr.claim_id(+)
+                   and ei.inv_otpr_num = gr.otpr_nom(+)
+                   and ei.inv_pod_num = gr.gp_pod_num(+)
+                   and NVL (
+                           ecar.car_number,
+                           REGEXP_REPLACE (eis.spc_custom_text,
+                                           '[^[[:digit:]]]*')) =
+                       NVL (
+                           v_w_no,
+                           NVL (
+                               ecar.car_number,
+                               REGEXP_REPLACE (eis.spc_custom_text,
+                                               '[^[[:digit:]]]*')))
+                   and UPPER (inv_to_station_name) like
+                           '%' || UPPER (v_dest_station) || '%'
+                   and ei.inv_number = NVL (v_waybill_no, ei.inv_number)
+                   and ei.front_end_id = ecar.front_end_id(+)
+                   and ei.front_end_id = eis.front_end_id(+)
+                   and ei.front_end_id = src.front_end_id(+)
+                   and ei.front_end_id = eif.front_end_id(+)
+                   and ei.invoice_state_id in (31,     --Накладная предъявлена
+                                               44, --Работа с документом окончена (44)
+                                               439, -- Согласование уведомления
+                                               1116 -- Приемосдатчиком принято
+                                                   )
+                   and ei.inv_date_create >
+                       TO_DATE ('01.01.2026', 'dd.mm.rrrr')
+                   and ei.inv_recip_name <> 'ОАО "Метафракс"';
+
+        -- Проставляет l_row.dup_act/dup_by, если по вагону (в пределах месяца)
+        -- или накладной (в пределах 3 месяцев) уже есть занятый акт начала.
+        procedure set_dup_flag
+        is
+        begin
+            l_row.dup_act := null;
+            l_row.dup_by := null;
+
+            if l_row.FOUND <> 1 or NVL (p_act_type, 'start') <> 'start'
+            then
+                return;
+            end if;
+
+            -- по вагону в пределах текущего месяца
+            begin
+                select a.act_number
+                  into l_row.dup_act
+                  from xx_disl_gu23_act a, xx_disl_gu23_act_row r
+                 where     r.act_id = a.id
+                       and a.act_type = 'start'
+                       and a.status in ('active', 'signed', 'closed')
+                       and r.wagon_no = l_row.wagon_no
+                       and TRUNC (a.start_at, 'MM') = TRUNC (SYSDATE, 'MM')
+                       and ROWNUM = 1;
+
+                l_row.dup_by := 'wagon';
+            exception
+                when NO_DATA_FOUND
+                then
+                    l_row.dup_act := null;
+            end;
+
+            -- по накладной в пределах 3 месяцев
+            if l_row.dup_act is null and l_row.waybill_no is not null
+            then
+                begin
+                    select a.act_number
+                      into l_row.dup_act
+                      from xx_disl_gu23_act a, xx_disl_gu23_act_row r
+                     where     r.act_id = a.id
+                           and a.act_type = 'start'
+                           and a.status in ('active', 'signed', 'closed')
+                           and r.waybill_no = l_row.waybill_no
+                           and a.start_at >= ADD_MONTHS (SYSDATE, -3)
+                           and a.start_at <= ADD_MONTHS (SYSDATE, 3)
+                           and ROWNUM = 1;
+
+                    l_row.dup_by := 'waybill';
+                exception
+                    when NO_DATA_FOUND
+                    then
+                        l_row.dup_act := null;
+                end;
+            end if;
+        end set_dup_flag;
+    begin
+        l_row.weight := null;
 
         --log_new(l_function,'p_waybill_no='||p_waybill_no);
         --log_new(l_function,'p_dest_station='||p_dest_station);
@@ -1599,7 +1327,7 @@ create or replace package body xx_disl_gu23_pkg as
         --log_new(l_function,'v_len='||v_len);
         --log_new(l_function,'v_len='||v_len);
         ---------------------------------------------------------------------
-        -- РћС‚РїСЂР°РІРёР»Рё РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ
+        -- Отправили Список вагонов
         ---------------------------------------------------------------------
         /*log_new(l_function,'p_waybill_no='||p_waybill_no);
         log_new(l_function,'p_dest_station='||p_dest_station);
@@ -1607,485 +1335,431 @@ create or replace package body xx_disl_gu23_pkg as
         log_new(l_function,'v_len='||v_len);
         log_new(l_function,'length(p_wagons)'||length(p_wagons));
         */
-      if
-         v_len > 0
-         and length(p_wagons) > 1
-      then
-         while v_from <= v_len loop
-            v_to := instr(
-               p_wagons,
-               c_rs,
-               v_from
-            );
-            if v_to = 0 then
-               v_to := v_len + 1;
-            end if;
-            v_no := trim(dbms_lob.substr(
-               p_wagons,
-               v_to - v_from,
-               v_from
-            ));
-            v_from := v_to + 1;
-            if v_no is null then
-               continue;
-            end if;
+        if v_len > 0 and LENGTH (p_wagons) > 1
+        then
+            while v_from <= v_len
+            loop
+                v_to := INSTR (p_wagons, c_rs, v_from);
+
+                if v_to = 0
+                then
+                    v_to := v_len + 1;
+                end if;
+
+                v_no :=
+                    TRIM (DBMS_LOB.SUBSTR (p_wagons, v_to - v_from, v_from));
+                v_from := v_to + 1;
+
+                if v_no is null
+                then
+                    continue;
+                end if;
 
                 -- log_new(l_function,'v_no='||v_no);
-                -- РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РґРµС„РѕР»С‚РЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ С‚РµРєСѓС‰РµРіРѕ РІР°РіРѕРЅР°
-            l_row.wagon_no := v_no;
-            l_row.found := 0;
-            l_row.owner := null;
-            l_row.kind := null;
-            l_row.st_from := null;
-            l_row.st_to := null;
-            l_row.cargo := null;
-            l_row.weight := null;
-            l_row.st_to_code := null;
-            l_row.dup_act := null;
-            l_row.dup_by := null;
+                -- Инициализируем дефолтные значения для текущего вагона
+                l_row.wagon_no := v_no;
+                l_row.FOUND := 0;
+                l_row.owner := null;
+                l_row.kind := null;
+                l_row.st_from := null;
+                l_row.st_to := null;
+                l_row.cargo := null;
+                l_row.weight := null;
+                l_row.st_to_code := null;
+                l_row.dup_act := null;
+                l_row.dup_by := null;
 
 
                 --log_new (l_function, 'p_waybill_no=' || p_waybill_no);
                 --log_new (l_function, 'p_dest_station=' || p_dest_station);
                 --log_new (l_function, 'v_no=' || v_no);
 
-                -- РС‰РµРј РґР°РЅРЅС‹Рµ РїРѕ РєРѕРЅРєСЂРµС‚РЅРѕРјСѓ РІР°РіРѕРЅСѓ
-            for d in c_dislocation(
-               v_no,
-               p_waybill_no,
-               p_dest_station,
-               null
-            ) loop
-               l_row.owner := d.owner;
-               l_row.kind := d.wagon_type_code;
-               l_row.st_from := d.depart_station;
-               l_row.st_to := d.dest_station;
-               l_row.cargo := d.cargo_name;
-               l_row.weight := d.weight;
-               l_row.waybill_no := d.waybill_no;
-               l_row.st_to_code := d.st_to_code;
-               l_row.found := 1;
+                -- Ищем данные по конкретному вагону
+                for d in c_dislocation (v_no,
+                                        p_waybill_no,
+                                        p_dest_station,
+                                        null)
+                loop
+                    l_row.owner := d.owner;
+                    l_row.kind := d.wagon_type_code;
+                    l_row.st_from := d.depart_station;
+                    l_row.st_to := d.dest_station;
+                    l_row.cargo := d.cargo_name;
+                    l_row.weight := d.weight;
+                    l_row.waybill_no := d.waybill_no;
+                    l_row.st_to_code := d.st_to_code;
+                    l_row.FOUND := 1;
+                end loop;
+
+                set_dup_flag;
+                pipe row (l_row);
             end loop;
-
-            set_dup_flag;
-            pipe row ( l_row );
-         end loop;
         ---------------------------------------------------------------------
-        -- РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ РџРЈРЎРўРћР™ (РёС‰РµРј С‚РѕР»СЊРєРѕ РїРѕ СЃС‚Р°РЅС†РёРё/РЅР°РєР»Р°РґРЅРѕР№/РіСЂСѓР·Сѓ)
+        -- Список вагонов ПУСТОЙ (ищем только по станции/накладной/грузу)
         ---------------------------------------------------------------------
-      elsif p_dest_station is not null
-      or p_waybill_no is not null then
-            --log_new(l_function,'РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ РџРЈРЎРўРћР™ (РёС‰РµРј С‚РѕР»СЊРєРѕ РїРѕ СЃС‚Р°РЅС†РёРё/РЅР°РєР»Р°РґРЅРѕР№)');
-         for d in c_dislocation(
-            null,
-            p_waybill_no,
-            p_dest_station,
-            null
-         ) loop
-            l_row.wagon_no := d.wagon_no;
-            l_row.owner := d.owner;
-            l_row.kind := d.wagon_type_code;
-            l_row.st_from := d.depart_station;
-            l_row.st_to := d.dest_station;
-            l_row.cargo := d.cargo_name;
-            l_row.weight := d.weight;
-            l_row.waybill_no := d.waybill_no;
-            l_row.st_to_code := d.st_to_code;
-            l_row.found := 1;
-            l_row.dup_act := null;
-            l_row.dup_by := null;
-            set_dup_flag;
-            pipe row ( l_row );
-         end loop;
-      end if;
+        elsif p_dest_station is not null or p_waybill_no is not null
+        then
+            --log_new(l_function,'Список вагонов ПУСТОЙ (ищем только по станции/накладной)');
+            for d in c_dislocation (null,
+                                    p_waybill_no,
+                                    p_dest_station,
+                                    null)
+            loop
+                l_row.wagon_no := d.wagon_no;
+                l_row.owner := d.owner;
+                l_row.kind := d.wagon_type_code;
+                l_row.st_from := d.depart_station;
+                l_row.st_to := d.dest_station;
+                l_row.cargo := d.cargo_name;
+                l_row.weight := d.weight;
+                l_row.waybill_no := d.waybill_no;
+                l_row.st_to_code := d.st_to_code;
+                l_row.FOUND := 1;
+                l_row.dup_act := null;
+                l_row.dup_by := null;
+                set_dup_flag;
+                pipe row (l_row);
+            end loop;
+        end if;
 
-      return;
-   end;
-
-    -- ----------------------------------------------------------------
-    -- С„Р°Р№Р»С‹ (id)
-    -- ----------------------------------------------------------------
-   function gu23_new_file_id return number is
-      v number;
-   begin
-      select xx_disl_gu23_file_seq.nextval
-        into v
-        from dual;
-
-      return v;
-   end;
-
-   function gu23_act_type (
-      p_act_id in number
-   ) return varchar2 is
-      v_type varchar2(16);
-   begin
-      select act_type
-        into v_type
-        from xx_disl_gu23_act
-       where id = p_act_id;
-
-      return v_type;
-   exception
-      when no_data_found then
-         return null;
-   end;
-
-   function gu23_can_change_files (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_act
-       where id = p_act_id
-         and status not in ( 'closed',
-                             'annulled' )
-         and ( created_by = p_user_id
-          or gu23_is_admin(p_user_id) = 'Y' );
-
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end;
-
-    -- Р”РѕР±Р°РІР»РµРЅРёРµ С„Р°Р№Р»Р°
-   function gu23_add_file (
-      p_data in t_gu23_add_file
-   ) return varchar2 is
-   begin
-      insert into xx_disl_gu23_file (
-         id,
-         act_id,
-         file_name,
-         file_ext,
-         mime_type,
-         real_path,
-         created_at,
-         created_by,
-         file_category
-      ) values
-         ( p_data.p_file_id,
-           p_data.p_act_id,
-           p_data.p_name,
-           p_data.p_ext,
-           p_data.p_mime,
-           p_data.p_path,
-           sysdate,
-           p_data.p_user_id,
-           nvl(
-              p_data.p_category,
-              'general'
-           ) );
-
-      log_act_history(
-         p_act_id  => p_data.p_act_id,
-         p_user_id => p_data.p_user_id,
-         p_text    => 'РџСЂРёРєСЂРµРїР»С‘РЅ С„Р°Р№Р»: ' || p_data.p_name
-      );
-      commit;
-      return 'done';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
-
-   function gu23_del_file (
-      p_data in t_gu23_del_file
-   ) return varchar2 is
-      v_act  number;
-      v_name varchar2(512);
-   begin
-      select act_id,
-             file_name
-        into
-         v_act,
-         v_name
-        from xx_disl_gu23_file
-       where id = p_data.p_file_id;
-
-      delete from xx_disl_gu23_file
-       where id = p_data.p_file_id;
-
-      log_act_history(
-         p_act_id  => v_act,
-         p_user_id => p_data.p_user_id,
-         p_text    => 'РЈРґР°Р»С‘РЅ С„Р°Р№Р»: ' || v_name
-      );
-      commit;
-      return 'done';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+        return;
+    end;
 
     -- ----------------------------------------------------------------
-    -- СЃРѕС…СЂР°РЅРµРЅРёРµ Р°РєС‚Р°
+    -- файлы (id)
     -- ----------------------------------------------------------------
-   function gu23_save_act (
-      p_data in t_gu23_save_act
-   ) return varchar2 is
-      l_function   varchar2(240) := 'gu23_save_act';
-      l_row        xx_disl_gu23_hist%rowtype;
-      v_id         number;
-      v_number     varchar2(64);
-      v_dept_id    number;
-      v_station_id varchar2(100);
-      v_st_from_id varchar2(100);
-      v_st_to_id   varchar2(100);
-      v_start      date;
-      v_end        date;
-      v_dd         number;
-      v_dh         number;
-      v_th         number;
-      v_cd         number;
-      v_isnew      boolean;
-      v_ord        number := 0;
-      v_wcnt       number := 0;
-      vw_owner     varchar2(128);
-      vw_kind      varchar2(128);
-      vw_from      varchar2(128);
-      vw_to        varchar2(128);
-      vw_cargo     varchar2(256);
-      vw_weight    varchar2(32);
-      vs_ref_id    number;
-      vs_fio       varchar2(256);
-      vs_post      varchar2(256);
-      vs_org       varchar2(256);
-      vs_stype     varchar2(16);
-      l_sig        xx_disl_gu23_signer%rowtype;
-      v_dupnum     varchar2(64);
-      v_has_start  number;
-      v_tot        number;
-      v_closed     number;
-      v_cur_status varchar2(16);
-      v_created_by number;
-      v_len        pls_integer;
-      v_from       pls_integer;
-      v_to         pls_integer;
-      v_rec        varchar2(32767);
-   begin
-      v_id := p_data.p_id;
-      v_isnew :=
-         case
-            when ( p_data.p_id is null
-                or p_data.p_id = 0 ) then
-               true
-            else
-               false
-         end;
+    function gu23_new_file_id
+        return number
+    is
+        v   number;
+    begin
+        select xx_disl_gu23_file_seq.NEXTVAL into v from DUAL;
 
-      log_new(
-         l_function,
-         'p_data.p_type=' || p_data.p_type
-      );
-      log_new(
-         l_function,
-         'p_data.p_start_at=' || p_data.p_start_at
-      );
-      log_new(
-         l_function,
-         'p_data.p_end_at=' || p_data.p_end_at
-      );
-      v_start := g_to_date(p_data.p_start_at);
-      v_end := g_to_date(p_data.p_end_at);
+        return v;
+    end;
 
-        -- С‚РёРї Р°РєС‚Р°
-      if p_data.p_type not in ( 'start',
-                                'end',
-                                'other' ) then
-         return format_error('РќРµРІРµСЂРЅС‹Р№ С‚РёРї Р°РєС‚Р°');
-      end if;
+    function gu23_act_type (p_act_id in number)
+        return varchar2
+    is
+        v_type   varchar2 (16);
+    begin
+        select act_type
+          into v_type
+          from xx_disl_gu23_act
+         where id = p_act_id;
 
-        -- С†РµС… РѕР±СЏР·Р°С‚РµР»РµРЅ (РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РЅРѕРјРµСЂР° Р°РєС‚Р°)
-      if nvl(
-         p_data.p_dept,
-         'X'
-      ) = 'X' then
-         return format_error('РќРµ СѓРєР°Р·Р°РЅ С†РµС…');
-      end if;
+        return v_type;
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
 
-        -- РїРѕР»СѓС‡Р°РµРј id С†РµС…Р° РїРѕ РєРѕРґСѓ
-      begin
-         select id
-           into v_dept_id
-           from xx_disl_dept_v
-          where code = p_data.p_dept;
-      exception
-         when no_data_found then
-            return format_error('Р¦РµС… РЅРµ РЅР°Р№РґРµРЅ: ' || p_data.p_dept);
-      end;
+    function gu23_can_change_files (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_act
+         where     id = p_act_id
+               and status not in ('closed', 'annulled')
+               and (created_by = p_user_id or gu23_is_admin (p_user_id) = 'Y');
 
-      v_station_id := nullif(
-         trim(p_data.p_station),
-         ''
-      );
-      v_st_from_id := nullif(
-         trim(p_data.p_st_from),
-         ''
-      );
-      v_st_to_id := nullif(
-         trim(p_data.p_st_to),
-         ''
-      );
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end;
 
-        -- РїСЂРѕРІРµСЂРєРё РґР°С‚ РґР»СЏ Р°РєС‚Р° "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ"
-      if
-         p_data.p_type = 'start'
-         and p_data.p_status = 'active'
-         and v_start is null
-      then
-         return format_error('РќРµ СѓРєР°Р·Р°РЅР° РґР°С‚Р° РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ');
-      end if;
+    -- Добавление файла
+    function gu23_add_file (p_data in t_gu23_add_file)
+        return varchar2
+    is
+    begin
+        insert into xx_disl_gu23_file (id,
+                                       act_id,
+                                       file_name,
+                                       file_ext,
+                                       mime_type,
+                                       real_path,
+                                       created_at,
+                                       created_by,
+                                       file_category)
+             values (p_data.p_file_id,
+                     p_data.p_act_id,
+                     p_data.p_name,
+                     p_data.p_ext,
+                     p_data.p_mime,
+                     p_data.p_path,
+                     SYSDATE,
+                     p_data.p_user_id,
+                     NVL (p_data.p_category, 'general'));
 
-        -- РїСЂРѕРІРµСЂРєРё РґР°С‚ Рё СЃРІСЏР·РµР№ РґР»СЏ Р°РєС‚Р° "РћРєРѕРЅС‡Р°РЅРёРµ РїСЂРѕСЃС‚РѕСЏ"
-      if
-         p_data.p_type = 'end'
-         and p_data.p_status = 'active'
-      then
-         if p_data.p_linked_start_id is null then
-            return format_error('РќРµ РІС‹Р±СЂР°РЅ РѕС‚РєСЂС‹С‚С‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ');
-         end if;
-         if v_end is null then
-            return format_error('РќРµ СѓРєР°Р·Р°РЅР° РґР°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРѕСЃС‚РѕСЏ');
-         end if;
+        log_act_history (p_act_id    => p_data.p_act_id,
+                         p_user_id   => p_data.p_user_id,
+                         p_text      => 'Прикреплён файл: ' || p_data.p_name);
+        commit;
+        return 'done';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
 
-            -- РµСЃР»Рё РґР°С‚Р° РЅР°С‡Р°Р»Р° РЅРµ РїРµСЂРµРґР°РЅР°, РёР·РІР»РµРєР°РµРј РёР· Р‘Р”
-         if v_start is null then
-            begin
-               select start_at
-                 into v_start
-                 from xx_disl_gu23_act
-                where id = p_data.p_linked_start_id;
-            exception
-               when no_data_found then
-                  null;
+    function gu23_del_file (p_data in t_gu23_del_file)
+        return varchar2
+    is
+        v_act    number;
+        v_name   varchar2 (512);
+    begin
+        select act_id, file_name
+          into v_act, v_name
+          from xx_disl_gu23_file
+         where id = p_data.p_file_id;
+
+        delete from xx_disl_gu23_file
+              where id = p_data.p_file_id;
+
+        log_act_history (p_act_id    => v_act,
+                         p_user_id   => p_data.p_user_id,
+                         p_text      => 'Удалён файл: ' || v_name);
+        commit;
+        return 'done';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    -- ----------------------------------------------------------------
+    -- сохранение акта
+    -- ----------------------------------------------------------------
+    function gu23_save_act (p_data in t_gu23_save_act)
+        return varchar2
+    is
+        l_function     varchar2 (240) := 'gu23_save_act';
+        l_row          xx_disl_gu23_hist%rowtype;
+        v_id           number;
+        v_number       varchar2 (64);
+        v_dept_id      number;
+        v_station_id   varchar2 (100);
+        v_st_from_id   varchar2 (100);
+        v_st_to_id     varchar2 (100);
+        v_start        date;
+        v_end          date;
+        v_dd           number;
+        v_dh           number;
+        v_th           number;
+        v_cd           number;
+        v_isnew        boolean;
+        v_ord          number := 0;
+        v_wcnt         number := 0;
+        vw_owner       varchar2 (128);
+        vw_kind        varchar2 (128);
+        vw_from        varchar2 (128);
+        vw_to          varchar2 (128);
+        vw_cargo       varchar2 (256);
+        vw_weight      varchar2 (32);
+        vs_ref_id      number;
+        vs_fio         varchar2 (256);
+        vs_post        varchar2 (256);
+        vs_org         varchar2 (256);
+        vs_stype       varchar2 (16);
+        l_sig          xx_disl_gu23_signer%rowtype;
+        v_dupnum       varchar2 (64);
+        v_has_start    number;
+        v_tot          number;
+        v_closed       number;
+        v_cur_status   varchar2 (16);
+        v_created_by    number;
+        v_len          pls_integer;
+        v_from         pls_integer;
+        v_to           pls_integer;
+        v_rec          varchar2 (32767);
+    begin
+        v_id := p_data.p_id;
+        v_isnew :=
+            case
+                when (p_data.p_id is null or p_data.p_id = 0) then true
+                else false
             end;
-         end if;
 
-         if
-            v_start is not null
-            and v_end < v_start
-         then
-            return format_error('Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РјРµРЅСЊС€Рµ РґР°С‚С‹ РЅР°С‡Р°Р»Р°');
-         end if;
+        log_new (l_function, 'p_data.p_type=' || p_data.p_type);
+        log_new (l_function, 'p_data.p_start_at=' || p_data.p_start_at);
+        log_new (l_function, 'p_data.p_end_at=' || p_data.p_end_at);
+        v_start := g_to_date (p_data.p_start_at);
+        v_end := g_to_date (p_data.p_end_at);
 
-         if v_end > sysdate then
-            return format_error('Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµР№ РґР°С‚С‹ (РІ Р±СѓРґСѓС‰РµРј)');
-         end if;
-      end if;
+        -- тип акта
+        if p_data.p_type not in ('start', 'end', 'other')
+        then
+            return format_error ('Неверный тип акта');
+        end if;
 
-        -- СЂР°СЃС‡С‘С‚ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё (С‚РѕР»СЊРєРѕ РґР»СЏ Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ)
-      if
-         p_data.p_type = 'end'
-         and v_start is not null
-         and v_end is not null
-      then
-         v_th := round(
-            (v_end - v_start) * 24,
-            1
-         );
-         v_dd := trunc(v_end - v_start);
-         v_dh := round(((v_end - v_start) - v_dd) * 24);
-         v_cd := ceil(v_end - v_start);
-      end if;
+        -- цех обязателен (для формирования номера акта)
+        if NVL (p_data.p_dept, 'X') = 'X'
+        then
+            return format_error ('Не указан цех');
+        end if;
 
-        -- INSERT РёР»Рё UPDATE С€Р°РїРєРё Р°РєС‚Р°
-      if v_isnew then
-         v_number := g_next_number(v_dept_id);
-         v_id := xx_disl_gu23_act_seq.nextval;
-         insert into xx_disl_gu23_act (
-            id,
-            act_number,
-            act_type,
-            status,
-            dept_id,
-            station_id,
-            st_from_id,
-            st_to_id,
-            cargo_ref,
-            reason,
-            circumstances,
-            start_at,
-            end_at,
-            dur_days,
-            dur_hours,
-            dur_total_h,
-            cal_days,
-            linked_start_id,
-            created_at,
-            created_by,
-            modified_at,
-            modified_by
-         ) values
-            ( v_id,
-              v_number,
-              p_data.p_type,
-              p_data.p_status,
-              v_dept_id,
-              v_station_id,
-              v_st_from_id,
-              v_st_to_id,
-              p_data.p_cargo_ref,
-              p_data.p_reason,
-              p_data.p_circumstances,
-              v_start,
-              v_end,
-              v_dd,
-              v_dh,
-              v_th,
-              v_cd,
-              p_data.p_linked_start_id,
-              sysdate,
-              p_data.p_user_id,
-              sysdate,
-              p_data.p_user_id );
-      else
-            -- СЂРµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ РўРћР›Р¬РљРћ РџСЂРѕРµРєС‚
-         begin
-            select act_number,
-                   status,
-                   created_by
-              into
-               v_number,
-               v_cur_status,
-               v_created_by
-              from xx_disl_gu23_act
-             where id = v_id;
-         exception
-            when no_data_found then
-               return format_error('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
-         end;
+        -- получаем id цеха по коду
+        begin
+            select id
+              into v_dept_id
+              from xx_disl_dept_v
+             where code = p_data.p_dept;
+        exception
+            when NO_DATA_FOUND
+            then
+                return format_error ('Цех не найден: ' || p_data.p_dept);
+        end;
 
-            -- Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ РўРћР›Р¬РљРћ РџСЂРѕРµРєС‚.
-         if v_cur_status <> 'draft' then
-            return format_error('Р”РµР№СЃС‚РІСѓСЋС‰РёР№/Р·Р°РєСЂС‹С‚С‹Р№ Р°РєС‚ РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ ? Р°РЅРЅСѓР»РёСЂСѓР№С‚Рµ Рё Р·Р°РІРµРґРёС‚Рµ РЅРѕРІС‹Р№');
-         end if;
-         if
-            nvl(
-               v_created_by,
-               -1
-            ) <> nvl(
-               p_data.p_user_id,
-               -1
-            )
-            and gu23_is_admin(p_data.p_user_id) <> 'Y'
-         then
-            return format_error('Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РџСЂРѕРµРєС‚ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ СЃРѕР·РґР°С‚РµР»СЊ Р°РєС‚Р°');
-         end if;
+        v_station_id := NULLIF (TRIM (p_data.p_station), '');
+        v_st_from_id := NULLIF (TRIM (p_data.p_st_from), '');
+        v_st_to_id := NULLIF (TRIM (p_data.p_st_to), '');
 
-            --  Р Р°Р·СЂРµС€РёС‚СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ РїСЂР°РІРєСѓ Р°РєС‚Р° "РЅР° РїРѕРґРїРёСЃР°РЅРёРё":
+        -- проверки дат для акта "Начало простоя"
+        if     p_data.p_type = 'start'
+           and p_data.p_status = 'active'
+           and v_start is null
+        then
+            return format_error ('Не указана дата начала простоя');
+        end if;
+
+        -- проверки дат и связей для акта "Окончание простоя"
+        if p_data.p_type = 'end' and p_data.p_status = 'active'
+        then
+            if p_data.p_linked_start_id is null
+            then
+                return format_error ('Не выбран открытый акт начала простоя');
+            end if;
+
+            if v_end is null
+            then
+                return format_error ('Не указана дата окончания простоя');
+            end if;
+
+            -- если дата начала не передана, извлекаем из БД
+            if v_start is null
+            then
+                begin
+                    select start_at
+                      into v_start
+                      from xx_disl_gu23_act
+                     where id = p_data.p_linked_start_id;
+                exception
+                    when NO_DATA_FOUND
+                    then
+                        null;
+                end;
+            end if;
+
+            if v_start is not null and v_end < v_start
+            then
+                return format_error (
+                           'Дата окончания не может быть меньше даты начала');
+            end if;
+
+            if v_end > SYSDATE
+            then
+                return format_error (
+                           'Дата окончания не может быть больше текущей даты (в будущем)');
+            end if;
+        end if;
+
+        -- расчёт длительности (только для акта окончания)
+        if     p_data.p_type = 'end'
+           and v_start is not null
+           and v_end is not null
+        then
+            v_th := ROUND ((v_end - v_start) * 24, 1);
+            v_dd := TRUNC (v_end - v_start);
+            v_dh := ROUND (((v_end - v_start) - v_dd) * 24);
+            v_cd := CEIL (v_end - v_start);
+        end if;
+
+        -- INSERT или UPDATE шапки акта
+        if v_isnew
+        then
+            v_number := g_next_number (v_dept_id);
+            v_id := xx_disl_gu23_act_seq.NEXTVAL;
+
+            insert into xx_disl_gu23_act (id,
+                                          act_number,
+                                          act_type,
+                                          status,
+                                          dept_id,
+                                          station_id,
+                                          st_from_id,
+                                          st_to_id,
+                                          cargo_ref,
+                                          reason,
+                                          circumstances,
+                                          start_at,
+                                          end_at,
+                                          dur_days,
+                                          dur_hours,
+                                          dur_total_h,
+                                          cal_days,
+                                          linked_start_id,
+                                          created_at,
+                                          created_by,
+                                          modified_at,
+                                          modified_by)
+                 values (v_id,
+                         v_number,
+                         p_data.p_type,
+                         p_data.p_status,
+                         v_dept_id,
+                         v_station_id,
+                         v_st_from_id,
+                         v_st_to_id,
+                         p_data.p_cargo_ref,
+                         p_data.p_reason,
+                         p_data.p_circumstances,
+                         v_start,
+                         v_end,
+                         v_dd,
+                         v_dh,
+                         v_th,
+                         v_cd,
+                         p_data.p_linked_start_id,
+                         SYSDATE,
+                         p_data.p_user_id,
+                         SYSDATE,
+                         p_data.p_user_id);
+        else
+            -- редактировать можно ТОЛЬКО Проект
+            begin
+                select act_number, status, created_by
+                  into v_number, v_cur_status, v_created_by
+                  from xx_disl_gu23_act
+                 where id = v_id;
+            exception
+                when NO_DATA_FOUND
+                then
+                    return format_error ('Акт не найден');
+            end;
+
+            -- Редактировать можно ТОЛЬКО Проект.
+            if v_cur_status <> 'draft'
+            then
+                return format_error (
+                           'Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
+            end if;
+
+            if     NVL (v_created_by, -1) <> NVL (p_data.p_user_id, -1)
+               and gu23_is_admin (p_data.p_user_id) <> 'Y'
+            then
+                return format_error ('Редактировать Проект может только создатель акта');
+            end if;
+
+            --  Разрешить администратору правку акта "на подписании":
             -- if
             --    v_cur_status <> 'draft'
             --    and not ( v_cur_status = 'active'
@@ -2093,1688 +1767,1532 @@ create or replace package body xx_disl_gu23_pkg as
             --              -- and p_data.p_type = 'other'
             --             )
             -- then
-            --    return format_error('Р”РµР№СЃС‚РІСѓСЋС‰РёР№/Р·Р°РєСЂС‹С‚С‹Р№ Р°РєС‚ РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ ...');
+            --    return format_error('Действующий/закрытый акт не редактируется ...');
             -- end if;
 
-            -- РµСЃР»Рё Сѓ РџСЂРѕРµРєС‚Р° РµС‰С‘ РЅРµС‚ РЅРѕРјРµСЂР° - РїСЂРёСЃРІР°РёРІР°РµРј
-         if v_number is null then
-            v_number := g_next_number(v_dept_id);
-         end if;
-         update xx_disl_gu23_act
-            set act_number = v_number,
-                act_type = p_data.p_type,
-                status = p_data.p_status,
-                dept_id = v_dept_id,
-                station_id = v_station_id,
-                st_from_id = v_st_from_id,
-                st_to_id = v_st_to_id,
-                cargo_ref = p_data.p_cargo_ref,
-                reason = p_data.p_reason,
-                circumstances = p_data.p_circumstances,
-                start_at = v_start,
-                end_at = v_end,
-                dur_days = v_dd,
-                dur_hours = v_dh,
-                dur_total_h = v_th,
-                cal_days = v_cd,
-                linked_start_id = p_data.p_linked_start_id,
-                modified_at = sysdate,
-                modified_by = p_data.p_user_id,
-                   -- РїСЂР°РІРєР° Р°РєС‚Р° "РЅР° РїРѕРґРїРёСЃР°РЅРёРё" Р°РґРјРёРЅРѕРј - РЅРѕРІР°СЏ РІРµСЂСЃРёСЏ
-                content_version = nvl(
-                   content_version,
-                   1
-                ) +
-                                  case
-                                     when v_cur_status = 'draft' then
-                                        0
-                                     else
-                                        1
-                                  end
-          where id = v_id;
-
-         delete from xx_disl_gu23_act_row
-          where act_id = v_id;
-
-         delete from xx_disl_gu23_signer
-          where act_id = v_id;
-
-            -- РђРґРјРёРЅ СЃРєРѕСЂСЂРµРєС‚РёСЂРѕРІР°Р» Р°РєС‚ ?РЅР° РїРѕРґРїРёСЃР°РЅРёРё?: СЃРѕР±СЂР°РЅРЅС‹Рµ РїРѕРґРїРёСЃРё
-            -- РѕС‚РЅРѕСЃСЏС‚СЃСЏ Рє РїСЂРµР¶РЅРµР№ РІРµСЂСЃРёРё ? СЃР±СЂР°СЃС‹РІР°РµРј, С‚СЂРµР±СѓРµС‚СЃСЏ РїРµСЂРµРїРѕРґРїРёСЃР°РЅРёРµ
-         if v_cur_status <> 'draft' then
-            delete from xx_disl_gu23_approval
-             where act_id = v_id;
-
-            log_act_history(
-               p_act_id  => v_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'РђРєС‚ СЃРєРѕСЂСЂРµРєС‚РёСЂРѕРІР°РЅ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРј РЅР° СЃС‚Р°РґРёРё РїРѕРґРїРёСЃР°РЅРёСЏ - СЂР°РЅРµРµ РѕС‚СЂРїР°РІР»РµРЅРЅС‹Рµ РїРѕРґРїРёСЃРё СЃР±СЂРѕС€РµРЅС‹'
-            );
-         end if;
-      end if;
-
-        -- СЂР°Р·Р±РёСЂР°РµРј РІР°РіРѕРЅС‹
-      for w in (
-         select *
-           from table ( parse_wagon_clob(p_data.p_wagons) )
-      ) loop
-         if p_data.p_type in ( 'start',
-                               'other' ) then
-                -- РґР°РЅРЅС‹Рµ РїРѕ РІР°РіРѕРЅСѓ РёР· РґРёСЃР»РѕРєР°С†РёРё
-            begin
-               select owner,
-                      kind,
-                      st_from,
-                      st_to,
-                      cargo,
-                      weight
-                 into
-                  vw_owner,
-                  vw_kind,
-                  vw_from,
-                  vw_to,
-                  vw_cargo,
-                  vw_weight
-                 from table ( xx_disl_gu23_pkg.gu23_get_wagon_info(
-                  w.wagon_no,
-                  p_data.p_waybill_no
-               ) )
-                where rownum = 1;
-            exception
-               when others then
-                  vw_owner := null;
-                  vw_kind := null;
-                  vw_from := null;
-                  vw_to := null;
-                  vw_cargo := null;
-                  vw_weight := null;
-            end;
-         else
-                -- РґР»СЏ РѕРєРѕРЅС‡Р°РЅРёСЏ Р±РµСЂС‘Рј РґР°РЅРЅС‹Рµ РёР· Р°РєС‚Р° РЅР°С‡Р°Р»Р° (СѓР¶Рµ РІ CLOB)
-            vw_owner := w.owner;
-            vw_kind := w.kind;
-            vw_from := w.st_from;
-            vw_to := w.st_to;
-            vw_cargo := w.cargo;
-            vw_weight := w.weight;
-         end if;
-
-            -- Р·Р°РїСЂРµС‚ РґСѓР±Р»СЏ РѕС‚РєСЂС‹С‚РѕРіРѕ РїСЂРѕСЃС‚РѕСЏ
-         if
-            p_data.p_type = 'start'
-            and p_data.p_status = 'active'
-            and nvl(
-               p_data.p_force,
-               'N'
-            ) <> 'Y'
-         then
-                -- РґСѓР±Р»СЊ РїРѕ РІР°РіРѕРЅСѓ РІ РїСЂРµРґРµР»Р°С… РѕРґРЅРѕРіРѕ РјРµСЃСЏС†Р°
-                -- Р·Р°РЅСЏС‚С‹Рµ С†РёРєР»С‹: active/signed/closed; annulled/rejected/draft - СЃРІРѕР±РѕРґРЅС‹
-            v_dupnum := null;
-            begin
-               select a.act_number
-                 into v_dupnum
-                 from xx_disl_gu23_act a,
-                      xx_disl_gu23_act_row r
-                where r.act_id = a.id
-                  and a.act_type = 'start'
-                  and a.status in ( 'active',
-                                    'signed',
-                                    'closed' )
-                  and a.id <> v_id
-                  and r.wagon_no = w.wagon_no
-                  and trunc(
-                  a.start_at,
-                  'MM'
-               ) = trunc(
-                  v_start,
-                  'MM'
-               )
-                  and rownum = 1;
-            exception
-               when no_data_found then
-                  v_dupnum := null;
-            end;
-
-            if v_dupnum is not null then
-               rollback;
-               return format_error('РќРµР»СЊР·СЏ СЃРѕР·РґР°С‚СЊ Р°РєС‚ "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ": РїРѕ РІР°РіРѕРЅСѓ '
-                                   || w.wagon_no
-                                   || ' СѓР¶Рµ РµСЃС‚СЊ Р°РєС‚ '
-                                   || v_dupnum || ' Р·Р° СЌС‚РѕС‚ РјРµСЃСЏС†');
+            -- если у Проекта ещё нет номера - присваиваем
+            if v_number is null
+            then
+                v_number := g_next_number (v_dept_id);
             end if;
 
-                -- РґСѓР±Р»СЊ РїРѕ РЅР°РєР»Р°РґРЅРѕР№ РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ
-            if w.waybill_no is not null then
-               v_dupnum := null;
-               begin
-                  select a.act_number
-                    into v_dupnum
-                    from xx_disl_gu23_act a,
-                         xx_disl_gu23_act_row r
-                   where r.act_id = a.id
-                     and a.act_type = 'start'
-                     and a.status in ( 'active',
-                                       'signed',
-                                       'closed' )
-                     and a.id <> v_id
-                     and r.waybill_no = w.waybill_no
-                     and a.start_at >= add_months(
-                     v_start,
-                     -3
-                  )
-                     and a.start_at <= add_months(
-                     v_start,
-                     3
-                  )
-                     and rownum = 1;
-               exception
-                  when no_data_found then
-                     v_dupnum := null;
-               end;
-
-               if v_dupnum is not null then
-                  rollback;
-                  return format_error('РќРµР»СЊР·СЏ СЃРѕР·РґР°С‚СЊ Р°РєС‚ "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ": РїРѕ РЅР°РєР»Р°РґРЅРѕР№ '
-                                      || w.waybill_no
-                                      || ' СѓР¶Рµ РµСЃС‚СЊ Р°РєС‚ '
-                                      || v_dupnum || ' (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ)');
-               end if;
-            end if;
-         end if;
-
-            -- РїСЂРѕРІРµСЂРєРё РґР»СЏ Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ
-         if
-            p_data.p_type = 'end'
-            and p_data.p_status = 'active'
-         then
-            select count(*)
-              into v_has_start
-              from xx_disl_gu23_act_row r
-             where r.act_id = p_data.p_linked_start_id
-               and r.wagon_no = w.wagon_no;
-
-            if v_has_start = 0 then
-               rollback;
-               return format_error('Р’Р°РіРѕРЅ '
-                                   || w.wagon_no || ' РЅРµ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє РІС‹Р±СЂР°РЅРЅРѕРјСѓ Р°РєС‚Сѓ РЅР°С‡Р°Р»Р°');
-            end if;
-
-            select count(*)
-              into v_has_start
-              from xx_disl_gu23_act e,
-                   xx_disl_gu23_act_row er
-             where er.act_id = e.id
-               and e.act_type = 'end'
-               and e.status in ( 'active',
-                                 'signed',
-                                 'closed' ) -- Р·Р°РЅСЏС‚; rejected/annulled/draft ? СЃРІРѕР±РѕРґРµРЅ
-               and e.linked_start_id = p_data.p_linked_start_id
-               and e.id <> v_id
-               and er.wagon_no = w.wagon_no;
-
-            if v_has_start > 0 then
-               rollback;
-               return format_error('Р’Р°РіРѕРЅ '
-                                   || w.wagon_no || ' СѓР¶Рµ Р·Р°РєСЂС‹С‚ РґСЂСѓРіРёРј Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ');
-            end if;
-         end if;
-
-         insert into xx_disl_gu23_act_row (
-            id,
-            act_id,
-            wagon_no,
-            owner,
-            kind,
-            st_from,
-            st_to,
-            cargo,
-            weight,
-            waybill_no
-         ) values
-            ( xx_disl_gu23_act_row_seq.nextval,
-              v_id,
-              w.wagon_no,
-              vw_owner,
-              vw_kind,
-              vw_from,
-              vw_to,
-              vw_cargo,
-              vw_weight,
-              w.waybill_no );
-
-         v_wcnt := v_wcnt + 1;
-      end loop;
-
-        -- РїСЂРё РѕС‚РїСЂР°РІРєРµ РЅР° РїРѕРґРїРёСЃР°РЅРёРµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹ Рё РІР°РіРѕРЅС‹, Рё РіСЂСѓР· (РґР»СЏ start/other)
-      if p_data.p_status = 'active' then
-         if v_wcnt = 0 then
-            rollback;
-            return format_error('Р”РѕР±Р°РІСЊС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РІР°РіРѕРЅ');
-         end if;
-         if
-            p_data.p_type in ( 'start',
-                               'other' )
-            and p_data.p_cargo_ref is null
-         then
-            rollback;
-            return format_error('РќРµ СѓРєР°Р·Р°РЅ РіСЂСѓР·');
-         end if;
-      end if;
-
-        -- СЂР°Р·Р±РёСЂР°РµРј РїРѕРґРїРёСЃР°РЅС‚РѕРІ: РїРѕР»СЏ ref_id|fio|post|org
-      v_len := nvl(
-         dbms_lob.getlength(p_data.p_signers),
-         0
-      );
-      v_from := 1;
-      while v_from <= v_len loop
-         v_to := instr(
-            p_data.p_signers,
-            c_rs,
-            v_from
-         );
-         if v_to = 0 then
-            v_to := v_len + 1;
-         end if;
-         v_rec := dbms_lob.substr(
-            p_data.p_signers,
-            v_to - v_from,
-            v_from
-         );
-         v_from := v_to + 1;
-         vs_ref_id := to_number ( nullif(
-            trim(g_field(
-               v_rec,
-               1
-            )),
-            ''
-         ) );
-         vs_fio := g_field(
-            v_rec,
-            2
-         );
-         vs_post := g_field(
-            v_rec,
-            3
-         );
-         vs_org := g_field(
-            v_rec,
-            4
-         );
-         vs_stype := trim(g_field(
-            v_rec,
-            5
-         )); -- 'own' РёР»Рё 'rzd'; null = РІСЂСѓС‡РЅСѓСЋ
-
-         if trim(vs_fio) is null then
-            continue;
-         end if;
-         v_ord := v_ord + 1;
-         l_sig.id := xx_disl_gu23_signer_seq.nextval;
-         l_sig.act_id := v_id;
-         l_sig.signer_ref_id := vs_ref_id;
-         l_sig.fio := vs_fio;
-         l_sig.post := vs_post;
-         l_sig.org := vs_org;
-         l_sig.ord_no := v_ord;
-         l_sig.stype := nullif(
-            vs_stype,
-            ''
-         );
-         insert_signer(l_sig);
-      end loop;
-
-        -- Р·Р°РєСЂС‹С‚РёРµ С†РёРєР»РѕРІ Р°РєС‚Р° РЅР°С‡Р°Р»Р°: С‡Р°СЃС‚РёС‡РЅРѕРµ/РїРѕР»РЅРѕРµ
-      if
-         p_data.p_type = 'end'
-         and p_data.p_status = 'active'
-         and p_data.p_linked_start_id is not null
-      then
-         select count(*)
-           into v_tot
-           from xx_disl_gu23_act_row
-          where act_id = p_data.p_linked_start_id;
-
-         select count(distinct er.wagon_no)
-           into v_closed
-           from xx_disl_gu23_act e,
-                xx_disl_gu23_act_row er
-          where er.act_id = e.id
-            and e.act_type = 'end'
-            and e.status in ( 'active',
-                              'signed',
-                              'closed' ) -- Р·Р°РєСЂС‹РІР°СЋС‰РёРµ; rejected/annulled ? РЅРµС‚
-            and e.linked_start_id = p_data.p_linked_start_id;
-
-         if v_closed >= v_tot then
             update xx_disl_gu23_act
-               set status = 'closed',
-                   modified_at = sysdate,
-                   modified_by = p_data.p_user_id
-             where id = p_data.p_linked_start_id
-               and status = 'active';
+               set act_number = v_number,
+                   act_type = p_data.p_type,
+                   status = p_data.p_status,
+                   dept_id = v_dept_id,
+                   station_id = v_station_id,
+                   st_from_id = v_st_from_id,
+                   st_to_id = v_st_to_id,
+                   cargo_ref = p_data.p_cargo_ref,
+                   reason = p_data.p_reason,
+                   circumstances = p_data.p_circumstances,
+                   start_at = v_start,
+                   end_at = v_end,
+                   dur_days = v_dd,
+                   dur_hours = v_dh,
+                   dur_total_h = v_th,
+                   cal_days = v_cd,
+                   linked_start_id = p_data.p_linked_start_id,
+                   modified_at = SYSDATE,
+                   modified_by = p_data.p_user_id,
+                   -- правка акта "на подписании" админом - новая версия 
+                   content_version =
+                         NVL (content_version, 1)
+                       + case when v_cur_status = 'draft' then 0 else 1 end
+             where id = v_id;
 
-            log_act_history(
-               p_act_id  => p_data.p_linked_start_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'Р¦РёРєР» РїСЂРѕСЃС‚РѕСЏ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РєСЂС‹С‚ Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ ' || v_number
-            );
-         else
-            log_act_history(
-               p_act_id  => p_data.p_linked_start_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'Р§Р°СЃС‚РёС‡РЅРѕ Р·Р°РєСЂС‹С‚Рѕ Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ '
-                         || v_number
-                         || ' ('
-                         || v_closed
-                         || ' РёР· '
-                         || v_tot
-                         || ')'
-            );
-         end if;
-      end if;
+            delete from xx_disl_gu23_act_row
+                  where act_id = v_id;
 
-      l_row.id := xx_disl_gu23_hist_seq.nextval;
-      l_row.act_id := v_id;
-      l_row.ts := sysdate;
-      l_row.usr := p_data.p_user_id;
-      l_row.txt :=
-         case
-            when xx_disl_gu23_pkg.fnc_boolean_num(v_isnew) = 1 then
-                  case
-                     when p_data.p_status = 'draft' then
-                        'РђРєС‚ СЃРѕР·РґР°РЅ (РџСЂРѕРµРєС‚)'
-                     else
-                        'РђРєС‚ СЃРѕР·РґР°РЅ'
-                  end
+            delete from xx_disl_gu23_signer
+                  where act_id = v_id;
+
+            -- Админ скорректировал акт ?на подписании?: собранные подписи
+            -- относятся к прежней версии ? сбрасываем, требуется переподписание
+            if v_cur_status <> 'draft'
+            then
+                delete from xx_disl_gu23_approval
+                      where act_id = v_id;
+
+                log_act_history (
+                    p_act_id    => v_id,
+                    p_user_id   => p_data.p_user_id,
+                    p_text      =>
+                        'Акт скорректирован администратором на стадии подписания - ранее отрпавленные подписи сброшены');
+            end if;
+        end if;
+
+        -- разбираем вагоны
+        for w in (select * from table (parse_wagon_clob (p_data.p_wagons)))
+        loop
+            if p_data.p_type in ('start', 'other')
+            then
+                -- данные по вагону из дислокации
+                begin
+                    select owner,
+                           kind,
+                           st_from,
+                           st_to,
+                           cargo,
+                           weight
+                      into vw_owner,
+                           vw_kind,
+                           vw_from,
+                           vw_to,
+                           vw_cargo,
+                           vw_weight
+                      from table (
+                               xx_disl_gu23_pkg.gu23_get_wagon_info (
+                                   w.wagon_no,
+                                   p_data.p_waybill_no))
+                     where ROWNUM = 1;
+                exception
+                    when others
+                    then
+                        vw_owner := null;
+                        vw_kind := null;
+                        vw_from := null;
+                        vw_to := null;
+                        vw_cargo := null;
+                        vw_weight := null;
+                end;
             else
-               case
-                  when p_data.p_status = 'draft' then
-                        'РџСЂРѕРµРєС‚ РёР·РјРµРЅС‘РЅ'
-                  else
-                     'РђРєС‚ РёР·РјРµРЅС‘РЅ'
-               end
-         end;
+                -- для окончания берём данные из акта начала (уже в CLOB)
+                vw_owner := w.owner;
+                vw_kind := w.kind;
+                vw_from := w.st_from;
+                vw_to := w.st_to;
+                vw_cargo := w.cargo;
+                vw_weight := w.weight;
+            end if;
 
-      log_act_history(
-         p_act_id  => l_row.act_id,
-         p_user_id => l_row.usr,
-         p_text    => l_row.txt
-      );
+            -- запрет дубля открытого простоя
+            if     p_data.p_type = 'start'
+               and p_data.p_status = 'active'
+               and NVL (p_data.p_force, 'N') <> 'Y'
+            then
+                -- дубль по вагону в пределах одного месяца
+                -- занятые циклы: active/signed/closed; annulled/rejected/draft - свободны
+                v_dupnum := null;
 
-      commit;
-      return 'OK'
-             || c_us
-             || v_id
-             || c_us
-             || v_number;
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+                begin
+                    select a.act_number
+                      into v_dupnum
+                      from xx_disl_gu23_act a, xx_disl_gu23_act_row r
+                     where     r.act_id = a.id
+                           and a.act_type = 'start'
+                           and a.status in ('active', 'signed', 'closed')
+                           and a.id <> v_id
+                           and r.wagon_no = w.wagon_no
+                           and TRUNC (a.start_at, 'MM') =
+                               TRUNC (v_start, 'MM')
+                           and ROWNUM = 1;
+                exception
+                    when NO_DATA_FOUND
+                    then
+                        v_dupnum := null;
+                end;
 
-   function gu23_del_act (
-      p_data in t_gu23_del_act
-   ) return varchar2 is
-      v_status varchar2(16);
-   begin
-      select status
-        into v_status
-        from xx_disl_gu23_act
-       where id = p_data.p_id;
+                if v_dupnum is not null
+                then
+                    rollback;
+                    return format_error (
+                                  'Нельзя создать акт "Начало простоя": по вагону '
+                               || w.wagon_no
+                               || ' уже есть акт '
+                               || v_dupnum
+                               || ' за этот месяц');
+                end if;
 
-      if v_status <> 'draft' then
-         return format_error('РЈРґР°Р»СЏС‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РџСЂРѕРµРєС‚. Р”РµР№СЃС‚РІСѓСЋС‰РёР№ Р°РєС‚ Р°РЅРЅСѓР»РёСЂСѓРµС‚СЃСЏ.');
-      end if;
-      delete from xx_disl_gu23_act
-       where id = p_data.p_id;
+                -- дубль по накладной в пределах 3 месяцев
+                if w.waybill_no is not null
+                then
+                    v_dupnum := null;
 
-      commit;
-      return 'done';
-   exception
-      when no_data_found then
-         return format_error('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+                    begin
+                        select a.act_number
+                          into v_dupnum
+                          from xx_disl_gu23_act a, xx_disl_gu23_act_row r
+                         where     r.act_id = a.id
+                               and a.act_type = 'start'
+                               and a.status in ('active', 'signed', 'closed')
+                               and a.id <> v_id
+                               and r.waybill_no = w.waybill_no
+                               and a.start_at >= ADD_MONTHS (v_start, -3)
+                               and a.start_at <= ADD_MONTHS (v_start, 3)
+                               and ROWNUM = 1;
+                    exception
+                        when NO_DATA_FOUND
+                        then
+                            v_dupnum := null;
+                    end;
 
-   function gu23_close_act (
-      p_id      in number,
-      p_user_id in number
-   ) return varchar2 is
-      v_status varchar2(16);
-      v_type   varchar2(16);
-   begin
-      select status,
-             act_type
-        into
-         v_status,
-         v_type
-        from xx_disl_gu23_act
-       where id = p_id;
+                    if v_dupnum is not null
+                    then
+                        rollback;
+                        return format_error (
+                                      'Нельзя создать акт "Начало простоя": по накладной '
+                                   || w.waybill_no
+                                   || ' уже есть акт '
+                                   || v_dupnum
+                                   || ' (в пределах 3 месяцев)');
+                    end if;
+                end if;
+            end if;
 
-      if v_type != 'end' then
-         return 'ERR'
-                || c_us
-                || 'Р—Р°РєСЂС‹С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ Р°РєС‚ РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРѕСЃС‚РѕСЏ';
-      end if;
-      if v_status not in ( 'active',
-                           'signed' ) then
-         return 'ERR'
-                || c_us
-                || 'РђРєС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ СЃС‚Р°С‚СѓСЃРµ "РћС‚РєСЂС‹С‚" РёР»Рё "РџРѕРґРїРёСЃР°РЅ"';
-      end if;
+            -- проверки для акта окончания
+            if p_data.p_type = 'end' and p_data.p_status = 'active'
+            then
+                select COUNT (*)
+                  into v_has_start
+                  from xx_disl_gu23_act_row r
+                 where     r.act_id = p_data.p_linked_start_id
+                       and r.wagon_no = w.wagon_no;
 
-      update xx_disl_gu23_act
-         set status = 'closed',
-             modified_at = sysdate,
-             modified_by = p_user_id
-       where id = p_id;
+                if v_has_start = 0
+                then
+                    rollback;
+                    return format_error (
+                                  'Вагон '
+                               || w.wagon_no
+                               || ' не относится к выбранному акту начала');
+                end if;
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values
-         ( xx_disl_gu23_hist_seq.nextval,
-           p_id,
-           sysdate,
-           p_user_id,
-           'РђРєС‚ Р·Р°РєСЂС‹С‚ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРј' );
+                select COUNT (*)
+                  into v_has_start
+                  from xx_disl_gu23_act e, xx_disl_gu23_act_row er
+                 where     er.act_id = e.id
+                       and e.act_type = 'end'
+                       and e.status in ('active', 'signed', 'closed') -- занят; rejected/annulled/draft ? свободен
+                       and e.linked_start_id = p_data.p_linked_start_id
+                       and e.id <> v_id
+                       and er.wagon_no = w.wagon_no;
 
-      commit;
-      return 'OK';
-   exception
-      when no_data_found then
-         return 'ERR'
-                || c_us
-                || 'РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ';
-      when others then
-         rollback;
-         return 'ERR'
-                || c_us
-                || sqlerrm;
-   end;
+                if v_has_start > 0
+                then
+                    rollback;
+                    return format_error (
+                                  'Вагон '
+                               || w.wagon_no
+                               || ' уже закрыт другим актом окончания');
+                end if;
+            end if;
 
-   function gu23_annul_act (
-      p_data in t_gu23_annul_act
-   ) return varchar2 is
-      v_type   varchar2(16);
-      v_linked number;
-   begin
-      select act_type,
-             linked_start_id
-        into
-         v_type,
-         v_linked
-        from xx_disl_gu23_act
-       where id = p_data.p_id;
+            insert into xx_disl_gu23_act_row (id,
+                                              act_id,
+                                              wagon_no,
+                                              owner,
+                                              kind,
+                                              st_from,
+                                              st_to,
+                                              cargo,
+                                              weight,
+                                              waybill_no)
+                 values (xx_disl_gu23_act_row_seq.NEXTVAL,
+                         v_id,
+                         w.wagon_no,
+                         vw_owner,
+                         vw_kind,
+                         vw_from,
+                         vw_to,
+                         vw_cargo,
+                         vw_weight,
+                         w.waybill_no);
 
-      update xx_disl_gu23_act
-         set status = 'annulled',
-             annul_reason = p_data.p_reason,
-             modified_at = sysdate,
-             modified_by = p_data.p_user_id
-       where id = p_data.p_id;
+            v_wcnt := v_wcnt + 1;
+        end loop;
 
-        -- РїСЂРё Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРё Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ - СЃРЅРѕРІР° РѕС‚РєСЂС‹РІР°РµРј СЃРІСЏР·Р°РЅРЅС‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р°
-      if
-         v_type = 'end'
-         and v_linked is not null
-      then
-         update xx_disl_gu23_act
-            set status = 'active',
-                modified_at = sysdate,
-                modified_by = p_data.p_user_id
-          where id = v_linked
-            and status = 'closed';
-      end if;
+        -- при отправке на подписание обязательны и вагоны, и груз (для start/other)
+        if p_data.p_status = 'active'
+        then
+            if v_wcnt = 0
+            then
+                rollback;
+                return format_error ('Добавьте хотя бы один вагон');
+            end if;
 
-        -- РїСЂРё Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРё Р°РєС‚Р° РЅР°С‡Р°Р»Р° - РєР°СЃРєР°РґРЅРѕ Р°РЅРЅСѓР»РёСЂСѓРµРј СЃРІСЏР·Р°РЅРЅС‹Рµ Р°РєС‚С‹ РѕРєРѕРЅС‡Р°РЅРёСЏ
-      if v_type = 'start' then
-         for r in (
-            select id,
-                   act_number
-              from xx_disl_gu23_act
-             where linked_start_id = p_data.p_id
-               and status not in ( 'annulled',
-                                   'draft' )
-         ) loop
-            update xx_disl_gu23_act
-               set status = 'annulled',
-                   annul_reason = 'РљР°СЃРєР°РґРЅРѕРµ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРµ: Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ Р°РєС‚ РЅР°С‡Р°Р»Р° '
-                                  || (
-                      select act_number
-                        from xx_disl_gu23_act
-                       where id = p_data.p_id
-                   ),
-                   modified_at = sysdate,
-                   modified_by = p_data.p_user_id
-             where id = r.id;
+            if     p_data.p_type in ('start', 'other')
+               and p_data.p_cargo_ref is null
+            then
+                rollback;
+                return format_error ('Не указан груз');
+            end if;
+        end if;
 
-            log_act_history(
-               p_act_id  => r.id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'РђРєС‚ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ РєР°СЃРєР°РґРЅРѕ (Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ Р°РєС‚ РЅР°С‡Р°Р»Р°): ' || p_data.p_reason
-            );
-         end loop;
-      end if;
+        -- разбираем подписантов: поля ref_id|fio|post|org
+        v_len := NVL (DBMS_LOB.getlength (p_data.p_signers), 0);
+        v_from := 1;
 
-      log_act_history(
-         p_act_id  => p_data.p_id,
-         p_user_id => p_data.p_user_id,
-         p_text    => 'РђРєС‚ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ: ' || p_data.p_reason
-      );
+        while v_from <= v_len
+        loop
+            v_to := INSTR (p_data.p_signers, c_rs, v_from);
 
-      commit;
-      return 'done';
-   exception
-      when no_data_found then
-         return format_error('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+            if v_to = 0
+            then
+                v_to := v_len + 1;
+            end if;
 
-    -- ----------------------------------------------------------------
-    -- РїРѕРёСЃРє СЃС‚Р°РЅС†РёР№
-    -- ----------------------------------------------------------------
-   function gu23_search_station (
-      p_q in varchar2
-   ) return xx_disl_gu23_ref_tab
-      pipelined
-   is
-      l_row xx_disl_gu23_ref_row;
-      v_q   varchar2(512) := lower(p_q);
-   begin
-      if length(trim(p_q)) < 3 then
-         return;
-      end if;
-      for r in (
-         select e_st_code as st_code,
-                upper(st_name) st_name,
-                st_id
-           from xx_etw_station_bi_v
-          where upper(st_name) like '%'
-                                    || upper(v_q)
-                                    || '%'
-            and rownum <= 50
-          order by st_name
-      ) loop
-         l_row.code := to_char(r.st_code);
-         l_row.name := r.st_name;
-         pipe row ( l_row );
-      end loop;
+            v_rec :=
+                DBMS_LOB.SUBSTR (p_data.p_signers, v_to - v_from, v_from);
+            v_from := v_to + 1;
+            vs_ref_id := TO_NUMBER (NULLIF (TRIM (g_field (v_rec, 1)), ''));
+            vs_fio := g_field (v_rec, 2);
+            vs_post := g_field (v_rec, 3);
+            vs_org := g_field (v_rec, 4);
+            vs_stype := TRIM (g_field (v_rec, 5)); -- 'own' или 'rzd'; null = вручную
 
-      return;
-   end;
+            if TRIM (vs_fio) is null
+            then
+                continue;
+            end if;
 
-    -- ----------------------------------------------------------------
-    -- СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ Р°РєС‚РѕРІ
-    -- ----------------------------------------------------------------
+            v_ord := v_ord + 1;
+            l_sig.id := xx_disl_gu23_signer_seq.NEXTVAL;
+            l_sig.act_id := v_id;
+            l_sig.signer_ref_id := vs_ref_id;
+            l_sig.fio := vs_fio;
+            l_sig.POST := vs_post;
+            l_sig.org := vs_org;
+            l_sig.ord_no := v_ord;
+            l_sig.stype := NULLIF (vs_stype, '');
+            insert_signer (l_sig);
+        end loop;
 
-   function gu23_approval_get_signers (
-      p_act_id in number
-   ) return t_gu23_approval_signer_tab
-      pipelined
-   is
-      l_row t_gu23_approval_signer_row;
-   begin
-      for r in (                       -- РїРѕРґРїРёСЃР°РЅС‚С‹ РїСЂРµРґРїСЂРёСЏС‚РёСЏ (stype='own')
-         select u.id as approver_id,
-                u.full_name,
-                lower(u.login)
-                || '@test.ru' as email
-           from xx_disl_gu23_signer s
-           join xx_disl_users_emp_v u
-         on u.id = s.signer_ref_id
-          where s.act_id = p_act_id
-            and s.stype = 'own'
-      ) loop
-         l_row.approver_id := r.approver_id;
-         l_row.full_name := r.full_name;
-         l_row.email := r.email;
-         pipe row ( l_row );
-      end loop;
+        -- закрытие циклов акта начала: частичное/полное
+        if     p_data.p_type = 'end'
+           and p_data.p_status = 'active'
+           and p_data.p_linked_start_id is not null
+        then
+            select COUNT (*)
+              into v_tot
+              from xx_disl_gu23_act_row
+             where act_id = p_data.p_linked_start_id;
 
-      return;
-   end;
+            select COUNT (distinct er.wagon_no)
+              into v_closed
+              from xx_disl_gu23_act e, xx_disl_gu23_act_row er
+             where     er.act_id = e.id
+                   and e.act_type = 'end'
+                   and e.status in ('active', 'signed', 'closed') -- закрывающие; rejected/annulled ? нет
+                   and e.linked_start_id = p_data.p_linked_start_id;
 
-   function gu23_approval_init (
-      p_act_id       in number,
-      p_requested_by in number
-   ) return varchar2 is
-      v_cnt number := 0;
-   begin
-      for r in (
-         select approver_id
-           from table ( gu23_approval_get_signers(p_act_id) )
-      ) loop
-         merge into xx_disl_gu23_approval t
-         using (
-            select p_act_id as act_id,
-                   r.approver_id as approver_id
-              from dual
-         ) s on ( t.act_id = s.act_id
-            and t.approver_id = s.approver_id )
-         when not matched then
-         insert (
-            id,
-            act_id,
-            approver_id,
-            status,
-            requested_at,
-            requested_by,
-            token_sig )
-         values
-            ( xx_disl_gu23_approval_seq.nextval,
-              s.act_id,
-              s.approver_id,
-              'pending',
-              sysdate,
-              p_requested_by,
-              null );
+            if v_closed >= v_tot
+            then
+                update xx_disl_gu23_act
+                   set status = 'closed',
+                       modified_at = SYSDATE,
+                       modified_by = p_data.p_user_id
+                 where id = p_data.p_linked_start_id and status = 'active';
 
-         v_cnt := v_cnt + sql%rowcount;
-      end loop;
+                log_act_history (
+                    p_act_id    => p_data.p_linked_start_id,
+                    p_user_id   => p_data.p_user_id,
+                    p_text      =>
+                           'Цикл простоя полностью закрыт актом окончания '
+                        || v_number);
+            else
+                log_act_history (
+                    p_act_id    => p_data.p_linked_start_id,
+                    p_user_id   => p_data.p_user_id,
+                    p_text      =>
+                           'Частично закрыто актом окончания '
+                        || v_number
+                        || ' ('
+                        || v_closed
+                        || ' из '
+                        || v_tot
+                        || ')');
+            end if;
+        end if;
 
-      commit;
-      return to_char(v_cnt);
-   exception
-      when others then
-         return format_error(null);
-   end;
-
-
-   function gu23_approval_get_name (
-      p_id in number
-   ) return varchar2 is
-   begin
-      return g_user_name(p_id);
-   end;
-
-   function gu23_approval_by_sig (
-      p_sig in varchar2
-   ) return varchar2 is
-      v_status  varchar2(16);
-      v_decided varchar2(20);
-   begin
-      select status,
-             to_char(
-                decided_at,
-                'DD.MM.YYYY HH24:MI'
-             )
-        into
-         v_status,
-         v_decided
-        from xx_disl_gu23_approval
-       where token_sig = p_sig;
-
-      return v_status
-             || c_us
-             || nvl(
-         v_decided,
-         ''
-      );
-   exception
-      when no_data_found then
-         return null;
-   end;
-
-   function gu23_approval_request (
-      p_act_id       in number,
-      p_approver_id  in number,
-      p_requested_by in number,
-      p_token_sig    in varchar2
-   ) return varchar2 is
-   begin
-      insert into xx_disl_gu23_approval (
-         id,
-         act_id,
-         approver_id,
-         status,
-         requested_at,
-         requested_by,
-         token_sig
-      ) values
-         ( xx_disl_gu23_approval_seq.nextval,
-           p_act_id,
-           p_approver_id,
-           'pending',
-           sysdate,
-           p_requested_by,
-           p_token_sig );
-
-      commit;
-      return 'OK';
-   exception
-      when others then
-         return format_error(null);
-   end;
-
-    -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р° РЅР° РѕСЃРЅРѕРІРµ РїРѕРґРїРёСЃР°РЅС‚РѕРІ.
-    -- Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїРѕСЃР»Рµ РєР°Р¶РґРѕРіРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂРµС€РµРЅРёСЏ.
-   procedure sync_act_status (
-      p_act_id in number
-   ) is
-      v_rejected number;
-      v_total    number;
-      v_approved number;
-   begin
-        -- РµСЃС‚СЊ С…РѕС‚СЊ РѕРґРЅРѕ РѕС‚РєР»РѕРЅРµРЅРёРµ - Р°РєС‚ РѕС‚РєР»РѕРЅС‘РЅ
-      select count(*)
-        into v_rejected
-        from xx_disl_gu23_approval
-       where act_id = p_act_id
-         and status = 'rejected';
-
-      if v_rejected > 0 then
-         update xx_disl_gu23_act
-            set status = 'rejected',
-                modified_at = sysdate
-          where id = p_act_id
-            and status = 'active';
-
-         return;
-      end if;
-
-        -- РїРѕРґРїРёСЃР°РЅС‚С‹ РїСЂРµРґРїСЂРёСЏС‚РёСЏ (stype='own'): signer_ref_id = xx_disl_users.id - СЃР°РјРё РїРѕРґРїРёСЃС‹РІРІР°СЋС‚
-      select count(*)
-        into v_total
-        from xx_disl_gu23_signer
-       where act_id = p_act_id
-         and stype = 'own'
-         and signer_ref_id is not null;
-
-      if v_total = 0 then
-         return;
-      end if;
-
-        -- С‡РёСЃР»Рѕ С‚РµС…, РєС‚Рѕ СѓР¶Рµ РѕРґРѕР±СЂРёР»
-      select count(*)
-        into v_approved
-        from xx_disl_gu23_approval a
-        join xx_disl_gu23_signer s
-      on s.signer_ref_id = a.approver_id
-         and s.act_id = a.act_id
-       where a.act_id = p_act_id
-         and a.status = 'approved'
-         and s.stype = 'own';
-
-      if v_approved >= v_total then
-         update xx_disl_gu23_act
-            set status = 'signed',
-                modified_at = sysdate
-          where id = p_act_id
-            and status = 'active';
-      end if;
-   end sync_act_status;
-
-   function gu23_approval_save_decision (
-      p_act_id      in number,
-      p_approver_id in number,
-      p_status      in varchar2,
-      p_comment     in varchar2,
-      p_token_sig   in varchar2,
-      p_signer_ip   in varchar2
-   ) return varchar2 is
-      v_cnt      number;
-      v_hist_txt varchar2(1000);
-      v_ver      number;
-   begin
-        -- С„РёРєСЃРёСЂСѓРµРј IP
-      gu23_set_client_ip(p_signer_ip);
-
-        -- С‚РµРєСѓС‰Р°СЏ РІРµСЂСЃРёСЏ Р°РєС‚Р°
-      select nvl(
-         content_version,
-         1
-      )
-        into v_ver
-        from xx_disl_gu23_act
-       where id = p_act_id;
-
-        -- РС‰РµРј РїРѕ (act_id, approver_id)
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_approval
-       where act_id = p_act_id
-         and approver_id = p_approver_id;
-
-      if v_cnt > 0 then
-         update xx_disl_gu23_approval
-            set status = p_status,
-                comment_txt = p_comment,
-                decided_at = sysdate,
-                token_sig = p_token_sig,
-                signed_version = v_ver,
-                signer_ip = p_signer_ip
-          where act_id = p_act_id
-            and approver_id = p_approver_id;
-      else
-         insert into xx_disl_gu23_approval (
-            id,
-            act_id,
-            approver_id,
-            status,
-            comment_txt,
-            requested_at,
-            requested_by,
-            decided_at,
-            token_sig,
-            signed_version,
-            signer_ip
-         ) values
-            ( xx_disl_gu23_approval_seq.nextval,
-              p_act_id,
-              p_approver_id,
-              p_status,
-              p_comment,
-              sysdate,
-              p_approver_id,
-              sysdate,
-              p_token_sig,
-              v_ver,
-              p_signer_ip );
-      end if;
-
-        -- Р—Р°РїРёСЃСЊ РІ РёСЃС‚РѕСЂРёСЋ Р°РєС‚Р°
-      if p_status = 'approved' then
-         v_hist_txt := 'РђРєС‚ РїРѕРґРїРёСЃР°РЅ: ' || g_user_name(p_approver_id);
-      elsif p_status = 'rejected' then
-         v_hist_txt := 'РђРєС‚ РѕС‚РєР»РѕРЅС‘РЅ: '
-                       || g_user_name(p_approver_id)
-                       ||
+        l_row.id := xx_disl_gu23_hist_seq.NEXTVAL;
+        l_row.act_id := v_id;
+        l_row.ts := SYSDATE;
+        l_row.usr := p_data.p_user_id;
+        l_row.txt :=
             case
-               when p_comment is not null then
-                  ' ? ' || p_comment
-               else
-                  ''
+                when xx_disl_gu23_pkg.fnc_boolean_num (v_isnew) = 1
+                then
+                    case
+                        when p_data.p_status = 'draft'
+                        then
+                            'Акт создан (Проект)'
+                        else
+                            'Акт создан'
+                    end
+                else
+                    case
+                        when p_data.p_status = 'draft' then 'Проект изменён'
+                        else 'Акт изменён'
+                    end
             end;
-      end if;
 
-      if v_hist_txt is not null then
+        log_act_history (p_act_id    => l_row.act_id,
+                         p_user_id   => l_row.usr,
+                         p_text      => l_row.txt);
+
+        commit;
+        return 'OK' || c_us || v_id || c_us || v_number;
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    function gu23_del_act (p_data in t_gu23_del_act)
+        return varchar2
+    is
+        v_status   varchar2 (16);
+    begin
+        select status
+          into v_status
+          from xx_disl_gu23_act
+         where id = p_data.p_id;
+
+        if v_status <> 'draft'
+        then
+            return format_error (
+                       'Удалять можно только Проект. Действующий акт аннулируется.');
+        end if;
+
+        delete from xx_disl_gu23_act
+              where id = p_data.p_id;
+
+        commit;
+        return 'done';
+    exception
+        when NO_DATA_FOUND
+        then
+            return format_error ('Акт не найден');
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    function gu23_close_act (p_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_status   varchar2 (16);
+        v_type     varchar2 (16);
+    begin
+        select status, act_type
+          into v_status, v_type
+          from xx_disl_gu23_act
+         where id = p_id;
+
+        if v_type not in ('end','other')
+        then
+            return    'ERR'
+                   || c_us
+                   || 'Закрыть можно только акт окончания простоя или прочий акт';
+        end if;
+
+        if v_status not in ('active', 'signed')
+        then
+            return    'ERR'
+                   || c_us
+                   || 'Акт должен быть в статусе "Открыт" или "Подписан"';
+        end if;
+
+        update xx_disl_gu23_act
+           set status = 'closed',
+               modified_at = SYSDATE,
+               modified_by = p_user_id
+         where id = p_id;
+
+        insert into xx_disl_gu23_hist (id,
+                                       act_id,
+                                       ts,
+                                       usr,
+                                       txt)
+             values (xx_disl_gu23_hist_seq.NEXTVAL,
+                     p_id,
+                     SYSDATE,
+                     p_user_id,
+                     'Акт закрыт');
+
+        commit;
+        return 'OK';
+    exception
+        when NO_DATA_FOUND
+        then
+            return 'ERR' || c_us || 'Акт не найден';
+        when others
+        then
+            rollback;
+            return 'ERR' || c_us || SQLERRM;
+    end;
+
+    function gu23_annul_act (p_data in t_gu23_annul_act)
+        return varchar2
+    is
+        v_type     varchar2 (16);
+        v_linked   number;
+    begin
+        select act_type, linked_start_id
+          into v_type, v_linked
+          from xx_disl_gu23_act
+         where id = p_data.p_id;
+
+        update xx_disl_gu23_act
+           set status = 'annulled',
+               annul_reason = p_data.p_reason,
+               modified_at = SYSDATE,
+               modified_by = p_data.p_user_id
+         where id = p_data.p_id;
+
+        -- при аннулировании акта окончания - снова открываем связанный акт начала
+        if v_type = 'end' and v_linked is not null
+        then
+            update xx_disl_gu23_act
+               set status = 'active',
+                   modified_at = SYSDATE,
+                   modified_by = p_data.p_user_id
+             where id = v_linked and status = 'closed';
+        end if;
+
+        -- при аннулировании акта начала - каскадно аннулируем связанные акты окончания
+        if v_type = 'start'
+        then
+            for r
+                in (select id, act_number
+                      from xx_disl_gu23_act
+                     where     linked_start_id = p_data.p_id
+                           and status not in ('annulled', 'draft'))
+            loop
+                update xx_disl_gu23_act
+                   set status = 'annulled',
+                       annul_reason =
+                              'Каскадное аннулирование: аннулирован акт начала '
+                           || (select act_number
+                                 from xx_disl_gu23_act
+                                where id = p_data.p_id),
+                       modified_at = SYSDATE,
+                       modified_by = p_data.p_user_id
+                 where id = r.id;
+
+                log_act_history (
+                    p_act_id    => r.id,
+                    p_user_id   => p_data.p_user_id,
+                    p_text      =>
+                           'Акт аннулирован каскадно (аннулирован акт начала): '
+                        || p_data.p_reason);
+            end loop;
+        end if;
+
+        log_act_history (
+            p_act_id    => p_data.p_id,
+            p_user_id   => p_data.p_user_id,
+            p_text      => 'Акт аннулирован: ' || p_data.p_reason);
+
+        commit;
+        return 'done';
+    exception
+        when NO_DATA_FOUND
+        then
+            return format_error ('Акт не найден');
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    -- ----------------------------------------------------------------
+    -- поиск станций
+    -- ----------------------------------------------------------------
+    function gu23_search_station (p_q in varchar2)
+        return xx_disl_gu23_ref_tab
+        pipelined
+    is
+        l_row   xx_disl_gu23_ref_row;
+        v_q     varchar2 (512) := LOWER (p_q);
+    begin
+        if LENGTH (TRIM (p_q)) < 3
+        then
+            return;
+        end if;
+
+        for r
+            in (  select e_st_code as st_code, UPPER (st_name) st_name, st_id
+                    from xx_nsi_station_v
+                   where     UPPER (st_name) like '%' || UPPER (v_q) || '%'
+                         and ROWNUM <= 50
+                order by st_name)
+        loop
+            l_row.code := TO_CHAR (r.st_code);
+            l_row.name := r.st_name;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    -- ----------------------------------------------------------------
+    -- согласование актов
+    -- ----------------------------------------------------------------
+
+    function gu23_approval_get_signers (p_act_id in number)
+        return t_gu23_approval_signer_tab
+        pipelined
+    is
+        l_row   t_gu23_approval_signer_row;
+    begin
+        for r
+            in (                       -- подписанты предприятия (stype='own')
+                select u.id                              as approver_id,
+                       u.full_name,
+                       LOWER (u.EMAIL_ADDRESS)  as email
+                  from xx_disl_gu23_signer  s
+                       join xx_disl_users_emp_v u on u.id = s.signer_ref_id
+                 where s.act_id = p_act_id and s.stype = 'own')
+        loop
+            l_row.approver_id := r.approver_id;
+            l_row.full_name := r.full_name;
+            l_row.email := r.email;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_approval_init (p_act_id         in number,
+                                 p_requested_by   in number)
+        return varchar2
+    is
+        v_cnt   number := 0;
+    begin
+        for r
+            in (select approver_id
+                  from table (gu23_approval_get_signers (p_act_id)))
+        loop
+            merge into xx_disl_gu23_approval t
+                 using (select p_act_id          as act_id,
+                               r.approver_id     as approver_id
+                          from DUAL) s
+                    on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+            when not matched
+            then
+                insert     (id,
+                            act_id,
+                            approver_id,
+                            status,
+                            requested_at,
+                            requested_by,
+                            token_sig)
+                    values (xx_disl_gu23_approval_seq.NEXTVAL,
+                            s.act_id,
+                            s.approver_id,
+                            'pending',
+                            SYSDATE,
+                            p_requested_by,
+                            null);
+
+            v_cnt := v_cnt + sql%rowcount;
+        end loop;
+
+        commit;
+        return TO_CHAR (v_cnt);
+    exception
+        when others
+        then
+            return format_error ();
+    end;
+
+
+    function gu23_approval_get_name (p_id in number)
+        return varchar2
+    is
+    begin
+        return g_user_name (p_id);
+    end;
+
+    function gu23_approval_by_sig (p_sig in varchar2)
+        return varchar2
+    is
+        v_status    varchar2 (16);
+        v_decided   varchar2 (20);
+    begin
+        select status, TO_CHAR (decided_at, 'DD.MM.YYYY HH24:MI')
+          into v_status, v_decided
+          from xx_disl_gu23_approval
+         where token_sig = p_sig;
+
+        return v_status || c_us || NVL (v_decided, '');
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
+
+    function gu23_approval_request (p_act_id         in number,
+                                    p_approver_id    in number,
+                                    p_requested_by   in number,
+                                    p_token_sig      in varchar2)
+        return varchar2
+    is
+    begin
+        insert into xx_disl_gu23_approval (id,
+                                           act_id,
+                                           approver_id,
+                                           status,
+                                           requested_at,
+                                           requested_by,
+                                           token_sig)
+             values (xx_disl_gu23_approval_seq.NEXTVAL,
+                     p_act_id,
+                     p_approver_id,
+                     'pending',
+                     SYSDATE,
+                     p_requested_by,
+                     p_token_sig);
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            return format_error ();
+    end;
+
+    -- Автоматически обновить статус акта на основе подписантов.
+    -- Вызывается после каждого сохранения решения.
+    procedure sync_act_status (p_act_id in number)
+    is
+        v_rejected   number;
+        v_total      number;
+        v_approved   number;
+    begin
+        -- есть хоть одно отклонение - акт отклонён
+        select COUNT (*)
+          into v_rejected
+          from xx_disl_gu23_approval
+         where act_id = p_act_id and status = 'rejected';
+
+        if v_rejected > 0
+        then
+            update xx_disl_gu23_act
+               set status = 'rejected', modified_at = SYSDATE
+             where id = p_act_id and status = 'active';
+
+            return;
+        end if;
+
+        -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id - сами подписыввают
+        select COUNT (*)
+          into v_total
+          from xx_disl_gu23_signer
+         where     act_id = p_act_id
+               and stype = 'own'
+               and signer_ref_id is not null;
+
+        if v_total = 0
+        then
+            return;
+        end if;
+
+        -- число тех, кто уже одобрил
+        select COUNT (*)
+          into v_approved
+          from xx_disl_gu23_approval  a
+               join xx_disl_gu23_signer s
+                   on s.signer_ref_id = a.approver_id and s.act_id = a.act_id
+         where     a.act_id = p_act_id
+               and a.status = 'approved'
+               and s.stype = 'own';
+
+        if v_approved >= v_total
+        then
+            update xx_disl_gu23_act
+               set status = 'signed', modified_at = SYSDATE
+             where id = p_act_id and status = 'active';
+        end if;
+    end sync_act_status;
+
+    function gu23_approval_save_decision (
+        p_act_id        in number,
+        p_approver_id   in number,
+        p_status        in varchar2,
+        p_comment       in varchar2,
+        p_token_sig     in varchar2,
+        p_signer_ip     in varchar2 default null)
+        return varchar2
+    is
+        v_cnt        number;
+        v_hist_txt   varchar2 (1000);
+        v_ver        number;
+    begin
+        -- фиксируем IP 
+        gu23_set_client_ip (p_signer_ip);
+
+        -- текущая версия акта
+        select NVL (content_version, 1)
+          into v_ver
+          from xx_disl_gu23_act
+         where id = p_act_id;
+
+        -- Ищем по (act_id, approver_id)
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_approval
+         where act_id = p_act_id and approver_id = p_approver_id;
+
+        if v_cnt > 0
+        then
+            update xx_disl_gu23_approval
+               set status = p_status,
+                   comment_txt = p_comment,
+                   decided_at = SYSDATE,
+                   token_sig = p_token_sig,
+                   signed_version = v_ver,
+                   signer_ip = p_signer_ip
+             where act_id = p_act_id and approver_id = p_approver_id;
+        else
+            insert into xx_disl_gu23_approval (id,
+                                               act_id,
+                                               approver_id,
+                                               status,
+                                               comment_txt,
+                                               requested_at,
+                                               requested_by,
+                                               decided_at,
+                                               token_sig,
+                                               signed_version,
+                                               signer_ip)
+                 values (xx_disl_gu23_approval_seq.NEXTVAL,
+                         p_act_id,
+                         p_approver_id,
+                         p_status,
+                         p_comment,
+                         SYSDATE,
+                         p_approver_id,
+                         SYSDATE,
+                         p_token_sig,
+                         v_ver,
+                         p_signer_ip);
+        end if;
+
+        -- Запись в историю акта
+        if p_status = 'approved'
+        then
+            v_hist_txt := 'Акт подписан: ' || g_user_name (p_approver_id);
+        elsif p_status = 'rejected'
+        then
+            v_hist_txt :=
+                   'Акт отклонён: '
+                || g_user_name (p_approver_id)
+                || case
+                       when p_comment is not null then ' ? ' || p_comment
+                       else ''
+                   end;
+        end if;
+
+        if v_hist_txt is not null
+        then
             -- add 10.07.2026 BekmansurovRR
-         log_act_history(
-            p_act_id  => p_act_id,
-            p_user_id => p_approver_id,
-            p_text    => v_hist_txt,
-            p_ip      => p_signer_ip
-         );
-      end if;
+            log_act_history (p_act_id    => p_act_id,
+                             p_user_id   => p_approver_id,
+                             p_text      => v_hist_txt,
+                             p_ip        => p_signer_ip);
+        end if;
 
-        -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р°
-      sync_act_status(p_act_id);
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+        -- Автоматически обновить статус акта
+        sync_act_status (p_act_id);
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
 
-   function gu23_approval_get_status (
-      p_act_id      in number,
-      p_approver_id in number
-   ) return varchar2 is
-      v_status  varchar2(16);
-      v_decided varchar2(20);
-   begin
-      select status,
-             to_char(
-                decided_at,
-                'DD.MM.YYYY HH24:MI'
-             )
-        into
-         v_status,
-         v_decided
-        from xx_disl_gu23_approval
-       where act_id = p_act_id
-         and approver_id = p_approver_id
-         and rownum = 1;
+    function gu23_approval_get_status (p_act_id        in number,
+                                       p_approver_id   in number)
+        return varchar2
+    is
+        v_status    varchar2 (16);
+        v_decided   varchar2 (20);
+    begin
+        select status, TO_CHAR (decided_at, 'DD.MM.YYYY HH24:MI')
+          into v_status, v_decided
+          from xx_disl_gu23_approval
+         where     act_id = p_act_id
+               and approver_id = p_approver_id
+               and ROWNUM = 1;
 
-      return v_status
-             || c_us
-             || nvl(
-         v_decided,
-         ''
-      );
-   exception
-      when no_data_found then
-         return null;
-   end;
+        return v_status || c_us || NVL (v_decided, '');
+    exception
+        when NO_DATA_FOUND
+        then
+            return null;
+    end;
 
-   function gu23_approval_my_status (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2 is
-      v_status varchar2(16);
-   begin
-      select status
-        into v_status
-        from xx_disl_gu23_approval
-       where act_id = p_act_id
-         and approver_id = p_user_id
-         and rownum = 1;
+    function gu23_approval_my_status (p_act_id    in number,
+                                      p_user_id   in number)
+        return varchar2
+    is
+        v_status   varchar2 (16);
+    begin
+        select status
+          into v_status
+          from xx_disl_gu23_approval
+         where act_id = p_act_id and approver_id = p_user_id and ROWNUM = 1;
 
-      return v_status;
-   exception
-      when no_data_found then
-         return 'none';
-   end;
+        return v_status;
+    exception
+        when NO_DATA_FOUND
+        then
+            return 'none';
+    end;
 
-   function gu23_get_approvals (
-      p_act_id in number
-   ) return t_gu23_approval_tab
-      pipelined
-   is
-      l_row t_gu23_approval_row;
-   begin
-      for r in (
-         select a.approver_id,
-                u.full_name,
-                a.status,
-                to_char(
-                   a.decided_at,
-                   'DD.MM.YYYY HH24:MI'
-                ) as decided_at,
-                a.comment_txt,
-                a.signed_version,
-                a.signer_ip
-           from xx_disl_gu23_approval a
-           join xx_disl_users_emp_v u
-         on u.id = a.approver_id
-          where a.act_id = p_act_id
-          order by a.requested_at
-      ) loop
-         l_row.approver_id := r.approver_id;
-         l_row.full_name := r.full_name;
-         l_row.status := r.status;
-         l_row.decided_at := r.decided_at;
-         l_row.comment_txt := r.comment_txt;
-         l_row.signed_version := r.signed_version;
-         l_row.signer_ip := r.signer_ip;
-         pipe row ( l_row );
-      end loop;
+    function gu23_get_approvals (p_act_id in number)
+        return t_gu23_approval_tab
+        pipelined
+    is
+        l_row   t_gu23_approval_row;
+    begin
+        for r
+            in (  select a.approver_id,
+                         u.full_name,
+                         a.status,
+                         TO_CHAR (a.decided_at, 'DD.MM.YYYY HH24:MI')
+                             as decided_at,
+                         a.comment_txt,
+                         a.signed_version,
+                         a.signer_ip
+                    from xx_disl_gu23_approval a
+                         join xx_disl_users_emp_v u on u.id = a.approver_id
+                   where a.act_id = p_act_id
+                order by a.requested_at)
+        loop
+            l_row.approver_id := r.approver_id;
+            l_row.full_name := r.full_name;
+            l_row.status := r.status;
+            l_row.decided_at := r.decided_at;
+            l_row.comment_txt := r.comment_txt;
+            l_row.signed_version := r.signed_version;
+            l_row.signer_ip := r.signer_ip;
+            pipe row (l_row);
+        end loop;
 
-      return;
-   end;
+        return;
+    end;
 
-   function gu23_is_act_signer (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_signer s
-       where s.act_id = p_act_id
-         and s.signer_ref_id = p_user_id
-         and s.stype = 'own';
+    function gu23_is_act_signer (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_signer s
+         where     s.act_id = p_act_id
+               and s.signer_ref_id = p_user_id
+               and s.stype = 'own';
 
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end;
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end;
 
-   function gu23_can_edit_draft (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_act
-       where id = p_act_id
-         and status = 'draft'
-         and ( created_by = p_user_id
-          or gu23_is_admin(p_user_id) = 'Y' );
+    function gu23_can_edit_draft (p_act_id in number, p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_act
+         where     id = p_act_id
+               and status = 'draft'
+               and (created_by = p_user_id or gu23_is_admin (p_user_id) = 'Y');
 
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end;
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end;
 
-   function gu23_set_approval_token (
-      p_act_id      in number,
-      p_approver_id in number,
-      p_token_sig   in varchar2
-   ) return varchar2 is
-   begin
-      update xx_disl_gu23_approval
-         set
-         token_sig = p_token_sig
-       where act_id = p_act_id
-         and approver_id = p_approver_id;
+    function gu23_set_approval_token (p_act_id       in number,
+                                      p_approver_id  in number,
+                                      p_token_sig    in varchar2)
+        return varchar2
+    is
+    begin
+        update xx_disl_gu23_approval
+           set token_sig = p_token_sig
+         where act_id = p_act_id and approver_id = p_approver_id;
 
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
 
-   function gu23_direct_decision (
-      p_act_id    in number,
-      p_user_id   in number,
-      p_status    in varchar2,
-      p_comment   in varchar2,
-      p_signer_ip in varchar2
-   ) return varchar2 is
-      v_ver number;
-   begin
-        -- С‚РµРєСѓС‰Р°СЏ РІРµСЂСЃРёСЏ Р°РєС‚Р°
-      select nvl(
-         content_version,
-         1
-      )
-        into v_ver
-        from xx_disl_gu23_act
-       where id = p_act_id;
+    function gu23_direct_decision (p_act_id      in number,
+                                   p_user_id     in number,
+                                   p_status      in varchar2,
+                                   p_comment     in varchar2,
+                                   p_signer_ip   in varchar2 default null)
+        return varchar2
+    is
+        v_ver   number;
+    begin
+        -- текущая версия акта
+        select NVL (content_version, 1)
+          into v_ver
+          from xx_disl_gu23_act
+         where id = p_act_id;
 
-        -- РЎРѕР·РґР°С‘Рј Р·Р°РїРёСЃСЊ РµСЃР»Рё РЅРµС‚, РёРЅР°С‡Рµ РѕР±РЅРѕРІР»СЏРµРј
-      merge into xx_disl_gu23_approval t
-      using (
-         select p_act_id as act_id,
-                p_user_id as approver_id
-           from dual
-      ) s on ( t.act_id = s.act_id
-         and t.approver_id = s.approver_id )
-      when matched then update
-      set status = p_status,
-          comment_txt = p_comment,
-          decided_at = sysdate,
-          signed_version = v_ver,
-          signer_ip = p_signer_ip
-       where t.status = 'pending'
-      when not matched then
-      insert (
-         id,
-         act_id,
-         approver_id,
-         status,
-         comment_txt,
-         requested_at,
-         requested_by,
-         decided_at,
-         token_sig,
-         signed_version,
-         signer_ip )
-      values
-         ( xx_disl_gu23_approval_seq.nextval,
-           p_act_id,
-           p_user_id,
-           p_status,
-           p_comment,
-           sysdate,
-           p_user_id,
-           sysdate,
-           null,
-           v_ver,
-           p_signer_ip );
+        -- Создаём запись если нет, иначе обновляем
+        merge into xx_disl_gu23_approval t
+             using (select p_act_id as act_id, p_user_id as approver_id
+                      from DUAL) s
+                on (t.act_id = s.act_id and t.approver_id = s.approver_id)
+        when matched
+        then
+            update set status = p_status,
+                       comment_txt = p_comment,
+                       decided_at = SYSDATE,
+                       signed_version = v_ver,
+                       signer_ip = p_signer_ip
+                 where t.status = 'pending'
+        when not matched
+        then
+            insert     (id,
+                        act_id,
+                        approver_id,
+                        status,
+                        comment_txt,
+                        requested_at,
+                        requested_by,
+                        decided_at,
+                        token_sig,
+                        signed_version,
+                        signer_ip)
+                values (xx_disl_gu23_approval_seq.NEXTVAL,
+                        p_act_id,
+                        p_user_id,
+                        p_status,
+                        p_comment,
+                        SYSDATE,
+                        p_user_id,
+                        SYSDATE,
+                        null,
+                        v_ver,
+                        p_signer_ip);
 
-      if sql%rowcount = 0 then
-         return 'ERR'
-                || c_us
-                || 'Р РµС€РµРЅРёРµ СѓР¶Рµ Р±С‹Р»Рѕ РїСЂРёРЅСЏС‚Рѕ СЂР°РЅРµРµ';
-      end if;
+        if sql%rowcount = 0
+        then
+            return 'ERR' || c_us || 'Решение уже было принято ранее';
+        end if;
 
-        -- Р—Р°РїРёСЃСЊ РІ РёСЃС‚РѕСЂРёСЋ
-      declare
-         v_txt varchar2(1000);
-      begin
-         v_txt :=
-            case p_status
-               when 'approved' then
-                  'РџРѕРґРїРёСЃР°РЅРѕ'
-               when 'rejected' then
-                  'РћС‚РєР»РѕРЅРµРЅРѕ: ' || p_comment
-               else
-                  p_status
-            end;
+        -- Запись в историю
+        declare
+            v_txt   varchar2 (1000);
+        begin
+            v_txt :=
+                case p_status
+                    when 'approved' then 'Подписано'
+                    when 'rejected' then 'Отклонено: ' || p_comment
+                    else p_status
+                end;
 
             -- add 10.07.2026 BekmansurovRR
-         insert into xx_disl_gu23_hist (
-            id,
-            act_id,
-            ts,
-            usr,
-            txt,
-            ip
-         ) values
-            ( xx_disl_gu23_hist_seq.nextval,
-              p_act_id,
-              sysdate,
-              p_user_id,
-              v_txt,
-              p_signer_ip );
-      end;
+            insert into xx_disl_gu23_hist (id,
+                                           act_id,
+                                           ts,
+                                           usr,
+                                           txt,
+                                           ip)
+                 values (xx_disl_gu23_hist_seq.NEXTVAL,
+                         p_act_id,
+                         SYSDATE,
+                         p_user_id,
+                         v_txt,
+                         p_signer_ip);
+        end;
 
-        -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р°
-      sync_act_status(p_act_id);
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
-
-    -- ----------------------------------------------------------------
-    -- Р РѕР»Рё Рё РґРѕСЃС‚СѓРї
-    -- ----------------------------------------------------------------
-
-   function gu23_can_access (
-      p_user_id in number
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_user_roles
-       where user_id = p_user_id
-         and rownum = 1;
-
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end gu23_can_access;
-
-   function gu23_is_admin (
-      p_user_id in number
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_user_roles ur
-        join xx_disl_gu23_roles r
-      on r.role_id = ur.role_id
-       where ur.user_id = p_user_id
-         and r.role_code = 'GU23_ADMIN'
-         and rownum = 1;
-
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end gu23_is_admin;
-
-   function gu23_roles_get_all return t_gu23_role_tab
-      pipelined
-   is
-      l_row t_gu23_role_row;
-   begin
-      for r in (
-         select role_id,
-                role_code,
-                role_name
-           from xx_disl_gu23_roles
-          order by role_name
-      ) loop
-         l_row.role_id := r.role_id;
-         l_row.role_code := r.role_code;
-         l_row.role_name := r.role_name;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end gu23_roles_get_all;
-
-   function gu23_users_roles_get (
-      p_search in varchar2
-   ) return t_gu23_user_role_tab
-      pipelined
-   is
-      l_row  t_gu23_user_role_row;
-      v_srch varchar2(512) := '%'
-                              || upper(nvl(
-         p_search,
-         ''
-      ))
-                              || '%';
-   begin
-      for r in (
-         select u.id as user_id,
-                u.login,
-                u.full_name,
-                ro.role_id,
-                ro.role_code,
-                ro.role_name
-           from xx_disl_users u
-           left join xx_disl_gu23_user_roles ur
-         on ur.user_id = u.id
-           left join xx_disl_gu23_roles ro
-         on ro.role_id = ur.role_id
-          where ( upper(u.full_name) like v_srch
-             or upper(u.login) like v_srch )
-            and u.open = 'Y'
-          order by u.full_name,
-                   ro.role_name
-      ) loop
-         l_row.user_id := r.user_id;
-         l_row.login := r.login;
-         l_row.full_name := r.full_name;
-         l_row.role_id := r.role_id;
-         l_row.role_code := r.role_code;
-         l_row.role_name := r.role_name;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end gu23_users_roles_get;
-
-   function gu23_role_assign (
-      p_user_id in number,
-      p_role_id in number
-   ) return varchar2 is
-   begin
-      insert into xx_disl_gu23_user_roles (
-         user_id,
-         role_id
-      ) values
-         ( p_user_id,
-           p_role_id );
-
-      commit;
-      return 'OK';
-   exception
-      when dup_val_on_index then
-            -- СЂРѕР»СЊ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅР°
-         return 'OK';
-      when others then
-         rollback;
-         return format_error(null);
-   end gu23_role_assign;
-
-   function gu23_role_revoke (
-      p_user_id in number,
-      p_role_id in number
-   ) return varchar2 is
-   begin
-      delete from xx_disl_gu23_user_roles
-       where user_id = p_user_id
-         and role_id = p_role_id;
-
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end gu23_role_revoke;
-
-   function gu23_user_perms_get (
-      p_user_id in number
-   ) return t_gu23_perm_code_tab
-      pipelined
-   is
-   begin
-      if gu23_is_admin(p_user_id) = 'Y' then
-            -- Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РїРѕР»СѓС‡Р°РµС‚ РІСЃРµ РїСЂР°РІР°
-         for r in (
-            select perm_code
-              from xx_disl_gu23_permissions
-             order by perm_code
-         ) loop
-            pipe row ( r.perm_code );
-         end loop;
-      else
-         for r in (
-            select distinct p.perm_code
-              from xx_disl_gu23_user_roles ur
-              join xx_disl_gu23_role_permissions rp
-            on rp.role_id = ur.role_id
-              join xx_disl_gu23_permissions p
-            on p.perm_id = rp.perm_id
-             where ur.user_id = p_user_id
-             order by p.perm_code
-         ) loop
-            pipe row ( r.perm_code );
-         end loop;
-      end if;
-
-      return;
-   exception
-      when others then
-         return;
-   end gu23_user_perms_get;
-
-   function gu23_has_perm (
-      p_user_id   in number,
-      p_perm_code in varchar2
-   ) return varchar2 is
-      v_cnt number;
-   begin
-      select count(*)
-        into v_cnt
-        from xx_disl_gu23_user_roles ur
-        join xx_disl_gu23_role_permissions rp
-      on rp.role_id = ur.role_id
-        join xx_disl_gu23_permissions p
-      on p.perm_id = rp.perm_id
-       where ur.user_id = p_user_id
-         and p.perm_code = p_perm_code
-         and rownum = 1;
-
-      return
-         case
-            when v_cnt > 0 then
-               'Y'
-            else
-               'N'
-         end;
-   exception
-      when others then
-         return 'N';
-   end gu23_has_perm;
-
-   function gu23_role_perms_get return t_gu23_role_perm_tab
-      pipelined
-   is
-      l_row t_gu23_role_perm_row;
-   begin
-      for r in (
-         select p.perm_id,
-                p.perm_code,
-                p.description as descr,
-                ro.role_id,
-                ro.role_code,
-                ro.role_name,
-                case
-                   when rp.perm_id is not null then
-                      'Y'
-                   else
-                      'N'
-                end as has_perm
-           from xx_disl_gu23_permissions p
-          cross join xx_disl_gu23_roles ro
-           left join xx_disl_gu23_role_permissions rp
-         on rp.role_id = ro.role_id
-            and rp.perm_id = p.perm_id
-          order by p.perm_id,
-                   ro.role_id
-      ) loop
-         l_row.perm_id := r.perm_id;
-         l_row.perm_code := r.perm_code;
-         l_row.descr := r.descr;
-         l_row.role_id := r.role_id;
-         l_row.role_code := r.role_code;
-         l_row.role_name := r.role_name;
-         l_row.has_perm := r.has_perm;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end gu23_role_perms_get;
-
-   function gu23_perm_assign (
-      p_role_id in number,
-      p_perm_id in number
-   ) return varchar2 is
-   begin
-      insert into xx_disl_gu23_role_permissions (
-         role_id,
-         perm_id
-      ) values
-         ( p_role_id,
-           p_perm_id );
-
-      commit;
-      return 'OK';
-   exception
-      when dup_val_on_index then
-         return 'OK';
-      when others then
-         rollback;
-         return format_error(null);
-   end gu23_perm_assign;
-
-   function gu23_perm_revoke (
-      p_role_id in number,
-      p_perm_id in number
-   ) return varchar2 is
-   begin
-      delete from xx_disl_gu23_role_permissions
-       where role_id = p_role_id
-         and perm_id = p_perm_id;
-
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end gu23_perm_revoke;
+        -- Автоматически обновить статус акта
+        sync_act_status (p_act_id);
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
 
     -- ----------------------------------------------------------------
-    -- РђРґРјРёРЅРёСЃС‚СЂРёСЂРѕРІР°РЅРёРµ СЃРїСЂР°РІРѕС‡РЅРёРєРѕРІ
+    -- Роли и доступ
     -- ----------------------------------------------------------------
 
-   function gu23_ref_signers_all return t_gu23_ref_signer_tab
-      pipelined
-   is
-      l_row t_gu23_ref_signer_row;
-   begin
-      for r in (
-         select id,
-                fio,
-                post,
-                org,
-                unit,
-                active
-           from xx_disl_gu23_ref_signer
-          order by active desc,
-                   fio
-      ) loop
-         l_row.id := r.id;
-         l_row.fio := r.fio;
-         l_row.post := r.post;
-         l_row.org := r.org;
-         l_row.unit := r.unit;
-         l_row.active := r.active;
-         pipe row ( l_row );
-      end loop;
+    function gu23_can_access (p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_user_roles
+         where user_id = p_user_id and ROWNUM = 1;
 
-      return;
-   end;
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end gu23_can_access;
 
-   function gu23_ref_reasons_all return t_gu23_ref_reason_tab
-      pipelined
-   is
-      l_row t_gu23_ref_reason_row;
-   begin
-      for r in (
-         select id,
-                name,
-                act_kind,
-                active
-           from xx_disl_gu23_ref_reason
-          order by active desc,
-                   name
-      ) loop
-         l_row.id := r.id;
-         l_row.name := r.name;
-         l_row.act_kind := r.act_kind;
-         l_row.active := r.active;
-         pipe row ( l_row );
-      end loop;
+    function gu23_is_admin (p_user_id in number)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_user_roles  ur
+               join xx_disl_gu23_roles r on r.role_id = ur.role_id
+         where     ur.user_id = p_user_id
+               and r.role_code = 'GU23_ADMIN'
+               and ROWNUM = 1;
 
-      return;
-   end;
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end gu23_is_admin;
 
-   function gu23_ref_signer_save (
-      p_id   in number,
-      p_fio  in varchar2,
-      p_post in varchar2,
-      p_org  in varchar2,
-      p_unit in varchar2
-   ) return varchar2 is
-   begin
-      if p_id > 0 then
-         update xx_disl_gu23_ref_signer
-            set fio = p_fio,
-                post = p_post,
-                org = p_org,
-                unit = p_unit
-          where id = p_id;
-      else
-         insert into xx_disl_gu23_ref_signer (
-            id,
-            fio,
-            post,
-            org,
-            unit,
-            stype,
-            active
-         ) values
-            ( xx_disl_gu23_ref_signer_seq.nextval,
-              p_fio,
-              p_post,
-              p_org,
-              p_unit,
-              'Р Р°Р±РѕС‚РЅРёРє СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р”',
-              'Y' );
-      end if;
+    function gu23_roles_get_all
+        return t_gu23_role_tab
+        pipelined
+    is
+        l_row   t_gu23_role_row;
+    begin
+        for r in (  select role_id, role_code, role_name
+                      from xx_disl_gu23_roles
+                  order by role_name)
+        loop
+            l_row.role_id := r.role_id;
+            l_row.role_code := r.role_code;
+            l_row.role_name := r.role_name;
+            pipe row (l_row);
+        end loop;
 
-      commit;
-      return 'OK';
-   exception
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+        return;
+    end gu23_roles_get_all;
 
-   function gu23_ref_signer_toggle (
-      p_id in number
-   ) return varchar2 is
-   begin
-      update xx_disl_gu23_ref_signer
-         set
-         active =
-            case
-               when active = 'Y' then
-                  'N'
-               else
-                  'Y'
-            end
-       where id = p_id;
+    function gu23_users_roles_get (p_search in varchar2 default null)
+        return t_gu23_user_role_tab
+        pipelined
+    is
+        l_row    t_gu23_user_role_row;
+        v_srch   varchar2 (512) := '%' || UPPER (NVL (p_search, '')) || '%';
+    begin
+        for r
+            in (  select u.id     as user_id,
+                         u.login,
+                         u.full_name,
+                         ro.role_id,
+                         ro.role_code,
+                         ro.role_name
+                    from xx_disl_users u
+                         left join xx_disl_gu23_user_roles ur
+                             on ur.user_id = u.id
+                         left join xx_disl_gu23_roles ro
+                             on ro.role_id = ur.role_id
+                   where     (   UPPER (u.full_name) like v_srch
+                              or UPPER (u.login) like v_srch)
+                         and u.open = 'Y'
+                order by u.full_name, ro.role_name)
+        loop
+            l_row.user_id := r.user_id;
+            l_row.login := r.login;
+            l_row.full_name := r.full_name;
+            l_row.role_id := r.role_id;
+            l_row.role_code := r.role_code;
+            l_row.role_name := r.role_name;
+            pipe row (l_row);
+        end loop;
 
-      commit;
-      return 'OK';
-   exception
-      when others then
-         return format_error(null);
-   end;
+        return;
+    end gu23_users_roles_get;
 
-   function gu23_ref_reason_save (
-      p_id       in number,
-      p_name     in varchar2,
-      p_act_kind in varchar2
-   ) return varchar2 is
-   begin
-      if p_id > 0 then
-         update xx_disl_gu23_ref_reason
-            set name = p_name,
-                act_kind = p_act_kind
-          where id = p_id;
-      else
-         insert into xx_disl_gu23_ref_reason (
-            id,
-            name,
-            act_kind,
-            active
-         ) values
-            ( xx_disl_gu23_ref_reason_seq.nextval,
-              p_name,
-              p_act_kind,
-              'Y' );
-      end if;
+    function gu23_role_assign (p_user_id in number, p_role_id in number)
+        return varchar2
+    is
+    begin
+        insert into xx_disl_gu23_user_roles (user_id, role_id)
+             values (p_user_id, p_role_id);
 
-      commit;
-      return 'OK';
-   exception
-      when dup_val_on_index then
-            -- РїСЂРёС‡РёРЅ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅР°
-         rollback;
-         return format_error('РџСЂРёС‡РёРЅР° СѓР¶Рµ РґРѕР±Р°РІР»РµРЅР° РІ СЃРїСЂР°РІРѕС‡РЅРёРє!');
-      when others then
-         rollback;
-         return format_error(null);
-   end;
+        commit;
+        return 'OK';
+    exception
+        when DUP_VAL_ON_INDEX
+        then
+            -- роль уже назначена
+            return 'OK';
+        when others
+        then
+            rollback;
+            return format_error ();
+    end gu23_role_assign;
 
-   function gu23_ref_reason_toggle (
-      p_id in number
-   ) return varchar2 is
-   begin
-      update xx_disl_gu23_ref_reason
-         set
-         active =
-            case
-               when active = 'Y' then
-                  'N'
-               else
-                  'Y'
-            end
-       where id = p_id;
+    function gu23_role_revoke (p_user_id in number, p_role_id in number)
+        return varchar2
+    is
+    begin
+        delete from xx_disl_gu23_user_roles
+              where user_id = p_user_id and role_id = p_role_id;
 
-      commit;
-      return 'OK';
-   exception
-      when others then
-         return format_error(null);
-   end;
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end gu23_role_revoke;
+
+    function gu23_user_perms_get (p_user_id in number)
+        return t_gu23_perm_code_tab
+        pipelined
+    is
+    begin
+        if gu23_is_admin (p_user_id) = 'Y'
+        then
+            -- администратор получает все права
+            for r in (  select perm_code
+                          from xx_disl_gu23_permissions
+                      order by perm_code)
+            loop
+                pipe row (r.perm_code);
+            end loop;
+        else
+            for r
+                in (  select distinct p.perm_code
+                        from xx_disl_gu23_user_roles ur
+                             join xx_disl_gu23_role_permissions rp
+                                 on rp.role_id = ur.role_id
+                             join xx_disl_gu23_permissions p
+                                 on p.perm_id = rp.perm_id
+                       where ur.user_id = p_user_id
+                    order by p.perm_code)
+            loop
+                pipe row (r.perm_code);
+            end loop;
+        end if;
+
+        return;
+    exception
+        when others
+        then
+            return;
+    end gu23_user_perms_get;
+
+    function gu23_has_perm (p_user_id in number, p_perm_code in varchar2)
+        return varchar2
+    is
+        v_cnt   number;
+    begin
+        select COUNT (*)
+          into v_cnt
+          from xx_disl_gu23_user_roles  ur
+               join xx_disl_gu23_role_permissions rp
+                   on rp.role_id = ur.role_id
+               join xx_disl_gu23_permissions p on p.perm_id = rp.perm_id
+         where     ur.user_id = p_user_id
+               and p.perm_code = p_perm_code
+               and ROWNUM = 1;
+
+        return case when v_cnt > 0 then 'Y' else 'N' end;
+    exception
+        when others
+        then
+            return 'N';
+    end gu23_has_perm;
+
+    function gu23_role_perms_get
+        return t_gu23_role_perm_tab
+        pipelined
+    is
+        l_row   t_gu23_role_perm_row;
+    begin
+        for r
+            in (  select p.perm_id,
+                         p.perm_code,
+                         p.description                                             as descr,
+                         ro.role_id,
+                         ro.role_code,
+                         ro.role_name,
+                         case when rp.perm_id is not null then 'Y' else 'N' end    as has_perm
+                    from xx_disl_gu23_permissions p
+                         cross join xx_disl_gu23_roles ro
+                         left join xx_disl_gu23_role_permissions rp
+                             on     rp.role_id = ro.role_id
+                                and rp.perm_id = p.perm_id
+                order by p.perm_id, ro.role_id)
+        loop
+            l_row.perm_id := r.perm_id;
+            l_row.perm_code := r.perm_code;
+            l_row.descr := r.descr;
+            l_row.role_id := r.role_id;
+            l_row.role_code := r.role_code;
+            l_row.role_name := r.role_name;
+            l_row.has_perm := r.has_perm;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end gu23_role_perms_get;
+
+    function gu23_perm_assign (p_role_id in number, p_perm_id in number)
+        return varchar2
+    is
+    begin
+        insert into xx_disl_gu23_role_permissions (role_id, perm_id)
+             values (p_role_id, p_perm_id);
+
+        commit;
+        return 'OK';
+    exception
+        when DUP_VAL_ON_INDEX
+        then
+            return 'OK';
+        when others
+        then
+            rollback;
+            return format_error ();
+    end gu23_perm_assign;
+
+    function gu23_perm_revoke (p_role_id in number, p_perm_id in number)
+        return varchar2
+    is
+    begin
+        delete from xx_disl_gu23_role_permissions
+              where role_id = p_role_id and perm_id = p_perm_id;
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end gu23_perm_revoke;
+
+    -- ----------------------------------------------------------------
+    -- Администрирование справочников
+    -- ----------------------------------------------------------------
+
+    function gu23_ref_signers_all
+        return t_gu23_ref_signer_tab
+        pipelined
+    is
+        l_row   t_gu23_ref_signer_row;
+    begin
+        for r in (  select id,
+                           fio,
+                           POST,
+                           org,
+                           unit,
+                           active
+                      from xx_disl_gu23_ref_signer
+                  order by active desc, fio)
+        loop
+            l_row.id := r.id;
+            l_row.fio := r.fio;
+            l_row.POST := r.POST;
+            l_row.org := r.org;
+            l_row.unit := r.unit;
+            l_row.active := r.active;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_ref_reasons_all
+        return t_gu23_ref_reason_tab
+        pipelined
+    is
+        l_row   t_gu23_ref_reason_row;
+    begin
+        for r in (  select id,
+                           name,
+                           act_kind,
+                           active
+                      from xx_disl_gu23_ref_reason
+                  order by active desc, name)
+        loop
+            l_row.id := r.id;
+            l_row.name := r.name;
+            l_row.act_kind := r.act_kind;
+            l_row.active := r.active;
+            pipe row (l_row);
+        end loop;
+
+        return;
+    end;
+
+    function gu23_ref_signer_save (p_id     in number,
+                                   p_fio    in varchar2,
+                                   p_post   in varchar2,
+                                   p_org    in varchar2,
+                                   p_unit   in varchar2)
+        return varchar2
+    is
+    begin
+        if p_id > 0
+        then
+            update xx_disl_gu23_ref_signer
+               set fio = p_fio,
+                   POST = p_post,
+                   org = p_org,
+                   unit = p_unit
+             where id = p_id;
+        else
+            insert into xx_disl_gu23_ref_signer (id,
+                                                 fio,
+                                                 POST,
+                                                 org,
+                                                 unit,
+                                                 stype,
+                                                 active)
+                 values (xx_disl_gu23_ref_signer_seq.NEXTVAL,
+                         p_fio,
+                         p_post,
+                         p_org,
+                         p_unit,
+                         'Работник станции ОАО РЖД',
+                         'Y');
+        end if;
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    function gu23_ref_signer_toggle (p_id in number)
+        return varchar2
+    is
+    begin
+        update xx_disl_gu23_ref_signer
+           set active = case when active = 'Y' then 'N' else 'Y' end
+         where id = p_id;
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            return format_error ();
+    end;
+
+    function gu23_ref_reason_save (p_id         in number,
+                                   p_name       in varchar2,
+                                   p_act_kind   in varchar2)
+        return varchar2
+    is
+    begin
+        if p_id > 0
+        then
+            update xx_disl_gu23_ref_reason
+               set name = p_name, act_kind = p_act_kind
+             where id = p_id;
+        else
+            insert into xx_disl_gu23_ref_reason (id,
+                                                 name,
+                                                 act_kind,
+                                                 active)
+                 values (xx_disl_gu23_ref_reason_seq.NEXTVAL,
+                         p_name,
+                         p_act_kind,
+                         'Y');
+        end if;
+
+        commit;
+        return 'OK';
+    exception
+        when DUP_VAL_ON_INDEX
+        then
+            -- причин уже назначена
+            rollback;
+            return format_error ('Причина уже добавлена в справочник!');
+        when others
+        then
+            rollback;
+            return format_error ();
+    end;
+
+    function gu23_ref_reason_toggle (p_id in number)
+        return varchar2
+    is
+    begin
+        update xx_disl_gu23_ref_reason
+           set active = case when active = 'Y' then 'N' else 'Y' end
+         where id = p_id;
+
+        commit;
+        return 'OK';
+    exception
+        when others
+        then
+            return format_error ();
+    end;
 
     /* ------------------------------------------------------------------ */
-   function gu23_get_hmac_secret return varchar2 is
-   begin
-      return g_hmac_secret;
-   end gu23_get_hmac_secret;
+    function gu23_get_hmac_secret
+        return varchar2
+    is
+    begin
+        return g_hmac_secret;
+    end gu23_get_hmac_secret;
 
     /* ------------------------------------------------------------------ */
-   procedure gu23_send_mail (
-      p_to      in varchar2,
-      p_subject in varchar2,
-      p_body    in clob,
-      p_from    in varchar2
-   ) is
-   begin
-        -- xx_requests.send_mail
-      null;
-   end gu23_send_mail;
+    procedure gu23_send_mail (
+        p_to        in varchar2,
+        p_subject   in varchar2,
+        p_body      in clob,
+        p_from      in varchar2 default 'noreply@test.ru')
+    is
+        x_sender        varchar2(240);
+        x_to_email      varchar2(240);
+        x_subject       varchar2(240);
+        x_msg           clob;
+    begin
+        
+        x_sender := 'noreply@metafrax.ru';
+        x_to_email:=p_to;
+        x_subject := p_subject;
+        x_msg:=p_body;
+       
+        --insert into xx_disl_gu23_mail_test (P_TO,P_SUBJECT,P_BODY,P_FROM) values (x_to_email,x_subject,x_msg,x_sender);
+        
+        if upper(g_server_host) = 'M5000' and x_to_email is not null then
+            apps.xx_mtf_send_mail_pkg.send_mail (
+                                                p_sender      => x_sender,                  --отправитель
+                                                p_recipient   => x_to_email,--'rustam.bekmansurov@ruschem.ru',       --получатель
+                                                p_subject     => x_subject,
+                                                p_text_clob   => x_msg
+                                            );
+        end if;
+        commit;
+    end gu23_send_mail;
 end xx_disl_gu23_pkg;
+/

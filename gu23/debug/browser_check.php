@@ -5,7 +5,6 @@
  */
 function gu23_detect_browser(string $ua): array
 {
-    // Порядок важен: UA-строки браузеров пересекаются (Edge/Yandex содержат "Chrome").
     $checks = [
         // Internet Explorer — блокируем всегда
         ['ie', '/(?:MSIE\s|Trident\/)/i', null],

@@ -122,7 +122,7 @@ class GuActDocxReport
     private function getPrintSigners(array $act, array $signers): array
     {
         $actType = strtolower((string) ($act['ACT_TYPE'] ?? ''));
-        $ownLimit = 2;
+        $ownLimit = 10;
         $rzdLimit = 1;
         $own = [];
         $rzd = [];
