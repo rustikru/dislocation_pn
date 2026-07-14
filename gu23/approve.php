@@ -6,6 +6,7 @@
 ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../connection.php';
+require_once __DIR__ . '/lib/client_ip.php';
 require_once __DIR__ . '/lib/HmacApproval.php';
 require_once __DIR__ . '/lib/text_clean.php';
 require_once __DIR__ . '/classes/ApprovalRepository.php';
@@ -25,9 +26,7 @@ $actId = (int) ($params['act'] ?? 0);
 $approverId = (int) ($params['uid'] ?? 0);
 $action = $params['action'] ?? '';
 $sig = $params['sig'] ?? '';
-$signerIp = !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
-    ? trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0])
-    : ($_SERVER['REMOTE_ADDR'] ?? '');
+$signerIp = gu23_client_ip();
 
 // -------------------------------------------------------------------
 // Если ссылка невалидна — показываем ошибку и выходим

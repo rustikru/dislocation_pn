@@ -1274,20 +1274,40 @@ function isFilledSigner(signer) {
     )
   return true
 }
+
+let actSaveInProcess = false
+
+function setSaveButtonsDisabled(disabled) {
+  $('#btn-saveDraft, #btn-saveActive').prop('disabled', disabled)
+}
+
+function finishSaveRequest() {
+  actSaveInProcess = false
+  setSaveButtonsDisabled(false)
+}
+
 // Созраняем акт в БД
 function saveActToServer(status, skipWarning = false) {
+  if (actSaveInProcess) return
+
   const errors = getSaveErrors(status)
   if (errors.length) return showToast(errors[0], 'err')
 
-  sendApiRequest('gu23_save_act', getActDataForSave(status, skipWarning)).done(
-    (response) => {
+  actSaveInProcess = true
+  setSaveButtonsDisabled(true)
+
+  sendApiRequest('gu23_save_act', getActDataForSave(status, skipWarning))
+    .done((response) => {
       if (response && response.ok) {
         afterActSaved(status, response)
       } else {
+        finishSaveRequest()
         showSaveError(status, response)
       }
-    },
-  )
+    })
+    .fail(() => {
+      finishSaveRequest()
+    })
 }
 
 function getSaveErrors(status) {

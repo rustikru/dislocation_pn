@@ -20,6 +20,7 @@ if (!function_exists('mb_strlen')) {
 }
 
 require_once __DIR__ . '/Gu23Logger.php';
+require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
 
 class GuActRepository
@@ -157,10 +158,7 @@ class GuActRepository
         //Gu23Logger::info('action', ['action' => $action]);
         try {
             // Передаём IP клиента в пакет в log_act_history
-            $clientIp = !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
-                ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
-                : ($_SERVER['REMOTE_ADDR'] ?? '');
-            $clientIp = trim($clientIp);
+            $clientIp = $this->clientIp();
             $st = oci_parse($this->conn, 'BEGIN xx_disl_gu23_pkg.gu23_set_client_ip(:ip); END;');
             if ($st) {
                 oci_bind_by_name($st, ':ip', $clientIp, 64);
@@ -334,6 +332,11 @@ class GuActRepository
     private function cleanTextForOracle(string $text): string
     {
         return gu23_clean_text_for_oracle($text);
+    }
+
+    private function clientIp(): string
+    {
+        return gu23_client_ip();
     }
 
     private function getFileDiskPath(string $path): string
@@ -919,8 +922,14 @@ class GuActRepository
         }
 
         $result = $this->callFunc(
-            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment)',
-            [':act' => $actId, ':uid' => $userId, ':status' => $decision, ':comment' => $comment]
+            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment, :ip)',
+            [
+                ':act' => $actId,
+                ':uid' => $userId,
+                ':status' => $decision,
+                ':comment' => $comment,
+                ':ip' => $this->clientIp(),
+            ]
         );
 
         if (str_starts_with((string) $result, 'ERR')) {

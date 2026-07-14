@@ -2,9 +2,9 @@
 /**
  * Gu23Logger
  *
- * Пишет в gu23/log/gu23-YYYY-MM-DD.log
+ *  gu23/log/gu23-YYYY-MM-DD.log
  * 
- * Уровни: ERROR, WARN, INFO, DEBUG
+ * ERROR, WARN, INFO, DEBUG
  */
 class Gu23Logger
 {

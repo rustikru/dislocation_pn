@@ -39,10 +39,10 @@ class ApprovalMailer
     );
 
     return [
-      'act_link_web'  => $this->baseUrl . '/gu23/card.php?id='.$actId,
-      'token_sig' => $ap['sig'] ?? '',
-      'approve_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($ap),
-      'reject_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($rp),
+      'act_link_web' => $this->baseUrl . '/gu23/card.php?id=' . $actId, // ссылка на веб-страницу акта
+      'token_sig' => $ap['sig'] ?? '',// подпись токена (для проверки на сервере)
+      'approve_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($ap),// ссылка на страницу согласования (подписания)
+      'reject_link' => $this->baseUrl . '/gu23/approve.php?' . http_build_query($rp),// ссылка на страницу отклонения
     ];
   }
 
@@ -72,7 +72,7 @@ class ApprovalMailer
 
     $actDetailsHtml = $this->actDetailsHtml($act);
     $signersHtml = $this->signersTableHtml($signers, $approvals);
-    
+
     return <<<HTML
 <!DOCTYPE html>
 <html lang="ru">
@@ -131,7 +131,6 @@ class ApprovalMailer
           </td>
         </tr>
 
-        <!-- Подвал -->
         <tr>
           <td style="background:#f4f5f7;padding:16px 32px;border-top:1px solid #e0e0e0">
             <p style="margin:0;color:#888;font-size:12px;line-height:1.6">
@@ -150,7 +149,7 @@ HTML;
   }
 
   /**
-   * HTML-блок с реквизитами акта.
+   * HTML с реквизитами акта.
    */
   private function actDetailsHtml(array $act): string
   {
@@ -335,7 +334,7 @@ HTML;
     $file = $this->mailDir . '/' . $ts . '_' . $safe . '.html';
     $content = "<!-- To: {$to} | Subject: {$subject} | " . date('d.m.Y H:i:s') . " -->\n" . $html;
     $res = @file_put_contents($file, $content);
-    
+
     if ($res === false) {
       $err = error_get_last();
       if (class_exists('Gu23Logger')) {
