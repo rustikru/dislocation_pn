@@ -1,5 +1,5 @@
 import { sendApiRequest } from './api.js'
-import { applicationState, references, activeDraft } from './state.js'
+import { applicationState, references } from './state.js'
 import { hasPerm } from './state.js'
 import { drawNav } from './nav.js'
 import { showArchive } from './registry.js'
@@ -12,25 +12,62 @@ import { showRoles } from './roles.js'
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
   if (pageName === 'card' && selectedId) {
-    window.location.href = `card.php?id=${encodeURIComponent(selectedId)}`
+    openPage(pageName, selectedId)
+    setBrowserUrl(pageName, selectedId)
     return
   }
 
-  if (
-    (window.GU23_START || {}).page === 'card' &&
-    pageName !== 'card' &&
-    !(pageName === 'new' && activeDraft)
-  ) {
-    window.location.href = `index.php?page=${encodeURIComponent(pageName)}`
-    return
-  }
+  openPage(pageName, selectedId)
+  setBrowserUrl(pageName, selectedId)
+}
 
+function openPage(pageName, selectedId = null) {
   applicationState.currentPage = pageName
 
   // Сохраняем выбранный ID
   $('#view').data('selected-id', selectedId)
 
   showApplication()
+}
+
+function setBrowserUrl(pageName, selectedId = null, replace = false) {
+  const url = getPageUrl(pageName, selectedId)
+  const state = { page: pageName, id: selectedId || null }
+
+  if (replace) {
+    window.history.replaceState(state, '', url)
+  } else {
+    window.history.pushState(state, '', url)
+  }
+}
+
+function getPageUrl(pageName, selectedId = null) {
+  if (pageName === 'card' && selectedId) {
+    return `card.php?id=${encodeURIComponent(selectedId)}`
+  }
+
+  if (!pageName || pageName === 'archive') {
+    return 'index.php?page=archive'
+  }
+
+  return `index.php?page=${encodeURIComponent(pageName)}`
+}
+
+function getPageFromLocation() {
+  const params = new URLSearchParams(window.location.search)
+  const path = window.location.pathname
+
+  if (path.endsWith('/card.php') || path.endsWith('card.php')) {
+    return {
+      page: 'card',
+      id: params.get('id') || null,
+    }
+  }
+
+  return {
+    page: params.get('page') || 'archive',
+    id: null,
+  }
 }
 
 // функция отрисовки интерфейса
@@ -76,6 +113,13 @@ $(document).ready(() => {
         $('#view').data('selected-id', start.id)
       }
     }
+
+    setBrowserUrl(applicationState.currentPage, $('#view').data('selected-id'), true)
+
+    window.addEventListener('popstate', () => {
+      const next = getPageFromLocation()
+      openPage(next.page, next.id)
+    })
 
     // Показываем страничку
     showApplication() //
