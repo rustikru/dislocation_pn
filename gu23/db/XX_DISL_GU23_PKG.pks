@@ -17,9 +17,6 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_ip in varchar2
    );
 
-    /* ---- Вернуть секретный ключ для HMAC-ссылок согласования ---- */
-   function gu23_get_hmac_secret return varchar2;
-
    function fnc_mapping_dept (
       p_dept_name in varchar2
    ) return varchar2;
@@ -427,14 +424,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_requested_by in number
    ) return varchar2;
 
-    -- ФИО пользователя по ID
-   function gu23_approval_get_name (
-      p_id in number
-   ) return varchar2;
-
-    -- Найти запись по HMAC-подписи; возвращает 'status'||CHR(31)||'DD.MM.YYYY HH24:MI' или NULL
-   function gu23_approval_by_sig (
-      p_sig in varchar2
+   function gu23_approval_by_token (
+      p_token in varchar2
    ) return varchar2;
 
     -- Статус согласования по act_id + approver_id (для reject-ссылок с другим sig)

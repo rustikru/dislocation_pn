@@ -21,10 +21,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       'SERVER_HOST'
    );
 
-    -- Секретный ключ HMAC для ссылок согласования.
-    -- Сгенерировать: SELECT dbms_random.string('x', 64) FROM dual;
-   g_hmac_secret constant varchar2(128) := 'Уведомления-ГУ-23';
-
    procedure gu23_set_client_ip (
       p_ip in varchar2
    ) is
@@ -2731,7 +2727,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) return t_gu23_approval_signer_tab
       pipelined
    is
-      l_row t_gu23_approval_signer_row;
+      l_row      t_gu23_approval_signer_row;
       l_rejected number;
    begin
       select count(*)
@@ -2743,7 +2739,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       if l_rejected > 0 then
          return;
       end if;
-
       for r in (
          select approver_id,
                 full_name,
@@ -2757,10 +2752,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             on u.id = s.signer_ref_id
               left join xx_disl_gu23_approval a
             on a.act_id = s.act_id
-             and a.approver_id = u.id
+               and a.approver_id = u.id
              where s.act_id = p_act_id
                and s.stype = 'own'
-               and nvl(a.status, 'pending') <> 'approved'
+               and nvl(
+               a.status,
+               'pending'
+            ) <> 'approved'
              order by s.id
          )
           where rownum = 1
@@ -2819,32 +2817,34 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
-
-   function gu23_approval_get_name (
-      p_id in number
+   function gu23_approval_by_token (
+      p_token in varchar2
    ) return varchar2 is
+      v_act_id      number;
+      v_approver_id number;
+      v_status      varchar2(16);
+      v_decided     varchar2(20);
    begin
-      return g_user_name(p_id);
-   end;
-
-   function gu23_approval_by_sig (
-      p_sig in varchar2
-   ) return varchar2 is
-      v_status  varchar2(16);
-      v_decided varchar2(20);
-   begin
-      select status,
+      select act_id,
+             approver_id,
+             status,
              to_char(
                 decided_at,
                 'DD.MM.YYYY HH24:MI'
              )
         into
+         v_act_id,
+         v_approver_id,
          v_status,
          v_decided
         from xx_disl_gu23_approval
-       where token_sig = p_sig;
+       where token_sig = p_token;
 
-      return v_status
+      return v_act_id
+             || c_us
+             || v_approver_id
+             || c_us
+             || v_status
              || c_us
              || nvl(
          v_decided,
@@ -2969,7 +2969,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         from xx_disl_gu23_act
        where id = p_act_id;
 
-      if p_status in ( 'approved', 'rejected' ) then
+      if p_status in ( 'approved',
+                       'rejected' ) then
          for r in (
             select approver_id
               from table ( gu23_approval_next_signer(p_act_id) )
@@ -3218,6 +3219,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
        where act_id = p_act_id
          and approver_id = p_approver_id;
 
+      if sql%rowcount = 0 then
+         rollback;
+         return 'ERR'
+                || c_us
+                || 'Подписант не найден';
+      end if;
+
       commit;
       return 'OK';
    exception
@@ -3233,7 +3241,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_comment   in varchar2,
       p_signer_ip in varchar2 default null
    ) return varchar2 is
-      v_ver number;
+      v_ver  number;
       v_next number;
    begin
         -- текущая версия акта
@@ -3245,7 +3253,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         from xx_disl_gu23_act
        where id = p_act_id;
 
-      if p_status in ( 'approved', 'rejected' ) then
+      if p_status in ( 'approved',
+                       'rejected' ) then
          for r in (
             select approver_id
               from table ( gu23_approval_next_signer(p_act_id) )
@@ -3832,12 +3841,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    end;
 
     /* ------------------------------------------------------------------ */
-   function gu23_get_hmac_secret return varchar2 is
-   begin
-      return g_hmac_secret;
-   end gu23_get_hmac_secret;
-
-    /* ------------------------------------------------------------------ */
    procedure gu23_send_mail (
       p_to      in varchar2,
       p_subject in varchar2,
@@ -3853,6 +3856,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       x_to_email := p_to;
       x_subject := p_subject;
       x_msg := p_body;
+      insert into xx_disl_gu23_mail_test (
+         p_to,
+         p_subject,
+         p_body,
+         p_from
+      ) values
+         ( x_to_email,
+           x_subject,
+           x_msg,
+           x_sender );
        /*
         insert into xx_disl_gu23_mail_test (P_TO,P_SUBJECT,P_BODY,P_FROM) values (x_to_email,x_subject,x_msg,x_sender);
         
