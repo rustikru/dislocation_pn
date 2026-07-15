@@ -43,6 +43,7 @@ function showCardView(data) {
     data.approvals || [],
     data.myApproval || 'none',
     !!data.isUserSigner,
+    data.currentUserId || 0,
   )
   showAttachmentsBlock(act, data.files, !!data.canChangeFiles, !!data.isAdmin)
   showHistoryBlock(data.history)
@@ -231,12 +232,25 @@ function showWagonsBlock(wagons) {
   $('#card-wagons-rows').html(rowsHtml)
 }
 
-function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
+function showSignersBlock(
+  act,
+  signers,
+  approvals,
+  myApproval,
+  isUserSigner,
+  currentUserId,
+) {
   // map: approver_id → approval record
   const approvalMap = {}
   approvals.forEach((a) => {
     approvalMap[a.APPROVER_ID] = a
   })
+  const currentSigner = (signers || []).find((s) => {
+    if (s.STYPE === 'rzd' || !s.USER_ID) return false
+    const approval = approvalMap[s.USER_ID]
+    return !approval || approval.STATUS === 'pending'
+  })
+  const currentSignerId = currentSigner ? String(currentSigner.USER_ID) : ''
   // Статусы для подписантов
   const statusPill = (status) => {
     if (status === 'approved')
@@ -265,15 +279,16 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
         .map((s) => {
           const isRzd = s.STYPE === 'rzd'
           const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
-          const pill = approval
-            ? statusPill(approval.STATUS)
-            : isRzd
-              ? '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
-              : // own-подписант с привязкой к пользователю, но без решения:
-                // на акте «на подписании» показываем «В процессе»
-                s.USER_ID && act.STATUS === 'active'
-                ? statusPill('pending')
-                : ''
+          const isCurrentSigner = currentSignerId !== '' && String(s.USER_ID) === currentSignerId
+          let pill = ''
+          if (isRzd) {
+            pill =
+              '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
+          } else if (approval?.STATUS === 'approved' || approval?.STATUS === 'rejected') {
+            pill = statusPill(approval.STATUS)
+          } else if (isCurrentSigner && act.STATUS === 'active') {
+            pill = statusPill('pending')
+          }
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
           const rejectReason =
             approval && approval.STATUS === 'rejected' && approval.COMMENT_TXT
@@ -298,6 +313,8 @@ function showSignersBlock(act, signers, approvals, myApproval, isUserSigner) {
   const canSign =
     act.STATUS === 'active' &&
     hasPerm('SIGN_ACT') &&
+    currentSignerId !== '' &&
+    String(currentUserId) === currentSignerId &&
     (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
   if (canSign) {
@@ -556,7 +573,7 @@ function resendApprovalLinks(act, signers, approvals) {
     if (s.STYPE === 'rzd' || !s.USER_ID) return false
     const appr = approvalMap[s.USER_ID]
     return !appr || appr.STATUS !== 'approved'
-  })
+  }).slice(0, 1)
 
   if (!unsigned.length) {
     showToast('Все подписанты уже согласовали акт', 'ok')
@@ -580,8 +597,8 @@ function resendApprovalLinks(act, signers, approvals) {
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
       <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
-        <h3 style="margin:0 0 6px">Сформировать повторно ссылки на подписание</h3>
-        <p class="muted" style="margin:0 0 16px;font-size:13px">Выберите подписантов, которым нужно отправить новые ссылки на подписание:</p>
+        <h3 style="margin:0 0 6px">Сформировать повторно ссылку на подписание</h3>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">Ссылка будет отправлена текущему подписанту по очереди:</p>
         <div style="max-height:300px;overflow-y:auto;margin-bottom:16px">${rows}</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost" id="resend-cancel">Отмена</button>
@@ -611,22 +628,23 @@ function resendApprovalLinks(act, signers, approvals) {
     $('#resend-send').prop('disabled', true).text('Отправка…')
     let done = 0
     let errors = 0
+    const errorMessages = []
     selected.forEach((userId) => {
       sendApiRequest('gu23_resend_approval', {
         act_id: act.ID,
         user_id: userId,
       }).done((r) => {
         done++
-        if (!r || !r.ok) errors++
+        if (!r || !r.ok) {
+          errors++
+          errorMessages.push(r?.msg || 'Ошибка отправки')
+        }
         if (done === selected.length) {
           $modal.remove()
           if (errors === 0) {
             showToast(`Ссылки отправлены (${done})`, 'ok')
           } else {
-            showToast(
-              `Отправлено ${done - errors} из ${done}, ошибок: ${errors}`,
-              'err',
-            )
+            showToast(errorMessages.join('; '), 'err')
           }
         }
       })
