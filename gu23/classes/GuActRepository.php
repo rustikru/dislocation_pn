@@ -136,20 +136,6 @@ class GuActRepository
         return 'send_mail';
     }
 
-    private function getSubject(): string
-    {
-        static $cfg = null;
-        if ($cfg === null) {
-            $path = dirname(__DIR__) . '/config.php';
-            $cfg = file_exists($path) ? (array) (require $path) : [];
-        }
-        if (!empty($cfg['mail_subject'])) {
-            return $cfg['mail_subject'];
-        }
-
-        return 'Дислокация.Уведомление "ГУ-23"';
-    }
-
 
     public function runAction(string $action, array $post): void
     {
@@ -213,7 +199,7 @@ class GuActRepository
                     break;
 
                 // --- согласование ---
-                case 'gu23_send_approval':      // отправка запросов на согласование всем подписантам
+                case 'gu23_send_approval':      // отправка запроса текущему подписанту по очереди
                     $this->sendApproval();
                     break;
                 case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
@@ -352,7 +338,7 @@ class GuActRepository
         return dirname(__DIR__) . '/' . ltrim($path, '/\\');
     }
 
-    /** Файлы можно менять, пока акт не закрыт и не аннулирован. */
+    /** Файлы можно прикреплять к любому акту, кроме аннулированного. */
     private function canChangeFiles(int $actId, int $userId): bool
     {
         if ($actId <= 0 || $userId <= 0) {
@@ -361,6 +347,22 @@ class GuActRepository
 
         $result = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_can_change_files(:act, :uid)',
+            [':act' => $actId, ':uid' => $userId],
+            2
+        );
+
+        return $result === 'Y';
+    }
+
+    /** В закрытых актах удалять файлы может только администратор. */
+    private function canDeleteFiles(int $actId, int $userId): bool
+    {
+        if ($actId <= 0 || $userId <= 0) {
+            return false;
+        }
+
+        $result = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_can_delete_files(:act, :uid)',
             [':act' => $actId, ':uid' => $userId],
             2
         );
@@ -391,6 +393,12 @@ class GuActRepository
             throw new \RuntimeException($msg);
         }
         return $ret;
+    }
+
+    private function baseUrl(): string
+    {
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 
     /** Привязать строку как временный CLOB. */
@@ -510,6 +518,7 @@ class GuActRepository
             2
         );
         $canChangeFiles = $this->canChangeFiles($id, (int) $userId);
+        $canDeleteFiles = $this->canDeleteFiles($id, (int) $userId);
 
         echo json_encode([
             'ok' => true,
@@ -520,6 +529,7 @@ class GuActRepository
             'isAdmin' => $isAdmin,
             'canEditDraft' => $canEditDraft === 'Y',
             'canChangeFiles' => $canChangeFiles,
+            'canDeleteFiles' => $canDeleteFiles,
             'canSendApprovalLinks' => $this->canSendApprovalLinks(),
             'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
             'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
@@ -867,7 +877,7 @@ class GuActRepository
 
         $uid = $this->auth->getUserId();
         $isAdmin = $this->isGu23Admin();
-        if (!$this->canChangeFiles($actId, (int) $uid)) {
+        if (!$this->canDeleteFiles($actId, (int) $uid)) {
             echo json_encode(['ok' => false, 'msg' => 'Нет прав на удаление файлов']);
             return;
         }
@@ -937,6 +947,19 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
         } else {
             $label = $decision === 'approved' ? 'Акт подписан' : 'Акт отклонён';
+            if ($decision === 'approved') {
+                $sent = $this->callFunc(
+                    'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)',
+                    [':act' => $actId, ':base' => $this->baseUrl()],
+                    4000
+                );
+                if (str_starts_with((string) $sent, 'OK')) {
+                    $parts = explode(self::US, (string) $sent, 2);
+                    if (!empty($parts[1]) && $parts[1] !== 'Следующих подписантов нет') {
+                        $label .= '. ' . $parts[1];
+                    }
+                }
+            }
             echo json_encode(['ok' => true, 'msg' => $label]);
         }
     }
@@ -963,7 +986,7 @@ class GuActRepository
     /* согласование актов                                                 */
     /* ----------------------------------------------------------------- */
 
-    /** Инициализация согласования: создаёт pending-записи и рассылает HMAC-ссылки подписантам. */
+    /** Инициализация согласования: создаёт pending-записи и отправляет письмо первому подписанту. */
     private function sendApproval(): void
     {
         if (!$this->hasPerm('SEND_APPROVAL')) {
@@ -976,8 +999,6 @@ class GuActRepository
         }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
-        $mode = $this->mailMode(); // режим
-
         if (!$actId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указан act_id']);
             return;
@@ -1006,72 +1027,16 @@ class GuActRepository
             return;
         }
 
-        // 2. Получаем список подписантов с email
-        $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))',
-            [':act_id' => $actId]
+        $sent = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)',
+            [':act' => $actId, ':base' => $this->baseUrl()],
+            4000
         );
+        $parts = explode(self::US, (string) $sent, 2);
 
-        if (empty($signers)) {
-            echo json_encode(['ok' => false, 'msg' => 'Нет подписантов с учётными записями для отправки']);
-            return;
-        }
-
-        // 3. Полный список подписантов и текущих статусов согласования для письма
-        $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
-        $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
-
-        $mailer = $this->loadMailer();
-        $sent = 0;
-        $errors = [];
-
-        foreach ($signers as $signer) {
-            $approverId = (int) $signer['APPROVER_ID'];
-            $email = $signer['EMAIL'];
-            $fullName = $signer['FULL_NAME'] ?? '';
-
-            $links = $mailer->generateLinks($actId, $approverId);
-
-            $this->callFunc(
-                'xx_disl_gu23_pkg.gu23_set_approval_token(:act, :approver, :token)',
-                [':act' => $actId, ':approver' => $approverId, ':token' => $links['token_sig']],
-                4000
-            );
-
-            $html = $mailer->getHtml(
-                $fullName,
-                $actId,
-                $links['approve_link'],
-                $links['reject_link'],
-                $actRows[0] ?? [],
-                $allSigners,
-                $approvalRows,
-                $links['act_link_web']
-            );
-            //$subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
-            $subject = $this->getSubject(); // тема письма 
-            // Если режим у нас отправка писем - отправляем письмо 
-            $ok = $mode === 'send_mail'
-                ? $this->sendMailOracle($email, $subject, $html)
-                : $mailer->send($email, $subject, $html, $mode);
-
-            if ($ok) {
-                $sent++;
-            } else {
-                $errors[] = $email;
-            }
-        }
-
-        if ($sent > 0) {
-            echo json_encode([
-                'ok' => true,
-                'sent' => $sent,
-                'errors' => $errors,
-                'msg' => "Отправлено писем: {$sent}" . ($errors ? '. Ошибки: ' . implode(', ', $errors) : '')
-            ]);
-        } else {
-            echo json_encode(['ok' => false, 'msg' => 'Не удалось отправить ни одного письма: ' . implode(', ', $errors)]);
-        }
+        echo json_encode(str_starts_with((string) $sent, 'OK')
+            ? ['ok' => true, 'sent' => 1, 'msg' => $parts[1] ?? 'Ссылка отправлена']
+            : ['ok' => false, 'sent' => 0, 'msg' => $parts[1] ?? 'Не удалось отправить ссылку']);
     }
 
     /** Переотправка ссылки конкретному подписанту */
@@ -1088,122 +1053,37 @@ class GuActRepository
 
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = (int) filter_input(INPUT_POST, 'user_id');
-        $mode = $this->mailMode(); // режим определяется сервером, не клиентом
 
         if (!$actId || !$userId) {
             echo json_encode(['ok' => false, 'msg' => 'Не указаны act_id или user_id']);
             return;
         }
 
-        $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id)) WHERE APPROVER_ID = :user_id',
-            [':act_id' => $actId, ':user_id' => $userId]
+        $nextRows = $this->pipe(
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_next_signer(:act_id))',
+            [':act_id' => $actId]
         );
 
-        if (empty($signers)) {
-            echo json_encode(['ok' => false, 'msg' => 'Подписант не найден']);
+        if (empty($nextRows)) {
+            echo json_encode(['ok' => false, 'msg' => 'Следующих подписантов нет']);
             return;
         }
 
-        $mailer = $this->loadMailer();
-        $signer = $signers[0];
-        $approverId = (int) $signer['APPROVER_ID'];
-        $email = $signer['EMAIL'];
-        $fullName = $signer['FULL_NAME'] ?? '';
+        if ((int) $nextRows[0]['APPROVER_ID'] !== $userId) {
+            echo json_encode(['ok' => false, 'msg' => 'Сейчас ожидается другой подписант']);
+            return;
+        }
 
-        $links = $mailer->generateLinks($actId, $approverId);
-
-        $this->callFunc(
-            'xx_disl_gu23_pkg.gu23_set_approval_token(:act, :approver, :token)',
-            [':act' => $actId, ':approver' => $approverId, ':token' => $links['token_sig']],
+        $sent = $this->callFunc(
+            'xx_disl_gu23_pkg.gu23_send_approval_mail(:act, :uid, :base)',
+            [':act' => $actId, ':uid' => $userId, ':base' => $this->baseUrl()],
             4000
         );
+        $parts = explode(self::US, (string) $sent, 2);
 
-        $actRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))', [':id' => $actId]);
-        $allSigners = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_signers(:id))', [':id' => $actId]);
-        $approvalRows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_approvals(:id))', [':id' => $actId]);
-
-        $html = $mailer->getHtml(
-            $fullName,
-            $actId,
-            $links['approve_link'],
-            $links['reject_link'],
-            $actRows[0] ?? [],
-            $allSigners,
-            $approvalRows,
-            $links['act_link_web']
-        );
-        //$subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
-        $subject = $this->getSubject(); // тема письма 
-        $ok = $mode === 'send_mail'
-            ? $this->sendMailOracle($email, $subject, $html)
-            : $mailer->send($email, $subject, $html, $mode);
-
-        echo json_encode($ok
-            ? ['ok' => true, 'msg' => "Ссылка отправлена: {$email}"]
-            : ['ok' => false, 'msg' => "Не удалось отправить письмо на {$email}"]);
-    }
-
-    /* ----------------------------------------------------------------- */
-    /* отправка письма через Oracle                                      */
-    /* ----------------------------------------------------------------- */
-    private function sendMailOracle(string $to, string $subject, string $html): bool
-    {
-        $st = @oci_parse(
-            $this->conn,
-            'BEGIN xx_disl_gu23_pkg.gu23_send_mail(:to, :subj, :body); END;'
-        );
-        if (!$st) {
-            Gu23Logger::error('sendMailOracle: oci_parse failed', ['to' => $to]);
-            return false;
-        }
-
-        $clob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
-        if (!$clob) {
-            Gu23Logger::error('sendMailOracle: oci_new_descriptor failed', ['to' => $to]);
-            return false;
-        }
-
-        oci_bind_by_name($st, ':to', $to, 256);
-        oci_bind_by_name($st, ':subj', $subject, 512);
-        oci_bind_by_name($st, ':body', $clob, -1, OCI_B_CLOB);
-        $clob->writeTemporary($html, OCI_TEMP_CLOB);
-
-        $ok = @oci_execute($st);
-        $clob->free();
-
-        if (!$ok) {
-            $e = oci_error($st);
-            Gu23Logger::error('sendMailOracle: execute failed', ['to' => $to, 'err' => $e['message'] ?? '?']);
-        }
-        return (bool) $ok;
-    }
-
-    /* ----------------------------------------------------------------- */
-    /* создать ApprovalMailer с нужными настройками                      */
-    /* ----------------------------------------------------------------- */
-    private function loadMailer(): ApprovalMailer
-    {
-        require_once __DIR__ . '/../lib/HmacApproval.php';
-        require_once __DIR__ . '/../lib/ApprovalMailer.php';
-
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
-            . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-        return new ApprovalMailer($this->getHmacSecret(), $baseUrl);
-    }
-
-    private function getHmacSecret(): string
-    {
-        $st = @oci_parse($this->conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');
-        if ($st) {
-            $secret = '';
-            oci_bind_by_name($st, ':r', $secret, 128);
-            if (@oci_execute($st) && $secret !== '') {
-                return $secret;
-            }
-        }
-        return '';
+        echo json_encode(str_starts_with((string) $sent, 'OK')
+            ? ['ok' => true, 'sent' => 1, 'msg' => $parts[1] ?? 'Ссылка отправлена']
+            : ['ok' => false, 'sent' => 0, 'msg' => $parts[1] ?? 'Не удалось отправить ссылку']);
     }
 
     /* ----------------------------------------------------------------- */

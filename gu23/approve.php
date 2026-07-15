@@ -1,44 +1,31 @@
 <?php
 /**
- * approve.php — страница согласования акта ГУ-23 по HMAC-ссылке из письма.
+ * approve.php — страница согласования акта ГУ-23 по ссылке из письма.
  * 
  */
 ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../connection.php';
 require_once __DIR__ . '/lib/client_ip.php';
-require_once __DIR__ . '/lib/HmacApproval.php';
 require_once __DIR__ . '/lib/text_clean.php';
 require_once __DIR__ . '/classes/ApprovalRepository.php';
 
-$hmacSecret = '';
-$_st = @oci_parse($conn1, 'BEGIN :r := xx_disl_gu23_pkg.gu23_get_hmac_secret(); END;');
-if ($_st) {
-    oci_bind_by_name($_st, ':r', $hmacSecret, 128);
-    @oci_execute($_st);
-}
-
-$hmac = new HmacApproval($hmacSecret, ttlDays: 1);
 $params = $_GET + $_POST;
-$verify = $hmac->verify($params);
-
-$actId = (int) ($params['act'] ?? 0);
-$approverId = (int) ($params['uid'] ?? 0);
+$token = trim((string) ($params['token'] ?? ''));
 $action = $params['action'] ?? '';
-$sig = $params['sig'] ?? '';
 $signerIp = gu23_client_ip();
 
-// -------------------------------------------------------------------
-// Если ссылка невалидна — показываем ошибку и выходим
-// -------------------------------------------------------------------
-if (!$verify['ok']) {
-    showPage('Ошибка', '<p class="err">' . htmlspecialchars($verify['msg']) . '</p>');
+$repo = new ApprovalRepository($conn1);
+$tokenInfo = $token !== '' ? $repo->getByToken($token) : null;
+
+if (!$tokenInfo) {
+    showPage('Ошибка', '<p class="err">Ссылка недействительна.</p>');
     exit;
 }
 
-$repo = new ApprovalRepository($conn1);
+$actId = (int) $tokenInfo['ACT_ID'];
+$approverId = (int) $tokenInfo['APPROVER_ID'];
 $act = $repo->getAct($actId);
-$name = $repo->getApproverName($approverId);
 
 if (!$act) {
     showPage('Акт не найден', '<p class="err">Акт ГУ-23 № ' . $actId . ' не найден.</p>');
@@ -65,7 +52,7 @@ if ($act['STATUS'] === 'closed'){
 // -------------------------------------------------------------------
 // Проверяем: не было ли уже решения по этой ссылке
 // -------------------------------------------------------------------
-$existing = $repo->getStatusByIds($actId, $approverId);
+$existing = $tokenInfo;
 if ($existing && $existing['STATUS'] !== 'pending') {
     $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
     $decidedAt = $existing['DECIDED_AT'] ?? '';
@@ -82,18 +69,18 @@ if ($existing && $existing['STATUS'] !== 'pending') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
     $comment = trim(gu23_clean_text_for_oracle((string) ($_POST['comment'] ?? '')));
     if ($comment === '') {
-        showRejectForm($actNumber, $name, $actId, $approverId, $sig, 'Укажите причину отклонения');
+        showRejectForm($actNumber, $token, 'Укажите причину отклонения');
         exit;
     }
-    $ok = $repo->saveDecision($actId, $approverId, 'rejected', $comment, $sig, $signerIp);
-    if ($ok) {
+    $result = $repo->saveDecisionResult($actId, $approverId, 'rejected', $comment, $token, $signerIp);
+    if (str_starts_with($result, 'OK')) {
         showPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
             <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
             <p class=\"ok\">Сохранено.</p>
         ");
     } else {
-        showPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
+        showPage('Ошибка', '<p class="err">' . htmlspecialchars(approvalErrorText($result)) . '</p>');
     }
     exit;
 }
@@ -102,14 +89,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
 // GET: подписание
 // -------------------------------------------------------------------
 if ($action === 'approve') {
-    $ok = $repo->saveDecision($actId, $approverId, 'approved', '', $sig, $signerIp);
-    if ($ok) {
+    $result = $repo->saveDecisionResult($actId, $approverId, 'approved', '', $token, $signerIp);
+    if (str_starts_with($result, 'OK')) {
+        approvalCall($conn1, 'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)', [
+            ':act' => $actId,
+            ':base' => approvalBaseUrl(),
+        ]);
         showPage('Акт подписан', "
             <p>Вы подписали акт <b>{$actNumber}</b>.</p>
             <p class=\"ok\" style=\"margin-top: 15px;\">Спасибо!</p>
         ");
     } else {
-        showPage('Ошибка', '<p class="err">Не удалось сохранить. Попробуйте ещё раз.</p>');
+        showPage('Ошибка', '<p class="err">' . htmlspecialchars(approvalErrorText($result)) . '</p>');
     }
     exit;
 }
@@ -118,7 +109,7 @@ if ($action === 'approve') {
 // GET: форма отклонения
 // -------------------------------------------------------------------
 if ($action === 'reject') {
-    showRejectForm($actNumber, $name, $actId, $approverId, $sig);
+    showRejectForm($actNumber, $token);
     exit;
 }
 
@@ -128,10 +119,33 @@ showPage('Неизвестное действие', '<p class="err">Недопу
 // Доп функции
 // ===================================================================
 
-function showRejectForm(string $actNumber, string $name, int $actId, int $approverId, string $sig, string $error = ''): void
+function approvalErrorText(string $result): string
 {
-    // Передаём все оригинальные GET-параметры чтобы сохранить ts и sig для проверки HMAC при POST
-    $qs = http_build_query(array_filter($_GET, fn($k) => in_array($k, ['act', 'uid', 'action', 'ts', 'sig']), ARRAY_FILTER_USE_KEY));
+    $parts = explode(ApprovalRepository::US, $result, 2);
+    return $parts[1] ?? 'Не удалось сохранить. Попробуйте ещё раз.';
+}
+
+function approvalBaseUrl(): string
+{
+    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+}
+
+function approvalCall($conn, string $expr, array $binds): string
+{
+    $result = '';
+    $st = oci_parse($conn, 'BEGIN :r := ' . $expr . '; END;');
+    oci_bind_by_name($st, ':r', $result, 4000);
+    foreach ($binds as $name => $value) {
+        oci_bind_by_name($st, $name, $binds[$name]);
+    }
+    oci_execute($st);
+    return (string) $result;
+}
+
+function showRejectForm(string $actNumber, string $token, string $error = ''): void
+{
+    $qs = http_build_query(['token' => $token, 'action' => 'reject']);
     $errorHtml = $error ? "<p class=\"err\" style=\"margin-bottom: 15px;\">{$error}</p>" : '';
     showPage('Отклонение акта', "
         {$errorHtml}

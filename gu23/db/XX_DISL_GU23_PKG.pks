@@ -364,6 +364,11 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_user_id in number
    ) return varchar2;
 
+   function gu23_can_delete_files (
+      p_act_id  in number,
+      p_user_id in number
+   ) return varchar2;
+
    function gu23_add_file (
       p_data in t_gu23_add_file
    ) return varchar2;
@@ -490,6 +495,17 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_act_id      in number,
       p_approver_id in number,
       p_token_sig   in varchar2
+   ) return varchar2;
+
+   function gu23_send_next_approval_mail (
+      p_act_id   in number,
+      p_base_url in varchar2 default null
+   ) return varchar2;
+
+   function gu23_send_approval_mail (
+      p_act_id      in number,
+      p_approver_id in number,
+      p_base_url    in varchar2 default null
    ) return varchar2;
 
     -- Подписать акт напрямую (без email-ссылки, из интерфейса)

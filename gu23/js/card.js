@@ -45,7 +45,13 @@ function showCardView(data) {
     !!data.isUserSigner,
     data.currentUserId || 0,
   )
-  showAttachmentsBlock(act, data.files, !!data.canChangeFiles, !!data.isAdmin)
+  showAttachmentsBlock(
+    act,
+    data.files,
+    !!data.canChangeFiles,
+    !!data.canDeleteFiles,
+    !!data.isAdmin,
+  )
   showHistoryBlock(data.history)
 }
 
@@ -279,12 +285,16 @@ function showSignersBlock(
         .map((s) => {
           const isRzd = s.STYPE === 'rzd'
           const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
-          const isCurrentSigner = currentSignerId !== '' && String(s.USER_ID) === currentSignerId
+          const isCurrentSigner =
+            currentSignerId !== '' && String(s.USER_ID) === currentSignerId
           let pill = ''
           if (isRzd) {
             pill =
               '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
-          } else if (approval?.STATUS === 'approved' || approval?.STATUS === 'rejected') {
+          } else if (
+            approval?.STATUS === 'approved' ||
+            approval?.STATUS === 'rejected'
+          ) {
             pill = statusPill(approval.STATUS)
           } else if (isCurrentSigner && act.STATUS === 'active') {
             pill = statusPill('pending')
@@ -372,7 +382,7 @@ function submitInAppDecision(actId, decision, comment) {
   })
 }
 
-function showAttachmentsBlock(act, files, canChangeFiles, userIsAdmin) {
+function showAttachmentsBlock(act, files, canChangeFiles, canDeleteFiles, userIsAdmin) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
   const addBtn = canChangeFiles
@@ -398,7 +408,7 @@ function showAttachmentsBlock(act, files, canChangeFiles, userIsAdmin) {
       .map((file) => {
         const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
         const isSignedFile = file.FILE_CATEGORY === 'signed'
-        const canDeleteFile = canChangeFiles && (!isSignedFile || userIsAdmin)
+        const canDeleteFile = canDeleteFiles && (!isSignedFile || userIsAdmin)
         return `
         <div style="display:flex;gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
           ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;cursor:pointer">` : ''}
@@ -476,7 +486,8 @@ function editDraftAct(data) {
     stationFromName: act.ST_FROM || '',
     stationToId: String(act.ST_TO_ID || ''),
     stationToName: act.ST_TO || '',
-    waybillNumber: act.WAYBILL_NO || (firstWagon && firstWagon.WAYBILL_NO) || '',
+    waybillNumber:
+      act.WAYBILL_NO || (firstWagon && firstWagon.WAYBILL_NO) || '',
     cargoReference: act.CARGO_REF || '',
     reasonId: String(act.REASON_ID || ''),
     reasonName: act.REASON_NAME,
@@ -569,11 +580,13 @@ function resendApprovalLinks(act, signers, approvals) {
     approvalMap[a.APPROVER_ID] = a
   })
 
-  const unsigned = (signers || []).filter((s) => {
-    if (s.STYPE === 'rzd' || !s.USER_ID) return false
-    const appr = approvalMap[s.USER_ID]
-    return !appr || appr.STATUS !== 'approved'
-  }).slice(0, 1)
+  const unsigned = (signers || [])
+    .filter((s) => {
+      if (s.STYPE === 'rzd' || !s.USER_ID) return false
+      const appr = approvalMap[s.USER_ID]
+      return !appr || appr.STATUS !== 'approved'
+    })
+    .slice(0, 1)
 
   if (!unsigned.length) {
     showToast('Все подписанты уже согласовали акт', 'ok')
@@ -598,7 +611,7 @@ function resendApprovalLinks(act, signers, approvals) {
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
       <div class="card" style="width:440px;max-width:96vw;padding:24px;position:relative">
         <h3 style="margin:0 0 6px">Сформировать повторно ссылку на подписание</h3>
-        <p class="muted" style="margin:0 0 16px;font-size:13px">Ссылка будет отправлена текущему подписанту по очереди:</p>
+        <p class="muted" style="margin:0 0 16px;font-size:13px">Ссылка будет отправлена текущему подписанту:</p>
         <div style="max-height:300px;overflow-y:auto;margin-bottom:16px">${rows}</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="btn ghost" id="resend-cancel">Отмена</button>

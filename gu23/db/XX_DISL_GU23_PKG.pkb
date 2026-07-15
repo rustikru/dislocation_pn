@@ -1717,10 +1717,42 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_cnt
         from xx_disl_gu23_act
        where id = p_act_id
-         and status not in ( 'closed',
-                             'annulled' )
+         and status <> 'annulled'
          and ( created_by = p_user_id
           or gu23_is_admin(p_user_id) = 'Y' );
+
+      return
+         case
+            when v_cnt > 0 then
+               'Y'
+            else
+               'N'
+         end;
+   exception
+      when others then
+         return 'N';
+   end;
+
+   function gu23_can_delete_files (
+      p_act_id  in number,
+      p_user_id in number
+   ) return varchar2 is
+      v_cnt number;
+   begin
+      select count(*)
+        into v_cnt
+        from xx_disl_gu23_act
+       where id = p_act_id
+         and status <> 'annulled'
+         and (
+            ( status in ( 'closed',
+                          'signed' )
+              and gu23_is_admin(p_user_id) = 'Y' )
+          or ( status not in ( 'closed',
+                               'signed' )
+               and ( created_by = p_user_id
+                or gu23_is_admin(p_user_id) = 'Y' ) )
+         );
 
       return
          case
@@ -1739,6 +1771,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_data in t_gu23_add_file
    ) return varchar2 is
    begin
+      if gu23_can_change_files(
+         p_data.p_act_id,
+         p_data.p_user_id
+      ) <> 'Y' then
+         return 'ERR'
+                || c_us
+                || 'Нет прав на прикрепление файлов';
+      end if;
+
       insert into xx_disl_gu23_file (
          id,
          act_id,
@@ -1779,16 +1820,38 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    function gu23_del_file (
       p_data in t_gu23_del_file
    ) return varchar2 is
-      v_act  number;
-      v_name varchar2(512);
+      v_act      number;
+      v_name     varchar2(512);
+      v_category varchar2(16);
    begin
       select act_id,
-             file_name
+             file_name,
+             nvl(
+                file_category,
+                'general'
+             )
         into
          v_act,
-         v_name
+         v_name,
+         v_category
         from xx_disl_gu23_file
        where id = p_data.p_file_id;
+
+      if gu23_can_delete_files(
+         v_act,
+         p_data.p_user_id
+      ) <> 'Y' then
+         return 'ERR'
+                || c_us
+                || 'Нет прав на удаление файлов';
+      end if;
+
+      if v_category = 'signed'
+         and gu23_is_admin(p_data.p_user_id) <> 'Y' then
+         return 'ERR'
+                || c_us
+                || 'Подписанные файлы может удалять только администратор';
+      end if;
 
       delete from xx_disl_gu23_file
        where id = p_data.p_file_id;
@@ -2937,7 +3000,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
       if v_approved >= v_total then
          update xx_disl_gu23_act
-            set status = 'signed',
+            set status = 'closed',
                 modified_at = sysdate
           where id = p_act_id
             and status = 'active';
@@ -3838,6 +3901,358 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    exception
       when others then
          return format_error();
+   end;
+
+   function html_escape (
+      p_text in varchar2
+   ) return varchar2 is
+   begin
+      return replace(
+         replace(
+            replace(
+               replace(
+                  replace(
+                     nvl(
+                        p_text,
+                        ''
+                     ),
+                     '&',
+                     '&amp;'
+                  ),
+                  '<',
+                  '&lt;'
+               ),
+               '>',
+               '&gt;'
+            ),
+            '"',
+            '&quot;'
+         ),
+         '''',
+         '&#39;'
+      );
+   end;
+
+   function gu23_new_approval_token return varchar2 is
+   begin
+      return lower(rawtohex(sys_guid()) || rawtohex(sys_guid()));
+   end;
+
+   function gu23_act_link (
+      p_base_url in varchar2,
+      p_path     in varchar2
+   ) return varchar2 is
+      v_base varchar2(500);
+   begin
+      v_base := rtrim(
+         nvl(
+            p_base_url,
+            'http://' || g_server_host
+         ),
+         '/'
+      );
+      return v_base || p_path;
+   end;
+
+   function gu23_approval_mail_html (
+      p_act_id         in number,
+      p_approver_id    in number,
+      p_token          in varchar2,
+      p_base_url       in varchar2,
+      p_recipient_name in varchar2
+   ) return clob is
+      v_html          clob;
+      v_act_number    varchar2(64);
+      v_dept          varchar2(32);
+      v_station       varchar2(128);
+      v_st_from       varchar2(128);
+      v_st_to         varchar2(128);
+      v_cargo         varchar2(256);
+      v_reason        varchar2(1000);
+      v_start_at      varchar2(30);
+      v_created_at    varchar2(30);
+      v_created_by    varchar2(256);
+      v_created_by_id number;
+      v_wagon_cnt     number;
+      v_circ          varchar2(4000);
+      v_approve_url   varchar2(1000);
+      v_reject_url    varchar2(1000);
+      v_card_url      varchar2(1000);
+      v_status_html   varchar2(1000);
+      v_row_no        number := 0;
+   begin
+      select act_number,
+             dept_code,
+             station,
+             st_from,
+             st_to,
+             cargo_ref,
+             reason_name,
+             to_char(
+                start_at,
+                'DD.MM.YYYY HH24:MI:SS'
+             ),
+             wagon_cnt,
+             circumstances,
+             to_char(
+                created_at,
+                'DD.MM.YYYY HH24:MI:SS'
+             ),
+             created_by
+        into
+         v_act_number,
+         v_dept,
+         v_station,
+         v_st_from,
+         v_st_to,
+         v_cargo,
+         v_reason,
+         v_start_at,
+         v_wagon_cnt,
+         v_circ,
+         v_created_at,
+         v_created_by_id
+        from xx_disl_gu23_act_v
+       where id = p_act_id;
+
+      v_created_by := g_user_name(v_created_by_id);
+      v_approve_url := gu23_act_link(
+         p_base_url,
+         '/gu23/approve.php?token='
+         || p_token
+         || '&action=approve'
+      );
+      v_reject_url := gu23_act_link(
+         p_base_url,
+         '/gu23/approve.php?token='
+         || p_token
+         || '&action=reject'
+      );
+      v_card_url := gu23_act_link(
+         p_base_url,
+         '/gu23/card.php?id=' || p_act_id
+      );
+      v_html := '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Подписание акта ГУ-23</title></head>'
+                || '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222">'
+                || '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0"><tr><td align="center">'
+                || '<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
+                || '<tr><td style="background:#471364;padding:24px 32px"><div style="font-size:20px;font-weight:700;color:#fff">Требуется подписание акта ГУ-23</div>'
+                || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
+                || html_escape(v_act_number)
+                || '</div></td></tr><tr><td style="padding:28px 32px">'
+                --|| '<p style="margin:0 0 10px;font-size:15px;line-height:1.5">'
+                --|| html_escape(p_recipient_name)
+                --|| ', для вас сформирован запрос на подписание акта.</p>'
+                || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Подробная информация по акту доступна по ссылке: <a href="'
+                || v_card_url
+                || '">'
+                || html_escape(v_act_number)
+                || '</a></p>'
+                || '<div style="border:1px solid #e0e4ea;border-radius:6px;background:#f8f9fb;padding:14px 18px;margin-bottom:22px">'
+                || '<table cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;line-height:1.7">'
+                || '<tr><td style="color:#777;width:170px">Номер акта</td><td><b>'
+                || html_escape(v_act_number)
+                || '</td></tr><tr><td style="color:#777">Дата создания</td><td>'
+                || html_escape(v_created_at)
+                || '</td></tr><tr><td style="color:#777">Создал</td><td>'
+                || html_escape(v_created_by)
+                || '</b></td></tr><tr><td style="color:#777">Цех</td><td>'
+                || html_escape(v_dept)
+                || '</td></tr><tr><td style="color:#777">Ст. составления</td><td>'
+                || html_escape(v_station)
+                || '</td></tr><tr><td style="color:#777">Ст. отправления</td><td>'
+                || html_escape(v_st_from)
+                || '</td></tr><tr><td style="color:#777">Ст. назначения</td><td>'
+                || html_escape(v_st_to)
+                || '</td></tr><tr><td style="color:#777">Груз</td><td>'
+                || html_escape(v_cargo)
+                || '</td></tr><tr><td style="color:#777">Причина</td><td>'
+                || html_escape(v_reason)
+                || '</td></tr><tr><td style="color:#777">Начало простоя</td><td>'
+                || html_escape(v_start_at)
+                || '</td></tr><tr><td style="color:#777">Вагонов</td><td><b>'
+                || nvl(
+         to_char(v_wagon_cnt),
+         '0'
+      )
+                || '</b></td></tr><tr><td style="color:#777">Обстоятельства</td><td><b>'
+                || html_escape(v_circ)
+                || '</b></td></tr></table></div>'
+                --|| '<p style="margin:0 0 22px"><a href="'
+                --|| v_approve_url
+                --|| '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+                --|| '<a href="'
+                --|| v_reject_url
+               --|| '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+                || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
+                || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
+                || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'
+                || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:left">ФИО / Должность</th>'
+                || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:140px">Статус</th></tr></thead><tbody>'
+                ;
+
+      for s in (
+         select s.*,
+                nvl(
+                   du.full_name,
+                   s.fio
+                ) as fio_new,
+                a.status,
+                to_char(
+                   a.decided_at,
+                   'DD.MM.YYYY HH24:MI'
+                ) as decided_at,
+                a.comment_txt
+           from xx_disl_gu23_signer s
+           left join xx_disl_users_emp_v du
+         on du.id = s.signer_ref_id
+            and s.stype = 'own'
+           left join xx_disl_gu23_approval a
+         on a.act_id = s.act_id
+            and a.approver_id = du.id
+          where s.act_id = p_act_id
+          order by s.ord_no,
+                   s.id
+      ) loop
+         v_row_no := v_row_no + 1;
+         v_status_html := '';
+         if s.stype = 'own' then
+            if s.status = 'approved' then
+               v_status_html := '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Подписано</span>'
+               ;
+            elsif s.status = 'rejected' then
+               v_status_html := '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Отклонено</span>'
+               ;
+            elsif s.signer_ref_id = p_approver_id then
+               v_status_html := '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">В процессе</span>'
+               ;
+            end if;
+         end if;
+
+         v_html := v_html
+                   || '<tr style="background:'
+                   ||
+            case
+               when mod(
+                  v_row_no,
+                  2
+               ) = 0 then
+                  '#f8f9fb'
+               else
+                  '#ffffff'
+            end
+                   || '"><td style="padding:8px 10px;font-size:13px;color:#888;text-align:center">'
+                   || v_row_no
+                   || '</td><td style="padding:8px 10px;font-size:13px"><b>'
+                   || html_escape(s.fio_new)
+                   || '</b><br><span style="color:#666;font-size:12px">'
+                   || html_escape(s.post)
+                   || '</span> '
+                   || html_escape(s.org)
+                   || '</td><td style="padding:8px 10px;font-size:13px;text-align:center">'
+                   || v_status_html
+                   || '</td></tr>';
+      end loop;
+
+      v_html := v_html
+                || '</tbody></table></td></tr><tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Это автоматическое сообщение - не отвечайте на него.</td></tr>'
+                || '</table></td></tr></table></body></html>';
+      return v_html;
+   end;
+
+   function gu23_send_approval_mail (
+      p_act_id      in number,
+      p_approver_id in number,
+      p_base_url    in varchar2 default null
+   ) return varchar2 is
+      v_token varchar2(128);
+      v_email varchar2(256);
+      v_name  varchar2(256);
+      v_body  clob;
+      v_res   varchar2(4000);
+   begin
+      select full_name,
+             email
+        into
+         v_name,
+         v_email
+        from (
+         select approver_id,
+                full_name,
+                email
+           from table ( gu23_approval_next_signer(p_act_id) )
+      )
+       where approver_id = p_approver_id
+         and rownum = 1;
+
+      if v_email is null then
+         return 'ERR'
+                || c_us
+                || 'У подписанта не указан email';
+      end if;
+      v_token := gu23_new_approval_token();
+      v_res := gu23_set_approval_token(
+         p_act_id,
+         p_approver_id,
+         v_token
+      );
+      if substr(
+         v_res,
+         1,
+         2
+      ) <> 'OK' then
+         return v_res;
+      end if;
+
+      v_body := gu23_approval_mail_html(
+         p_act_id,
+         p_approver_id,
+         v_token,
+         p_base_url,
+         v_name
+      );
+      gu23_send_mail(
+         v_email,
+         'Дислокация.Уведомление "ГУ-23"',
+         v_body
+      );
+      return 'OK'
+             || c_us
+             || 'Ссылка отправлена: '
+             || v_email;
+   exception
+      when no_data_found then
+         return 'ERR'
+                || c_us
+                || 'Подписант не найден';
+      when others then
+         return format_error();
+   end;
+
+   function gu23_send_next_approval_mail (
+      p_act_id   in number,
+      p_base_url in varchar2 default null
+   ) return varchar2 is
+      v_approver_id number;
+   begin
+      for r in (
+         select approver_id
+           from table ( gu23_approval_next_signer(p_act_id) )
+          where rownum = 1
+      ) loop
+         v_approver_id := r.approver_id;
+      end loop;
+
+      if v_approver_id is null then
+         return 'OK'
+                || c_us
+                || 'Следующих подписантов нет';
+      end if;
+      return gu23_send_approval_mail(
+         p_act_id,
+         v_approver_id,
+         p_base_url
+      );
    end;
 
     /* ------------------------------------------------------------------ */
