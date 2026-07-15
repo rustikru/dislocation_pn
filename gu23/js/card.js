@@ -651,7 +651,7 @@ function uploadFilesToServer(actId, files, category) {
   }
 
   $.ajax({
-    url: '/data.php',
+    url: '/gu23/data.php',
     type: 'POST',
     data: formData,
     processData: false,

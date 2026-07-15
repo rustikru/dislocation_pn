@@ -146,7 +146,7 @@ class GuActRepository
         if (!empty($cfg['mail_subject'])) {
             return $cfg['mail_subject'];
         }
-        
+
         return 'Дислокация.Уведомление "ГУ-23"';
     }
 
@@ -696,7 +696,7 @@ class GuActRepository
         $lob1->free();
         $lob2->free();
 
-        $this->emitResult($res);
+        $this->sendPackageResult($res);
     }
 
     /** Удаление черновика. Зарегистрированные акты удалить нельзя. */
@@ -721,7 +721,7 @@ class GuActRepository
         oci_bind_by_name($st, ':id', $id);
         oci_bind_by_name($st, ':uid', $uid);
         oci_execute($st);
-        $this->emitResult($res);
+        $this->sendPackageResult($res);
     }
 
     /** Аннулирование с каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
@@ -749,7 +749,7 @@ class GuActRepository
         oci_bind_by_name($st, ':uid', $uid);
         oci_bind_by_name($st, ':reason', $reason);
         oci_execute($st);
-        $this->emitResult($res);
+        $this->sendPackageResult($res);
     }
 
     /* ----------------------------------------------------------------- */
@@ -893,14 +893,14 @@ class GuActRepository
         if (strpos($res, 'done') === 0 && $path && is_file($path)) {
             @unlink($path);
         }
-        $this->emitResult($res);
+        $this->sendPackageResult($res);
     }
 
     /* ----------------------------------------------------------------- */
-    /* подписание акта прямо из интерфейса (без email-ссылки)             */
+    /* подписание акта            */
     /* ----------------------------------------------------------------- */
 
-    /** Подписание или отклонение акта прямо из интерфейса  */
+    /** Подписание или отклонение акта */
     private function approveInApp(): void
     {
         if (!$this->hasPerm('SIGN_ACT')) {
@@ -1008,7 +1008,8 @@ class GuActRepository
 
         // 2. Получаем список подписантов с email
         $signers = $this->pipe(
-            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))', [':act_id' => $actId]
+            'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_get_signers(:act_id))',
+            [':act_id' => $actId]
         );
 
         if (empty($signers)) {
@@ -1073,7 +1074,7 @@ class GuActRepository
         }
     }
 
-    /** Переотправка ссылки одному конкретному подписанту (обновляет token_sig). */
+    /** Переотправка ссылки конкретному подписанту */
     private function resendApproval(): void
     {
         if (!$this->hasPerm('SEND_APPROVAL')) {
@@ -1133,7 +1134,7 @@ class GuActRepository
             $links['act_link_web']
         );
         //$subject = 'Требуется подписание акта ГУ-23 ' . ($actRows[0]['ACT_NUMBER'] ?? '');
-       $subject = $this->getSubject(); // тема письма 
+        $subject = $this->getSubject(); // тема письма 
         $ok = $mode === 'send_mail'
             ? $this->sendMailOracle($email, $subject, $html)
             : $mailer->send($email, $subject, $html, $mode);
@@ -1208,7 +1209,7 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* разбор ответа пакета 'OK|id|number' / 'done' / 'ERR|текст'         */
     /* ----------------------------------------------------------------- */
-    private function emitResult(string $res): void
+    private function sendPackageResult(string $res): void
     {
         $parts = explode(self::US, $res);
         $head = $parts[0] ?? '';

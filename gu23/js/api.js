@@ -2,7 +2,7 @@ import { showToast } from './ui.js'
 
 export function sendApiRequest(action, data) {
   return $.ajax({
-    url: '/data.php',
+    url: '/gu23/data.php',
     type: 'POST',
     dataType: 'json',
     data: $.extend({ ajax_action: action }, data || {}),
