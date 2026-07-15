@@ -2726,6 +2726,54 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+   function gu23_approval_next_signer (
+      p_act_id in number
+   ) return t_gu23_approval_signer_tab
+      pipelined
+   is
+      l_row t_gu23_approval_signer_row;
+      l_rejected number;
+   begin
+      select count(*)
+        into l_rejected
+        from xx_disl_gu23_approval
+       where act_id = p_act_id
+         and status = 'rejected';
+
+      if l_rejected > 0 then
+         return;
+      end if;
+
+      for r in (
+         select approver_id,
+                full_name,
+                email
+           from (
+            select u.id as approver_id,
+                   u.full_name,
+                   lower(u.email_address) as email
+              from xx_disl_gu23_signer s
+              join xx_disl_users_emp_v u
+            on u.id = s.signer_ref_id
+              left join xx_disl_gu23_approval a
+            on a.act_id = s.act_id
+             and a.approver_id = u.id
+             where s.act_id = p_act_id
+               and s.stype = 'own'
+               and nvl(a.status, 'pending') <> 'approved'
+             order by s.id
+         )
+          where rownum = 1
+      ) loop
+         l_row.approver_id := r.approver_id;
+         l_row.full_name := r.full_name;
+         l_row.email := r.email;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
    function gu23_approval_init (
       p_act_id       in number,
       p_requested_by in number
@@ -2907,8 +2955,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_cnt      number;
       v_hist_txt varchar2(1000);
       v_ver      number;
+      v_next     number;
    begin
-        -- фиксируем IP 
+        -- фиксируем IP
       gu23_set_client_ip(p_signer_ip);
 
         -- текущая версия акта
@@ -2919,6 +2968,26 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_ver
         from xx_disl_gu23_act
        where id = p_act_id;
+
+      if p_status in ( 'approved', 'rejected' ) then
+         for r in (
+            select approver_id
+              from table ( gu23_approval_next_signer(p_act_id) )
+             where rownum = 1
+         ) loop
+            v_next := r.approver_id;
+         end loop;
+
+         if v_next is null then
+            return 'ERR'
+                   || c_us
+                   || 'Нет подписанта, ожидающего решения';
+         elsif v_next <> p_approver_id then
+            return 'ERR'
+                   || c_us
+                   || 'Сейчас ожидается решение другого подписанта';
+         end if;
+      end if;
 
         -- Ищем по (act_id, approver_id)
       select count(*)
@@ -3165,6 +3234,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_signer_ip in varchar2 default null
    ) return varchar2 is
       v_ver number;
+      v_next number;
    begin
         -- текущая версия акта
       select nvl(
@@ -3174,6 +3244,26 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_ver
         from xx_disl_gu23_act
        where id = p_act_id;
+
+      if p_status in ( 'approved', 'rejected' ) then
+         for r in (
+            select approver_id
+              from table ( gu23_approval_next_signer(p_act_id) )
+             where rownum = 1
+         ) loop
+            v_next := r.approver_id;
+         end loop;
+
+         if v_next is null then
+            return 'ERR'
+                   || c_us
+                   || 'Нет подписанта, ожидающего решения';
+         elsif v_next <> p_user_id then
+            return 'ERR'
+                   || c_us
+                   || 'Сейчас ожидается решение другого подписанта';
+         end if;
+      end if;
 
         -- Создаём запись если нет, иначе обновляем
       merge into xx_disl_gu23_approval t

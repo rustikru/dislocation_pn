@@ -413,6 +413,13 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    ) return t_gu23_approval_signer_tab
       pipelined;
 
+    -- Следующий подписант по порядку.
+    -- Если акт уже отклонён или все подписали, строк не возвращает.
+   function gu23_approval_next_signer (
+      p_act_id in number
+   ) return t_gu23_approval_signer_tab
+      pipelined;
+
     -- Создать записи согласования для всех подходящих подписантов.
     -- Возвращает число созданных записей или 'ERR'||CHR(31)||текст.
    function gu23_approval_init (
