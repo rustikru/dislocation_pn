@@ -8,7 +8,7 @@ let refsPage = 1
 let currentItems = []
 let searchTimer = null
 
-const REFS_PAGE_SIZE = 20 // fallback
+const REFS_PAGE_SIZE = 20 //
 let refsPageSize = REFS_PAGE_SIZE
 
 export function showRefs(container) {
@@ -16,11 +16,10 @@ export function showRefs(container) {
   refsPage = 1
   currentItems = []
 
-  $(container)
-    .load('pages/refs.php', () => {
-      bindRefsPage(container)
-      fetchTab()
-    })
+  $(container).load('pages/refs.php', () => {
+    bindRefsPage(container)
+    fetchTab()
+  })
 }
 
 function bindRefsPage(container) {

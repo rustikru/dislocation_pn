@@ -3,7 +3,7 @@ import { navigateTo } from './app.js'
 
 const NAV_COLLAPSE_KEY = 'gu23_nav_collapsed' // хранения состояния «свёрнутости»
 
-// Рисуем навигацию
+// боковую навигацию
 export function drawNav() {
   const navigationItems = []
 

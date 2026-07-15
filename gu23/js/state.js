@@ -1,18 +1,18 @@
-// Глобальные справочники, которые загружаются при старте приложения
+// Глобальные справочники
 export const references = {
   departmentsList: [], //  цех
   reasonsList: [], //  причины
   stationsList: [], //  станции
   stationsFromList: [], //  stations_from
-  ownersList: [],
-  wagonKindsList: [],
-  cargosList: [],
-  signersOwnList: [],
-  signersRzdList: [],
-  signersManualList: [], // ранее введённые вручную подписанты (подсказки)
+  ownersList: [], //  владельцы
+  wagonKindsList: [], //
+  cargosList: [], //  грузы
+  signersOwnList: [], //  подписанты (собственные)
+  signersRzdList: [], //  подписанты (РЖД)
+  signersManualList: [], // ранее введённые вручную подписанты
 }
 
-// Текущее состояние экрана
+// Текущее состояние
 export const applicationState = {
   currentPage: 'archive',
   selectedActId: null,
@@ -22,7 +22,9 @@ export const applicationState = {
 
 /** Проверить наличие полномочия у текущего пользователя */
 export function hasPerm(code) {
-  return applicationState.isAdmin === true || applicationState.userPerms.has(code)
+  return (
+    applicationState.isAdmin === true || applicationState.userPerms.has(code)
+  )
 }
 
 /** Текущий пользователь — администратор */
