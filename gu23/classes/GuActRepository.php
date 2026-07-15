@@ -153,7 +153,7 @@ class GuActRepository
 
             switch ($action) {
 
-                // --- чтение: форма создания акта ---
+                // : форма создания акта ---
                 case 'gu23_get_refs':           // справочники для формы (цеха, станции, подписанты, причины)
                     $this->getRefs();
                     break;
@@ -210,7 +210,7 @@ class GuActRepository
                     break;
 
                 // --- справочники (администрирование) ---
-                case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском и пагинацией
+                case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском 
                     $this->refsGetAll();
                     break;
                 case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
@@ -227,7 +227,7 @@ class GuActRepository
                     break;
 
                 // --- роли и полномочия ---
-                case 'gu23_roles_users':        // пользователи с назначенными ролями (пагинация)
+                case 'gu23_roles_users':        // пользователи с назначенными ролями 
                     $this->rolesUsers();
                     break;
                 case 'gu23_role_assign':        // назначить роль пользователю
@@ -250,7 +250,7 @@ class GuActRepository
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
             }
-            // Логируем неуспешные ответы (ok:false) — причина видна в gu23/log/
+            // Логируем неуспешные ответы (ok:false) — в gu23/log/
             $out = ob_get_clean();
             $decoded = json_decode($out, true);
             if (is_array($decoded) && array_key_exists('ok', $decoded) && $decoded['ok'] === false) {
@@ -261,7 +261,7 @@ class GuActRepository
             }
             echo $out;
         } catch (\Throwable $e) {
-            ob_end_clean(); // сбрасываем любые PHP-предупреждения, не ломаем JSON
+            ob_end_clean(); // сбрасываем PHP-предупреждения
             Gu23Logger::exception($e, $action);
             http_response_code(500);
             echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -272,7 +272,7 @@ class GuActRepository
     /* helpers                                                            */
     /* ----------------------------------------------------------------- */
 
-    /** Выполнить конвейерную функцию и вернуть массив строк. */
+    /** вернуть массив строк. */
     private function pipe(string $sql, array $binds = []): array
     {
         $st = @oci_parse($this->conn, $sql);
@@ -298,7 +298,7 @@ class GuActRepository
         return $rows;
     }
 
-    /** Склеить массив записей в CLOB-строку с разделителями RS/US. */
+    /** Склеить массив записей в CLOB-строку с разделителями  */
     private function packRows(array $rows, array $fields): string
     {
         $out = [];
@@ -306,7 +306,6 @@ class GuActRepository
             $vals = [];
             foreach ($fields as $f) {
                 $v = isset($row[$f]) ? $this->cleanTextForOracle((string) $row[$f]) : '';
-                // подстрахуемся: вычистим управляющие разделители из данных
                 $v = str_replace([self::RS, self::US], ' ', $v);
                 $vals[] = $v;
             }
@@ -370,7 +369,7 @@ class GuActRepository
         return $result === 'Y';
     }
 
-    /** Вызвать функцию пакета, вернуть скалярный результат. */
+    /** Вызвать функцию пакета. */
     private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
     {
         $sql = 'BEGIN :ret_val := ' . $expr . '; END;';
@@ -422,7 +421,7 @@ class GuActRepository
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
             [':b1' => $userId]
         );
-        // pipe возвращает однострочные строки — extracting значение из первого поля
+
         $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
 
         echo json_encode([
@@ -435,7 +434,7 @@ class GuActRepository
             'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
             'signersManual' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_manual())'),
             'perms' => $perms,
-            'isAdmin' => $this->isGu23Admin() ? true : false, // оставляем для обратной совместимости
+            'isAdmin' => $this->isGu23Admin() ? true : false,
         ]);
     }
 
@@ -443,7 +442,7 @@ class GuActRepository
     /* акты — чтение                                                      */
     /* ----------------------------------------------------------------- */
 
-    /** Реестр актов с фильтрами*/
+    /** Реестр актов */
     private function getActs(): void
     {
         $q = filter_input(INPUT_POST, 'q') ?: null;
@@ -456,7 +455,7 @@ class GuActRepository
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
-        // Общее количество под фильтры (для пагинации)
+        // Общее количество 
         $total = (int) $this->callFunc(
             'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7)',
             [
@@ -471,7 +470,6 @@ class GuActRepository
             40
         );
 
-        // Только нужная страница — пагинация на стороне БД
         $acts = $this->pipe(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
             [
@@ -614,7 +612,7 @@ class GuActRepository
     /* акты — запись                                                      */
     /* ----------------------------------------------------------------- */
 
-    /** Создание или обновление акта. Вагоны и подписанты передаются CLOB-ом через packRows. */
+    /** Создание или обновление акта. */
     private function saveAct(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
@@ -709,7 +707,7 @@ class GuActRepository
         $this->sendPackageResult($res);
     }
 
-    /** Удаление черновика. Зарегистрированные акты удалить нельзя. */
+    /** Удаление черновика. */
     private function delAct(): void
     {
         if (!$this->hasPerm('DELETE_ACT')) {
@@ -857,7 +855,7 @@ class GuActRepository
         echo json_encode(['ok' => empty($errors), 'saved' => $saved, 'errors' => $errors]);
     }
 
-    /** Удаление вложения: сначала физический файл, потом запись в БД через пакет. */
+    /** Удаление вложения. */
     private function delFile(): void
     {
         $fileId = (int) filter_input(INPUT_POST, 'file_id');
@@ -986,7 +984,7 @@ class GuActRepository
     /* согласование актов                                                 */
     /* ----------------------------------------------------------------- */
 
-    /** Инициализация согласования: создаёт pending-записи и отправляет письмо первому подписанту. */
+    /** Инициализация согласования: создаёт записи и отправляет письмо первому подписанту. */
     private function sendApproval(): void
     {
         if (!$this->hasPerm('SEND_APPROVAL')) {
@@ -1070,7 +1068,7 @@ class GuActRepository
         }
 
         if ((int) $nextRows[0]['APPROVER_ID'] !== $userId) {
-            echo json_encode(['ok' => false, 'msg' => 'Сейчас ожидается другой подписант']);
+            echo json_encode(['ok' => false, 'msg' => 'Ожидается другой подписант']);
             return;
         }
 
@@ -1224,7 +1222,7 @@ class GuActRepository
     /* Управление ролями                                                   */
     /* ----------------------------------------------------------------- */
 
-    /** Список пользователей с их ролями; группировка на PHP, пагинация тоже на PHP. */
+    /** Список пользователей с их ролями */
     private function rolesUsers(): void
     {
         if (!$this->hasPerm('MANAGE_ROLES')) {
