@@ -24,7 +24,7 @@ export function showForm(container) {
 
   $(container).load('pages/form.php', showFormPage)
 }
-
+/// НАААААААЧАААААЛООООООООО #1
 function showFormPage() {
   $('#form-title').text(
     activeDraft.id ? 'Редактирование акта ГУ-23' : 'Создание акта ГУ-23',
@@ -59,6 +59,7 @@ function showTypeSwitcher() {
       showForm($('#view')[0])
     })
 }
+// НААААААЧАААААЛООООООООО #2
 // --- отрисовка полей формы ---
 function showFormFields() {
   showEndActChoice()
@@ -746,7 +747,7 @@ function loadWagonsDataFromDislocation() {
     showForm($('#view')[0])
   })
 }
-
+// поиск открытого акта начала простоя по введённым номерам вагонов ---
 function findOpenStayByWagons() {
   const rawText = $('#txt-wagons').val()
   const nums = parseWagonsFromText(rawText)
