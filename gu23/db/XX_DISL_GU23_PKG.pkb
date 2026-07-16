@@ -13,8 +13,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
   ******************************************************************************/
    c_package     constant varchar2(30) := 'xx_disl_gu23_pkg';
    c_dtf         constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us          constant char(1) := chr(31);        -- разделитель полей
-   c_rs          constant char(1) := chr(30);      -- разделитель записей
+   c_us          constant char(1) := chr(31);            -- разделитель полей
+   c_rs          constant char(1) := chr(30);          -- разделитель записей
    g_client_ip   varchar2(64) := null; -- IP клиента текущего запроса
    g_server_host varchar2(240) := sys_context(
       'USERENV',
@@ -131,31 +131,31 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          '(',
          -1
       );
-        
+
         -- Если скобки не найдены, возвращаем NULL
       if v_start_pos = 0 then
          return null;
       end if;
-        
+
         -- Находим позицию соответствующей закрывающей скобки после последней открывающей
       v_end_pos := instr(
          p_string,
          ')',
          v_start_pos
       );
-        
+
         -- Если закрывающая скобка не найдена, возвращаем NULL
       if v_end_pos = 0 then
          return null;
       end if;
-        
+
         -- Извлекаем текст между скобками (исключая сами скобки)
       v_result := substr(
          p_string,
          v_start_pos + 1,
          v_end_pos - v_start_pos - 1
       );
-        
+
         -- Удаляем лишние пробелы в начале и конце
       v_result := trim(v_result);
       return v_result;
@@ -335,7 +335,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           from xx_disl_dept_v
          where id = p_dept_id;*/
 
-      v_dept_id := 0;  --add 06.07.2026 BekmansurovRR
+      v_dept_id := 0;                         --add 06.07.2026 BekmansurovRR
 
       update xx_disl_gu23_counter
          set
@@ -357,8 +357,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
               v_cnt );
       end if;
 
-      return 'ГУ23-'
-               --|| v_dept_code || '-'  --rem 06.07.2026 BekmansurovRR
+      return 'ГУ23-' --|| v_dept_code || '-'  --rem 06.07.2026 BekmansurovRR
              || v_yr
              || '-'
              || lpad(
@@ -684,10 +683,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 fr_name as name
            from etw_nsi_freight
           where trunc(sysdate) between recdatebegin and recdateend /*and (   fr_name like UPPER ('%Метанол%')
-                                                                                            or fr_name like UPPER ('%Карбамид%')
-                                                                                            or fr_name like UPPER ('%Уротропин%')
-                                                                                            or fr_name like UPPER ('%Меламин%'))
-                                                                                            */
+                                                                                                      or fr_name like UPPER ('%Карбамид%')
+                                                                                                      or fr_name like UPPER ('%Уротропин%')
+                                                                                                      or fr_name like UPPER ('%Меламин%'))
+                                                                                                      */
       ) loop
          l_row.code := r.name;
          l_row.name := r.name;
@@ -758,7 +757,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null) 
+    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null)
     -- уникальные ФИО/должность/организация из истории актов.
    function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
       pipelined
@@ -961,6 +960,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              where rownum <= v_end
          )
           where rn > v_off
+          order by created_at desc
       ) loop
          pipe row ( g_act_row(a) );
       end loop;
@@ -968,7 +968,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- количество актов 
+    -- количество актов
    function gu23_count_acts (
       p_q          in varchar2 default null,
       p_type       in varchar2 default null,
@@ -2159,7 +2159,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 linked_start_id = p_data.p_linked_start_id,
                 modified_at = sysdate,
                 modified_by = p_data.p_user_id,
-                   -- правка акта "на подписании" админом - новая версия 
+                   -- правка акта "на подписании" админом - новая версия
                 content_version = nvl(
                    content_version,
                    1
@@ -4041,9 +4041,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
                 || html_escape(v_act_number)
                 || '</div></td></tr><tr><td style="padding:28px 32px">'
-                --|| '<p style="margin:0 0 10px;font-size:15px;line-height:1.5">'
-                --|| html_escape(p_recipient_name)
-                --|| ', для вас сформирован запрос на подписание акта.</p>'
+            --|| '<p style="margin:0 0 10px;font-size:15px;line-height:1.5">'
+            --|| html_escape(p_recipient_name)
+            --|| ', для вас сформирован запрос на подписание акта.</p>'
                 || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Подробная информация по акту доступна по ссылке: <a href="'
                 || v_card_url
                 || '">'
@@ -4079,12 +4079,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</b></td></tr><tr><td style="color:#777">Обстоятельства</td><td><b>'
                 || html_escape(v_circ)
                 || '</b></td></tr></table></div>'
-                || '<p style="margin:0 0 22px"><a href="'
-                || v_approve_url
-                || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
-                || '<a href="'
-                || v_reject_url
-                || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+            /*
+            || '<p style="margin:0 0 22px"><a href="'
+            || v_approve_url
+            || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+            || '<a href="'
+            || v_reject_url
+            || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+            */
                 || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
                 || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
                 || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'
@@ -4282,17 +4284,28 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            x_subject,
            x_msg,
            x_sender );
-       /*
-        insert into xx_disl_gu23_mail_test (P_TO,P_SUBJECT,P_BODY,P_FROM) values (x_to_email,x_subject,x_msg,x_sender);
-        
-        if upper(g_server_host) = 'M5000' and x_to_email is not null then
-            apps.xx_mtf_send_mail_pkg.send_mail (
-                                                p_sender      => x_sender,                  --отправитель
-                                                p_recipient   => x_to_email,--'rustam.bekmansurov@ruschem.ru',       --получатель
-                                                p_subject     => x_subject,
-                                                p_text_clob   => x_msg
-                                            );
-        end if;*/
+
+      if
+         upper(g_server_host) = 'M5000'
+         and x_to_email is not null
+      then
+         apps.xx_mtf_send_mail_pkg.send_mail(
+            p_sender    => x_sender, --отправитель
+            p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+            p_subject   => x_subject,
+            p_text_clob => x_msg
+         );
+      else
+         apps.xx_mtf_send_mail_pkg.send_mail(
+            p_sender    => x_sender,                       --отправитель
+            p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
+            p_subject   => x_subject
+                         || ' -> '
+                         || x_to_email,
+            p_text_clob => x_msg
+         );
+      end if;
+
       commit;
    end gu23_send_mail;
 end xx_disl_gu23_pkg;
