@@ -122,7 +122,7 @@ class GuActRepository
         ob_start();
         //Gu23Logger::info('action', ['action' => $action]);
         try {
-            // Передаём IP клиента в пакет в log_act_history
+            // Передаём IP клиента в log_act_history
             $clientIp = $this->clientIp();
             $st = oci_parse($this->conn, 'BEGIN xx_disl_gu23_pkg.gu23_set_client_ip(:ip); END;');
             if ($st) {
@@ -184,7 +184,7 @@ class GuActRepository
                 case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
                     $this->resendApproval();
                     break;
-                case 'gu23_approve_in_app':     // подписание/отклонение прямо из интерфейса
+                case 'gu23_approve_in_app':     // подписание/отклонение прямо со странички
                     $this->approveInApp();
                     break;
 
@@ -248,7 +248,7 @@ class GuActRepository
     }
 
     /* ----------------------------------------------------------------- */
-    /* helpers                                                            */
+    /* Всякое                                                            */
     /* ----------------------------------------------------------------- */
 
     /** вернуть массив строк. */
@@ -292,7 +292,7 @@ class GuActRepository
         }
         return implode(self::RS, $out);
     }
-
+    // Очистим текст от всяких символов
     private function cleanTextForOracle(string $text): string
     {
         return gu23_clean_text_for_oracle($text);
@@ -316,7 +316,7 @@ class GuActRepository
         return dirname(__DIR__) . '/' . ltrim($path, '/\\');
     }
 
-    /** Файлы можно прикреплять к любому акту, кроме аннулированного. */
+    /** Файлы прикреплять к любому акту, кроме аннулированного. */
     private function canChangeFiles(int $actId, int $userId): bool
     {
         if ($actId <= 0 || $userId <= 0) {
@@ -379,7 +379,7 @@ class GuActRepository
         return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 
-    /** Привязать строку как временный CLOB. */
+    /** Привязать строку как  CLOB. */
     private function bindClob($st, string $name, string $value)
     {
         $lob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
@@ -711,7 +711,7 @@ class GuActRepository
         $this->sendPackageResult($res);
     }
 
-    /** Аннулирование с каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
+    /** Аннулирование каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
     private function annulAct(): void
     {
         if (!$this->permGranted('ANNUL_ACT')) {
@@ -987,7 +987,7 @@ class GuActRepository
             return;
         }
 
-        // 1. Создаём pending-записи согласования через пакет
+        // 1. Создаём pending-записи согласования
         $initResult = $this->callFunc(
             'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
             [':act' => $actId, ':by' => $userId],
@@ -1055,12 +1055,13 @@ class GuActRepository
         $parts = explode(self::US, (string) $sent, 2);
 
         echo json_encode(str_starts_with((string) $sent, 'OK')
-            ? ['ok' => true, 'sent' => 1, 'msg' => $parts[1] ?? 'Ссылка отправлена']
-            : ['ok' => false, 'sent' => 0, 'msg' => $parts[1] ?? 'Не удалось отправить ссылку']);
+            //? ['ok' => true, 'sent' => 1, 'msg' => $parts[1] ?? 'Ссылка отправлена']
+            ? ['ok' => true]
+            : ['ok' => false, 'sent' => 0, 'msg' => $parts[1] ?? 'Не удалось отправить письмо']);
     }
 
     /* ----------------------------------------------------------------- */
-    /* разбор ответа пакета 'OK|id|number' / 'done' / 'ERR|текст'         */
+    /* разбор ответа  'OK|id|number' / 'done' / 'ERR|текст'         */
     /* ----------------------------------------------------------------- */
     private function sendPackageResult(string $res): void
     {
