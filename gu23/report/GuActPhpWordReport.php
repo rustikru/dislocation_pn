@@ -66,6 +66,7 @@ class GuActPhpWordReport
         $printSigners = $this->getPrintSigners($act, $signers);
         $usePep = $this->canShowPepStamp($act, $approvals);
         $paperSigners = $usePep ? $this->getPaperSigners($printSigners) : $printSigners;
+        $pepApprovals = $usePep ? $this->getPepApprovals($approvals, $printSigners) : [];
         $rzdSigners = $this->getRzdSigners($paperSigners);
         $hasRzdBlock = $this->templateHas($templatePath, 'SIGNER_RZD_POST')
             || $this->templateHas($templatePath, 'SIGNER_RZD_FIO');
@@ -76,7 +77,6 @@ class GuActPhpWordReport
         $this->fillWagons($doc, $wagons);
         $this->fillMainSigners($doc, $mainSigners);
         $this->fillRzdSigners($doc, $rzdSigners, $hasRzdBlock);
-        $this->fillPep($doc, $usePep ? $this->getPepApprovals($approvals, $printSigners) : []);
 
         $path = tempnam(sys_get_temp_dir(), 'gu23_phpword_');
         if ($path === false) {
@@ -86,6 +86,7 @@ class GuActPhpWordReport
         unlink($path);
 
         $doc->saveAs($docxPath);
+        $this->fixDocxXml($docxPath, $mainSigners, $rzdSigners, $pepApprovals);
         return $docxPath;
     }
 
@@ -150,7 +151,11 @@ class GuActPhpWordReport
 
     private function fillMainSigners(TemplateProcessor $doc, array $signers): void
     {
-        $rows = $signers ?: [[]];
+        if (!$signers) {
+            return;
+        }
+
+        $rows = $signers;
         $doc->cloneRow('SIGNER_POST', count($rows));
 
         foreach ($rows as $idx => $signer) {
@@ -169,11 +174,11 @@ class GuActPhpWordReport
 
     private function fillRzdSigners(TemplateProcessor $doc, array $signers, bool $hasRzdBlock): void
     {
-        if (!$hasRzdBlock) {
+        if (!$hasRzdBlock || !$signers) {
             return;
         }
 
-        $rows = $signers ?: [[]];
+        $rows = $signers;
         $doc->cloneRow('SIGNER_RZD_POST', count($rows));
 
         foreach ($rows as $idx => $signer) {
@@ -186,22 +191,228 @@ class GuActPhpWordReport
         $doc->setValue('SIGNER_RZD_FIO', $this->cleanValue((string) ($signers[0]['FIO'] ?? '')));
     }
 
-    private function fillPep(TemplateProcessor $doc, array $approvals): void
+    private function fixDocxXml(string $path, array $mainSigners, array $rzdSigners, array $pepApprovals): void
     {
-        $names = [];
-        $ids = [];
-        $dates = [];
-
-        foreach ($approvals as $approval) {
-            $names[] = (string) ($approval['FULL_NAME'] ?? '');
-            $ids[] = (string) ($approval['APPROVER_ID'] ?? '');
-            $dates[] = (string) ($approval['DECIDED_AT'] ?? '');
+        $zip = new ZipArchive();
+        if ($zip->open($path) !== true) {
+            throw new RuntimeException('Не удалось открыть сформированный DOCX');
         }
 
-        $doc->setValue('PEP_FULL_NAME', $this->cleanValue(implode("\n", array_filter($names))));
-        $doc->setValue('PEP_APPROVED_ID', $this->cleanValue(implode("\n", array_filter($ids))));
-        $doc->setValue('PEP_APPROVER_ID', $this->cleanValue(implode("\n", array_filter($ids))));
-        $doc->setValue('PEP_DECIDED_AT', $this->cleanValue(implode("\n", array_filter($dates))));
+        try {
+            $xml = $zip->getFromName('word/document.xml');
+            if ($xml === false) {
+                return;
+            }
+
+            if (!$mainSigners) {
+                $xml = $this->removeTablesByText($xml, ['${SIGNER_POST}', '${SIGNER_FIO}']);
+            }
+            if (!$rzdSigners) {
+                $xml = $this->removeTablesByText($xml, ['${SIGNER_RZD_POST}', '${SIGNER_RZD_FIO}']);
+            }
+
+            $xml = $this->formatSignerLineLabels($xml);
+            $xml = $pepApprovals
+                ? $this->fillPepTableXml($xml, $pepApprovals)
+                : $this->removeTablesByText($xml, ['${PEP_FULL_NAME}', '${PEP_APPROVED_ID}', '${PEP_DECIDED_AT}']);
+
+            $zip->addFromString('word/document.xml', $xml);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function removeTablesByText(string $xml, array $needles): string
+    {
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            static function (array $m) use ($needles): string {
+                foreach ($needles as $needle) {
+                    if (str_contains($m[0], $needle)) {
+                        return '';
+                    }
+                }
+                return $m[0];
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function formatSignerLineLabels(string $xml): string
+    {
+        return preg_replace_callback(
+            '#<w:r\b[^>]*>.*?</w:r>#s',
+            function (array $m): string {
+                $runXml = $m[0];
+                if (
+                    !str_contains($runXml, 'Должность:')
+                    && !str_contains($runXml, 'Ф.И.О.:')
+                    && !str_contains($runXml, 'Участник:')
+                ) {
+                    return $runXml;
+                }
+
+                $runPr = '';
+                if (preg_match('#<w:rPr\b.*?</w:rPr>#s', $runXml, $pr)) {
+                    $runPr = $pr[0];
+                }
+
+                $parts = [];
+                preg_match_all('#<w:t(?:\s+xml:space="preserve")?>(.*?)</w:t>|<w:br\s*/>#s', $runXml, $items, PREG_SET_ORDER);
+                foreach ($items as $item) {
+                    if (str_starts_with($item[0], '<w:br')) {
+                        $parts[] = '<w:r>' . $runPr . '<w:br/></w:r>';
+                        continue;
+                    }
+
+                    $text = html_entity_decode($item[1], ENT_XML1, 'UTF-8');
+                    foreach ($this->signerLineTextParts($text) as $part) {
+                        if ($part['text'] === '') {
+                            continue;
+                        }
+                        $parts[] = '<w:r>'
+                            . $this->runProperties($runPr, $part['bold'])
+                            . $this->textNode($part['text'])
+                            . '</w:r>';
+                    }
+                }
+
+                return $parts ? implode('', $parts) : $runXml;
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function signerLineTextParts(string $text): array
+    {
+        $labels = ['Должность:', 'Ф.И.О.:', 'Участник:'];
+        $pattern = '/(' . implode('|', array_map(static fn(string $label): string => preg_quote($label, '/'), $labels)) . ')/u';
+        $parts = preg_split($pattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return [['text' => $text, 'bold' => false]];
+        }
+
+        $result = [];
+        foreach ($parts as $part) {
+            $result[] = [
+                'text' => $part,
+                'bold' => in_array($part, $labels, true),
+            ];
+        }
+        return $result;
+    }
+
+    private function runProperties(string $runPr, bool $bold): string
+    {
+        if (!$bold) {
+            return $runPr;
+        }
+
+        if ($runPr === '') {
+            return '<w:rPr><w:b/><w:bCs/></w:rPr>';
+        }
+
+        $props = $runPr;
+        if (!preg_match('#<w:b(?:\s|/|>)#', $props)) {
+            $props = preg_replace('#</w:rPr>$#', '<w:b/>$0', $props) ?? $props;
+        }
+        if (!preg_match('#<w:bCs(?:\s|/|>)#', $props)) {
+            $props = preg_replace('#</w:rPr>$#', '<w:bCs/>$0', $props) ?? $props;
+        }
+        return $props;
+    }
+
+    private function textNode(string $text): string
+    {
+        $space = preg_match('/^\s|\s$/u', $text) ? ' xml:space="preserve"' : '';
+        return '<w:t' . $space . '>' . htmlspecialchars($text, ENT_XML1, 'UTF-8') . '</w:t>';
+    }
+
+    private function fillPepTableXml(string $xml, array $approvals): string
+    {
+        $done = false;
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m) use ($approvals, &$done): string {
+                if ($done || !str_contains($m[0], '${PEP_FULL_NAME}')) {
+                    return $m[0];
+                }
+
+                $done = true;
+                return $this->pepTableXml($m[0], $approvals);
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function pepTableXml(string $tableXml, array $approvals): string
+    {
+        if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $tableXml, $paragraphs, PREG_OFFSET_CAPTURE)) {
+            return $tableXml;
+        }
+
+        $first = null;
+        $last = null;
+        foreach ($paragraphs[0] as $idx => [$paragraphXml]) {
+            if (
+                str_contains($paragraphXml, '${PEP_FULL_NAME}')
+                || str_contains($paragraphXml, '${PEP_APPROVED_ID}')
+                || str_contains($paragraphXml, '${PEP_APPROVER_ID}')
+                || str_contains($paragraphXml, '${PEP_DECIDED_AT}')
+            ) {
+                $first ??= $idx;
+                $last = $idx;
+            }
+        }
+
+        if ($first === null || $last === null) {
+            return $tableXml;
+        }
+
+        $start = $paragraphs[0][$first][1];
+        $endParagraph = $paragraphs[0][$last];
+        $end = $endParagraph[1] + strlen($endParagraph[0]);
+        $templateBlock = substr($tableXml, $start, $end - $start);
+        $emptyLine = $this->emptyPepLine($templateBlock);
+
+        $filled = '';
+        foreach ($approvals as $idx => $approval) {
+            if ($idx > 0) {
+                $filled .= $emptyLine;
+            }
+            $block = $templateBlock;
+            $values = [
+                '${PEP_FULL_NAME}' => (string) ($approval['FULL_NAME'] ?? ''),
+                '${PEP_APPROVED_ID}' => (string) ($approval['APPROVER_ID'] ?? ''),
+                '${PEP_APPROVER_ID}' => (string) ($approval['APPROVER_ID'] ?? ''),
+                '${PEP_DECIDED_AT}' => (string) ($approval['DECIDED_AT'] ?? ''),
+            ];
+
+            foreach ($values as $placeholder => $value) {
+                $block = str_replace($placeholder, htmlspecialchars($value, ENT_XML1, 'UTF-8'), $block);
+            }
+            $filled .= $block;
+        }
+
+        return substr_replace($tableXml, $filled, $start, $end - $start);
+    }
+
+    private function emptyPepLine(string $xml): string
+    {
+        if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $xml, $paragraphs)) {
+            return '<w:p/>';
+        }
+
+        $paragraph = end($paragraphs[0]);
+        if (!is_string($paragraph)) {
+            return '<w:p/>';
+        }
+
+        if (preg_match('#^(<w:p\b[^>]*>(?:<w:pPr\b.*?</w:pPr>)?).*(</w:p>)$#s', $paragraph, $parts)) {
+            return $parts[1] . '<w:r><w:t></w:t></w:r>' . $parts[2];
+        }
+
+        return '<w:p/>';
     }
 
     private function getPrintSigners(array $act, array $signers): array
