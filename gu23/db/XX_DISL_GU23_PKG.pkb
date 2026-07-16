@@ -76,13 +76,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) is
       pragma autonomous_transaction;
    begin
-      /*xx_dislocation.log_new(
+      xx_dislocation.log_new(
          p_log_id,
          c_package
          || '->'
          || p_function_name,
          p_text
-      );*/
+      );
         --insert into xx_disl_log_new (log_function, descr)
         --     values (c_package || '->' || p_function_name, p_text);
 
@@ -901,7 +901,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   || a.dept_id
                   || ','
                ) > 0 )
-                                         -- период: попадание по дате начала ИЛИ по дате окончания
+                                           -- период: попадание по дате начала ИЛИ по дате окончания
                   and ( ( v_from is null
                   and v_to is null )
                    or ( a.start_at is not null
@@ -928,7 +928,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                ) < v_to ) )
                    or ( a.start_at is null
                   and a.end_at is null ) )
-                                         -- есть прикреплённый подписанный файл
+                                           -- есть прикреплённый подписанный файл
                   and ( nvl(
                   p_has_signed,
                   'N'
@@ -1940,7 +1940,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error('Неверный тип акта');
       end if;
 
-        -- цех обязателен (для формирования номера акта)
+        -- цех
       if nvl(
          p_data.p_dept,
          'X'
@@ -2170,19 +2170,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
          delete from xx_disl_gu23_signer
           where act_id = v_id;
-
-            -- Админ скорректировал акт ?на подписании?: собранные подписи
-            -- относятся к прежней версии ? сбрасываем, требуется переподписание
-         if v_cur_status <> 'draft' then
+        -- скорректирован на стадии подписании
+        -- сбрасываем, требуется переподписание
+        /*if v_cur_status <> 'draft'
+        then
             delete from xx_disl_gu23_approval
-             where act_id = v_id;
+                  where act_id = v_id;
 
-            log_act_history(
-               p_act_id  => v_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'Акт скорректирован администратором на стадии подписания - ранее отрпавленные подписи сброшены'
-            );
-         end if;
+            log_act_history (
+                p_act_id    => v_id,
+                p_user_id   => p_data.p_user_id,
+                p_text      =>
+                    'Акт скорректирован администратором на стадии подписания - ранее отрпавленные подписи сброшены');
+        end if;*/
       end if;
 
         -- разбираем вагоны
@@ -2222,7 +2222,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   vw_weight := null;
             end;
          else
-                -- для окончания берём данные из акта начала (уже в CLOB)
+                -- для окончания берём данные из акта начала 
             vw_owner := w.owner;
             vw_kind := w.kind;
             vw_from := w.st_from;
@@ -2340,7 +2340,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                and e.act_type = 'end'
                and e.status in ( 'active',
                                  'signed',
-                                 'closed' ) -- занят; rejected/annulled/draft ? свободен
+                                 'closed' ) -- занят; rejected/annulled/draft - свободен
                and e.linked_start_id = p_data.p_linked_start_id
                and e.id <> v_id
                and er.wagon_no = w.wagon_no;
@@ -2378,7 +2378,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          v_wcnt := v_wcnt + 1;
       end loop;
 
-        -- при отправке на подписание обязательны и вагоны, и груз (для start/other)
+        -- при отправке на подписание обязательны и вагоны, и груз (для типа start/other)
       if p_data.p_status = 'active' then
          if v_wcnt = 0 then
             rollback;
@@ -2572,7 +2572,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          rollback;
          return format_error();
    end;
-
+    -- Закрытие акта
    function gu23_close_act (
       p_id      in number,
       p_user_id in number
@@ -2608,19 +2608,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              modified_by = p_user_id
        where id = p_id;
 
-      insert into xx_disl_gu23_hist (
-         id,
-         act_id,
-         ts,
-         usr,
-         txt
-      ) values
-         ( xx_disl_gu23_hist_seq.nextval,
-           p_id,
-           sysdate,
-           p_user_id,
-           'Акт закрыт' );
-
+      log_act_history(
+         p_act_id  => p_id,
+         p_user_id => p_user_id,
+         p_text    => 'Акт закрыт'
+      );
       commit;
       return 'OK';
    exception
@@ -2778,7 +2770,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
       return;
    end;
-
+    -- Следущий подписант в маршруте,кто ождидает
    function gu23_approval_next_signer (
       p_act_id in number
    ) return t_gu23_approval_signer_tab
@@ -2791,7 +2783,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into l_rejected
         from xx_disl_gu23_approval
        where act_id = p_act_id
-         and status = 'rejected';
+         and status = 'rejected'; -- ожидает подписание
 
       if l_rejected > 0 then
          return;
@@ -2802,7 +2794,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 email
            from (
             select u.id as approver_id,
-                   u.full_name,
+                   nvl(
+                      u.full_name,
+                      u.fio
+                   ) as full_name,
                    lower(u.email_address) as email
               from xx_disl_gu23_signer s
               join xx_disl_users_emp_v u
@@ -2811,7 +2806,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             on a.act_id = s.act_id
                and a.approver_id = u.id
              where s.act_id = p_act_id
-               and s.stype = 'own'
+               and s.stype = 'own' -- только МТФ люди
                and nvl(
                a.status,
                'pending'
@@ -2873,7 +2868,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       when others then
          return format_error();
    end;
-
+    -- данные подписаиня по токкену
    function gu23_approval_by_token (
       p_token in varchar2
    ) return varchar2 is
@@ -2981,7 +2976,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return;
       end if;
 
-        -- число тех, кто уже одобрил
+        -- число тех, кто уже подписал
       select count(*)
         into v_approved
         from xx_disl_gu23_approval a
@@ -3185,7 +3180,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    begin
       for r in (
          select a.approver_id,
-                u.full_name,
+                nvl(
+                   u.full_name,
+                   u.fio
+                ) as full_name,
                 a.status,
                 to_char(
                    a.decided_at,
@@ -3393,20 +3391,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             end;
 
             -- add 10.07.2026 BekmansurovRR
-         insert into xx_disl_gu23_hist (
-            id,
-            act_id,
-            ts,
-            usr,
-            txt,
-            ip
-         ) values
-            ( xx_disl_gu23_hist_seq.nextval,
-              p_act_id,
-              sysdate,
-              p_user_id,
-              v_txt,
-              p_signer_ip );
+         log_act_history(
+            p_act_id  => p_act_id,
+            p_user_id => p_user_id,
+            p_text    => v_txt,
+            p_ip      => p_signer_ip
+         );
+
       end;
 
         -- Автоматически обновить статус акта
@@ -3926,7 +3917,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          '&#39;'
       );
    end;
-
+    -- токкен для подписания через письмо (пока не отключили такую возможность, только через сайт)
    function gu23_new_approval_token return varchar2 is
    begin
       return lower(rawtohex(sys_guid()) || rawtohex(sys_guid()));
@@ -3947,7 +3938,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       );
       return v_base || p_path;
    end;
-
+    -- Html письмо
    function gu23_approval_mail_html (
       p_act_id         in number,
       p_approver_id    in number,
@@ -4072,6 +4063,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</b></td></tr><tr><td style="color:#777">Обстоятельства</td><td><b>'
                 || html_escape(v_circ)
                 || '</b></td></tr></table></div>'
+            -- rem 15.07.2026 (пока не отключили такую возможность, только через сайт)
             /*
             || '<p style="margin:0 0 22px"><a href="'
             || v_approve_url
@@ -4155,7 +4147,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</table></td></tr></table></body></html>';
       return v_html;
    end;
-
+    
+    -- Отправка писем подписантам
    function gu23_send_approval_mail (
       p_act_id      in number,
       p_approver_id in number,
@@ -4212,7 +4205,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          'Дислокация.Уведомление "ГУ-23"',
          v_body
       );
-      return 'OK' || c_us;--|| 'Ссылка отправлена: ' || v_email;
+      return 'OK' || c_us;            --|| 'Ссылка отправлена: ' || v_email;
+
    exception
       when no_data_found then
          return 'ERR'
@@ -4249,6 +4243,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    end;
 
     /* ------------------------------------------------------------------ */
+    -- отправка письма
    procedure gu23_send_mail (
       p_to      in varchar2,
       p_subject in varchar2,
@@ -4276,7 +4271,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_function,
          'x_to_email=>' || x_to_email
       );
-      /*if
+      if
          upper(g_server_host) = 'M5000'
          and x_to_email is not null
       then
@@ -4293,13 +4288,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                  x_msg,
                  x_sender );
          end if;
+         /*
          apps.xx_mtf_send_mail_pkg.send_mail(
             p_sender    => x_sender, --отправитель
             p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
             p_subject   => x_subject,
             p_text_clob => x_msg
-         );
+         );*/
       else
+         null;
+         /*
          apps.xx_mtf_send_mail_pkg.send_mail(
             p_sender    => x_sender,                       --отправитель
             p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
@@ -4308,7 +4306,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                          || x_to_email,
             p_text_clob => x_msg
          );
-      end if;*/
+         */
+      end if;
 
       commit;
    end gu23_send_mail;

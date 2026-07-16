@@ -193,28 +193,26 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
-  const docxLink = `report/report.php?id=${act.ID}`
-  const pdfLink = `report/report.php?id=${act.ID}&format=pdf`
+  const docxLink = `report/report.php?id=${act.ID}`;
+  const pdfLink = `report/report.php?id=${act.ID}&format=pdf`;
 
   const wordButton = `
     <a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт в docx" href="${docxLink}">
       <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
     </a>
-  `
+  `;
 
   const pdfButton = `
-    <a class="btn report-pdf" target="_blank" title="Открыть акт в PDF" href="${pdfLink}">
+    <a class="btn report-pdf" target="_blank" title="Скачать акт в PDF" href="${pdfLink}">
       <img src="/img/ms_pdf.svg" alt="PDF" width="18" height="18" style="flex-shrink:0">
     </a>
-  `
+  `;
 
-  const downloadHtml =
-    act.STATUS !== 'draft' &&
-    act.STATUS !== 'annulled' &&
-    act.STATUS !== 'rejected'
-      ? wordButton + pdfButton
-      : ''
-
+  const downloadHtml = act.STATUS !== 'draft' && act.STATUS !== 'annulled' && act.STATUS !== 'rejected'
+    ? wordButton + 
+      pdfButton
+    : '';
+  // Кнопки отчеты
   $('#card-report-buttons').html(downloadHtml)
   $('#card-details-list')
     .html(dlHtml)
@@ -224,7 +222,7 @@ function showDetailsBlock(act) {
       navigateTo('card', $(this).data('linked'))
     })
 }
-
+// Блок Вагоны с данными
 function showWagonsBlock(wagons) {
   const rowsHtml = wagons
     .map(
@@ -247,7 +245,7 @@ function showWagonsBlock(wagons) {
   $('#card-wagons-title').text(`Вагоны (${wagons.length})`)
   $('#card-wagons-rows').html(rowsHtml)
 }
-
+// Блок Подписанты
 function showSignersBlock(
   act,
   signers,
@@ -298,6 +296,7 @@ function showSignersBlock(
           const isCurrentSigner =
             currentSignerId !== '' && String(s.USER_ID) === currentSignerId
           let pill = ''
+          // РЖД подписант? плашка 
           if (isRzd) {
             pill =
               '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
@@ -329,12 +328,14 @@ function showSignersBlock(
         .join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  //  "подписать" — только для пользователей с правом SIGN_ACT
+  //  кнопка "подписать" — только для пользователей с правом SIGN_ACT или пользователь из 
   const canSign =
     act.STATUS === 'active' &&
     hasPerm('SIGN_ACT') &&
     currentSignerId !== '' &&
+    // Текущий пользователь = пользователь из подписания
     String(currentUserId) === currentSignerId &&
+    //В процессе 
     (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
   if (canSign) {
@@ -376,7 +377,7 @@ function showSignersBlock(
     })
   }
 }
-
+//подписание/отклонение со странички
 function submitInAppDecision(actId, decision, comment) {
   sendApiRequest('gu23_approve_in_app', {
     act_id: actId,
@@ -392,13 +393,7 @@ function submitInAppDecision(actId, decision, comment) {
   })
 }
 
-function showAttachmentsBlock(
-  act,
-  files,
-  canChangeFiles,
-  canDeleteFiles,
-  userIsAdmin,
-) {
+function showAttachmentsBlock(act, files, canChangeFiles, canDeleteFiles, userIsAdmin) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
   const addBtn = canChangeFiles
