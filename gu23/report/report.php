@@ -32,7 +32,7 @@ if (!in_array($format, ['docx', 'pdf'], true)) {
 
 // Подключаем репозиторий и читаем данные акта
 require_once __DIR__ . '/../classes/GuActRepository.php';
-require_once __DIR__ . '/GuActDocxReport.php';
+require_once __DIR__ . '/GuActPhpWordReport.php';
 
 // Доступ к модулю ГУ-23 (а не только факт авторизации)
 if (!GuActRepository::canAccess($conn1, $auth)) {
@@ -75,7 +75,7 @@ try {
     $signers = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
     $approvals = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $actId]);
 
-    $generator = new GuActDocxReport();
+    $generator = new GuActPhpWordReport();
     $generator->download($act, $wagons, $signers, $approvals, $format);
 } catch (Throwable $e) {
     http_response_code(500);

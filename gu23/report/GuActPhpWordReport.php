@@ -1,0 +1,454 @@
+<?php
+
+use PhpOffice\PhpWord\TemplateProcessor;
+
+class GuActPhpWordReport
+{
+    const TEMPLATES = [
+        'start' => 'act23_start.docx',
+        'end' => 'act23_end.docx',
+        'other' => 'act23_general.docx',
+    ];
+
+    private string $templateDir;
+
+    public function __construct()
+    {
+        $autoload = __DIR__ . '/../../vendor/autoload.php';
+        if (is_file($autoload)) {
+            require_once $autoload;
+        }
+
+        if (!class_exists(TemplateProcessor::class)) {
+            throw new RuntimeException('PHPWord не найден. Нужно установить phpoffice/phpword.');
+        }
+
+        $this->templateDir = __DIR__ . '/template/';
+    }
+
+    public function download(array $act, array $wagons, array $signers, array $approvals = [], string $format = 'docx'): void
+    {
+        $format = strtolower($format) === 'pdf' ? 'pdf' : 'docx';
+        $docxPath = $this->saveDocx($act, $wagons, $signers, $approvals);
+
+        try {
+            if ($format === 'pdf') {
+                $pdfPath = $this->savePdfFile($docxPath);
+                try {
+                    $this->sendFile($pdfPath, $act, 'pdf');
+                } finally {
+                    if (is_file($pdfPath)) {
+                        unlink($pdfPath);
+                    }
+                }
+            } else {
+                $this->sendFile($docxPath, $act, 'docx');
+            }
+        } finally {
+            if (is_file($docxPath)) {
+                unlink($docxPath);
+            }
+        }
+    }
+
+    private function saveDocx(array $act, array $wagons, array $signers, array $approvals): string
+    {
+        $actType = strtolower((string) ($act['ACT_TYPE'] ?? 'other'));
+        $templateName = self::TEMPLATES[$actType] ?? self::TEMPLATES['other'];
+        $templatePath = $this->templateDir . $templateName;
+
+        if (!is_file($templatePath)) {
+            throw new RuntimeException('Шаблон PHPWord не найден: ' . $templatePath);
+        }
+
+        $doc = new TemplateProcessor($templatePath);
+
+        $printSigners = $this->getPrintSigners($act, $signers);
+        $usePep = $this->canShowPepStamp($act, $approvals);
+        $paperSigners = $usePep ? $this->getPaperSigners($printSigners) : $printSigners;
+        $rzdSigners = $this->getRzdSigners($paperSigners);
+        $hasRzdBlock = $this->templateHas($templatePath, 'SIGNER_RZD_POST')
+            || $this->templateHas($templatePath, 'SIGNER_RZD_FIO');
+        $mainSigners = $hasRzdBlock ? $this->getNonRzdSigners($paperSigners) : $paperSigners;
+
+        $this->fillAct($doc, $act);
+        $this->fillSignerLine($doc, $printSigners);
+        $this->fillWagons($doc, $wagons);
+        $this->fillMainSigners($doc, $mainSigners);
+        $this->fillRzdSigners($doc, $rzdSigners, $hasRzdBlock);
+        $this->fillPep($doc, $usePep ? $this->getPepApprovals($approvals, $printSigners) : []);
+
+        $path = tempnam(sys_get_temp_dir(), 'gu23_phpword_');
+        if ($path === false) {
+            throw new RuntimeException('Не удалось создать временный файл');
+        }
+        $docxPath = $path . '.docx';
+        unlink($path);
+
+        $doc->saveAs($docxPath);
+        return $docxPath;
+    }
+
+    private function fillAct(TemplateProcessor $doc, array $act): void
+    {
+        $values = [
+            'ACT_NUMBER' => $act['ACT_NUMBER'] ?? '',
+            'DEPT' => $act['DEPT'] ?? '',
+            'STATION' => $act['STATION'] ?? '',
+            'ST_FROM' => $act['ST_FROM'] ?? '',
+            'ST_TO' => $act['ST_TO'] ?? '',
+            'REASON_NAME' => $act['REASON_NAME'] ?? '',
+            'CARGO_REF' => $act['CARGO_REF'] ?? '',
+            'START_AT' => $this->formatDate((string) ($act['START_AT'] ?? '')),
+            'END_AT' => $this->formatDate((string) ($act['END_AT'] ?? '')),
+            'CREATED_AT' => $this->formatDate((string) ($act['CREATED_AT'] ?? '')),
+            'CIRCUMSTANCES' => $act['CIRCUMSTANCES'] ?? '',
+        ];
+
+        foreach ($values as $name => $value) {
+            $doc->setValue($name, $this->cleanValue((string) $value));
+        }
+    }
+
+    private function fillSignerLine(TemplateProcessor $doc, array $signers): void
+    {
+        $lines = [];
+        foreach ($signers as $signer) {
+            if (strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd') {
+                $lines[] = 'Участник:';
+            }
+            $lines[] = $this->signerLineText($signer);
+        }
+
+        $doc->setValue('SIGNER_LINE', $this->cleanValue(implode("\n", $lines)));
+    }
+
+    private function fillWagons(TemplateProcessor $doc, array $wagons): void
+    {
+        $rows = $wagons ?: [[]];
+        $doc->cloneRow('WAGON_NO', count($rows));
+
+        foreach ($rows as $idx => $wagon) {
+            $num = $idx + 1;
+            $values = [
+                "WAGON_IDX#$num" => (string) $num,
+                "WAGON_NO#$num" => $wagon['WAGON_NO'] ?? '',
+                "WAGON_WAYBILL_NO#$num" => $wagon['WAYBILL_NO'] ?? '',
+                "WAGON_KIND#$num" => $wagon['KIND'] ?? '',
+                "WAGON_CARGO#$num" => $wagon['CARGO'] ?? '',
+                "WAGON_ACT_START#$num" => $wagon['ACT_START_NUM'] ?? '',
+                "WAGON_DUR_TOTAL_H#$num" => $wagon['DUR_TOTAL_H'] ?? '',
+                "WAGON_WEIGHT#$num" => $wagon['WEIGHT'] ?? '',
+                "WAGON_OWNER#$num" => $wagon['OWNER'] ?? '',
+            ];
+
+            foreach ($values as $name => $value) {
+                $doc->setValue($name, $this->cleanValue((string) $value));
+            }
+        }
+    }
+
+    private function fillMainSigners(TemplateProcessor $doc, array $signers): void
+    {
+        $rows = $signers ?: [[]];
+        $doc->cloneRow('SIGNER_POST', count($rows));
+
+        foreach ($rows as $idx => $signer) {
+            $num = $idx + 1;
+            $doc->setValue("SIGNER_POST#$num", $this->cleanValue((string) ($signer['POST'] ?? '')));
+            $doc->setValue("SIGNER_FIO#$num", $this->cleanValue((string) ($signer['FIO'] ?? '')));
+        }
+
+        $doc->setValue('SIGNER_1_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
+        $doc->setValue('SIGNER_1_FIO', $this->cleanValue((string) ($signers[0]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_2_POST', $this->cleanValue((string) ($signers[1]['POST'] ?? '')));
+        $doc->setValue('SIGNER_2_FIO', $this->cleanValue((string) ($signers[1]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_3_POST', $this->cleanValue((string) ($signers[2]['POST'] ?? '')));
+        $doc->setValue('SIGNER_3_FIO', $this->cleanValue((string) ($signers[2]['FIO'] ?? '')));
+    }
+
+    private function fillRzdSigners(TemplateProcessor $doc, array $signers, bool $hasRzdBlock): void
+    {
+        if (!$hasRzdBlock) {
+            return;
+        }
+
+        $rows = $signers ?: [[]];
+        $doc->cloneRow('SIGNER_RZD_POST', count($rows));
+
+        foreach ($rows as $idx => $signer) {
+            $num = $idx + 1;
+            $doc->setValue("SIGNER_RZD_POST#$num", $this->cleanValue((string) ($signer['POST'] ?? '')));
+            $doc->setValue("SIGNER_RZD_FIO#$num", $this->cleanValue((string) ($signer['FIO'] ?? '')));
+        }
+
+        $doc->setValue('SIGNER_RZD_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
+        $doc->setValue('SIGNER_RZD_FIO', $this->cleanValue((string) ($signers[0]['FIO'] ?? '')));
+    }
+
+    private function fillPep(TemplateProcessor $doc, array $approvals): void
+    {
+        $names = [];
+        $ids = [];
+        $dates = [];
+
+        foreach ($approvals as $approval) {
+            $names[] = (string) ($approval['FULL_NAME'] ?? '');
+            $ids[] = (string) ($approval['APPROVER_ID'] ?? '');
+            $dates[] = (string) ($approval['DECIDED_AT'] ?? '');
+        }
+
+        $doc->setValue('PEP_FULL_NAME', $this->cleanValue(implode("\n", array_filter($names))));
+        $doc->setValue('PEP_APPROVED_ID', $this->cleanValue(implode("\n", array_filter($ids))));
+        $doc->setValue('PEP_APPROVER_ID', $this->cleanValue(implode("\n", array_filter($ids))));
+        $doc->setValue('PEP_DECIDED_AT', $this->cleanValue(implode("\n", array_filter($dates))));
+    }
+
+    private function getPrintSigners(array $act, array $signers): array
+    {
+        $actType = strtolower((string) ($act['ACT_TYPE'] ?? ''));
+        $ownLimit = 10;
+        $rzdLimit = 1;
+        $own = [];
+        $rzd = [];
+
+        foreach ($signers as $signer) {
+            $stype = strtolower((string) ($signer['STYPE'] ?? ''));
+            if ($stype === 'rzd') {
+                if (count($rzd) < $rzdLimit) {
+                    $rzd[] = $signer;
+                }
+            } elseif (count($own) < $ownLimit) {
+                $own[] = $signer;
+            }
+        }
+
+        if (!$own && !$rzd) {
+            return array_slice($signers, 0, $actType === 'other' ? 2 : 3);
+        }
+
+        return array_merge($own, $rzd);
+    }
+
+    private function getPaperSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, function (array $signer): bool {
+            return !$this->isPepSigner($signer);
+        }));
+    }
+
+    private function getRzdSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, static function (array $signer): bool {
+            return strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd';
+        }));
+    }
+
+    private function getNonRzdSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, static function (array $signer): bool {
+            return strtolower((string) ($signer['STYPE'] ?? '')) !== 'rzd';
+        }));
+    }
+
+    private function getPepApprovals(array $approvals, array $signers): array
+    {
+        $users = [];
+        foreach ($signers as $signer) {
+            if ($this->isPepSigner($signer)) {
+                $users[(int) $signer['USER_ID']] = true;
+            }
+        }
+
+        return array_values(array_filter($approvals, static function (array $approval) use ($users): bool {
+            return isset($users[(int) ($approval['APPROVER_ID'] ?? 0)]);
+        }));
+    }
+
+    private function isPepSigner(array $signer): bool
+    {
+        return strtolower((string) ($signer['STYPE'] ?? '')) === 'own'
+            && (int) ($signer['USER_ID'] ?? 0) > 0;
+    }
+
+    private function canShowPepStamp(array $act, array $approvals): bool
+    {
+        $actType = strtolower((string) ($act['ACT_TYPE'] ?? ''));
+        $status = strtolower((string) ($act['STATUS'] ?? ''));
+        $allowedStatuses = $actType === 'start' ? ['signed', 'closed'] : ['closed'];
+
+        if (!in_array($status, $allowedStatuses, true) || !$approvals) {
+            return false;
+        }
+
+        foreach ($approvals as $approval) {
+            if (strtolower((string) ($approval['STATUS'] ?? '')) !== 'approved') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function signerLineText(array $signer): string
+    {
+        $post = trim((string) ($signer['POST'] ?? ''));
+        $fio = trim((string) ($signer['FIO'] ?? ''));
+
+        if ($post !== '' && $fio !== '') {
+            return 'Должность: ' . $post . '    Ф.И.О.: ' . $fio;
+        }
+
+        return $post !== '' ? 'Должность: ' . $post : 'Ф.И.О.: ' . $fio;
+    }
+
+    private function formatDate(string $date): string
+    {
+        if (preg_match('/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/', $date, $m)) {
+            $sec = $m[6] ?? '00';
+            return "$m[3].$m[2].$m[1] $m[4]:$m[5]:$sec";
+        }
+
+        return $date;
+    }
+
+    private function cleanValue(string $value): string
+    {
+        return str_replace(["\r\n", "\r"], "\n", $value);
+    }
+
+    private function templateHas(string $templatePath, string $name): bool
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($templatePath) !== true) {
+            return false;
+        }
+
+        $xml = (string) $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        return str_contains($xml, $name);
+    }
+
+    private function savePdfFile(string $docxPath): string
+    {
+        $soffice = $this->findSoffice();
+        if ($soffice === '') {
+            throw new RuntimeException('LibreOffice не найден для формирования PDF');
+        }
+
+        $outDir = sys_get_temp_dir();
+        $homeDir = $this->createTempDir('gu23_lo_home_');
+        $profileDir = $this->createTempDir('gu23_lo_profile_');
+        $cmd = escapeshellarg($soffice)
+            . ' -env:UserInstallation=file://' . $profileDir
+            . ' --headless --nologo --nofirststartwizard --convert-to pdf'
+            . ' --outdir ' . escapeshellarg($outDir)
+            . ' ' . escapeshellarg($docxPath);
+        $oldHome = getenv('HOME');
+        putenv('HOME=' . $homeDir);
+
+        try {
+            exec($cmd, $output, $code);
+            $pdfPath = $outDir . '/' . pathinfo($docxPath, PATHINFO_FILENAME) . '.pdf';
+            if ($code !== 0 || !is_file($pdfPath)) {
+                throw new RuntimeException('Не удалось сформировать PDF');
+            }
+
+            return $pdfPath;
+        } finally {
+            if ($oldHome !== false) {
+                putenv('HOME=' . $oldHome);
+            }
+            $this->removeDir($homeDir);
+            $this->removeDir($profileDir);
+        }
+    }
+
+    private function findSoffice(): string
+    {
+        $config = $this->loadConfig();
+        $candidates = [
+            (string) ($config['soffice_path'] ?? ''),
+            getenv('SOFFICE_PATH') ?: '',
+        ];
+
+        foreach ($candidates as $path) {
+            if ($path !== '' && is_executable($path)) {
+                return $path;
+            }
+        }
+
+        $which = trim((string) shell_exec('command -v soffice 2>/dev/null'));
+        return $which !== '' ? $which : '';
+    }
+
+    private function loadConfig(): array
+    {
+        $path = __DIR__ . '/../config.php';
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $config = require $path;
+        return is_array($config) ? $config : [];
+    }
+
+    private function createTempDir(string $prefix): string
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
+        if ($path === false) {
+            throw new RuntimeException('Не удалось создать временную папку');
+        }
+
+        unlink($path);
+        mkdir($path, 0777, true);
+        return $path;
+    }
+
+    private function removeDir(string $path): void
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $items = scandir($path);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $child = $path . '/' . $item;
+            if (is_dir($child) && !is_link($child)) {
+                $this->removeDir($child);
+            } else {
+                @unlink($child);
+            }
+        }
+        @rmdir($path);
+    }
+
+    private function sendFile(string $path, array $act, string $format): void
+    {
+        $raw = $act['ACT_NUMBER'] ?? ($act['ID'] ?? 'act');
+        $safeName = preg_replace('/[^\w\-]/u', '_', (string) $raw);
+        $filename = 'act_gu23_' . $safeName . '.' . $format;
+        $fallbackName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $filename) ?: 'act_gu23.' . $format;
+        $contentType = $format === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+        header('Content-Type: ' . $contentType);
+        $disposition = $format === 'pdf' ? 'inline' : 'attachment';
+        header(
+            'Content-Disposition: ' . $disposition . '; filename="' . $fallbackName . '"'
+            . "; filename*=UTF-8''" . rawurlencode($filename)
+        );
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: private, no-cache');
+        readfile($path);
+    }
+}
