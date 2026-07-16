@@ -70,19 +70,21 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    end format_error;
 
    procedure log_new (
+      p_log_id        in number,
       p_function_name in varchar2,
       p_text          in varchar2
    ) is
       pragma autonomous_transaction;
    begin
-      insert into xx_disl_log_new (
-         log_function,
-         descr
-      ) values
-         ( c_package
-           || '->'
-           || p_function_name,
-           p_text );
+      /*xx_dislocation.log_new(
+         p_log_id,
+         c_package
+         || '->'
+         || p_function_name,
+         p_text
+      );*/
+        --insert into xx_disl_log_new (log_function, descr)
+        --     values (c_package || '->' || p_function_name, p_text);
 
       commit;
    end;
@@ -1925,18 +1927,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                false
          end;
 
-      log_new(
-         l_function,
-         'p_data.p_type=' || p_data.p_type
-      );
-      log_new(
-         l_function,
-         'p_data.p_start_at=' || p_data.p_start_at
-      );
-      log_new(
-         l_function,
-         'p_data.p_end_at=' || p_data.p_end_at
-      );
+        --log_new (l_function, 'p_data.p_type=' || p_data.p_type);
+        --log_new (l_function, 'p_data.p_start_at=' || p_data.p_start_at);
+        --log_new (l_function, 'p_data.p_end_at=' || p_data.p_end_at);
       v_start := g_to_date(p_data.p_start_at);
       v_end := g_to_date(p_data.p_end_at);
 
@@ -4219,10 +4212,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          'Дислокация.Уведомление "ГУ-23"',
          v_body
       );
-      return 'OK'
-             || c_us
-             || 'Ссылка отправлена: '
-             || v_email;
+      return 'OK' || c_us;--|| 'Ссылка отправлена: ' || v_email;
    exception
       when no_data_found then
          return 'ERR'
@@ -4265,6 +4255,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_body    in clob,
       p_from    in varchar2 default 'noreply@test.ru'
    ) is
+      l_log_in   number := xx_etw.xx_disl_log_order_seq.nextval;
+      l_function varchar2(100) := 'gu23_send_mail';
       x_sender   varchar2(240);
       x_to_email varchar2(240);
       x_subject  varchar2(240);
@@ -4274,21 +4266,33 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       x_to_email := p_to;
       x_subject := p_subject;
       x_msg := p_body;
-      insert into xx_disl_gu23_mail_test (
-         p_to,
-         p_subject,
-         p_body,
-         p_from
-      ) values
-         ( x_to_email,
-           x_subject,
-           x_msg,
-           x_sender );
-
-      if
+      log_new(
+         l_log_in,
+         l_function,
+         'g_server_host=>' || g_server_host
+      );
+      log_new(
+         l_log_in,
+         l_function,
+         'x_to_email=>' || x_to_email
+      );
+      /*if
          upper(g_server_host) = 'M5000'
          and x_to_email is not null
       then
+         if trunc(sysdate) <= to_date ( '30.07.2026',
+         'DD.MM.YYYY' ) then
+            insert into xx_disl_gu23_mail_test (
+               p_to,
+               p_subject,
+               p_body,
+               p_from
+            ) values
+               ( x_to_email,
+                 x_subject,
+                 x_msg,
+                 x_sender );
+         end if;
          apps.xx_mtf_send_mail_pkg.send_mail(
             p_sender    => x_sender, --отправитель
             p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
@@ -4304,7 +4308,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                          || x_to_email,
             p_text_clob => x_msg
          );
-      end if;
+      end if;*/
 
       commit;
    end gu23_send_mail;

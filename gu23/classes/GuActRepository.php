@@ -970,10 +970,6 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        if (!$this->canSendApprovalLinks()) {
-            echo json_encode(['ok' => false, 'msg' => 'Рассылка доступна только администратору или USER1']);
-            return;
-        }
         $actId = (int) filter_input(INPUT_POST, 'act_id');
         $userId = $this->auth->getUserId();
         if (!$actId) {

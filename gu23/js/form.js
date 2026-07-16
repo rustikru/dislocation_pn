@@ -1343,24 +1343,32 @@ function afterActSaved(status, response) {
   if (status === 'active') {
     sendApiRequest('gu23_send_approval', {
       act_id: response.id,
-    }).done((sendResponse) => {
-      if (sendResponse && sendResponse.ok) {
-        showToast(
-          `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`,
-          'ok',
-        )
-      } else {
-        showToast(
-          `Акт зарегистрирован, но ссылка не отправлена: ${sendResponse?.msg || 'ошибка рассылки'}`,
-          'err',
-        )
-      }
-      navigateTo('card', response.id)
     })
+      .done((sendResponse) => {
+        if (sendResponse && sendResponse.ok) {
+          showToast(
+            `Акт зарегистрирован${response.number ? ', № ' + response.number : ''}`,
+            'ok',
+          )
+        } else {
+          showToast(
+            `Акт зарегистрирован, но ссылка не отправлена: ${sendResponse?.msg || 'ошибка рассылки'}`,
+            'err',
+          )
+        }
+      })
+      .fail(() => {
+        showToast('Акт зарегистрирован, но ссылка не отправлена', 'err')
+      })
+      .always(() => {
+        finishSaveRequest()
+        navigateTo('card', response.id)
+      })
     return
   }
 
   showToast('Проект сохранён', 'ok')
+  finishSaveRequest()
   navigateTo('card', response.id)
 }
 

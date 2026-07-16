@@ -707,58 +707,52 @@ class GuActDocxReport
         return str_replace($placeholder, $xmlValue, $xml);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Динамические строки таблицы вагонов                                    */
-    /* ---------------------------------------------------------------------- */
-
-    /**
-     * Находит в шаблоне строку <w:tr>, содержащую {{WAGON_NO}},
-     * и заменяет её N повторениями
-     */
     private function fillWagonRows(string $xml, array $wagons): string
     {
-        // Ищем строку-шаблон вагонов
-        if (!preg_match('/(<w:tr\b[^>]*>(?:(?!<\/w:tr>).)*\{\{WAGON_NO\}\}(?:(?!<\/w:tr>).)*<\/w:tr>)/s', $xml, $m)) {
+        return $this->repeatTableRow($xml, '{{WAGON_NO}}', $wagons, function (array $wagon, int $idx): array {
+            return [
+                '{{WAGON_IDX}}' => (string) $idx,
+                '{{WAGON_NO}}' => $wagon['WAGON_NO'] ?? '',
+                '{{WAGON_KIND}}' => $wagon['KIND'] ?? '',
+                '{{WAGON_CARGO}}' => $wagon['CARGO'] ?? '',
+                '{{WAGON_WEIGHT}}' => $wagon['WEIGHT'] ?? '',
+                '{{WAGON_OWNER}}' => $wagon['OWNER'] ?? '',
+                '{{WAGON_ST_FROM}}' => $wagon['ST_FROM'] ?? '',
+                '{{WAGON_ST_TO}}' => $wagon['ST_TO'] ?? '',
+                '{{WAGON_WAYBILL_NO}}' => $wagon['WAYBILL_NO'] ?? '',
+                '{{WAGON_ACT_START}}' => $wagon['ACT_START_NUM'] ?? '',
+                '{{WAGON_DUR_TOTAL_H}}' => $wagon['DUR_TOTAL_H'] ?? '',
+            ];
+        });
+    }
+
+    private function repeatTableRow(string $xml, string $marker, array $rows, callable $values): string
+    {
+        $pattern = '/(<w:tr\b[^>]*>(?:(?!<\/w:tr>).)*'
+            . preg_quote($marker, '/')
+            . '(?:(?!<\/w:tr>).)*<\/w:tr>)/s';
+
+        if (!preg_match($pattern, $xml, $m)) {
             return $xml;
         }
 
         $rowTemplate = $m[1];
+        $items = $rows ?: [[]];
         $filledRows = '';
-
-        if (empty($wagons)) {
-            // Нет вагонов 
-            $filledRows = $this->fillWagonRow($rowTemplate, 1, []);
-        } else {
-            foreach ($wagons as $idx => $wagon) {
-                $filledRows .= $this->fillWagonRow($rowTemplate, $idx + 1, $wagon);
-            }
+        foreach ($items as $idx => $rowData) {
+            $filledRows .= $this->fillTableRow($rowTemplate, $values((array) $rowData, $idx + 1));
         }
 
         return str_replace($rowTemplate, $filledRows, $xml);
     }
 
-    private function fillWagonRow(string $rowTemplate, int $idx, array $wagon): string
+    private function fillTableRow(string $rowTemplate, array $values): string
     {
-        $map = [
-            '{{WAGON_IDX}}' => (string) $idx,
-            '{{WAGON_NO}}' => $wagon['WAGON_NO'] ?? '',
-            '{{WAGON_KIND}}' => $wagon['KIND'] ?? '',
-            '{{WAGON_CARGO}}' => $wagon['CARGO'] ?? '',
-            '{{WAGON_WEIGHT}}' => $wagon['WEIGHT'] ?? '',
-            '{{WAGON_OWNER}}' => $wagon['OWNER'] ?? '',
-            '{{WAGON_ST_FROM}}' => $wagon['ST_FROM'] ?? '',
-            '{{WAGON_ST_TO}}' => $wagon['ST_TO'] ?? '',
-            '{{WAGON_WAYBILL_NO}}' => $wagon['WAYBILL_NO'] ?? '',
-            '{{WAGON_ACT_START}}' => $wagon['ACT_START_NUM'] ?? '',
-            '{{WAGON_DUR_TOTAL_H}}' => $wagon['DUR_TOTAL_H'] ?? '',
-
-
-        ];
-
         $row = $rowTemplate;
-        foreach ($map as $ph => $val) {
-            $row = str_replace($ph, htmlspecialchars((string) $val, ENT_XML1, 'UTF-8'), $row);
+        foreach ($values as $placeholder => $value) {
+            $row = str_replace($placeholder, htmlspecialchars((string) $value, ENT_XML1, 'UTF-8'), $row);
         }
+
         return $row;
     }
 
