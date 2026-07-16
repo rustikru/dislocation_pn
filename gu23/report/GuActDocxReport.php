@@ -34,9 +34,15 @@ class GuActDocxReport
      * @param array $act     Строка акта (ACT_NUMBER, DEPT, ACT_TYPE, START_AT …)
      * @param array $wagons  Массив вагонов  (WAGON_NO, KIND, CARGO, WEIGHT, OWNER …)
      * @param array $signers Массив подписантов (FIO, POST, ORG …)
+     * @param array $approvals Массив подписей (APPROVER_ID, FULL_NAME, STATUS, DECIDED_AT …)
      */
-    public function download(array $act, array $wagons, array $signers, string $format = 'docx'): void
+    public function download(array $act, array $wagons, array $signers, array $approvals = [], string $format = 'docx'): void
     {
+        if (is_string($approvals)) {
+            $format = $approvals;
+            $approvals = [];
+        }
+
         $format = strtolower($format) === 'pdf' ? 'pdf' : 'docx';
         $actType = strtolower($act['ACT_TYPE'] ?? 'other');
         $templateName = self::TEMPLATES[$actType] ?? 'act23_general.docx';
@@ -58,15 +64,7 @@ class GuActDocxReport
                 throw new \RuntimeException('Не удалось открыть шаблон DOCX');
             }
 
-            $xml = $zip->getFromName('word/document.xml');
-            if ($xml === false) {
-                $zip->close();
-                throw new \RuntimeException('document.xml не найден в шаблоне');
-            }
-
-            $xml = $this->fillDocumentXml($xml, $act, $wagons, $signers);
-
-            $zip->addFromString('word/document.xml', $xml);
+            $this->fillDocxParts($zip, $act, $wagons, $signers, $approvals);
             $zip->close();
 
             if ($format === 'pdf') {
@@ -92,7 +90,27 @@ class GuActDocxReport
     /* Заполнение XML                                                          */
     /* ---------------------------------------------------------------------- */
 
-    private function fillDocumentXml(string $xml, array $act, array $wagons, array $signers): string
+    private function fillDocxParts(\ZipArchive $zip, array $act, array $wagons, array $signers, array $approvals): void
+    {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            $name = (string) ($stat['name'] ?? '');
+            if (!preg_match('#^word/(document|header\d+|footer\d+)\.xml$#', $name)) {
+                continue;
+            }
+
+            $xml = $zip->getFromName($name);
+            if ($xml === false) {
+                continue;
+            }
+
+            $isDocument = $name === 'word/document.xml';
+            $xml = $this->fillXmlPart($xml, $act, $wagons, $signers, $approvals, $isDocument);
+            $zip->addFromString($name, $xml);
+        }
+    }
+
+    private function fillXmlPart(string $xml, array $act, array $wagons, array $signers, array $approvals, bool $isDocument): string
     {
         $printSigners = $this->getPrintSigners($act, $signers);
 
@@ -101,6 +119,13 @@ class GuActDocxReport
 
         // Склеиваем соседние раны в каждом параграфе
         $xml = $this->mergeRuns($xml);
+
+        if (!$isDocument) {
+            return $this->replacePlaceholders($xml, $act, $printSigners);
+        }
+
+        $usePep = $this->canShowPepStamp($act, $approvals);
+        $xml = $this->changeSignatureBlock($xml, $usePep, $approvals);
 
         // Динамический список подписантов в шаблонах, где есть {{SIGNER_LINE}} / {{SIGNER_FIO}}
         $xml = $this->fillSignerLines($xml, $printSigners);
@@ -117,6 +142,195 @@ class GuActDocxReport
         $xml = $this->fillWagonRows($xml, $wagons);
 
         return $xml;
+    }
+
+    private function canShowPepStamp(array $act, array $approvals): bool
+    {
+        $actType = strtolower((string) ($act['ACT_TYPE'] ?? ''));
+        $status = strtolower((string) ($act['STATUS'] ?? ''));
+        $allowedStatuses = $actType === 'start' ? ['signed', 'closed'] : ['closed'];
+
+        if (!in_array($status, $allowedStatuses, true)) {
+            return false;
+        }
+
+        if (!$approvals) {
+            return false;
+        }
+
+        foreach ($approvals as $approval) {
+            if (strtolower((string) ($approval['STATUS'] ?? '')) !== 'approved') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function changeSignatureBlock(string $xml, bool $usePep, array $approvals): string
+    {
+        if ($usePep) {
+            $xml = $this->removeSignerTables($xml);
+            return $this->replacePepTable($xml, $approvals);
+        }
+
+        return $this->removePepTable($xml);
+    }
+
+    private function removeTablesByText(string $xml, array $needles): string
+    {
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            static function (array $m) use ($needles): string {
+                foreach ($needles as $needle) {
+                    if (!str_contains($m[0], $needle)) {
+                        return $m[0];
+                    }
+                }
+                return '';
+            },
+            $xml
+        );
+    }
+
+    private function removeSignerTables(string $xml): string
+    {
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m): string {
+                return $this->hasSignerPlaceholder($m[0]) ? '' : $m[0];
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function hasSignerPlaceholder(string $xml): bool
+    {
+        $plain = preg_replace('#<[^>]+>#', '', $xml) ?? $xml;
+
+        return str_contains($xml, '{{SIGNER_POST}}')
+            || str_contains($xml, '{{SIGNER_FIO}}')
+            || str_contains($plain, '{{SIGNER_1_POST}}')
+            || str_contains($plain, '{{SIGNER_1_FIO}}')
+            || str_contains($plain, '{{SIGNER_2_POST}}')
+            || str_contains($plain, '{{SIGNER_2_FIO}}')
+        ;
+    }
+
+    private function replacePepTable(string $xml, array $approvals): string
+    {
+        $done = false;
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m) use ($approvals, &$done): string {
+                if ($done || !$this->hasPepStampMarker($m[0])) {
+                    return $m[0];
+                }
+                $done = true;
+                return $this->pepTableXml($m[0], $approvals);
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function removePepTable(string $xml): string
+    {
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m): string {
+                return $this->hasPepStampMarker($m[0]) ? '' : $m[0];
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function hasPepStampMarker(string $xml): bool
+    {
+        return str_contains($xml, '{{PEP_FULL_NAME}}')
+            || str_contains($xml, '{{PEP_APPROVED_ID}}')
+            || str_contains($xml, '{{PEP_APPROVER_ID}}')
+            || str_contains($xml, '{{PEP_DECIDED_AT}}');
+    }
+
+    private function pepTableXml(string $tableXml, array $approvals): string
+    {
+        $approved = [];
+        foreach ($approvals as $approval) {
+            if (strtolower((string) ($approval['STATUS'] ?? '')) !== 'approved') {
+                continue;
+            }
+
+            $approved[] = $approval;
+        }
+
+        return $approved ? $this->fillPepPlaceholders($tableXml, $approved) : $tableXml;
+    }
+
+    private function fillPepPlaceholders(string $tableXml, array $approvals): string
+    {
+        if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $tableXml, $paragraphs, PREG_OFFSET_CAPTURE)) {
+            return $tableXml;
+        }
+
+        $first = null;
+        $last = null;
+        foreach ($paragraphs[0] as $idx => [$paragraphXml]) {
+            if (!$this->hasPepStampMarker($paragraphXml)) {
+                continue;
+            }
+
+            $first ??= $idx;
+            $last = $idx;
+        }
+
+        if ($first === null || $last === null) {
+            return $tableXml;
+        }
+
+        $start = $paragraphs[0][$first][1];
+        $endParagraph = $paragraphs[0][$last];
+        $end = $endParagraph[1] + strlen($endParagraph[0]);
+        $templateBlock = substr($tableXml, $start, $end - $start);
+        $emptyLine = $this->emptyParagraphFromBlock($templateBlock);
+
+        $filled = '';
+        foreach ($approvals as $idx => $approval) {
+            if ($idx > 0) {
+                $filled .= $emptyLine;
+            }
+            $block = $templateBlock;
+            $values = [
+                '{{PEP_FULL_NAME}}' => (string) ($approval['FULL_NAME'] ?? ''),
+                '{{PEP_APPROVED_ID}}' => (string) ($approval['APPROVER_ID'] ?? ''),
+                '{{PEP_APPROVER_ID}}' => (string) ($approval['APPROVER_ID'] ?? ''),
+                '{{PEP_DECIDED_AT}}' => (string) ($approval['DECIDED_AT'] ?? ''),
+            ];
+
+            foreach ($values as $placeholder => $value) {
+                $block = $this->replaceInXml($block, $placeholder, $value);
+            }
+            $filled .= $block;
+        }
+
+        return substr_replace($tableXml, $filled, $start, $end - $start);
+    }
+
+    private function emptyParagraphFromBlock(string $xml): string
+    {
+        if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $xml, $paragraphs)) {
+            return '<w:p/>';
+        }
+
+        $paragraph = end($paragraphs[0]);
+        if (!is_string($paragraph)) {
+            return '<w:p/>';
+        }
+
+        if (preg_match('#^(<w:p\b[^>]*>(?:<w:pPr\b.*?</w:pPr>)?).*(</w:p>)$#s', $paragraph, $parts)) {
+            return $parts[1] . '<w:r><w:t></w:t></w:r>' . $parts[2];
+        }
+
+        return '<w:p/>';
     }
 
     private function getPrintSigners(array $act, array $signers): array
@@ -250,11 +464,8 @@ class GuActDocxReport
     }
 
     /**
-     * Включает для таблицы вагонов автоподбор ширины колонок «по содержимому»:
-     * предпочтительная ширина таблицы и ячеек переводится в тип "auto",
-     * добавляется <w:tblLayout w:type="autofit"/>. Word пересчитывает
-     * ширину колонок по их содержимому вместо фиксированных значений шаблона.
-     * Затрагивается только таблица, содержащая {{WAGON_NO}}.
+     * автоподбор ширины колонок «по содержимому»
+     * только для {{WAGON_NO}}.
      */
     private function autofitWagonTable(string $xml): string
     {
@@ -263,7 +474,7 @@ class GuActDocxReport
             static function (array $m): string {
                 $tbl = $m[0];
                 if (!str_contains($tbl, '{{WAGON_NO}}')) {
-                    return $tbl; // не таблица вагонов — не трогаем
+                    return $tbl;
                 }
 
                 $widths = [520, 1100, 1500, 1250, 1800, 900, 1250];
@@ -394,7 +605,7 @@ class GuActDocxReport
             if (!$r['hasBr'] && !$cur['hasBr'] && $r['rpr'] === $cur['rpr']) {
                 // Сливаем тексты
                 $cur['text'] .= $r['text'];
-                $cur['xml'] = $r['xml']; // Сохраним последний XML как шаблон рана
+                $cur['xml'] = $r['xml']; // Сохраним последний XML 
             } else {
                 $groups[] = $cur;
                 $cur = $r;
@@ -472,7 +683,7 @@ class GuActDocxReport
     }
 
     /**
-     * Заменяет плейсхолдер в XML, корректно обрабатывая переносы строк (→ w:br)
+     * Заменяет плейсхолдер в XML
      * и экранируя спецсимволы XML.
      */
     private function replaceInXml(string $xml, string $placeholder, string $value): string
@@ -502,7 +713,7 @@ class GuActDocxReport
 
     /**
      * Находит в шаблоне строку <w:tr>, содержащую {{WAGON_NO}},
-     * и заменяет её N повторениями (по одному на вагон).
+     * и заменяет её N повторениями
      */
     private function fillWagonRows(string $xml, array $wagons): string
     {
@@ -515,7 +726,7 @@ class GuActDocxReport
         $filledRows = '';
 
         if (empty($wagons)) {
-            // Нет вагонов — пустая строка
+            // Нет вагонов 
             $filledRows = $this->fillWagonRow($rowTemplate, 1, []);
         } else {
             foreach ($wagons as $idx => $wagon) {

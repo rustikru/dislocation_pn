@@ -10,7 +10,7 @@ return [
     'mail_mode' => 'send_file',
     'mail_subject' => 'Дислокация. Уведомление "ГУ-23"',
     // Путь к исполняемому файлу LibreOffice (для конвертации Word в PDF):
-    'soffice_path' => '/usr/bin/soffice',
+    'soffice_path' => '/Users/ru.bekmansurov/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice',
     'base_url' => '',
 
 ];

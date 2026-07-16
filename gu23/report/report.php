@@ -40,8 +40,8 @@ if (!GuActRepository::canAccess($conn1, $auth)) {
     exit('Нет доступа к модулю ГУ-23');
 }
 
-// Вспомогательная функция — выполнить пайп-запрос (повторяет логику GuActRepository::pipe)
-function queryPipe($conn, string $sql, array $binds = []): array
+// Выполнить запрос к функции пакета и вернуть строки.
+function getPackageRows($conn, string $sql, array $binds = []): array
 {
     $st = oci_parse($conn, $sql);
     if (!$st) {
@@ -64,18 +64,19 @@ function queryPipe($conn, string $sql, array $binds = []): array
 
 try {
     // Загружаем акт
-    $actRows = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $actId]);
+    $actRows = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $actId]);
     if (empty($actRows)) {
         http_response_code(404);
         exit('Акт не найден');
     }
 
     $act     = $actRows[0];
-    $wagons  = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',    [':b1' => $actId]);
-    $signers = queryPipe($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
+    $wagons  = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))',    [':b1' => $actId]);
+    $signers = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
+    $approvals = getPackageRows($conn1, 'select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $actId]);
 
     $generator = new GuActDocxReport();
-    $generator->download($act, $wagons, $signers, $format);
+    $generator->download($act, $wagons, $signers, $approvals, $format);
 } catch (Throwable $e) {
     http_response_code(500);
     echo 'Ошибка генерации отчёта: ' . htmlspecialchars($e->getMessage());

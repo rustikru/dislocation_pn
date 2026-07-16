@@ -1744,15 +1744,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         from xx_disl_gu23_act
        where id = p_act_id
          and status <> 'annulled'
-         and (
-            ( status in ( 'closed',
-                          'signed' )
-              and gu23_is_admin(p_user_id) = 'Y' )
+         and ( ( status in ( 'closed',
+                             'signed' )
+         and gu23_is_admin(p_user_id) = 'Y' )
           or ( status not in ( 'closed',
                                'signed' )
-               and ( created_by = p_user_id
-                or gu23_is_admin(p_user_id) = 'Y' ) )
-         );
+         and ( created_by = p_user_id
+          or gu23_is_admin(p_user_id) = 'Y' ) ) );
 
       return
          case
@@ -1846,8 +1844,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || 'Нет прав на удаление файлов';
       end if;
 
-      if v_category = 'signed'
-         and gu23_is_admin(p_data.p_user_id) <> 'Y' then
+      if
+         v_category = 'signed'
+         and gu23_is_admin(p_data.p_user_id) <> 'Y'
+      then
          return 'ERR'
                 || c_us
                 || 'Подписанные файлы может удалять только администратор';
@@ -2775,6 +2775,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          on u.id = s.signer_ref_id
           where s.act_id = p_act_id
             and s.stype = 'own'
+          order by s.id
       ) loop
          l_row.approver_id := r.approver_id;
          l_row.full_name := r.full_name;
@@ -3204,7 +3205,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            join xx_disl_users_emp_v u
          on u.id = a.approver_id
           where a.act_id = p_act_id
-          order by a.requested_at
+          order by a.id
       ) loop
          l_row.approver_id := r.approver_id;
          l_row.full_name := r.full_name;
@@ -4078,12 +4079,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</b></td></tr><tr><td style="color:#777">Обстоятельства</td><td><b>'
                 || html_escape(v_circ)
                 || '</b></td></tr></table></div>'
-                --|| '<p style="margin:0 0 22px"><a href="'
-                --|| v_approve_url
-                --|| '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
-                --|| '<a href="'
-                --|| v_reject_url
-               --|| '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+                || '<p style="margin:0 0 22px"><a href="'
+                || v_approve_url
+                || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+                || '<a href="'
+                || v_reject_url
+                || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
                 || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
                 || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
                 || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'

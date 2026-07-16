@@ -193,16 +193,27 @@ function showDetailsBlock(act) {
   dlHtml += `<dt>Дата создания</dt><dd>${formatDateTime(act.CREATED_AT)}</dd>`
   dlHtml += `<dt>Создал</dt><dd>${escapeHtml(act.CREATED_BY)}</dd>`
 
+  const docxLink = `report/report.php?id=${act.ID}`
+  const pdfLink = `report/report.php?id=${act.ID}&format=pdf`
+
+  const wordButton = `
+    <a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт в docx" href="${docxLink}">
+      <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
+    </a>
+  `
+
+  const pdfButton = `
+    <a class="btn report-pdf" target="_blank" title="Скачать акт в PDF" href="${pdfLink}">
+      <img src="/img/ms_pdf.svg" alt="PDF" width="18" height="18" style="flex-shrink:0">
+    </a>
+  `
+
   const downloadHtml =
-    act.STATUS !== 'draft' && // проект
-    act.STATUS !== 'annulled' && // аннулирован
-    act.STATUS !== 'rejected' // отклонен
-      ? `<a class="btn report-word" id="btn-download" target="_blank" title="Скачать акт" href="report/report.php?id=${act.ID}">
-           <img src="/img/ms_word.svg" alt="Word" width="18" height="18" style="flex-shrink:0">
-         </a>
-         <a class="btn report-pdf" target="_blank" title="Скачать акт в PDF" href="report/report.php?id=${act.ID}&format=pdf">
-           <img src="/img/ms_pdf.svg" alt="PDF" width="18" height="18" style="flex-shrink:0">
-         </a>`
+    act.STATUS !== 'draft' &&
+    act.STATUS !== 'annulled' &&
+    act.STATUS !== 'rejected'
+      ? //wordButton +
+        pdfButton
       : ''
 
   $('#card-report-buttons').html(downloadHtml)
@@ -382,7 +393,13 @@ function submitInAppDecision(actId, decision, comment) {
   })
 }
 
-function showAttachmentsBlock(act, files, canChangeFiles, canDeleteFiles, userIsAdmin) {
+function showAttachmentsBlock(
+  act,
+  files,
+  canChangeFiles,
+  canDeleteFiles,
+  userIsAdmin,
+) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
   const addBtn = canChangeFiles
