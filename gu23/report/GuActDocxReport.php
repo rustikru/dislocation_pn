@@ -198,13 +198,13 @@ class GuActDocxReport
         return preg_replace_callback(
             '#<w:tbl\b.*?</w:tbl>#s',
             function (array $m): string {
-                return $this->hasSignerPlaceholder($m[0]) ? '' : $m[0];
+                return $this->isSignerTable($m[0]) ? '' : $m[0];
             },
             $xml
         ) ?? $xml;
     }
 
-    private function hasSignerPlaceholder(string $xml): bool
+    private function isSignerTable(string $xml): bool
     {
         $plain = preg_replace('#<[^>]+>#', '', $xml) ?? $xml;
 
@@ -223,7 +223,7 @@ class GuActDocxReport
         return preg_replace_callback(
             '#<w:tbl\b.*?</w:tbl>#s',
             function (array $m) use ($approvals, &$done): string {
-                if ($done || !$this->hasPepStampMarker($m[0])) {
+                if ($done || !$this->isPepTable($m[0])) {
                     return $m[0];
                 }
                 $done = true;
@@ -238,13 +238,13 @@ class GuActDocxReport
         return preg_replace_callback(
             '#<w:tbl\b.*?</w:tbl>#s',
             function (array $m): string {
-                return $this->hasPepStampMarker($m[0]) ? '' : $m[0];
+                return $this->isPepTable($m[0]) ? '' : $m[0];
             },
             $xml
         ) ?? $xml;
     }
 
-    private function hasPepStampMarker(string $xml): bool
+    private function isPepTable(string $xml): bool
     {
         return str_contains($xml, '{{PEP_FULL_NAME}}')
             || str_contains($xml, '{{PEP_APPROVED_ID}}')
@@ -275,7 +275,7 @@ class GuActDocxReport
         $first = null;
         $last = null;
         foreach ($paragraphs[0] as $idx => [$paragraphXml]) {
-            if (!$this->hasPepStampMarker($paragraphXml)) {
+            if (!$this->isPepTable($paragraphXml)) {
                 continue;
             }
 
@@ -578,14 +578,14 @@ class GuActDocxReport
             $texts = $tM[1] ?? [];
 
             // Ран с <w:br/> не сливаем (line break нельзя терять)
-            $hasBr = str_contains($runXml, '<w:br');
+            $br = str_contains($runXml, '<w:br');
 
             $parsed[] = [
                 'xml' => $runXml,
                 'offset' => $offset,
                 'rpr' => $rpr,
                 'text' => implode('', $texts),
-                'hasBr' => $hasBr,
+                'br' => $br,
             ];
         }
 
@@ -602,7 +602,7 @@ class GuActDocxReport
                 $cur = $r;
                 continue;
             }
-            if (!$r['hasBr'] && !$cur['hasBr'] && $r['rpr'] === $cur['rpr']) {
+            if (!$r['br'] && !$cur['br'] && $r['rpr'] === $cur['rpr']) {
                 // Сливаем тексты
                 $cur['text'] .= $r['text'];
                 $cur['xml'] = $r['xml']; // Сохраним последний XML 
@@ -628,7 +628,7 @@ class GuActDocxReport
         $newRuns = '';
         foreach ($groups as $g) {
             $escapedText = htmlspecialchars($g['text'], ENT_XML1, 'UTF-8');
-            if ($g['hasBr']) {
+            if ($g['br']) {
                 // Ран с переносом строки — оставляем исходный XML
                 $newRuns .= $g['xml'];
             } else {

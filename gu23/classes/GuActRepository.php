@@ -85,7 +85,7 @@ class GuActRepository
     }
 
     /** Проверить конкретное полномочие пользователя. */
-    private function hasPerm(string $permCode): bool
+    private function permGranted(string $permCode): bool
     {
         if ($this->auth->isAuthAdmin()) {
             return true;
@@ -115,27 +115,6 @@ class GuActRepository
         $login = strtoupper((string) $this->auth->getLogin());
         return $this->isGu23Admin() || $login === 'USER1';
     }
-
-    /**
-     * Режим рассылки писем 
-     *  из gu23/config.php ('mail_mode');
-     */
-    private function mailMode(): string
-    {
-        static $cfg = null;
-        if ($cfg === null) {
-            $path = dirname(__DIR__) . '/config.php';
-            $cfg = file_exists($path) ? (array) (require $path) : [];
-        }
-        if (!empty($cfg['mail_mode'])) {
-            return $cfg['mail_mode'];
-        }
-        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
-            return 'send_file';
-        }
-        return 'send_mail';
-    }
-
 
     public function runAction(string $action, array $post): void
     {
@@ -451,7 +430,7 @@ class GuActRepository
         $dept = filter_input(INPUT_POST, 'dept') ?: null;
         $dateFrom = filter_input(INPUT_POST, 'date_from') ?: null;
         $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
-        $hasSigned = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
+        $signedFile = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
@@ -465,7 +444,7 @@ class GuActRepository
                 ':b4' => $dept,
                 ':b5' => $dateFrom,
                 ':b6' => $dateTo,
-                ':b7' => $hasSigned
+                ':b7' => $signedFile
             ],
             40
         );
@@ -479,7 +458,7 @@ class GuActRepository
                 ':b4' => $dept,
                 ':b5' => $dateFrom,
                 ':b6' => $dateTo,
-                ':b7' => $hasSigned,
+                ':b7' => $signedFile,
                 ':b8' => $page,
                 ':b9' => $limit
             ]
@@ -617,7 +596,7 @@ class GuActRepository
     {
         $id = (int) filter_input(INPUT_POST, 'id');
         $needPerm = $id > 0 ? 'EDIT_OWN_ACT' : 'CREATE_ACT';
-        if (!$this->hasPerm($needPerm)) {
+        if (!$this->permGranted($needPerm)) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -710,7 +689,7 @@ class GuActRepository
     /** Удаление черновика. */
     private function delAct(): void
     {
-        if (!$this->hasPerm('DELETE_ACT')) {
+        if (!$this->permGranted('DELETE_ACT')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -735,7 +714,7 @@ class GuActRepository
     /** Аннулирование с каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
     private function annulAct(): void
     {
-        if (!$this->hasPerm('ANNUL_ACT')) {
+        if (!$this->permGranted('ANNUL_ACT')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -911,7 +890,7 @@ class GuActRepository
     /** Подписание или отклонение акта */
     private function approveInApp(): void
     {
-        if (!$this->hasPerm('SIGN_ACT')) {
+        if (!$this->permGranted('SIGN_ACT')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -965,7 +944,7 @@ class GuActRepository
     /** Закрытие акта типа 'end' (active → closed). Только администратор. */
     private function closeAct(): void
     {
-        if (!$this->hasPerm('CLOSE_ACT')) {
+        if (!$this->permGranted('CLOSE_ACT')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -987,7 +966,7 @@ class GuActRepository
     /** Инициализация согласования: создаёт записи и отправляет письмо первому подписанту. */
     private function sendApproval(): void
     {
-        if (!$this->hasPerm('SEND_APPROVAL')) {
+        if (!$this->permGranted('SEND_APPROVAL')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1040,7 +1019,7 @@ class GuActRepository
     /** Переотправка ссылки конкретному подписанту */
     private function resendApproval(): void
     {
-        if (!$this->hasPerm('SEND_APPROVAL')) {
+        if (!$this->permGranted('SEND_APPROVAL')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1107,7 +1086,7 @@ class GuActRepository
     /** Список подписантов РЖД или причин для страницы администрирования справочников. */
     private function refsGetAll(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1153,7 +1132,7 @@ class GuActRepository
     /** Создать нового или обновить существующего подписанта РЖД (id=0 — новый). */
     private function refSignerSave(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1174,7 +1153,7 @@ class GuActRepository
     /** Переключить флаг active у подписанта РЖД (Y → N или N → Y). */
     private function refSignerToggle(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1188,7 +1167,7 @@ class GuActRepository
     /** Создать новую или обновить существующую причину (id=0 — новая). */
     private function refReasonSave(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1207,7 +1186,7 @@ class GuActRepository
     /** Переключить флаг active у причины. */
     private function refReasonToggle(): void
     {
-        if (!$this->hasPerm('MANAGE_REFS')) {
+        if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1225,7 +1204,7 @@ class GuActRepository
     /** Список пользователей с их ролями */
     private function rolesUsers(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1275,10 +1254,10 @@ class GuActRepository
         ]);
     }
 
-    /** Матрица полномочий: все пары роль × полномочие с флагом has_perm. */
+    /** Матрица полномочий: все пары роль × полномочие с отметкой доступа. */
     private function rolePerms(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1289,7 +1268,7 @@ class GuActRepository
     /** Добавить полномочие роли. */
     private function permAssign(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1311,7 +1290,7 @@ class GuActRepository
     /** Убрать полномочие у роли. */
     private function permRevoke(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1333,7 +1312,7 @@ class GuActRepository
     /** Назначить роль пользователю. */
     private function roleAssign(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
@@ -1356,7 +1335,7 @@ class GuActRepository
     /** Отозвать роль у пользователя. */
     private function roleRevoke(): void
     {
-        if (!$this->hasPerm('MANAGE_ROLES')) {
+        if (!$this->permGranted('MANAGE_ROLES')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
