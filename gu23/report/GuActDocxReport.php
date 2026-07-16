@@ -882,8 +882,11 @@ class GuActDocxReport
             : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
         header('Content-Type: ' . $contentType);
+        $disposition = $format === 'pdf' ? 'inline' : 'attachment';
+        // Для PDF открываем в браузере.
+        // $disposition = 'attachment'; // скачать файл
         header(
-            'Content-Disposition: attachment; filename="' . $fallbackName . '"'
+            'Content-Disposition: ' . $disposition . '; filename="' . $fallbackName . '"'
             . "; filename*=UTF-8''" . rawurlencode($filename)
         );
         header('Content-Length: ' . filesize($path));

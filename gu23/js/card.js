@@ -203,7 +203,7 @@ function showDetailsBlock(act) {
   `
 
   const pdfButton = `
-    <a class="btn report-pdf" target="_blank" title="Скачать акт в PDF" href="${pdfLink}">
+    <a class="btn report-pdf" target="_blank" title="Открыть акт в PDF" href="${pdfLink}">
       <img src="/img/ms_pdf.svg" alt="PDF" width="18" height="18" style="flex-shrink:0">
     </a>
   `
