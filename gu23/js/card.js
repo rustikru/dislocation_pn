@@ -212,8 +212,7 @@ function showDetailsBlock(act) {
     act.STATUS !== 'draft' &&
     act.STATUS !== 'annulled' &&
     act.STATUS !== 'rejected'
-      ? //wordButton +
-        pdfButton
+      ? wordButton + pdfButton
       : ''
 
   $('#card-report-buttons').html(downloadHtml)

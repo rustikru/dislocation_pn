@@ -114,15 +114,15 @@ class GuActDocxReport
     {
         $printSigners = $this->getPrintSigners($act, $signers);
 
+        if (!$isDocument) {
+            return $this->replacePlaceholders($xml, $act, $printSigners);
+        }
+
         // Убираем маркеры проверки орфографии — они разбивают слова на несколько ранов
         $xml = preg_replace('#<w:proofErr[^>]*/>#', '', $xml);
 
         // Склеиваем соседние раны в каждом параграфе
         $xml = $this->mergeRuns($xml);
-
-        if (!$isDocument) {
-            return $this->replacePlaceholders($xml, $act, $printSigners);
-        }
 
         $usePep = $this->canShowPepStamp($act, $approvals);
         $xml = $this->changeSignatureBlock($xml, $usePep, $approvals);
