@@ -3,12 +3,11 @@
  * GuActDocxReport.php
  *
  * Генератор DOCX-отчётов для актов ГУ-23.
- * с помощью ZipArchive)
+ * ZipArchive)
  *
  * Шаблоны: gu23/report/template/*.docx
  * Плейсхолдеры в шаблоне: {{ACT_NUMBER}}, {{DEPT}}, {{WAGON_NO}} и т.д.
- * Строки вагонов: первая строка таблицы, содержащая {{WAGON_NO}}, повторяется
- * для каждого вагона.
+ * Строки вагонов: первая строка таблицы, содержащая {{WAGON_NO}}, повторяется для каждого вагона.
  */
 class GuActDocxReport
 {
@@ -125,14 +124,20 @@ class GuActDocxReport
         $xml = $this->mergeRuns($xml);
 
         $usePep = $this->canShowPepStamp($act, $approvals);
-        $xml = $this->changeSignatureBlock($xml, $usePep, $approvals);
+        $paperSigners = $usePep ? $this->getPaperSigners($printSigners) : $printSigners;
+        $pepApprovals = $usePep ? $this->getPepApprovals($approvals, $printSigners) : [];
+        $separateRzdBlock = $this->containsRzdSignerBlock($xml);
+        $rzdSigners = $this->getRzdSigners($paperSigners);
+        $paperRows = $separateRzdBlock ? $this->getNonRzdSigners($paperSigners) : $paperSigners;
+        $xml = $this->changeSignatureBlock($xml, $usePep, $pepApprovals, $paperRows, $rzdSigners);
 
-        // Динамический список подписантов в шаблонах, где есть {{SIGNER_LINE}} / {{SIGNER_FIO}}
+        // Динамический список подписантов в тексте акта
         $xml = $this->fillSignerLines($xml, $printSigners);
-        $xml = $this->fillSignerRows($xml, $printSigners);
+        $xml = $this->fillSignerRows($xml, $paperRows);
+        $xml = $this->fillRzdSignerRows($xml, $rzdSigners);
 
         // Простая замена плейсхолдеров
-        $xml = $this->replacePlaceholders($xml, $act, $printSigners);
+        $xml = $this->replacePlaceholders($xml, $act, $paperRows);
 
         // Автоподбор ширины колонок таблицы вагонов по содержимому
         // (до размножения строк, пока в таблице ещё есть маркер {{WAGON_NO}})
@@ -167,30 +172,22 @@ class GuActDocxReport
         return true;
     }
 
-    private function changeSignatureBlock(string $xml, bool $usePep, array $approvals): string
+    private function changeSignatureBlock(string $xml, bool $usePep, array $approvals, array $paperRows, array $rzdSigners): string
     {
         if ($usePep) {
-            $xml = $this->removeSignerTables($xml);
+            if (!$approvals) {
+                return $this->removePepTable($xml);
+            }
+            if (!$paperRows) {
+                $xml = $this->removeSignerTables($xml);
+            }
+            if (!$rzdSigners) {
+                $xml = $this->removeRzdSignerTables($xml);
+            }
             return $this->replacePepTable($xml, $approvals);
         }
 
         return $this->removePepTable($xml);
-    }
-
-    private function removeTablesByText(string $xml, array $needles): string
-    {
-        return preg_replace_callback(
-            '#<w:tbl\b.*?</w:tbl>#s',
-            static function (array $m) use ($needles): string {
-                foreach ($needles as $needle) {
-                    if (!str_contains($m[0], $needle)) {
-                        return $m[0];
-                    }
-                }
-                return '';
-            },
-            $xml
-        );
     }
 
     private function removeSignerTables(string $xml): string
@@ -199,6 +196,17 @@ class GuActDocxReport
             '#<w:tbl\b.*?</w:tbl>#s',
             function (array $m): string {
                 return $this->isSignerTable($m[0]) ? '' : $m[0];
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function removeRzdSignerTables(string $xml): string
+    {
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m): string {
+                return $this->isRzdSignerTable($m[0]) ? '' : $m[0];
             },
             $xml
         ) ?? $xml;
@@ -215,6 +223,11 @@ class GuActDocxReport
             || str_contains($plain, '{{SIGNER_2_POST}}')
             || str_contains($plain, '{{SIGNER_2_FIO}}')
         ;
+    }
+
+    private function isRzdSignerTable(string $xml): bool
+    {
+        return $this->containsRzdSignerBlock($xml);
     }
 
     private function replacePepTable(string $xml, array $approvals): string
@@ -243,7 +256,7 @@ class GuActDocxReport
             $xml
         ) ?? $xml;
     }
-
+    // ПЭП
     private function isPepTable(string $xml): bool
     {
         return str_contains($xml, '{{PEP_FULL_NAME}}')
@@ -251,7 +264,7 @@ class GuActDocxReport
             || str_contains($xml, '{{PEP_APPROVER_ID}}')
             || str_contains($xml, '{{PEP_DECIDED_AT}}');
     }
-
+    // Заполняет таблицу ПЭП
     private function pepTableXml(string $tableXml, array $approvals): string
     {
         $approved = [];
@@ -265,7 +278,7 @@ class GuActDocxReport
 
         return $approved ? $this->fillPepPlaceholders($tableXml, $approved) : $tableXml;
     }
-
+    // Заполняет плейсхолдеры ПЭП
     private function fillPepPlaceholders(string $tableXml, array $approvals): string
     {
         if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $tableXml, $paragraphs, PREG_OFFSET_CAPTURE)) {
@@ -314,7 +327,7 @@ class GuActDocxReport
 
         return substr_replace($tableXml, $filled, $start, $end - $start);
     }
-
+    // Возвращает пустой параграф
     private function emptyParagraphFromBlock(string $xml): string
     {
         if (!preg_match_all('#<w:p\b[^>]*>.*?</w:p>#s', $xml, $paragraphs)) {
@@ -357,6 +370,53 @@ class GuActDocxReport
         }
 
         return array_merge($own, $rzd);
+    }
+
+    private function getPaperSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, function (array $signer): bool {
+            return !$this->isPepSigner($signer);
+        }));
+    }
+
+    private function getRzdSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, function (array $signer): bool {
+            return strtolower((string) ($signer['STYPE'] ?? '')) === 'rzd';
+        }));
+    }
+
+    private function getNonRzdSigners(array $signers): array
+    {
+        return array_values(array_filter($signers, function (array $signer): bool {
+            return strtolower((string) ($signer['STYPE'] ?? '')) !== 'rzd';
+        }));
+    }
+
+    private function containsRzdSignerBlock(string $xml): bool
+    {
+        return preg_match($this->rzdPlaceholderPattern('POST'), $xml) === 1
+            || preg_match($this->rzdPlaceholderPattern('FIO'), $xml) === 1;
+    }
+
+    private function isPepSigner(array $signer): bool
+    {
+        $stype = strtolower((string) ($signer['STYPE'] ?? ''));
+        return $stype === 'own' && (int) ($signer['USER_ID'] ?? 0) > 0;
+    }
+
+    private function getPepApprovals(array $approvals, array $signers): array
+    {
+        $users = [];
+        foreach ($signers as $signer) {
+            if ($this->isPepSigner($signer)) {
+                $users[(int) $signer['USER_ID']] = true;
+            }
+        }
+
+        return array_values(array_filter($approvals, static function (array $approval) use ($users): bool {
+            return isset($users[(int) ($approval['APPROVER_ID'] ?? 0)]);
+        }));
     }
 
     private function fillSignerLines(string $xml, array $signers): string
@@ -408,6 +468,59 @@ class GuActDocxReport
         }
 
         return str_replace($rowTemplate, $rows, $xml);
+    }
+
+    private function fillRzdSignerRows(string $xml, array $signers): string
+    {
+        if (!$this->containsRzdSignerBlock($xml)) {
+            return $xml;
+        }
+
+        if (!$signers) {
+            return $this->removeRzdSignerTables($xml);
+        }
+
+        $done = false;
+        $xml = preg_replace_callback(
+            '#<w:tr\b(?:(?!</w:tr>).)*</w:tr>#s',
+            function (array $m) use ($signers, &$done): string {
+                if ($done || !$this->containsRzdSignerBlock($m[0])) {
+                    return $m[0];
+                }
+
+                $done = true;
+                $rows = '';
+                foreach ($signers as $signer) {
+                    $row = $this->replaceRzdSignerText($m[0], 'POST', (string) ($signer['POST'] ?? ''));
+                    $rows .= $this->replaceRzdSignerText($row, 'FIO', (string) ($signer['FIO'] ?? ''));
+                }
+
+                return $rows;
+            },
+            $xml
+        ) ?? $xml;
+
+        if (!$done) {
+            $rzd = $signers[0];
+            $xml = $this->replaceRzdSignerText($xml, 'POST', (string) ($rzd['POST'] ?? ''));
+            return $this->replaceRzdSignerText($xml, 'FIO', (string) ($rzd['FIO'] ?? ''));
+        }
+
+        return $xml;
+    }
+
+    private function replaceRzdSignerText(string $xml, string $field, string $value): string
+    {
+        return preg_replace(
+            $this->rzdPlaceholderPattern($field),
+            htmlspecialchars($value, ENT_XML1, 'UTF-8'),
+            $xml
+        ) ?? $xml;
+    }
+
+    private function rzdPlaceholderPattern(string $field): string
+    {
+        return '#\{\{SIGNER_(?:(?!\}\}).)*?RZD(?:(?!\}\}).)*?_' . preg_quote($field, '#') . '\}\}#s';
     }
 
     private function replaceTextInXml(string $xml, string $placeholder, string $value): string
