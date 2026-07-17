@@ -219,6 +219,11 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    ) return xx_disl_gu23_ref_tab
       pipelined;
 
+   function gu23_get_general_ref (
+      p_ref_code in varchar2
+   ) return xx_disl_gu23_ref_tab
+      pipelined;
+
     -- ---- Справочники станций
    function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab                         -- ст. составления
       pipelined;
@@ -628,6 +633,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          id       number,
          name     varchar2(512),
          act_kind varchar2(16),
+         categ    number,
+         categ_name varchar2(500),
          active   char(1)
    );
    type t_gu23_ref_reason_tab is
@@ -653,7 +660,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_ref_reason_save (
       p_id       in number,
       p_name     in varchar2,
-      p_act_kind in varchar2
+      p_act_kind in varchar2,
+      p_categ    in number
    ) return varchar2;
 
    function gu23_ref_reason_toggle (

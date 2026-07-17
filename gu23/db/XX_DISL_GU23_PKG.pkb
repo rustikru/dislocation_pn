@@ -613,6 +613,31 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+   function gu23_get_general_ref (
+      p_ref_code in varchar2
+   ) return xx_disl_gu23_ref_tab
+      pipelined
+   is
+      l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select id,
+                code,
+                name
+           from xx_disl_general_ref
+          where ref_code = p_ref_code
+            and sysdate between start_effect_date and end_effect_date
+          order by name
+      ) loop
+         l_row.id := r.id;
+         l_row.code := nvl(r.code, to_char(r.id));
+         l_row.name := r.name;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end;
+
     -- ст. составления
    function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab
       pipelined
@@ -3751,14 +3776,24 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select id,
                 name,
                 act_kind,
+                categ,
+                (
+                   select gr.name
+                     from xx_disl_general_ref gr
+                    where gr.id = rr.categ
+                      and gr.ref_code = 'CATEG_CAUSE'
+                      and sysdate between gr.start_effect_date and gr.end_effect_date
+                ) as categ_name,
                 active
-           from xx_disl_gu23_ref_reason
+           from xx_disl_gu23_ref_reason rr
           order by active desc,
                    name
       ) loop
          l_row.id := r.id;
          l_row.name := r.name;
          l_row.act_kind := r.act_kind;
+         l_row.categ := r.categ;
+         l_row.categ_name := r.categ_name;
          l_row.active := r.active;
          pipe row ( l_row );
       end loop;
@@ -3833,24 +3868,28 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    function gu23_ref_reason_save (
       p_id       in number,
       p_name     in varchar2,
-      p_act_kind in varchar2
+      p_act_kind in varchar2,
+      p_categ    in number
    ) return varchar2 is
    begin
       if p_id > 0 then
          update xx_disl_gu23_ref_reason
             set name = p_name,
-                act_kind = p_act_kind
+                act_kind = p_act_kind,
+                categ = p_categ
           where id = p_id;
       else
          insert into xx_disl_gu23_ref_reason (
             id,
             name,
             act_kind,
+            categ,
             active
          ) values
             ( xx_disl_gu23_ref_reason_seq.nextval,
               p_name,
               p_act_kind,
+              p_categ,
               'Y' );
       end if;
 

@@ -7,6 +7,11 @@ let refsTab = 'signers'
 let refsSearch = ''
 let refsPage = 1
 let currentItems = []
+let reasonCategories = []
+let reasonKinds = []
+let reasonKind = ''
+let reasonCateg = ''
+let reasonStatus = ''
 let searchTimer = null
 
 const REFS_PAGE_SIZE = 20 //
@@ -16,6 +21,11 @@ export function showRefs(container) {
   refsSearch = ''
   refsPage = 1
   currentItems = []
+  reasonCategories = []
+  reasonKinds = []
+  reasonKind = ''
+  reasonCateg = ''
+  reasonStatus = ''
 
   $(container).load('pages/refs.php', () => {
     prepareRefsPage(container)
@@ -35,6 +45,9 @@ function prepareRefsPage(container) {
     refsTab = tab
     refsSearch = ''
     refsPage = 1
+    reasonKind = ''
+    reasonCateg = ''
+    reasonStatus = ''
     $('#refs-search').val('')
     setActiveTab()
     loadRefsTab()
@@ -60,11 +73,27 @@ function prepareRefsPage(container) {
     const $form = $(`
       <form method="post" action="/gu23/data.php" style="display:none">
         <input type="hidden" name="ajax_action" value="gu23_reasons_excel">
+        <input type="hidden" name="search">
+        <input type="hidden" name="act_kind">
+        <input type="hidden" name="categ">
+        <input type="hidden" name="active">
       </form>
     `)
+    $form.find('[name="search"]').val(refsSearch)
+    $form.find('[name="act_kind"]').val(reasonKind)
+    $form.find('[name="categ"]').val(reasonCateg)
+    $form.find('[name="active"]').val(reasonStatus)
     $('body').append($form)
     $form.trigger('submit')
     $form.remove()
+  })
+
+  $(container).on('change.refs', '.reason-filter', function () {
+    reasonKind = $('#reason-filter-kind').val() || ''
+    reasonCateg = $('#reason-filter-categ').val() || ''
+    reasonStatus = $('#reason-filter-status').val() || ''
+    refsPage = 1
+    loadRefsTab()
   })
 }
 
@@ -75,6 +104,9 @@ function loadRefsTab() {
   sendApiRequest('gu23_refs_get_all', {
     tab: refsTab,
     search: refsSearch,
+    act_kind: refsTab === 'reasons' ? reasonKind : '',
+    categ: refsTab === 'reasons' ? reasonCateg : '',
+    active: refsTab === 'reasons' ? reasonStatus : '',
     page: refsPage,
   }).done((data) => {
     if (!data || !data.ok) {
@@ -84,6 +116,8 @@ function loadRefsTab() {
       return
     }
     currentItems = data.items || []
+    reasonCategories = data.categories || []
+    reasonKinds = data.actKinds || []
     refsPageSize = data.page_size || REFS_PAGE_SIZE
     if (refsTab === 'signers')
       showSignersList(currentItems, data.total, data.page)
@@ -273,22 +307,56 @@ function showSignerForm(signer) {
 // Причины составления
 // ─────────────────────────────────────────────
 
-const KIND_LABELS = {
+const DEFAULT_KIND_LABELS = {
   start: 'Начало',
   end: 'Окончание',
   other: 'Прочий',
   any: 'Любой',
 }
 
+function actKindItems() {
+  if (reasonKinds.length) {
+    return reasonKinds.map((row) => [String(row.CODE || row.ID || ''), row.NAME || ''])
+  }
+  return Object.entries(DEFAULT_KIND_LABELS)
+}
+
+function actKindLabel(code) {
+  const item = actKindItems().find(([kindCode]) => kindCode === code)
+  return item ? item[1] : code
+}
+
 function showReasonsList(items, total, page) {
   const canEditRefs = hasPerm('MANAGE_REFS')
+  const kindOptions =
+    '<option value="">Все</option>' +
+    actKindItems()
+      .map(
+        ([kindCode, label]) =>
+          `<option value="${kindCode}" ${reasonKind === kindCode ? 'selected' : ''}>${label}</option>`,
+      )
+      .join('')
+  const categoryOptions =
+    '<option value="">Все</option>' +
+    reasonCategories
+      .map(
+        (category) =>
+          `<option value="${category.ID}" ${String(reasonCateg) === String(category.ID) ? 'selected' : ''}>${escapeHtml(category.NAME || '')}</option>`,
+      )
+      .join('')
+  const statusOptions = `
+    <option value="" ${reasonStatus === '' ? 'selected' : ''}>Все</option>
+    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активен</option>
+    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивен</option>
+  `
   const rows = items
     .map((r) => {
       const active = r.ACTIVE === 'Y'
       return `
       <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
         <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
-        <td style="padding:5px 8px" class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
+        <td style="padding:5px 8px" class="muted">${actKindLabel(r.ACT_KIND || '')}</td>
+        <td style="padding:5px 8px" class="muted">${escapeHtml(r.CATEG_NAME || '—')}</td>
         <td style="padding:5px 8px">
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
@@ -308,10 +376,23 @@ function showReasonsList(items, total, page) {
             <tr style="font-size:12px">
               <th style="padding:5px 8px">Название</th>
               <th style="padding:5px 8px">Тип акта</th>
+              <th style="padding:5px 8px">Категория</th>
               <th style="padding:5px 8px">Статус</th>
             </tr>
+            <tr>
+              <th style="padding:3px 8px"></th>
+              <th style="padding:3px 8px">
+                <select class="inp reason-filter" id="reason-filter-kind" style="font-size:12px;padding:3px 7px;min-width:120px;height:30px">${kindOptions}</select>
+              </th>
+              <th style="padding:3px 8px">
+                <select class="inp reason-filter" id="reason-filter-categ" style="font-size:12px;padding:3px 7px;min-width:140px;height:30px">${categoryOptions}</select>
+              </th>
+              <th style="padding:3px 8px">
+                <select class="inp reason-filter" id="reason-filter-status" style="font-size:12px;padding:3px 7px;min-width:110px;height:30px">${statusOptions}</select>
+              </th>
+            </tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:10px 8px;font-size:13px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="4" class="muted" style="padding:4px 8px;font-size:12px;line-height:18px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -340,29 +421,41 @@ function showReasonsList(items, total, page) {
 function showReasonForm(reason) {
   if (!hasPerm('MANAGE_REFS')) return
   const isNew = !reason
-  const kindOptions = Object.entries(KIND_LABELS)
+  const kindOptions = actKindItems()
     .map(
       ([kindCode, label]) =>
         `<option value="${kindCode}" ${reason?.ACT_KIND === kindCode ? 'selected' : ''}>${label}</option>`,
     )
     .join('')
+  const categoryOptions =
+    '<option value="">—</option>' +
+    reasonCategories
+      .map(
+        (category) =>
+          `<option value="${category.ID}" ${String(reason?.CATEG || '') === String(category.ID) ? 'selected' : ''}>${escapeHtml(category.NAME || '')}</option>`,
+      )
+      .join('')
 
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:480px;max-width:96vw;padding:28px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="card" style="width:440px;max-width:96vw;padding:18px 20px;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <b style="font-size:16px">Причина составления</b>
           <button class="rf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
         </div>
+        <div class="frow" style="margin-bottom:9px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Название <span style="color:red">*</span></label>
+          <input class="inp rf-name" style="font-size:14px;padding:6px 9px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+        </div>
+        <div class="frow" style="margin-bottom:9px">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Тип акта</label>
+          <select class="inp rf-kind" style="font-size:14px;padding:6px 9px">${kindOptions}</select>
+        </div>
         <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Название <span style="color:red">*</span></label>
-          <input class="inp rf-name" style="font-size:14px;padding:8px 10px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Категория</label>
+          <select class="inp rf-categ" style="font-size:14px;padding:6px 9px">${categoryOptions}</select>
         </div>
-        <div class="frow" style="margin-bottom:22px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Тип акта</label>
-          <select class="inp rf-kind" style="font-size:14px;padding:8px 10px">${kindOptions}</select>
-        </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="btn ghost rf-cancel">Отмена</button>
           ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn rf-save">Сохранить</button>
@@ -404,6 +497,7 @@ function showReasonForm(reason) {
       id: reason?.ID || 0,
       name,
       act_kind: $modal.find('.rf-kind').val(),
+      categ: $modal.find('.rf-categ').val(),
     }).done((r) => {
       if (r && r.ok) {
         close()

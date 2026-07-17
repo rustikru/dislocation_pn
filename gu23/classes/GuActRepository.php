@@ -410,6 +410,7 @@ class GuActRepository
         echo json_encode([
             'cexes' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
             'reasons' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'reasonCategories' => $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))"),
             'stations' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
             'stations_from' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
             'cargos' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
@@ -1089,6 +1090,9 @@ class GuActRepository
     {
         $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
+        $actKind = trim((string) (filter_input(INPUT_POST, 'act_kind') ?? ''));
+        $categ = trim((string) (filter_input(INPUT_POST, 'categ') ?? ''));
+        $active = trim((string) (filter_input(INPUT_POST, 'active') ?? ''));
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
@@ -1108,10 +1112,31 @@ class GuActRepository
             }
         } else {
             $all = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
+            $actKinds = $this->actKindNames();
+            if ($actKind !== '') {
+                $all = array_values(array_filter($all, function ($r) use ($actKind) {
+                    return (string) ($r['ACT_KIND'] ?? '') === $actKind;
+                }));
+            }
+            if ($categ !== '') {
+                $all = array_values(array_filter($all, function ($r) use ($categ) {
+                    return (string) ($r['CATEG'] ?? '') === $categ;
+                }));
+            }
+            if ($active !== '') {
+                $all = array_values(array_filter($all, function ($r) use ($active) {
+                    return (string) ($r['ACTIVE'] ?? '') === $active;
+                }));
+            }
             if ($search !== '') {
                 $pattern = '/' . preg_quote($search, '/') . '/iu';
-                $all = array_values(array_filter($all, function ($r) use ($pattern) {
-                    return preg_match($pattern, (string) ($r['NAME'] ?? ''));
+                $all = array_values(array_filter($all, function ($r) use ($pattern, $actKinds) {
+                    $kindCode = (string) ($r['ACT_KIND'] ?? '');
+                    $kindName = $actKinds[$kindCode] ?? $kindCode;
+                    return preg_match($pattern, (string) ($r['NAME'] ?? ''))
+                        || preg_match($pattern, $kindCode)
+                        || preg_match($pattern, $kindName)
+                        || preg_match($pattern, (string) ($r['CATEG_NAME'] ?? ''));
                 }));
             }
         }
@@ -1120,22 +1145,55 @@ class GuActRepository
             'ok' => true,
             'tab' => $tab,
             'items' => array_slice($all, ($page - 1) * $limit, $limit),
+            'categories' => $tab === 'reasons'
+                ? $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))")
+                : [],
+            'actKinds' => $tab === 'reasons'
+                ? $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_ACT_KIND'))")
+                : [],
             'total' => count($all),
             'page' => $page,
             'page_size' => $limit,
         ]);
     }
 
-    /** Выгрузка всех причин в Excel. */
+    /** Выгрузка причин в Excel. */
     private function downloadReasonsExcel(): void
     {
+        $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
+        $actKind = trim((string) (filter_input(INPUT_POST, 'act_kind') ?? ''));
+        $categ = trim((string) (filter_input(INPUT_POST, 'categ') ?? ''));
+        $activeFilter = trim((string) (filter_input(INPUT_POST, 'active') ?? ''));
+
         $rows = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all()) order by NAME');
-        $kindNames = [
-            'start' => 'Начало',
-            'end' => 'Окончание',
-            'other' => 'Прочий',
-            'any' => 'Любой',
-        ];
+        $kindNames = $this->actKindNames();
+
+        if ($actKind !== '') {
+            $rows = array_values(array_filter($rows, function ($row) use ($actKind) {
+                return (string) ($row['ACT_KIND'] ?? '') === $actKind;
+            }));
+        }
+        if ($categ !== '') {
+            $rows = array_values(array_filter($rows, function ($row) use ($categ) {
+                return (string) ($row['CATEG'] ?? '') === $categ;
+            }));
+        }
+        if ($activeFilter !== '') {
+            $rows = array_values(array_filter($rows, function ($row) use ($activeFilter) {
+                return (string) ($row['ACTIVE'] ?? '') === $activeFilter;
+            }));
+        }
+        if ($search !== '') {
+            $pattern = '/' . preg_quote($search, '/') . '/iu';
+            $rows = array_values(array_filter($rows, function ($row) use ($pattern, $kindNames) {
+                $kindCode = (string) ($row['ACT_KIND'] ?? '');
+                $kindName = $kindNames[$kindCode] ?? $kindCode;
+                return preg_match($pattern, (string) ($row['NAME'] ?? ''))
+                    || preg_match($pattern, $kindCode)
+                    || preg_match($pattern, $kindName)
+                    || preg_match($pattern, (string) ($row['CATEG_NAME'] ?? ''));
+            }));
+        }
 
         if (ob_get_level() > 0) {
             ob_end_clean();
@@ -1152,40 +1210,51 @@ class GuActRepository
         $sheet->setTitle('Причины');
 
         // Общий заголовок
-        $sheet->mergeCells('A1:C1');
+        $sheet->mergeCells('A1:F1');
         $sheet->setCellValue('A1', 'Справочник причин');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         // Заголовки колонок
-        $sheet->setCellValue('A2', 'Название');
-        $sheet->setCellValue('B2', 'Тип акта');
-        $sheet->setCellValue('C2', 'Статус');
+        $sheet->setCellValue('A2', '№');
+        $sheet->setCellValue('B2', 'ID');
+        $sheet->setCellValue('C2', 'Название');
+        $sheet->setCellValue('D2', 'Тип акта');
+        $sheet->setCellValue('E2', 'Категория');
+        $sheet->setCellValue('F2', 'Статус');
 
         // Включение фильтра
-        $sheet->setAutoFilter('A2:C2');
+        $sheet->setAutoFilter('A2:F2');
 
         $rowNumber = 3;
+        $num = 1;
         foreach ($rows as $row) {
             $kindCode = (string) ($row['ACT_KIND'] ?? '');
             $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активен' : 'Неактивен';
 
-            $sheet->setCellValue('A' . $rowNumber, (string) ($row['NAME'] ?? ''));
-            $sheet->setCellValue('B' . $rowNumber, $kindNames[$kindCode] ?? $kindCode);
-            $sheet->setCellValue('C' . $rowNumber, $active);
+            $sheet->setCellValue('A' . $rowNumber, $num);
+            $sheet->setCellValue('B' . $rowNumber, (string) ($row['ID'] ?? ''));
+            $sheet->setCellValue('C' . $rowNumber, (string) ($row['NAME'] ?? ''));
+            $sheet->setCellValue('D' . $rowNumber, $kindNames[$kindCode] ?? $kindCode);
+            $sheet->setCellValue('E' . $rowNumber, (string) ($row['CATEG_NAME'] ?? ''));
+            $sheet->setCellValue('F' . $rowNumber, $active);
             $rowNumber++;
+            $num++;
         }
 
         // Стилизация
-        $sheet->getStyle('A2:C2')->getFont()->setBold(true);
-        $sheet->getStyle('A2:C' . max(2, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
+        $sheet->getStyle('A2:F2')->getFont()->setBold(true);
+        $sheet->getStyle('A2:F' . max(2, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
             \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
         );
 
-        $sheet->getColumnDimension('A')->setWidth(80);
+        $sheet->getColumnDimension('A')->setWidth(8);
         $sheet->getColumnDimension('B')->setAutoSize(true);
-        $sheet->getColumnDimension('C')->setAutoSize(true);
-        $sheet->getStyle('A:A')->getAlignment()->setWrapText(true);
+        $sheet->getColumnDimension('C')->setWidth(80);
+        $sheet->getColumnDimension('D')->setAutoSize(true);
+        $sheet->getColumnDimension('E')->setAutoSize(true);
+        $sheet->getColumnDimension('F')->setAutoSize(true);
+        $sheet->getStyle('C:C')->getAlignment()->setWrapText(true);
 
         // Применяем жирный шрифт и выравнивание для общего заголовка
         $sheet->getStyle('A1')->getFont()->setBold(true);
@@ -1201,6 +1270,26 @@ class GuActRepository
         $writer->save('php://output');
         $spreadsheet->disconnectWorksheets();
         exit;
+    }
+
+    private function actKindNames(): array
+    {
+        $names = [
+            'start' => 'Начало',
+            'end' => 'Окончание',
+            'other' => 'Прочий',
+            'any' => 'Любой',
+        ];
+
+        $rows = $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_ACT_KIND'))");
+        foreach ($rows as $row) {
+            $code = (string) ($row['CODE'] ?? '');
+            if ($code !== '') {
+                $names[$code] = (string) ($row['NAME'] ?? $code);
+            }
+        }
+
+        return $names;
     }
 
     /** Переключить флаг active у подписанта РЖД (Y → N или N → Y). */
@@ -1227,9 +1316,11 @@ class GuActRepository
         $id = (int) filter_input(INPUT_POST, 'id');
         $name = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'name'));
         $actKind = (string) filter_input(INPUT_POST, 'act_kind');
+        $categValue = filter_input(INPUT_POST, 'categ');
+        $categ = ($categValue === null || $categValue === '') ? null : (int) $categValue;
         $res = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',
-            [':id' => $id, ':name' => $name, ':kind' => $actKind]
+            'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind,:categ)',
+            [':id' => $id, ':name' => $name, ':kind' => $actKind, ':categ' => $categ]
         );
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
