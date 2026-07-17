@@ -17,15 +17,15 @@ export function drawNav() {
     icon: 'archive.svg',
     label: 'Архив актов',
   })
-
-  if (hasPerm('MANAGE_REFS')) {
-    // Справочники
-    navigationItems.push({
-      page: 'refs',
-      icon: 'agenda.svg',
-      label: 'Справочники',
-    })
-  }
+  // rem 17.07.2026 BekmansurovRR Справочники доступны всем пользователям, только на просмотр, без возможности редактирования.
+  //if (hasPerm('MANAGE_REFS')) {
+  // Справочники
+  navigationItems.push({
+    page: 'refs',
+    icon: 'agenda.svg',
+    label: 'Справочники',
+  })
+  //}
 
   if (hasPerm('MANAGE_ROLES')) {
     // Роли
@@ -74,13 +74,13 @@ export function drawNav() {
   const $foot = $('<div class="foot"></div>')
 
   // Показываем текущего пользователя
-  const sess = window.GU23_SESSION || {}
-  if (sess.login) {
+  const currentUser = window.GU23_SESSION || {}
+  if (currentUser.login) {
     const $user = $(`
       <div style="padding:8px 11px 4px;border-top:1px solid var(--line);margin-top:6px">
         <div style="font-size:11px;color:var(--muted);line-height:1.4">
-          <div style="font-weight:600;color:var(--ink2);font-size:12px">${sess.full_name || sess.login}</div>
-          <div style="font-family:var(--mono);font-size:10.5px">${sess.login}${sess.is_admin ? ' · admin' : ''}</div>
+          <div style="font-weight:600;color:var(--ink2);font-size:12px">${currentUser.full_name || currentUser.login}</div>
+          <div style="font-family:var(--mono);font-size:10.5px">${currentUser.login}${currentUser.is_admin ? ' · admin' : ''}</div>
         </div>
       </div>
     `)

@@ -1,13 +1,13 @@
 import { escapeHtml } from './utils.js'
 
 // Справочники отображения статусов
-const actTypesConfig = {
+const actTypeLabels = {
   start: { label: 'Начало простоя', className: 'typ-start' },
   end: { label: 'Окончание простоя', className: 'typ-end' },
   other: { label: 'Прочий акт', className: 'typ-other' },
 }
 
-const actStatusesConfig = {
+const actStatusLabels = {
   draft: { label: 'Проект', className: 'st-draft' },
   active: { label: 'Открыт', className: 'st-signed' },
   closed: { label: 'Закрыт', className: 'st-closed' },
@@ -17,30 +17,30 @@ const actStatusesConfig = {
 }
 
 export function showStatusChip(status) {
-  const config = actStatusesConfig[status] || {
+  const statusInfo = actStatusLabels[status] || {
     label: status,
     className: 'st-draft',
   }
-  return `<span class="chip ${config.className}">${config.label}</span>`
+  return `<span class="chip ${statusInfo.className}">${statusInfo.label}</span>`
 }
 /* Название типа акта */
 export function showTypeName(type) {
-  const config = actTypesConfig[type] || { label: type, className: 'typ-other' }
-  return config.label
+  const typeInfo = actTypeLabels[type] || { label: type, className: 'typ-other' }
+  return typeInfo.label
 }
 
 /* Название статуса акта */
 export function showStatusName(status) {
-  const config = actStatusesConfig[status] || {
+  const statusInfo = actStatusLabels[status] || {
     label: status,
     className: 'st-draft',
   }
-  return config.label
+  return statusInfo.label
 }
 
 export function showTypeChip(type) {
-  const config = actTypesConfig[type] || { label: type, className: 'typ-other' }
-  return `<span class="typchip ${config.className}">${config.label}</span>`
+  const typeInfo = actTypeLabels[type] || { label: type, className: 'typ-other' }
+  return `<span class="typchip ${typeInfo.className}">${typeInfo.label}</span>`
 }
 
 // Шаблон поля формы
@@ -107,7 +107,7 @@ export function openModalWindow(title, contentHtml, buttons = []) {
   })
 
   buttons.forEach((button, index) => {
-    $(`#modal-btn-${index}`).on('click', () => button.callback())
+    $(`#modal-btn-${index}`).on('click', () => button.onClick())
   })
 }
 
@@ -119,11 +119,11 @@ export function closeModalWindow() {
 export function showConfirmBox(title, message, onConfirm) {
   const content = `<p>${escapeHtml(message)}</p>`
   openModalWindow(title, content, [
-    { label: 'Отмена', className: 'btn ghost', callback: closeModalWindow },
+    { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
     {
       label: 'Подтвердить',
       className: 'btn primary',
-      callback: () => {
+      onClick: () => {
         closeModalWindow()
         onConfirm()
       },
@@ -138,11 +138,11 @@ export function showPromptBox(title, message, onConfirm) {
     <textarea class="inp" id="prompt-textarea" style="min-height:80px"></textarea>
   `
   openModalWindow(title, content, [
-    { label: 'Отмена', className: 'btn ghost', callback: closeModalWindow },
+    { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
     {
       label: 'OK',
       className: 'btn primary',
-      callback: () => {
+      onClick: () => {
         const value = $('#prompt-textarea').val().trim()
         closeModalWindow()
         onConfirm(value)

@@ -10,16 +10,16 @@ export function showArchive(container) {
 
 function showArchivePage(container) {
   // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
-  const pad2 = (n) => String(n).padStart(2, '0')
+  const twoDigits = (n) => String(n).padStart(2, '0')
   const toInputDate = (d) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+    `${d.getFullYear()}-${twoDigits(d.getMonth() + 1)}-${twoDigits(d.getDate())}`
   const toFilterDate = (d) =>
-    `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`
+    `${twoDigits(d.getDate())}.${twoDigits(d.getMonth() + 1)}.${d.getFullYear()}`
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-  const filterState = {
+  const archiveFilter = {
     q: '',
     type: '',
     status: '',
@@ -33,23 +33,23 @@ function showArchivePage(container) {
 
   // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
   // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
-  const positionMenu = ($btn, $menu) => {
-    const r = $btn[0].getBoundingClientRect()
-    const mw = $menu.outerWidth()
-    let left = r.left
-    if (left + mw > window.innerWidth - 8) {
-      left = Math.max(8, window.innerWidth - mw - 8)
+  const placeMenuNearButton = ($btn, $menu) => {
+    const buttonRect = $btn[0].getBoundingClientRect()
+    const menuWidth = $menu.outerWidth()
+    let left = buttonRect.left
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - menuWidth - 8)
     }
     $menu.css({
       position: 'fixed',
-      top: r.bottom + 4 + 'px',
+      top: buttonRect.bottom + 4 + 'px',
       left: left + 'px',
       right: 'auto',
     })
   }
 
   // Создание фильтра с множественным выбором
-  const createMultiSelectFilter = (options, labels, key) => {
+  const addMultiChoiceFilter = (options, labels, key) => {
     const allLabel = labels[0] // первый элемент — «Все …»
     const $wrap = $('<div class="ms-filter"></div>')
     const $btn = $(
@@ -66,28 +66,28 @@ function showArchivePage(container) {
         '<input type="text" class="ms-search" placeholder="Поиск…">',
       )
       $search.on('input', function () {
-        const q = this.value.trim().toLowerCase()
+        const searchText = this.value.trim().toLowerCase()
         $menu.find('.ms-item').each(function () {
-          const txt = $(this).find('span').text().toLowerCase()
-          $(this).toggle(txt.indexOf(q) !== -1)
+          const itemText = $(this).find('span').text().toLowerCase()
+          $(this).toggle(itemText.indexOf(searchText) !== -1)
         })
       })
       $menu.append($search)
     }
 
     // чекбоксы для  значений
-    options.forEach((val, idx) => {
-      if (val === '') return
+    options.forEach((filterValue, idx) => {
+      if (filterValue === '') return
       $menu.append(
         '<label class="ms-item"><input type="checkbox" value="' +
-          val +
+          filterValue +
           '"><span>' +
           labels[idx] +
           '</span></label>',
       )
     })
 
-    const updateLabel = () => {
+    const refreshFilterButton = () => {
       const $checked = $menu.find('input:checked')
       if ($checked.length === 0) $btn.text(allLabel)
       else if ($checked.length === 1)
@@ -97,13 +97,13 @@ function showArchivePage(container) {
     }
 
     $menu.on('change', 'input', () => {
-      filterState[key] = $menu
+      archiveFilter[key] = $menu
         .find('input:checked')
         .map((i, el) => el.value)
         .get()
         .join(',')
-      filterState.page = 1
-      updateLabel()
+      archiveFilter.page = 1
+      refreshFilterButton()
       loadArchiveData()
     })
 
@@ -114,7 +114,7 @@ function showArchivePage(container) {
       $('.ms-menu').hide() // закрыть все
       if (willOpen) {
         $menu.show() // показать, чтобы измерить ширину
-        positionMenu($btn, $menu)
+        placeMenuNearButton($btn, $menu)
       }
     })
 
@@ -123,12 +123,12 @@ function showArchivePage(container) {
   }
 
   // Инициализация фильтров
-  createMultiSelectFilter(
+  addMultiChoiceFilter(
     ['', 'start', 'end', 'other'],
     ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
     'type',
   )
-  createMultiSelectFilter(
+  addMultiChoiceFilter(
     ['', 'draft', 'active', 'closed', 'annulled', 'signed', 'rejected'],
     [
       'Все статусы',
@@ -143,7 +143,7 @@ function showArchivePage(container) {
   )
 
   const departmentCodes = references.departmentsList.map((d) => d.CODE)
-  createMultiSelectFilter(
+  addMultiChoiceFilter(
     [''].concat(references.departmentsList.map((d) => String(d.ID))),
     ['Все цеха'].concat(departmentCodes),
     'dept',
@@ -166,17 +166,17 @@ function showArchivePage(container) {
       '">',
   )
   $dateFrom.on('change', (e) => {
-    filterState.date_from = e.target.value
+    archiveFilter.date_from = e.target.value
       ? e.target.value.split('-').reverse().join('.')
       : ''
-    filterState.page = 1
+    archiveFilter.page = 1
     loadArchiveData()
   })
   $dateTo.on('change', (e) => {
-    filterState.date_to = e.target.value
+    archiveFilter.date_to = e.target.value
       ? e.target.value.split('-').reverse().join('.')
       : ''
-    filterState.page = 1
+    archiveFilter.page = 1
     loadArchiveData()
   })
   $('#archive-filters').append($dateFrom, $dateTo)
@@ -203,13 +203,13 @@ function showArchivePage(container) {
     $('.ms-menu').hide()
     if (willOpen) {
       $extraMenu.show()
-      positionMenu($extraBtn, $extraMenu)
+      placeMenuNearButton($extraBtn, $extraMenu)
     }
   })
   $extraMenu.on('change', '#filter-has-signed', function () {
-    filterState.has_signed = this.value === 'signed' ? 'Y' : ''
-    filterState.page = 1
-    $extraBtn.toggleClass('has-value', !!filterState.has_signed)
+    archiveFilter.has_signed = this.value === 'signed' ? 'Y' : ''
+    archiveFilter.page = 1
+    $extraBtn.toggleClass('has-value', !!archiveFilter.has_signed)
     loadArchiveData()
   })
   $extraWrap.append($extraBtn, $extraMenu)
@@ -220,15 +220,15 @@ function showArchivePage(container) {
 
   // Поиск с задержкой
   $('#search-input').on('input', function () {
-    filterState.q = $(this).val().trim()
-    filterState.page = 1
+    archiveFilter.q = $(this).val().trim()
+    archiveFilter.page = 1
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(loadArchiveData, 250)
   })
 
   // Загрузка таблицы
   function loadArchiveData() {
-    sendApiRequest('gu23_get_acts', filterState).done((resp) => {
+    sendApiRequest('gu23_get_acts', archiveFilter).done((resp) => {
       const acts =
         resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []
       const total = resp && resp.total ? resp.total : acts.length
@@ -258,7 +258,7 @@ function showArchivePage(container) {
       let rowsHtml = ''
 
       // Функция генерации строки
-      function generateRowHtml(act, isChild) {
+      function actRowHtml(act, isChild) {
         const rowClass = isChild ? 'child-row' : 'root-row'
         const cellStyle = isChild
           ? ' style="padding-left: 35px; color: var(--ink2); font-weight: normal;"'
@@ -317,10 +317,10 @@ function showArchivePage(container) {
 
       // Собираем иерархию (по умолчанию все развернуты)
       rootActs.forEach((rootAct) => {
-        rowsHtml += generateRowHtml(rootAct, false)
+        rowsHtml += actRowHtml(rootAct, false)
         const children = childActsMap[rootAct.ACT_NUMBER] || []
         children.forEach((childAct) => {
-          rowsHtml += generateRowHtml(childAct, true)
+          rowsHtml += actRowHtml(childAct, true)
         })
       })
 
@@ -329,14 +329,14 @@ function showArchivePage(container) {
       Object.keys(childActsMap).forEach((parentNum) => {
         if (rootNumbers.has(parentNum)) return
         childActsMap[parentNum].forEach((childAct) => {
-          rowsHtml += generateRowHtml(childAct, false)
+          rowsHtml += actRowHtml(childAct, false)
         })
       })
 
       // Добавляем прочие/одиночные акты
       independentActs.forEach((act) => {
         if (act.ACT_START_NUMBER && childActsMap[act.ACT_START_NUMBER]) return
-        rowsHtml += generateRowHtml(act, false)
+        rowsHtml += actRowHtml(act, false)
       })
 
       if (!acts.length) {
@@ -345,35 +345,35 @@ function showArchivePage(container) {
       }
 
       const totalPages = Math.max(1, Math.ceil(total / pageSize))
-      const pagerBtns = []
+      const pageButtonsHtml = []
       if (page > 1)
-        pagerBtns.push(
+        pageButtonsHtml.push(
           '<button class="btn sm ghost pager-btn" data-p="' +
             (page - 1) +
             '">←</button>',
         )
-      for (let p = 1; p <= totalPages; p++) {
+      for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
         if (
           totalPages <= 7 ||
-          Math.abs(p - page) <= 2 ||
-          p === 1 ||
-          p === totalPages
+          Math.abs(pageNumber - page) <= 2 ||
+          pageNumber === 1 ||
+          pageNumber === totalPages
         ) {
-          pagerBtns.push(
+          pageButtonsHtml.push(
             '<button class="btn sm' +
-              (p === page ? '' : ' ghost') +
+              (pageNumber === page ? '' : ' ghost') +
               ' pager-btn" data-p="' +
-              p +
+              pageNumber +
               '">' +
-              p +
+              pageNumber +
               '</button>',
           )
-        } else if (pagerBtns[pagerBtns.length - 1] !== '…') {
-          pagerBtns.push('…')
+        } else if (pageButtonsHtml[pageButtonsHtml.length - 1] !== '…') {
+          pageButtonsHtml.push('…')
         }
       }
       if (page < totalPages)
-        pagerBtns.push(
+        pageButtonsHtml.push(
           '<button class="btn sm ghost pager-btn" data-p="' +
             (page + 1) +
             '">→</button>',
@@ -405,7 +405,7 @@ function showArchivePage(container) {
         total +
         '</span>' +
         '<div style="flex:1"></div>' +
-        pagerBtns.join('') +
+        pageButtonsHtml.join('') +
         '</div>'
 
       $('#acts-table-container').html(tableHtml)
@@ -413,7 +413,7 @@ function showArchivePage(container) {
       $('#acts-table-container')
         .off('click', '.pager-btn')
         .on('click', '.pager-btn', function () {
-          filterState.page = parseInt($(this).data('p'))
+          archiveFilter.page = parseInt($(this).data('p'))
           loadArchiveData()
         })
 

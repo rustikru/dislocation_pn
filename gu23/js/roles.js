@@ -8,16 +8,15 @@ let searchTimeout = null
 let rolesSearch = ''
 let rolesPage = 1
 
-// Данные, загруженные
-let matrixData = null // { roles, perms, cells: {perm_id: {role_id: 'Y'/'N'}} }
+let rolePermsTable = null
 
 export function showRoles(container) {
   rolesSearch = ''
   rolesPage = 1
-  matrixData = null
+  rolePermsTable = null
 
   $(container).load('pages/roles.php', () => {
-    loadMatrix()
+    loadRolePerms()
     loadUsers()
   })
 }
@@ -26,7 +25,7 @@ export function showRoles(container) {
    Матрица полномочий
    ══════════════════════════════════════════════════════════ */
 
-function loadMatrix() {
+function loadRolePerms() {
   $('#roles-matrix-wrap').html(
     '<div class="muted" style="font-size:13px">Загрузка...</div>',
   )
@@ -37,12 +36,12 @@ function loadMatrix() {
       )
       return
     }
-    fillMatrixData(resp.rows || [])
-    showMatrix()
+    fillRolePermsTable(resp.rows || [])
+    showRolePerms()
   })
 }
 
-function fillMatrixData(rows) {
+function fillRolePermsTable(rows) {
   const rolesMap = {}
   const permsMap = {}
   const cells = {} // cells[perm_id][role_id] = 'Y'/'N'
@@ -62,16 +61,16 @@ function fillMatrixData(rows) {
     cells[r.PERM_ID][r.ROLE_ID] = r.HAS_PERM
   })
 
-  matrixData = {
+  rolePermsTable = {
     roles: Object.values(rolesMap),
     perms: Object.values(permsMap),
     cells,
   }
 }
 
-function showMatrix() {
-  if (!matrixData) return
-  const { roles, perms, cells } = matrixData
+function showRolePerms() {
+  if (!rolePermsTable) return
+  const { roles, perms, cells } = rolePermsTable
 
   if (!roles.length || !perms.length) {
     $('#roles-matrix-wrap').html(
@@ -80,7 +79,7 @@ function showMatrix() {
     return
   }
 
-  const thCols = roles
+  const roleHeadersHtml = roles
     .map(
       (r) =>
         `<th style="text-align:center;min-width:110px">
@@ -91,7 +90,7 @@ function showMatrix() {
 
   const rows = perms
     .map((p) => {
-      const tds = roles
+      const roleCellsHtml = roles
         .map((r) => {
           const has = cells[p.id]?.[r.id] === 'Y'
           return `<td style="text-align:center">
@@ -106,7 +105,7 @@ function showMatrix() {
         .join('')
       return `<tr>
         <td class="perm-label">${escapeHtml(p.descr)}</td>
-        ${tds}
+        ${roleCellsHtml}
       </tr>`
     })
     .join('')
@@ -124,7 +123,7 @@ function showMatrix() {
           <thead>
             <tr>
               <th style="min-width:240px">Полномочие</th>
-              ${thCols}
+              ${roleHeadersHtml}
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -175,7 +174,8 @@ function assignPerm(roleId, permId, checkbox) {
     .done((r) => {
       if (r && r.ok) {
         // обновляем  кеш
-        if (matrixData?.cells[permId]) matrixData.cells[permId][roleId] = 'Y'
+        if (rolePermsTable?.cells[permId])
+          rolePermsTable.cells[permId][roleId] = 'Y'
         showToast('Полномочие добавлено', 'ok')
       } else {
         showToast(r?.msg || 'Ошибка', 'err')
@@ -195,7 +195,8 @@ function revokePerm(roleId, permId, checkbox) {
   sendApiRequest('gu23_perm_revoke', { role_id: roleId, perm_id: permId })
     .done((r) => {
       if (r && r.ok) {
-        if (matrixData?.cells[permId]) matrixData.cells[permId][roleId] = 'N'
+        if (rolePermsTable?.cells[permId])
+          rolePermsTable.cells[permId][roleId] = 'N'
         showToast('Полномочие убрано', 'ok')
       } else {
         showToast(r?.msg || 'Ошибка', 'err')
@@ -237,7 +238,7 @@ function loadUsers() {
 function showUsers(users, roles, total, page, pageSize) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
 
-  const thRoles = roles
+  const roleHeadersHtml = roles
     .map(
       (r) =>
         `<th style="text-align:center;width:110px" title="${escapeHtml(r.ROLE_CODE)}">
@@ -246,7 +247,7 @@ function showUsers(users, roles, total, page, pageSize) {
     )
     .join('')
 
-  const tbody = users.length
+  const userRowsHtml = users.length
     ? users.map((u) => userRowHtml(u, roles)).join('')
     : `<tr><td colspan="${2 + roles.length}" class="muted" style="text-align:center;padding:30px">
         Пользователи не найдены
@@ -272,10 +273,10 @@ function showUsers(users, roles, total, page, pageSize) {
             <tr>
               <th style="min-width:130px">Логин</th>
               <th>ФИО</th>
-              ${thRoles}
+              ${roleHeadersHtml}
             </tr>
           </thead>
-          <tbody>${tbody}</tbody>
+          <tbody>${userRowsHtml}</tbody>
         </table>
       </div>
       ${pagination}
@@ -292,9 +293,9 @@ function showUsers(users, roles, total, page, pageSize) {
 
   // Постраничный вывод
   $('#roles-users-wrap').on('click', '.page-btn', function () {
-    const p = parseInt($(this).data('page'), 10)
-    if (!p || p === rolesPage) return
-    rolesPage = p
+    const pageNumber = parseInt($(this).data('page'), 10)
+    if (!pageNumber || pageNumber === rolesPage) return
+    rolesPage = pageNumber
     loadUsers()
   })
 
@@ -322,7 +323,7 @@ function showUsers(users, roles, total, page, pageSize) {
 
 function userRowHtml(u, roles) {
   const assignedIds = new Set(u.roles.map((r) => String(r.role_id)))
-  const cells = roles
+  const roleCellsHtml = roles
     .map((r) => {
       const checked = assignedIds.has(String(r.ROLE_ID))
       return `<td style="text-align:center">
@@ -340,30 +341,30 @@ function userRowHtml(u, roles) {
   return `<tr>
     <td class="muted" style="font-family:var(--mono);font-size:12px">${escapeHtml(u.login || '')}</td>
     <td><b>${escapeHtml(u.full_name || '')}</b></td>
-    ${cells}
+    ${roleCellsHtml}
   </tr>`
 }
 
 function pagesHtml(page, pages, total) {
   if (pages <= 1) return ''
 
-  const btns = []
+  const pageButtonsHtml = []
   const delta = 2
 
   for (let i = 1; i <= pages; i++) {
     if (i === 1 || i === pages || (i >= page - delta && i <= page + delta)) {
-      btns.push(
+      pageButtonsHtml.push(
         `<button class="page-btn ${i === page ? 'page-btn-active' : ''}" data-page="${i}">${i}</button>`,
       )
-    } else if (btns[btns.length - 1] !== '…') {
-      btns.push('…')
+    } else if (pageButtonsHtml[pageButtonsHtml.length - 1] !== '…') {
+      pageButtonsHtml.push('…')
     }
   }
 
   return `
     <div style="display:flex;align-items:center;justify-content:center;gap:4px;padding:12px 16px;border-top:1px solid var(--line)">
       <button class="page-btn" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>‹</button>
-      ${btns.join('')}
+      ${pageButtonsHtml.join('')}
       <button class="page-btn" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>›</button>
     </div>
   `

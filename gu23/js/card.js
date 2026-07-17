@@ -57,10 +57,10 @@ function showCardView(data) {
 
 function showActionsMenu(act, data) {
   const $menu = $('#actions-menu')
-  let count = 0
+  let menuItemsCount = 0
 
   // helper: пункт меню
-  const addItem = (label, onClick, variant = '') => {
+  const addMenuItem = (label, onClick, variant = '') => {
     const $item = $(
       `<button class="menu-item${variant ? ' ' + variant : ''}">${label}</button>`,
     )
@@ -69,19 +69,19 @@ function showActionsMenu(act, data) {
       onClick()
     })
     $menu.append($item)
-    count++
+    menuItemsCount++
   }
 
   // --- черновик: редактирование / удаление ---
   // Редактировать и удалять можно только Проект (draft).
   if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT') && data.canEditDraft) {
-    addItem('Редактировать', () => editDraftAct(data))
-    addItem('Удалить проект', () => deleteDraftAct(act), 'danger')
+    addMenuItem('Редактировать', () => editDraftAct(data))
+    addMenuItem('Удалить проект', () => deleteDraftAct(act), 'danger')
   }
   //  Правка акта «на подписании» администратором — пока отключено.
   // gu23_save_act). ограничить типом: добавить && act.ACT_TYPE === 'other'.
   // else if (act.STATUS === 'active' && isAdmin()) {
-  //   addItem('Редактировать', () => editDraftAct(data))
+  //   addMenuItem('Редактировать', () => editDraftAct(data))
   // }
 
   // --- рассылка ссылок на подписание ---
@@ -92,18 +92,18 @@ function showActionsMenu(act, data) {
     data.signers &&
     data.signers.length
   ) {
-    const approvalMap = {}
+    const approvalsByUser = {}
     ;(data.approvals || []).forEach((a) => {
-      approvalMap[a.APPROVER_ID] = a
+      approvalsByUser[a.APPROVER_ID] = a
     })
     const hasUnsigned = data.signers.some((s) => {
       if (s.STYPE === 'rzd' || !s.USER_ID) return false
-      const appr = approvalMap[s.USER_ID]
-      return !appr || appr.STATUS !== 'approved'
+      const approval = approvalsByUser[s.USER_ID]
+      return !approval || approval.STATUS !== 'approved'
     })
 
     if (hasUnsigned) {
-      addItem('Рассылка ссылок на подписание', () =>
+      addMenuItem('Рассылка ссылок на подписание', () =>
         resendApprovalLinks(act, data.signers, data.approvals || []),
       )
     }
@@ -115,7 +115,7 @@ function showActionsMenu(act, data) {
     (act.ACT_TYPE === 'end' || act.ACT_TYPE === 'other') &&
     hasPerm('CLOSE_ACT')
   ) {
-    addItem('Закрыть акт', () => closeAct(act))
+    addMenuItem('Закрыть акт', () => closeAct(act))
   }
 
   // --- аннулирование ---
@@ -125,11 +125,11 @@ function showActionsMenu(act, data) {
       act.STATUS === 'closed') &&
     hasPerm('ANNUL_ACT')
   ) {
-    addItem('Аннулировать акт', () => annulActiveAct(act), 'danger')
+    addMenuItem('Аннулировать акт', () => annulActiveAct(act), 'danger')
   }
 
   // показываем меню, только если есть хотя бы одно действие
-  if (count > 0) {
+  if (menuItemsCount > 0) {
     $('#actions-dd').show()
     $('#btn-actions').on('click', (e) => {
       e.stopPropagation()
@@ -258,18 +258,18 @@ function showSignersBlock(
   currentUserId,
 ) {
   // map: approver_id → approval record
-  const approvalMap = {}
+  const approvalsByUser = {}
   approvals.forEach((a) => {
-    approvalMap[a.APPROVER_ID] = a
+    approvalsByUser[a.APPROVER_ID] = a
   })
   const currentSigner = (signers || []).find((s) => {
     if (s.STYPE === 'rzd' || !s.USER_ID) return false
-    const approval = approvalMap[s.USER_ID]
+    const approval = approvalsByUser[s.USER_ID]
     return !approval || approval.STATUS === 'pending'
   })
   const currentSignerId = currentSigner ? String(currentSigner.USER_ID) : ''
   // Статусы для подписантов
-  const statusPill = (status) => {
+  const statusLabelHtml = (status) => {
     if (status === 'approved')
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47"> Подписано</span>'
     if (status === 'rejected')
@@ -279,23 +279,23 @@ function showSignersBlock(
     return ''
   }
   // Версия документа
-  const versionBadge = (approval) => {
+  const versionLabelHtml = (approval) => {
     if (!approval || approval.STATUS !== 'approved') return ''
-    const sv = approval.SIGNED_VERSION
-    const cv = act.CONTENT_VERSION
-    if (!sv || !cv) return ''
-    const match = String(sv) === String(cv)
+    const signedVersion = approval.SIGNED_VERSION
+    const currentVersion = act.CONTENT_VERSION
+    if (!signedVersion || !currentVersion) return ''
+    const sameVersion = String(signedVersion) === String(currentVersion)
     return ''
-    return match
-      ? `<span title="Подписано версию ${sv}, текущая версия ${cv}" style="font-size:10px;color:#2d7a47;margin-left:4px">v${sv}</span>`
-      : `<span title="Подписано версию ${sv}, но документ изменён (текущая v${cv})" style="font-size:10px;color:#b45309;margin-left:4px;font-weight:600">v${sv} </span>`
+    return sameVersion
+      ? `<span title="Подписано версию ${signedVersion}, текущая версия ${currentVersion}" style="font-size:10px;color:#2d7a47;margin-left:4px">v${signedVersion}</span>`
+      : `<span title="Подписано версию ${signedVersion}, но документ изменён (текущая v${currentVersion})" style="font-size:10px;color:#b45309;margin-left:4px;font-weight:600">v${signedVersion} </span>`
   }
 
   const listHtml = signers.length
     ? signers
         .map((s) => {
           const isRzd = s.STYPE === 'rzd'
-          const approval = !isRzd && s.USER_ID ? approvalMap[s.USER_ID] : null
+          const approval = !isRzd && s.USER_ID ? approvalsByUser[s.USER_ID] : null
           const isCurrentSigner =
             currentSignerId !== '' && String(s.USER_ID) === currentSignerId
           let pill = ''
@@ -307,9 +307,9 @@ function showSignersBlock(
             approval?.STATUS === 'approved' ||
             approval?.STATUS === 'rejected'
           ) {
-            pill = statusPill(approval.STATUS)
+            pill = statusLabelHtml(approval.STATUS)
           } else if (isCurrentSigner && act.STATUS === 'active') {
-            pill = statusPill('pending')
+            pill = statusLabelHtml('pending')
           }
           const subtitle = [s.POST, s.ORG].filter(Boolean).join(' · ')
           const rejectReason =
@@ -323,7 +323,7 @@ function showSignersBlock(
               <div style="font-size:13px"><b>${escapeHtml(s.FIO)}</b></div>
               ${subtitle ? `<div class="muted" style="font-size:11.5px">${escapeHtml(subtitle)}</div>` : ''}
             </div>
-            <div style="flex-shrink:0">${pill}${versionBadge(approval)}</div>
+            <div style="flex-shrink:0">${pill}${versionLabelHtml(approval)}</div>
           </div>
           ${rejectReason}
         </div>`
@@ -405,7 +405,7 @@ function showAttachmentsBlock(
 ) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
-  const addBtn = canChangeFiles
+  const addFileButtonsHtml = canChangeFiles
     ? `
     <div style="display:flex;gap:4px">
       <label title="Прикрепить общий файл" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--ink2);line-height:1">
@@ -450,12 +450,12 @@ function showAttachmentsBlock(
   )
   const signed = files.filter((f) => f.FILE_CATEGORY === 'signed')
 
-  const bodyHtml = files.length
+  const filesHtml = files.length
     ? showFileSection('ОБЩИЕ', general) + showFileSection('ПОДПИСАННЫЕ', signed)
     : '<div class="muted" style="font-size:12.5px">Файлы не прикреплены.</div>'
 
-  $('#card-files-buttons').html(addBtn)
-  $('#card-files-body').html(bodyHtml)
+  $('#card-files-buttons').html(addFileButtonsHtml)
+  $('#card-files-body').html(filesHtml)
   const $block = $('#card-files-block')
 
   $block
@@ -595,16 +595,16 @@ function closeAct(act) {
 }
 // --- рассылка ссылок на подписание ---
 function resendApprovalLinks(act, signers, approvals) {
-  const approvalMap = {}
+  const approvalsByUser = {}
   ;(approvals || []).forEach((a) => {
-    approvalMap[a.APPROVER_ID] = a
+    approvalsByUser[a.APPROVER_ID] = a
   })
 
   const unsigned = (signers || [])
     .filter((s) => {
       if (s.STYPE === 'rzd' || !s.USER_ID) return false
-      const appr = approvalMap[s.USER_ID]
-      return !appr || appr.STATUS !== 'approved'
+      const approval = approvalsByUser[s.USER_ID]
+      return !approval || approval.STATUS !== 'approved'
     })
     .slice(0, 1)
 

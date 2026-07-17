@@ -1259,6 +1259,59 @@ textarea.inp {
   font-weight: 600;
   margin-bottom: -1px;
 }
+.refs-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.refs-search {
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  font-size: 13px;
+  text-align: right;
+}
+.refs-actions {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.refs-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-right: 1px solid var(--line2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.refs-action-btn:last-child {
+  border-right: 0;
+}
+.refs-action-btn:hover {
+  background: var(--raise);
+}
+.refs-plus {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 400;
+}
+.refs-excel-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
 .perm-matrix tr {
   cursor: default;
 }

@@ -71,7 +71,6 @@ function showFormFields() {
 
 function showEndActChoice() {
   const $place = $('#form-linked-start-place').empty()
-  // Особенность для "акта Окончания простоя"
   // Акт окончания простоя создается только на основе акта на начало простоя
   if (activeDraft.type !== 'end') return
 
@@ -113,7 +112,7 @@ function showDateField() {
 
   if (dateRowHtml) {
     $place.html(`<div class="cols">${dateRowHtml}<div></div></div>`)
-    // Подключаем маску/обработку из внешних модулей для дат, которые используются в general_function.js
+    // маска из  general_function.js
     if (typeof init_date_time_input === 'function') {
       init_date_time_input($('.datetime-inp'))
     }
@@ -142,16 +141,16 @@ function showMainFields() {
     .join('')
   const stationsHtml = references.stationsList
     .map(
-      (s) =>
-        `<option value="${s.CODE}" ${activeDraft.stationId === String(s.CODE) ? 'selected' : ''}>${s.NAME}</option>`,
+      (station) =>
+        `<option value="${station.CODE}" ${activeDraft.stationId === String(station.CODE) ? 'selected' : ''}>${station.NAME}</option>`,
     )
     .join('')
-  // Имя станции отправления для начального значения автокомплита
+  // Имя станции отправления для значения автокомплита
   const stationFromName = (() => {
-    const s = (references.stationsFromList || []).find(
-      (s) => String(s.CODE) === String(activeDraft.stationFromId),
+    const station = (references.stationsFromList || []).find(
+      (station) => String(station.CODE) === String(activeDraft.stationFromId),
     )
-    return s ? s.NAME : activeDraft.stationFromName || ''
+    return station ? station.NAME : activeDraft.stationFromName || ''
   })()
 
   $place.append(`
@@ -190,14 +189,14 @@ function showMainFields() {
     </div>
   `)
 
-  initStationAutocomplete()
+  prepareStationFields()
 
-  // Груз — автокомплит по списку, допускается и свободный ввод
+  // Груз — автокомплит
   const cargoItems = references.cargosList.map((c) => ({
     label: c.NAME || c.CODE,
     value: c.NAME || c.CODE,
   }))
-  initListAutocomplete(
+  prepareListAutocomplete(
     $('#auto-cargo'),
     $('#cargo-dropdown'),
     cargoItems,
@@ -205,7 +204,6 @@ function showMainFields() {
       activeDraft.cargoReference = it.value
     },
     function () {
-      // свободный ввод тоже сохраняем
       activeDraft.cargoReference = $('#auto-cargo').val()
     },
   )
@@ -214,15 +212,15 @@ function showMainFields() {
 function showReasonFields() {
   const $place = $('#form-reason-place').empty()
   // Причина и обстоятельства
-  const reasonItems = references.reasonsList.map((r) => ({
-    label: r.NAME || r.CODE,
-    value: r.CODE,
+  const reasonItems = references.reasonsList.map((reason) => ({
+    label: reason.NAME || reason.CODE,
+    value: reason.CODE,
   }))
   const reasonInitLabel = (() => {
-    const r = references.reasonsList.find(
-      (r) => r.CODE === activeDraft.reasonId,
+    const reason = references.reasonsList.find(
+      (reason) => reason.CODE === activeDraft.reasonId,
     )
-    return r ? r.NAME || r.CODE : activeDraft.reasonName || ''
+    return reason ? reason.NAME || reason.CODE : activeDraft.reasonName || ''
   })()
 
   $place.html(`
@@ -230,8 +228,8 @@ function showReasonFields() {
     ${showFormField('Обстоятельства, вызвавшие составление акта', `<textarea class="inp" id="txt-circumstances">${activeDraft.circumstances || ''}</textarea>`, true)}
     ${showFormField('№ накладной', `<input class="inp" id="inp-waybill" value="${activeDraft.waybillNumber || ''}">`)}  `)
 
-  // Причина — только из списка
-  initListAutocomplete(
+  // Причина из списка
+  prepareListAutocomplete(
     $('#auto-reason'),
     $('#reason-dropdown'),
     reasonItems,
@@ -395,7 +393,7 @@ function applySelectedStartAct(id, filterNums = null) {
 /**
  * Автокомпликт (для «Груз», «Причина»).
  */
-function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
+function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   let activeIdx = -1
 
   function setActive(idx) {
@@ -409,10 +407,10 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
     }
   }
 
-  function showMatches(q) {
-    const ql = (q || '').trim().toLowerCase()
-    const matches = ql
-      ? items.filter((it) => it.label.toLowerCase().indexOf(ql) !== -1)
+  function showMatches(searchText) {
+    const searchTextLower = (searchText || '').trim().toLowerCase()
+    const matches = searchTextLower
+      ? items.filter((it) => it.label.toLowerCase().indexOf(searchTextLower) !== -1)
       : items
     $dropdown.empty()
     activeIdx = -1
@@ -471,8 +469,8 @@ function initListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   )
 }
 
-// Инициализирует автокомплит станции (gu23_search_station)
-function initStationAC($inp, $dropdown, onSelect, onClear) {
+// Подбор станции через gu23_search_station.
+function prepareStationAutocomplete($inp, $dropdown, onSelect, onClear) {
   let timer = null
   let activeIdx = -1
 
@@ -554,8 +552,8 @@ function initStationAC($inp, $dropdown, onSelect, onClear) {
 }
 
 // Автокомплит для станций отправления и назначения
-function initStationAutocomplete() {
-  initStationAC(
+function prepareStationFields() {
+  prepareStationAutocomplete(
     $('#auto-stationTo'),
     $('#auto-dropdown'),
     (code, name) => {
@@ -567,7 +565,7 @@ function initStationAutocomplete() {
       activeDraft.stationToName = ''
     },
   )
-  initStationAC(
+  prepareStationAutocomplete(
     $('#auto-stationFrom'),
     $('#from-dropdown'),
     (code, name) => {
@@ -707,7 +705,7 @@ function loadWagonsDataFromDislocation() {
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
       }
     }
-    // Текст про занятые вагоны/накладные (уже есть действующий акт начала)
+    // Текст про занятые вагоны/накладные
     let busyText = ''
     if (busy.length) {
       const parts = busy.map(
@@ -753,7 +751,7 @@ function findOpenStayByWagons() {
   const nums = parseWagonsFromText(rawText)
   if (!nums.length) return showToast('Введите номер вагона', 'err')
 
-  const runSearch = () => {
+  const findOpenStay = () => {
     const foundActs = {}
     nums.forEach((num) => {
       ;(activeDraft._openStarts || []).forEach((act) => {
@@ -776,10 +774,10 @@ function findOpenStayByWagons() {
   if (activeDraft._openStarts == null) {
     sendApiRequest('gu23_get_open_starts').done((list) => {
       activeDraft._openStarts = list || []
-      runSearch()
+      findOpenStay()
     })
   } else {
-    runSearch()
+    findOpenStay()
   }
 }
 
@@ -815,8 +813,8 @@ function showWagonsTable() {
         const startMs = parseTimeToMilliseconds(activeDraft.startAt)
         const endMs = parseTimeToMilliseconds(activeDraft.endAt)
         if (endMs >= startMs) {
-          const dur = calculateDuration(startMs, endMs)
-          durationText = `${dur.days} дн. ${dur.hours} ч.`
+          const duration = calculateDuration(startMs, endMs)
+          durationText = `${duration.days} дн. ${duration.hours} ч.`
         }
       }
 
@@ -870,7 +868,7 @@ function showWagonsTable() {
   showSignersFields()
 }
 // Конфиг подписантов для актов
-const signerConfig = {
+const signerRules = {
   other: {
     ownCount: 3,
     ownRequired: 2,
@@ -894,22 +892,22 @@ const signerConfig = {
 }
 
 function getSignerSlots(actType) {
-  const cfg = signerConfig[actType] || signerConfig.default
+  const rules = signerRules[actType] || signerRules.default
   const slots = []
 
-  for (let i = 0; i < cfg.ownCount; i++) {
+  for (let i = 0; i < rules.ownCount; i++) {
     slots.push({
       type: 'own',
-      required: i < cfg.ownRequired,
-      helpText: cfg.ownLabels[i] || 'Работник предприятия',
+      required: i < rules.ownRequired,
+      helpText: rules.ownLabels[i] || 'Работник предприятия',
     })
   }
 
-  for (let i = 0; i < cfg.rzdCount; i++) {
+  for (let i = 0; i < rules.rzdCount; i++) {
     slots.push({
       type: 'rzd',
-      required: i < cfg.rzdRequired,
-      helpText: cfg.rzdLabel,
+      required: i < rules.rzdRequired,
+      helpText: rules.rzdLabel,
     })
   }
 
@@ -933,10 +931,10 @@ function showSignersFields() {
     showSignerSlot($container, i, signerSlots[i], ownFiltered, manualSlots)
   }
 
-  bindSignerModeButtons()
-  bindSignerSelects(ownFiltered)
-  bindManualSignerInputs()
-  bindManualSignerTips(manualSlots)
+  signerModeButtonClicks()
+  signerSelectChanges(ownFiltered)
+  manualSignerInputChanges()
+  manualSignerHints(manualSlots)
 }
 
 function putSignersToSlots(signerSlots) {
@@ -1080,7 +1078,7 @@ function signerSelectHtml(i, signer, signersList, usedIds) {
   `
 }
 
-function bindSignerModeButtons() {
+function signerModeButtonClicks() {
   $('.signer-mode-btn').on('click', function () {
     const slot = $(this).data('slot')
     const mode = $(this).data('mode')
@@ -1100,7 +1098,7 @@ function bindSignerModeButtons() {
   })
 }
 
-function bindSignerSelects(ownFiltered) {
+function signerSelectChanges(ownFiltered) {
   $('.signer-select').on('change', function () {
     const slot = $(this).data('slot')
     const value = this.value
@@ -1121,12 +1119,12 @@ function bindSignerSelects(ownFiltered) {
           stype: stype,
         }
       : null
-    // перерисовываем, чтобы обновить доступные варианты в других слотах
+    // перерисовываем
     showSignersFields()
   })
 }
 
-function bindManualSignerInputs() {
+function manualSignerInputChanges() {
   $('.signer-fio, .signer-post, .signer-org').on('input', function () {
     const slot = $(this).data('slot')
     if (!activeDraft.signers[slot])
@@ -1145,7 +1143,7 @@ function bindManualSignerInputs() {
   })
 }
 
-function bindManualSignerTips(manualSlots) {
+function manualSignerHints(manualSlots) {
   // Автокомплит для ручного ввода подписанта: по ФИО или должности.
   // ФИО/должность/организацию
   manualSlots.forEach(({ slot, source }) => {
@@ -1170,13 +1168,13 @@ function bindManualSignerTips(manualSlots) {
       showSignersFields()
     }
 
-    initListAutocomplete(
+    prepareListAutocomplete(
       $(`#signer-fio-${slot}`),
       $(`#signer-fio-dd-${slot}`),
       items,
       fill,
     )
-    initListAutocomplete(
+    prepareListAutocomplete(
       $(`#signer-post-${slot}`),
       $(`#signer-post-dd-${slot}`),
       items,

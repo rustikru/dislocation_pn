@@ -1,6 +1,7 @@
 import { sendApiRequest } from './api.js'
 import { escapeHtml } from './utils.js'
 import { showToast, showConfirmBox } from './ui.js'
+import { hasPerm } from './state.js'
 
 let refsTab = 'signers'
 let refsSearch = ''
@@ -17,14 +18,15 @@ export function showRefs(container) {
   currentItems = []
 
   $(container).load('pages/refs.php', () => {
-    bindRefsPage(container)
-    fetchTab()
+    prepareRefsPage(container)
+    loadRefsTab()
   })
 }
 
-function bindRefsPage(container) {
+function prepareRefsPage(container) {
   $(container).off('.refs')
 
+  $('#btn-add-ref').toggle(hasPerm('MANAGE_REFS'))
   setActiveTab()
 
   $(container).on('click.refs', '.refs-tab', function () {
@@ -35,26 +37,38 @@ function bindRefsPage(container) {
     refsPage = 1
     $('#refs-search').val('')
     setActiveTab()
-    fetchTab()
+    loadRefsTab()
   })
 
   $(container).on('input.refs', '#refs-search', function () {
     clearTimeout(searchTimer)
-    const val = $(this).val()
+    const searchText = $(this).val()
     searchTimer = setTimeout(() => {
-      refsSearch = val
+      refsSearch = searchText
       refsPage = 1
-      fetchTab()
+      loadRefsTab()
     }, 400)
   })
 
   $(container).on('click.refs', '#btn-add-ref', () => {
+    if (!hasPerm('MANAGE_REFS')) return
     if (refsTab === 'signers') showSignerForm(null)
     else showReasonForm(null)
   })
+
+  $(container).on('click.refs', '#btn-export-reasons', () => {
+    const $form = $(`
+      <form method="post" action="/gu23/data.php" style="display:none">
+        <input type="hidden" name="ajax_action" value="gu23_reasons_excel">
+      </form>
+    `)
+    $('body').append($form)
+    $form.trigger('submit')
+    $form.remove()
+  })
 }
 
-function fetchTab() {
+function loadRefsTab() {
   $('#refs-body').html(
     '<div class="muted" style="font-size:13px">Загрузка…</div>',
   )
@@ -78,16 +92,17 @@ function fetchTab() {
 }
 
 function reloadRefs() {
-  fetchTab()
+  loadRefsTab()
 }
 
 function setActiveTab() {
   $('.refs-tab').each(function () {
     $(this).toggleClass('refs-tab-active', $(this).data('tab') === refsTab)
   })
+  $('#btn-export-reasons').toggle(refsTab === 'reasons')
 }
 
-function pagerHtml(total, page) {
+function refsPageButtonsHtml(total, page) {
   const pages = Math.ceil(total / refsPageSize)
   if (pages <= 1)
     return `<div style="font-size:12px;color:#888;margin-top:8px">Всего: ${total}</div>`
@@ -110,11 +125,12 @@ function pagerHtml(total, page) {
 // ─────────────────────────────────────────────
 
 function showSignersList(items, total, page) {
+  const canEditRefs = hasPerm('MANAGE_REFS')
   const rows = items
     .map((s) => {
       const active = s.ACTIVE === 'Y'
       return `
-      <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
+      <tr data-id="${s.ID}" class="${active ? '' : 'row-inactive'}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
         <td style="padding:5px 8px">${escapeHtml(s.FIO || '')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.POST || '—')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(s.ORG || '—')}</td>
@@ -147,12 +163,13 @@ function showSignersList(items, total, page) {
         </table>
       </div>
     </div>
-    ${pagerHtml(total, page)}
+    ${refsPageButtonsHtml(total, page)}
   `)
 
   $('#refs-body')
     .off('click', 'tbody tr')
     .on('click', 'tbody tr', function () {
+      if (!canEditRefs) return
       const id = $(this).data('id')
       const signer = currentItems.find((s) => String(s.ID) === String(id))
       if (signer) showSignerForm(signer)
@@ -161,14 +178,15 @@ function showSignersList(items, total, page) {
   $('#refs-body')
     .off('click', '.pager-btn')
     .on('click', '.pager-btn', function () {
-      const p = parseInt($(this).data('page'))
-      if (!p || p === refsPage) return
-      refsPage = p
-      fetchTab()
+      const pageNumber = parseInt($(this).data('page'))
+      if (!pageNumber || pageNumber === refsPage) return
+      refsPage = pageNumber
+      loadRefsTab()
     })
 }
 
 function showSignerForm(signer) {
+  if (!hasPerm('MANAGE_REFS')) return
   const isNew = !signer
   const $modal = $(`
     <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
@@ -263,11 +281,12 @@ const KIND_LABELS = {
 }
 
 function showReasonsList(items, total, page) {
+  const canEditRefs = hasPerm('MANAGE_REFS')
   const rows = items
     .map((r) => {
       const active = r.ACTIVE === 'Y'
       return `
-      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="cursor:pointer;font-size:13px" title="Нажмите для редактирования">
+      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
         <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
         <td style="padding:5px 8px" class="muted">${KIND_LABELS[r.ACT_KIND] || r.ACT_KIND}</td>
         <td style="padding:5px 8px">
@@ -296,12 +315,13 @@ function showReasonsList(items, total, page) {
         </table>
       </div>
     </div>
-    ${pagerHtml(total, page)}
+    ${refsPageButtonsHtml(total, page)}
   `)
 
   $('#refs-body')
     .off('click', 'tbody tr')
     .on('click', 'tbody tr', function () {
+      if (!canEditRefs) return
       const id = $(this).data('id')
       const reason = currentItems.find((r) => String(r.ID) === String(id))
       if (reason) showReasonForm(reason)
@@ -310,19 +330,20 @@ function showReasonsList(items, total, page) {
   $('#refs-body')
     .off('click', '.pager-btn')
     .on('click', '.pager-btn', function () {
-      const p = parseInt($(this).data('page'))
-      if (!p || p === refsPage) return
-      refsPage = p
-      fetchTab()
+      const pageNumber = parseInt($(this).data('page'))
+      if (!pageNumber || pageNumber === refsPage) return
+      refsPage = pageNumber
+      loadRefsTab()
     })
 }
 
 function showReasonForm(reason) {
+  if (!hasPerm('MANAGE_REFS')) return
   const isNew = !reason
   const kindOptions = Object.entries(KIND_LABELS)
     .map(
-      ([val, label]) =>
-        `<option value="${val}" ${reason?.ACT_KIND === val ? 'selected' : ''}>${label}</option>`,
+      ([kindCode, label]) =>
+        `<option value="${kindCode}" ${reason?.ACT_KIND === kindCode ? 'selected' : ''}>${label}</option>`,
     )
     .join('')
 

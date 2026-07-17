@@ -32,12 +32,12 @@ function openPage(pageName, selectedId = null) {
 
 function setBrowserUrl(pageName, selectedId = null, replace = false) {
   const url = getPageUrl(pageName, selectedId)
-  const state = { page: pageName, id: selectedId || null }
+  const browserPage = { page: pageName, id: selectedId || null }
 
   if (replace) {
-    window.history.replaceState(state, '', url)
+    window.history.replaceState(browserPage, '', url)
   } else {
-    window.history.pushState(state, '', url)
+    window.history.pushState(browserPage, '', url)
   }
 }
 

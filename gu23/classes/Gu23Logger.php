@@ -21,7 +21,7 @@ class Gu23Logger
         return self::$logDir;
     }
 
-    private static function write(string $level, string $message, array $context = []): void
+    private static function write(string $level, string $message, array $details = []): void
     {
         $dir = self::dir();
 
@@ -33,8 +33,8 @@ class Gu23Logger
 
         $line = "[{$ts}] [{$level}] user={$user} ip={$ip} uri={$uri} | {$message}";
 
-        if (!empty($context)) {
-            $line .= ' | ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!empty($details)) {
+            $line .= ' | ' . json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
         $written = false;
@@ -46,24 +46,24 @@ class Gu23Logger
         }
     }
 
-    public static function error(string $message, array $context = []): void
+    public static function error(string $message, array $details = []): void
     {
-        self::write('ERROR', $message, $context);
+        self::write('ERROR', $message, $details);
     }
 
-    public static function warn(string $message, array $context = []): void
+    public static function warn(string $message, array $details = []): void
     {
-        self::write('WARN', $message, $context);
+        self::write('WARN', $message, $details);
     }
 
-    public static function info(string $message, array $context = []): void
+    public static function info(string $message, array $details = []): void
     {
-        self::write('INFO', $message, $context);
+        self::write('INFO', $message, $details);
     }
 
-    public static function debug(string $message, array $context = []): void
+    public static function debug(string $message, array $details = []): void
     {
-        self::write('DEBUG', $message, $context);
+        self::write('DEBUG', $message, $details);
     }
 
     /** Логировать исключение с трейсом. */
@@ -80,29 +80,31 @@ class Gu23Logger
 
     private static function shortTrace(\Throwable $e): array
     {
-        $frames = [];
-        foreach ($e->getTrace() as $i => $f) {
-            if ($i >= 5)
+        $traceRows = [];
+        foreach ($e->getTrace() as $rowNumber => $traceRow) {
+            if ($rowNumber >= 5)
                 break;
-            $loc = ($f['file'] ?? '') . ':' . ($f['line'] ?? '');
-            $fn = ($f['class'] ?? '') . ($f['type'] ?? '') . ($f['function'] ?? '');
-            $frames[] = "{$loc} {$fn}()";
+            $place = ($traceRow['file'] ?? '') . ':' . ($traceRow['line'] ?? '');
+            $funcName = ($traceRow['class'] ?? '') . ($traceRow['type'] ?? '') . ($traceRow['function'] ?? '');
+            $traceRows[] = "{$place} {$funcName}()";
         }
-        return $frames;
+        return $traceRows;
     }
 
     /** $_POST. */
     private static function safePost(): array
     {
-        $skip = ['password', 'pwd', 'token', 'token_sig', 'secret'];
-        $out = [];
-        foreach ($_POST as $k => $v) {
-            $out[$k] = in_array(strtolower($k), $skip, true) ? '***' : (is_string($v) ? self::cut($v, 200) : $v);
+        $hiddenFields = ['password', 'pwd', 'token', 'token_sig', 'secret'];
+        $postValues = [];
+        foreach ($_POST as $field => $value) {
+            $postValues[$field] = in_array(strtolower($field), $hiddenFields, true)
+                ? '***'
+                : (is_string($value) ? self::shortText($value, 200) : $value);
         }
-        return $out;
+        return $postValues;
     }
 
-    private static function cut(string $value, int $length): string
+    private static function shortText(string $value, int $length): string
     {
         if (function_exists('mb_substr')) {
             return mb_substr($value, 0, $length);

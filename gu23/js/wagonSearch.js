@@ -8,7 +8,7 @@ export function showWagonSearch(container) {
 }
 
 function showWagonSearchPage() {
-  const runSearch = () => {
+  const searchWagonActs = () => {
     const rawValue = $('#wagon-search-input').val()
     const parsedNumber = parseWagonsFromText(rawValue)[0] || rawValue.trim()
 
@@ -60,8 +60,8 @@ function showWagonSearchPage() {
     )
   }
 
-  $('#btn-wagon-search-run').on('click', runSearch)
+  $('#btn-wagon-search-run').on('click', searchWagonActs)
   $('#wagon-search-input').on('keydown', (e) => {
-    if (e.key === 'Enter') runSearch()
+    if (e.key === 'Enter') searchWagonActs()
   })
 }

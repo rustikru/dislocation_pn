@@ -22,6 +22,7 @@ if (!function_exists('mb_strlen')) {
 require_once __DIR__ . '/Gu23Logger.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 class GuActRepository
 {
@@ -77,7 +78,7 @@ class GuActRepository
             return false;
         }
         try {
-            $result = $this->callFunc('xx_disl_gu23_pkg.gu23_is_admin(:uid)', [':uid' => $userId], 2);
+            $result = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_is_admin(:uid)', [':uid' => $userId], 2);
             return $result === 'Y';
         } catch (\RuntimeException $e) {
             return false;
@@ -99,7 +100,7 @@ class GuActRepository
             return false;
         }
         try {
-            $result = $this->callFunc(
+            $result = $this->callPackageFunction(
                 'xx_disl_gu23_pkg.gu23_has_perm(:uid, :perm)',
                 [':uid' => $userId, ':perm' => $permCode],
                 2
@@ -192,6 +193,9 @@ class GuActRepository
                 case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском 
                     $this->refsGetAll();
                     break;
+                case 'gu23_reasons_excel':      // выгрузка причин в Excel
+                    $this->downloadReasonsExcel();
+                    break;
                 case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
                     $this->refSignerSave();
                     break;
@@ -252,27 +256,27 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
 
     /** вернуть массив строк. */
-    private function pipe(string $sql, array $binds = []): array
+    private function selectRows(string $sql, array $params = []): array
     {
-        $st = @oci_parse($this->conn, $sql);
-        if (!$st) {
-            $e = oci_error($this->conn);
-            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
-            Gu23Logger::error($msg, ['binds' => array_keys($binds)]);
-            throw new \RuntimeException($msg);
+        $statement = @oci_parse($this->conn, $sql);
+        if (!$statement) {
+            $error = oci_error($this->conn);
+            $message = 'oci_parse: ' . ($error['message'] ?? '?') . ' | SQL: ' . $sql;
+            Gu23Logger::error($message, ['params' => array_keys($params)]);
+            throw new \RuntimeException($message);
         }
-        foreach ($binds as $name => $val) {
-            oci_bind_by_name($st, $name, $binds[$name]);
+        foreach ($params as $name => $value) {
+            oci_bind_by_name($statement, $name, $params[$name]);
         }
-        if (!@oci_execute($st)) {
-            $e = oci_error($st);
-            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | SQL: ' . $sql;
-            Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
-            throw new \RuntimeException($msg);
+        if (!@oci_execute($statement)) {
+            $error = oci_error($statement);
+            $message = 'oci_execute: ' . ($error['message'] ?? '?') . ' | SQL: ' . $sql;
+            Gu23Logger::error($message, ['params' => array_keys($params), 'offset' => $error['offset'] ?? null]);
+            throw new \RuntimeException($message);
         }
         $rows = [];
-        while ($r = oci_fetch_array($st, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
-            $rows[] = $r;
+        while ($row = oci_fetch_array($statement, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
+            $rows[] = $row;
         }
         return $rows;
     }
@@ -323,7 +327,7 @@ class GuActRepository
             return false;
         }
 
-        $result = $this->callFunc(
+        $result = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_can_change_files(:act, :uid)',
             [':act' => $actId, ':uid' => $userId],
             2
@@ -339,7 +343,7 @@ class GuActRepository
             return false;
         }
 
-        $result = $this->callFunc(
+        $result = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_can_delete_files(:act, :uid)',
             [':act' => $actId, ':uid' => $userId],
             2
@@ -349,28 +353,28 @@ class GuActRepository
     }
 
     /** Вызвать функцию пакета. */
-    private function callFunc(string $expr, array $binds, int $retLen = 256): ?string
+    private function callPackageFunction(string $packageFunction, array $params, int $resultLength = 256): ?string
     {
-        $sql = 'BEGIN :ret_val := ' . $expr . '; END;';
-        $st = @oci_parse($this->conn, $sql);
-        if (!$st) {
-            $e = oci_error($this->conn);
-            $msg = 'oci_parse: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
-            Gu23Logger::error($msg);
-            throw new \RuntimeException($msg);
+        $sql = 'BEGIN :ret_val := ' . $packageFunction . '; END;';
+        $statement = @oci_parse($this->conn, $sql);
+        if (!$statement) {
+            $error = oci_error($this->conn);
+            $message = 'oci_parse: ' . ($error['message'] ?? '?') . ' | expr: ' . $packageFunction;
+            Gu23Logger::error($message);
+            throw new \RuntimeException($message);
         }
-        $ret = null;
-        oci_bind_by_name($st, ':ret_val', $ret, $retLen);
-        foreach ($binds as $name => $val) {
-            oci_bind_by_name($st, $name, $binds[$name]);
+        $result = null;
+        oci_bind_by_name($statement, ':ret_val', $result, $resultLength);
+        foreach ($params as $name => $value) {
+            oci_bind_by_name($statement, $name, $params[$name]);
         }
-        if (!@oci_execute($st)) {
-            $e = oci_error($st);
-            $msg = 'oci_execute: ' . ($e['message'] ?? '?') . ' | expr: ' . $expr;
-            Gu23Logger::error($msg, ['binds' => array_keys($binds), 'offset' => $e['offset'] ?? null]);
-            throw new \RuntimeException($msg);
+        if (!@oci_execute($statement)) {
+            $error = oci_error($statement);
+            $message = 'oci_execute: ' . ($error['message'] ?? '?') . ' | expr: ' . $packageFunction;
+            Gu23Logger::error($message, ['params' => array_keys($params), 'offset' => $error['offset'] ?? null]);
+            throw new \RuntimeException($message);
         }
-        return $ret;
+        return $result;
     }
 
     private function baseUrl(): string
@@ -380,11 +384,11 @@ class GuActRepository
     }
 
     /** Привязать строку как  CLOB. */
-    private function bindClob($st, string $name, string $value)
+    private function putClobParam($statement, string $name, string $value)
     {
         $lob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
         $lob->writeTemporary($value === '' ? ' ' : $value);
-        oci_bind_by_name($st, $name, $lob, -1, OCI_B_CLOB);
+        oci_bind_by_name($statement, $name, $lob, -1, OCI_B_CLOB);
         return $lob;
     }
 
@@ -396,7 +400,7 @@ class GuActRepository
     private function getRefs(): void
     {
         $userId = $this->auth->getUserId();
-        $permRows = $this->pipe(
+        $permRows = $this->selectRows(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
             [':b1' => $userId]
         );
@@ -404,14 +408,14 @@ class GuActRepository
         $perms = array_values(array_map(fn($r) => array_values($r)[0], $permRows));
 
         echo json_encode([
-            'cexes' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
-            'reasons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
-            'stations' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
-            'stations_from' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
-            'cargos' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
-            'signersOwn' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
-            'signersRzd' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
-            'signersManual' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_manual())'),
+            'cexes' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
+            'reasons' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
+            'stations' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
+            'stations_from' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
+            'cargos' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
+            'signersOwn' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_own(null))'),
+            'signersRzd' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_rzd())'),
+            'signersManual' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_manual())'),
             'perms' => $perms,
             'isAdmin' => $this->isGu23Admin() ? true : false,
         ]);
@@ -435,7 +439,7 @@ class GuActRepository
         $limit = 20;
 
         // Общее количество 
-        $total = (int) $this->callFunc(
+        $total = (int) $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7)',
             [
                 ':b1' => $q,
@@ -449,7 +453,7 @@ class GuActRepository
             40
         );
 
-        $acts = $this->pipe(
+        $acts = $this->selectRows(
             'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
             [
                 ':b1' => $q,
@@ -471,25 +475,25 @@ class GuActRepository
     private function getActCard(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
-        $act = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $id]);
+        $act = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_act(:b1))', [':b1' => $id]);
         if (!$act) {
             echo json_encode(['ok' => false, 'msg' => 'Акт не найден']);
             return;
         }
         $userId = $this->auth->getUserId();
-        $myStatus = $this->callFunc(
+        $myStatus = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_approval_my_status(:act, :uid)',
             [':act' => $id, ':uid' => $userId],
             16
         );
 
-        $isUserSigner = $this->callFunc(
+        $isUserSigner = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_is_act_signer(:act, :uid)',
             [':act' => $id, ':uid' => $userId],
             2
         );
         $isAdmin = $this->isGu23Admin();
-        $canEditDraft = $this->callFunc(
+        $canEditDraft = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_can_edit_draft(:act, :uid)',
             [':act' => $id, ':uid' => $userId],
             2
@@ -508,21 +512,21 @@ class GuActRepository
             'canChangeFiles' => $canChangeFiles,
             'canDeleteFiles' => $canDeleteFiles,
             'canSendApprovalLinks' => $this->canSendApprovalLinks(),
-            'wagons' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
-            'files' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
-            'signers' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
-            'history' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
-            'approvals' => $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
+            'wagons' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $id]),
+            'files' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_files(:b1))', [':b1' => $id]),
+            'signers' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $id]),
+            'history' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_hist(:b1))', [':b1' => $id]),
+            'approvals' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $id]),
         ]);
     }
 
     /** Открытые акты начала простоя с ещё не закрытыми вагонами. */
     private function getOpenStarts(): void
     {
-        $acts = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_get_open_starts())');
+        $acts = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_open_starts())');
         // подтянем ТОЛЬКО ещё открытые вагоны (для выбора в акте окончания)
         foreach ($acts as &$a) {
-            $a['WAGONS'] = $this->pipe(
+            $a['WAGONS'] = $this->selectRows(
                 'select * from table(xx_disl_gu23_pkg.gu23_get_open_rows(:b1))',
                 [':b1' => $a['ID']]
             );
@@ -534,7 +538,7 @@ class GuActRepository
     private function getByWagon(): void
     {
         $wagon = trim((string) filter_input(INPUT_POST, 'wagon'));
-        echo json_encode($this->pipe(
+        echo json_encode($this->selectRows(
             'select * from table(xx_disl_gu23_pkg.gu23_get_by_wagon(:b1))',
             [':b1' => $wagon]
         ));
@@ -560,7 +564,7 @@ class GuActRepository
             $this->conn,
             'select * from table(xx_disl_gu23_pkg.gu23_get_wagon_info(:b1,:b2,:b3,:b4))'
         );
-        $lob = $this->bindClob($st, ':b1', $clob);
+        $lob = $this->putClobParam($st, ':b1', $clob);
         oci_bind_by_name($st, ':b2', $waybillNo);
         oci_bind_by_name($st, ':b3', $destStation);
         oci_bind_by_name($st, ':b4', $cardoName);
@@ -581,7 +585,7 @@ class GuActRepository
             echo json_encode([]);
             return;
         }
-        echo json_encode($this->pipe(
+        echo json_encode($this->selectRows(
             'select * from table(xx_disl_gu23_pkg.gu23_search_station(:b1))',
             [':b1' => $q]
         ));
@@ -676,14 +680,14 @@ class GuActRepository
         oci_bind_by_name($st, ':start_at', $startAt);
         oci_bind_by_name($st, ':end_at', $endAt);
         oci_bind_by_name($st, ':linked', $linked);
-        $lob1 = $this->bindClob($st, ':wagons', $wagonClob);
-        $lob2 = $this->bindClob($st, ':signers', $signerClob);
+        $lob1 = $this->putClobParam($st, ':wagons', $wagonClob);
+        $lob2 = $this->putClobParam($st, ':signers', $signerClob);
         oci_bind_by_name($st, ':force', $force);
         oci_execute($st);
         $lob1->free();
         $lob2->free();
 
-        $this->sendPackageResult($res);
+        $this->printPackageResult($res);
     }
 
     /** Удаление черновика. */
@@ -708,7 +712,7 @@ class GuActRepository
         oci_bind_by_name($st, ':id', $id);
         oci_bind_by_name($st, ':uid', $uid);
         oci_execute($st);
-        $this->sendPackageResult($res);
+        $this->printPackageResult($res);
     }
 
     /** Аннулирование каскадом: если тип 'end' — аннулируется связанный 'start', и наоборот. */
@@ -736,7 +740,7 @@ class GuActRepository
         oci_bind_by_name($st, ':uid', $uid);
         oci_bind_by_name($st, ':reason', $reason);
         oci_execute($st);
-        $this->sendPackageResult($res);
+        $this->printPackageResult($res);
     }
 
     /* ----------------------------------------------------------------- */
@@ -757,7 +761,7 @@ class GuActRepository
             return;
         }
 
-        $actType = strtolower((string) $this->callFunc(
+        $actType = strtolower((string) $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_act_type(:act)',
             [':act' => $actId],
             16
@@ -838,7 +842,7 @@ class GuActRepository
     private function delFile(): void
     {
         $fileId = (int) filter_input(INPUT_POST, 'file_id');
-        $info = $this->callFunc(
+        $info = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_file_info(:fid)',
             [':fid' => $fileId],
             4000
@@ -880,7 +884,7 @@ class GuActRepository
         if (strpos($res, 'done') === 0 && $path && is_file($path)) {
             @unlink($path);
         }
-        $this->sendPackageResult($res);
+        $this->printPackageResult($res);
     }
 
     /* ----------------------------------------------------------------- */
@@ -908,7 +912,7 @@ class GuActRepository
             return;
         }
 
-        $result = $this->callFunc(
+        $result = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment, :ip)',
             [
                 ':act' => $actId,
@@ -925,7 +929,7 @@ class GuActRepository
         } else {
             $label = $decision === 'approved' ? 'Акт подписан' : 'Акт отклонён';
             if ($decision === 'approved') {
-                $sent = $this->callFunc(
+                $sent = $this->callPackageFunction(
                     'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)',
                     [':act' => $actId, ':base' => $this->baseUrl()],
                     4000
@@ -950,7 +954,7 @@ class GuActRepository
         }
         $id = (int) filter_input(INPUT_POST, 'id');
         $userId = $this->auth->getUserId();
-        $result = $this->callFunc('xx_disl_gu23_pkg.gu23_close_act(:id, :uid)', [':id' => $id, ':uid' => $userId]);
+        $result = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_close_act(:id, :uid)', [':id' => $id, ':uid' => $userId]);
         if (str_starts_with((string) $result, 'ERR')) {
             $parts = explode(self::US, $result, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
@@ -978,7 +982,7 @@ class GuActRepository
         }
 
         // Проверяем, что в акте есть вагоны
-        $actRows = $this->pipe(
+        $actRows = $this->selectRows(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_get_act(:id))',
             [':id' => $actId]
         );
@@ -988,7 +992,7 @@ class GuActRepository
         }
 
         // 1. Создаём pending-записи согласования
-        $initResult = $this->callFunc(
+        $initResult = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_approval_init(:act, :by)',
             [':act' => $actId, ':by' => $userId],
             64
@@ -1000,7 +1004,7 @@ class GuActRepository
             return;
         }
 
-        $sent = $this->callFunc(
+        $sent = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)',
             [':act' => $actId, ':base' => $this->baseUrl()],
             4000
@@ -1032,7 +1036,7 @@ class GuActRepository
             return;
         }
 
-        $nextRows = $this->pipe(
+        $nextRows = $this->selectRows(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_approval_next_signer(:act_id))',
             [':act_id' => $actId]
         );
@@ -1047,7 +1051,7 @@ class GuActRepository
             return;
         }
 
-        $sent = $this->callFunc(
+        $sent = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_send_approval_mail(:act, :uid, :base)',
             [':act' => $actId, ':uid' => $userId, ':base' => $this->baseUrl()],
             4000
@@ -1063,9 +1067,9 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* разбор ответа  'OK|id|number' / 'done' / 'ERR|текст'         */
     /* ----------------------------------------------------------------- */
-    private function sendPackageResult(string $res): void
+    private function printPackageResult(string $packageAnswer): void
     {
-        $parts = explode(self::US, $res);
+        $parts = explode(self::US, $packageAnswer);
         $head = $parts[0] ?? '';
         if ($head === 'OK') {
             echo json_encode(['ok' => true, 'id' => (int) ($parts[1] ?? 0), 'number' => $parts[2] ?? '']);
@@ -1083,17 +1087,13 @@ class GuActRepository
     /** Список подписантов РЖД или причин для страницы администрирования справочников. */
     private function refsGetAll(): void
     {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
         $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
         if ($tab === 'signers') {
-            $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_signers_all())');
+            $all = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_signers_all())');
             if ($search !== '') {
                 $pattern = '/' . preg_quote($search, '/') . '/iu';
                 $all = array_values(array_filter($all, function ($r) use ($pattern) {
@@ -1107,7 +1107,7 @@ class GuActRepository
                 }));
             }
         } else {
-            $all = $this->pipe('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
+            $all = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
             if ($search !== '') {
                 $pattern = '/' . preg_quote($search, '/') . '/iu';
                 $all = array_values(array_filter($all, function ($r) use ($pattern) {
@@ -1126,6 +1126,58 @@ class GuActRepository
         ]);
     }
 
+    /** Выгрузка всех причин в Excel. */
+    private function downloadReasonsExcel(): void
+    {
+        $rows = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
+        $kindNames = [
+            'start' => 'Начало',
+            'end' => 'Окончание',
+            'other' => 'Прочий',
+            'any' => 'Любой',
+        ];
+
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Причины');
+
+        $sheet->fromArray(['Название', 'Тип акта', 'Статус'], null, 'A1');
+
+        $rowNumber = 2;
+        foreach ($rows as $row) {
+            $kindCode = (string) ($row['ACT_KIND'] ?? '');
+            $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активен' : 'Неактивен';
+
+            $sheet->setCellValue('A' . $rowNumber, (string) ($row['NAME'] ?? ''));
+            $sheet->setCellValue('B' . $rowNumber, $kindNames[$kindCode] ?? $kindCode);
+            $sheet->setCellValue('C' . $rowNumber, $active);
+            $rowNumber++;
+        }
+
+        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:C' . max(1, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
+            \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
+        );
+        $sheet->getColumnDimension('A')->setWidth(80);
+        $sheet->getColumnDimension('B')->setAutoSize(true);
+        $sheet->getColumnDimension('C')->setAutoSize(true);
+        $sheet->getStyle('A:A')->getAlignment()->setWrapText(true);
+
+        $fileName = 'gu23_reasons_' . date('Ymd_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        $spreadsheet->disconnectWorksheets();
+        exit;
+    }
+
     /** Создать нового или обновить существующего подписанта РЖД (id=0 — новый). */
     private function refSignerSave(): void
     {
@@ -1138,7 +1190,7 @@ class GuActRepository
         $post = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'post'));
         $org = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'org'));
         $unit = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'unit'));
-        $res = $this->callFunc(
+        $res = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
             [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
         );
@@ -1155,7 +1207,7 @@ class GuActRepository
             return;
         }
         $id = (int) filter_input(INPUT_POST, 'id');
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_signer_toggle(:id)', [':id' => $id]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_ref_signer_toggle(:id)', [':id' => $id]);
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
@@ -1171,7 +1223,7 @@ class GuActRepository
         $id = (int) filter_input(INPUT_POST, 'id');
         $name = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'name'));
         $actKind = (string) filter_input(INPUT_POST, 'act_kind');
-        $res = $this->callFunc(
+        $res = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind)',
             [':id' => $id, ':name' => $name, ':kind' => $actKind]
         );
@@ -1188,7 +1240,7 @@ class GuActRepository
             return;
         }
         $id = (int) filter_input(INPUT_POST, 'id');
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
@@ -1210,7 +1262,7 @@ class GuActRepository
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
-        $rows = $this->pipe(
+        $rows = $this->selectRows(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_users_roles_get(:b1))',
             [':b1' => $search]
         );
@@ -1239,7 +1291,7 @@ class GuActRepository
         $all = array_values($usersMap);
         $total = count($all);
         $users = array_slice($all, ($page - 1) * $limit, $limit);
-        $roles = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
+        $roles = $this->selectRows('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_roles_get_all())');
 
         echo json_encode([
             'ok' => true,
@@ -1258,7 +1310,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        $rows = $this->pipe('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_role_perms_get())');
+        $rows = $this->selectRows('SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_role_perms_get())');
         echo json_encode(['ok' => true, 'rows' => $rows]);
     }
 
@@ -1275,7 +1327,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Не указаны role_id или perm_id']);
             return;
         }
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_perm_assign(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_perm_assign(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
         if (str_starts_with((string) $res, 'ERR')) {
             $parts = explode(self::US, (string) $res, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
@@ -1297,7 +1349,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Не указаны role_id или perm_id']);
             return;
         }
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_perm_revoke(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_perm_revoke(:rid, :pid)', [':rid' => $roleId, ':pid' => $permId]);
         if (str_starts_with((string) $res, 'ERR')) {
             $parts = explode(self::US, (string) $res, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
@@ -1320,7 +1372,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
             return;
         }
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_role_assign(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_role_assign(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
         if (str_starts_with((string) $res, 'ERR')) {
             $parts = explode(self::US, (string) $res, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
@@ -1343,7 +1395,7 @@ class GuActRepository
             echo json_encode(['ok' => false, 'msg' => 'Не указаны user_id или role_id']);
             return;
         }
-        $res = $this->callFunc('xx_disl_gu23_pkg.gu23_role_revoke(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
+        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_role_revoke(:uid, :rid)', [':uid' => $userId, ':rid' => $roleId]);
         if (str_starts_with((string) $res, 'ERR')) {
             $parts = explode(self::US, (string) $res, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);

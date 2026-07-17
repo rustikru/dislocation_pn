@@ -7,9 +7,18 @@
   <button class="refs-tab" data-tab="reasons">Причины</button>
 </div>
 
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-  <input class="inp" id="refs-search" value="" placeholder="Поиск..." style="flex:1;font-size:13px;height:34px;padding:0 10px;box-sizing:border-box">
-  <button class="btn sm" id="btn-add-ref" style="font-size:13px;height:34px;padding:0 14px;box-sizing:border-box;white-space:nowrap">+ Добавить</button>
+<div class="refs-tools">
+  <input class="inp refs-search" id="refs-search" value="" placeholder="Поиск...">
+  <div class="refs-actions">
+    <button class="refs-action-btn" id="btn-add-ref" type="button">
+      <span class="refs-plus">+</span>
+      <span>Добавить запись</span>
+    </button>
+    <button class="refs-action-btn" id="btn-export-reasons" type="button" style="display:none">
+      <img src="/img/ms_excel.svg" alt="" class="refs-excel-icon">
+      <span></span>
+    </button>
+  </div>
 </div>
 
 <div id="refs-body">
