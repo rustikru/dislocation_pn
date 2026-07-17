@@ -4271,43 +4271,32 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_function,
          'x_to_email=>' || x_to_email
       );
-      if
-         upper(g_server_host) = 'M5000'
-         and x_to_email is not null
-      then
-         if trunc(sysdate) <= to_date ( '30.07.2026',
-         'DD.MM.YYYY' ) then
-            insert into xx_disl_gu23_mail_test (
-               p_to,
-               p_subject,
-               p_body,
-               p_from
-            ) values
-               ( x_to_email,
-                 x_subject,
-                 x_msg,
-                 x_sender );
-         end if;
-         /*
-         apps.xx_mtf_send_mail_pkg.send_mail(
-            p_sender    => x_sender, --отправитель
-            p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
-            p_subject   => x_subject,
-            p_text_clob => x_msg
-         );*/
-      else
-         null;
-         /*
-         apps.xx_mtf_send_mail_pkg.send_mail(
-            p_sender    => x_sender,                       --отправитель
-            p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
-            p_subject   => x_subject
-                         || ' -> '
-                         || x_to_email,
-            p_text_clob => x_msg
-         );
-         */
-      end if;
+/*
+        if UPPER (g_server_host) = 'M5000' and x_to_email is not null
+        then
+            if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
+            then
+                insert into xx_disl_gu23_mail_test (P_TO,
+                                                    P_SUBJECT,
+                                                    P_BODY,
+                                                    P_FROM)
+                     values (x_to_email,
+                             x_subject,
+                             x_msg,
+                             x_sender);
+            end if;
+
+            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
+                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+                                                 p_subject     => x_subject,
+                                                 p_text_clob   => x_msg);
+        else
+            apps.xx_mtf_send_mail_pkg.send_mail (
+                p_sender      => x_sender,                       --отправитель
+                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
+                p_subject     => x_subject || ' -> ' || x_to_email,
+                p_text_clob   => x_msg);
+        end if;*/
 
       commit;
    end gu23_send_mail;

@@ -78,6 +78,9 @@ try {
     $generator = new GuActPhpWordReport();
     $generator->download($act, $wagons, $signers, $approvals, $format);
 } catch (Throwable $e) {
+    if (class_exists('Gu23Logger')) {
+        Gu23Logger::exception($e, 'gu23_report_' . $format);
+    }
     http_response_code(500);
     echo 'Ошибка генерации отчёта: ' . htmlspecialchars($e->getMessage());
 }

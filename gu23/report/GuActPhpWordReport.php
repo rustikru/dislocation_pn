@@ -1,5 +1,6 @@
 <?php
 
+use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\TemplateProcessor;
 
 class GuActPhpWordReport
@@ -22,6 +23,8 @@ class GuActPhpWordReport
         if (!class_exists(TemplateProcessor::class)) {
             throw new RuntimeException('PHPWord не найден. Нужно установить phpoffice/phpword.');
         }
+
+        Settings::setOutputEscapingEnabled(true);
 
         $this->templateDir = __DIR__ . '/template/';
     }
@@ -87,6 +90,7 @@ class GuActPhpWordReport
 
         $doc->saveAs($docxPath);
         $this->fixDocxXml($docxPath, $mainSigners, $rzdSigners, $pepApprovals);
+        $this->checkDocxXml($docxPath);
         return $docxPath;
     }
 
@@ -324,6 +328,7 @@ class GuActPhpWordReport
 
     private function textNode(string $text): string
     {
+        $text = $this->cleanValue($text);
         $space = preg_match('/^\s|\s$/u', $text) ? ' xml:space="preserve"' : '';
         return '<w:t' . $space . '>' . htmlspecialchars($text, ENT_XML1, 'UTF-8') . '</w:t>';
     }
@@ -389,7 +394,7 @@ class GuActPhpWordReport
             ];
 
             foreach ($values as $placeholder => $value) {
-                $block = str_replace($placeholder, htmlspecialchars($value, ENT_XML1, 'UTF-8'), $block);
+                $block = str_replace($placeholder, htmlspecialchars($this->cleanValue($value), ENT_XML1, 'UTF-8'), $block);
             }
             $filled .= $block;
         }
@@ -525,7 +530,59 @@ class GuActPhpWordReport
 
     private function cleanValue(string $value): string
     {
-        return str_replace(["\r\n", "\r"], "\n", $value);
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+
+        $clean = @preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $value);
+        if ($clean !== null) {
+            return $clean;
+        }
+
+        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value) ?? $value;
+    }
+
+    private function checkDocxXml(string $docxPath): void
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            throw new RuntimeException('Не удалось проверить сформированный DOCX');
+        }
+
+        try {
+            $xml = $zip->getFromName('word/document.xml');
+        } finally {
+            $zip->close();
+        }
+
+        if ($xml === false) {
+            throw new RuntimeException('В DOCX не найден word/document.xml');
+        }
+
+        if (!class_exists('DOMDocument')) {
+            return;
+        }
+
+        $old = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+        $dom = new DOMDocument();
+        $ok = $dom->loadXML($xml);
+        $errors = libxml_get_errors();
+        libxml_clear_errors();
+        libxml_use_internal_errors($old);
+
+        if ($ok) {
+            return;
+        }
+
+        $error = $errors[0] ?? null;
+        $message = $error
+            ? trim($error->message) . ' строка ' . $error->line . ', колонка ' . $error->column
+            : 'неизвестная ошибка XML';
+
+        if (class_exists('Gu23Logger')) {
+            Gu23Logger::error('docx_xml_error', ['msg' => $message]);
+        }
+
+        throw new RuntimeException('DOCX сформирован с ошибкой XML: ' . $message);
     }
 
     private function templateHas(string $templatePath, string $name): bool
