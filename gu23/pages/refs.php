@@ -15,8 +15,7 @@
       <span>Добавить запись</span>
     </button>
     <button class="refs-action-btn" id="btn-export-reasons" type="button" style="display:none">
-      <img src="/img/ms_excel.svg" alt="" class="refs-excel-icon">
-      <span></span>
+      <img src="/img/ms_excel.svg" alt="Скачать справочник" class="refs-excel-icon">
     </button>
   </div>
 </div>
