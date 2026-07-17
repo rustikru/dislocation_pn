@@ -8,6 +8,7 @@ db_config.local.php
 ldap_config.php
 gu23/request_data/
 gu23/act_data/
+gu23/db/
 gu23/log/
 .DS_Store
 **/.DS_Store
