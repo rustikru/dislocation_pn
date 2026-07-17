@@ -1129,7 +1129,7 @@ class GuActRepository
     /** Выгрузка всех причин в Excel. */
     private function downloadReasonsExcel(): void
     {
-        $rows = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
+        $rows = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all()) order by NAME');
         $kindNames = [
             'start' => 'Начало',
             'end' => 'Окончание',
@@ -1140,14 +1140,32 @@ class GuActRepository
         if (ob_get_level() > 0) {
             ob_end_clean();
         }
+        // Сортировка 
+        usort($rows, function ($a, $b) {
+            $nameA = trim((string) ($a['NAME'] ?? ''));
+            $nameB = trim((string) ($b['NAME'] ?? ''));
+            return strcasecmp($nameA, $nameB);
+        });
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Причины');
 
-        $sheet->fromArray(['Название', 'Тип акта', 'Статус'], null, 'A1');
+        // Общий заголовок
+        $sheet->mergeCells('A1:C1');
+        $sheet->setCellValue('A1', 'Справочник причин');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-        $rowNumber = 2;
+        // Заголовки колонок
+        $sheet->setCellValue('A2', 'Название');
+        $sheet->setCellValue('B2', 'Тип акта');
+        $sheet->setCellValue('C2', 'Статус');
+
+        // Включение фильтра
+        $sheet->setAutoFilter('A2:C2');
+
+        $rowNumber = 3;
         foreach ($rows as $row) {
             $kindCode = (string) ($row['ACT_KIND'] ?? '');
             $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активен' : 'Неактивен';
@@ -1158,14 +1176,21 @@ class GuActRepository
             $rowNumber++;
         }
 
-        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:C' . max(1, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
+        // Стилизация
+        $sheet->getStyle('A2:C2')->getFont()->setBold(true);
+        $sheet->getStyle('A2:C' . max(2, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
             \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
         );
+
         $sheet->getColumnDimension('A')->setWidth(80);
         $sheet->getColumnDimension('B')->setAutoSize(true);
         $sheet->getColumnDimension('C')->setAutoSize(true);
         $sheet->getStyle('A:A')->getAlignment()->setWrapText(true);
+
+        // Применяем жирный шрифт и выравнивание для общего заголовка
+        $sheet->getStyle('A1')->getFont()->setBold(true);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getRowDimension(1)->setRowHeight(30);
 
         $fileName = 'gu23_reasons_' . date('Ymd_His') . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1176,27 +1201,6 @@ class GuActRepository
         $writer->save('php://output');
         $spreadsheet->disconnectWorksheets();
         exit;
-    }
-
-    /** Создать нового или обновить существующего подписанта РЖД (id=0 — новый). */
-    private function refSignerSave(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-        $id = (int) filter_input(INPUT_POST, 'id');
-        $fio = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'fio'));
-        $post = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'post'));
-        $org = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'org'));
-        $unit = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'unit'));
-        $res = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_ref_signer_save(:id,:fio,:post,:org,:unit)',
-            [':id' => $id, ':fio' => $fio, ':post' => $post, ':org' => $org, ':unit' => $unit]
-        );
-        echo json_encode(str_starts_with((string) $res, 'OK')
-            ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     /** Переключить флаг active у подписанта РЖД (Y → N или N → Y). */
