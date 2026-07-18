@@ -31,6 +31,7 @@ $(document).ready(function() {
     tab2.section = tab2.children('div.section');  
     tab2.section.login = $('input#user_login');
     tab2.section.full_name = $('input#user_full_name');
+    tab2.section.user_email = $('input#user_email');
     tab2.section.enterprise = $('select#user_enterprise');
     tab2.section.division = $('select#user_division');
     tab2.section.change_pwd = $('select#user_change_pwd');
@@ -50,6 +51,7 @@ $(document).ready(function() {
         
         tab2.section.login.val('');
         tab2.section.full_name.val('');
+        tab2.section.user_email.val('');
         tab2.section.enterprise.val('');
         tab2.section.division.val('');
         tab2.section.change_pwd.val('Y');
@@ -64,7 +66,7 @@ $(document).ready(function() {
     });
     
     tab2.section.save_new_user_btn.mousedown(function(event) {    
-        function add_user_ajax(p_login,p_full_name,p_enterprise,p_division,p_change_pwd,p_open,p_phone_num,p_default_station,p_stations,p_credentials) 
+        function add_user_ajax(p_login,p_full_name,p_user_email,p_enterprise,p_division,p_change_pwd,p_open,p_phone_num,p_default_station,p_stations,p_credentials) 
         {
             var res;
             $.ajax({
@@ -82,10 +84,12 @@ $(document).ready(function() {
                       ,default_station:p_default_station
                       ,stations:p_stations
                       ,credentials:p_credentials
+                      ,user_email:p_user_email
                       ,ajax_action: 'add_user'
                       },
                 success: function (data) {
                     //alert(data);
+                    console.log(data);
                     res = data;
                 },
                 error: function (m1,m2) {
@@ -115,6 +119,7 @@ $(document).ready(function() {
                                     ,tab2.section.default_station.val()        
                                     ,l_stations       
                                     ,l_credentials
+                                    ,tab2.section.user_email.val()
                                     );
         if (l_user_id!=0) {           
             $('<li>')
@@ -137,7 +142,7 @@ $(document).ready(function() {
     });
     
     tab2.section.change_user_btn.mousedown(function(event) {    
-        function change_user_ajax(p_user_id,p_login,p_full_name,p_enterprise,p_division,p_change_pwd,p_open,p_phone_num,p_default_station,p_stations,p_credentials) 
+        function change_user_ajax(p_user_id,p_login,p_full_name,p_enterprise,p_division,p_change_pwd,p_open,p_phone_num,p_default_station,p_stations,p_credentials,p_user_email) 
         {
             var res;
             $.ajax({
@@ -156,6 +161,7 @@ $(document).ready(function() {
                       ,default_station:p_default_station
                       ,stations:p_stations
                       ,credentials:p_credentials
+                      ,user_email:p_user_email
                       ,ajax_action: 'change_user'
                       },
                 success: function (data) {
@@ -181,6 +187,7 @@ $(document).ready(function() {
         var l_user_id = change_user_ajax(tab2.aside.users.selected_item.attr('data-id') 
                                         ,tab2.section.login.val()
                                         ,tab2.section.full_name.val()
+                                        
                                         ,tab2.section.enterprise.val()
                                         ,tab2.section.division.val()
                                         ,tab2.section.change_pwd.val()
@@ -189,6 +196,7 @@ $(document).ready(function() {
                                         ,tab2.section.default_station.val()        
                                         ,l_stations       
                                         ,l_credentials
+                                        ,tab2.section.user_email.val()
                                         );
         if (l_user_id=='done') {           
             tab2.aside.users.selected_item.children('div.tree_Content').text(tab2.section.full_name.val());
@@ -229,6 +237,8 @@ $(document).ready(function() {
                     l_user_descr.forEach(function(item){
                         tab2.section.login.val(item.LOGIN);
                         tab2.section.full_name.val(item.FULL_NAME);
+                        tab2.section.user_email.val(item.EMAIL_ADDRESS);
+                        
                         tab2.section.enterprise.val(item.ENTERPRISE);
                         tab2.section.division.val(item.DIVISION_ID);
                         tab2.section.change_pwd.val(item.FLAG_CHANGE_PWD);

@@ -37,8 +37,8 @@ if (session_status() === PHP_SESSION_NONE) {
 if (empty($_SESSION['is_auth'])) {
     $_SESSION['is_auth'] = true;
     $_SESSION['is_auth_admin'] = true;
-    $_SESSION['login'] = 'USER1';
-    $_SESSION['user_id'] = 1;
+    $_SESSION['login'] = 'BEKMANSUROVRR';
+    $_SESSION['user_id'] = 281;
     //$_SESSION['login'] = 'BOYKOAD';
     //$_SESSION['user_id'] = 247;
     $_SESSION['full_name'] = 'Локальный';

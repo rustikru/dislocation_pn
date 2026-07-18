@@ -17,7 +17,7 @@ if ($_POST['ajax_action']==='railway_add_info') {
     
     $arrChild = array();
     $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_railway_add_info(:bind1))');
-    OCIBindByName($oci_child, ":bind1", $_POST['railway_id']);
+    oci_bind_by_name($oci_child, ":bind1", $_POST['railway_id']);
     oci_execute($oci_child);
     while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
         array_push($arrChild, $tmp);
@@ -40,11 +40,11 @@ if ($_POST['ajax_action']==='change_parent_for_railway') {
     $new_parent_id = filter_input(INPUT_POST,'new_parent_id');
     $new_parent_type = filter_input(INPUT_POST,'new_parent_type');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
-    OCIBindByName($oci_request, ":bind3", $type);
-    OCIBindByName($oci_request, ":bind4", $new_parent_id);
-    OCIBindByName($oci_request, ":bind5", $new_parent_type);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind3", $type);
+    oci_bind_by_name($oci_request, ":bind4", $new_parent_id);
+    oci_bind_by_name($oci_request, ":bind5", $new_parent_type);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -75,21 +75,21 @@ if ($_POST['ajax_action']==='add_railway') {
     $disabled = filter_input(INPUT_POST,'disabled');
     $type = filter_input(INPUT_POST,'type');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $parent_id);
-    OCIBindByName($oci_request, ":bind3", $parent_type);
-    OCIBindByName($oci_request, ":bind4", $number);
-    OCIBindByName($oci_request, ":bind5", $purpose);
-    OCIBindByName($oci_request, ":bind6", $pointer_from);
-    OCIBindByName($oci_request, ":bind7", $pointer_to);
-    OCIBindByName($oci_request, ":bind8", $length_limit);
-    OCIBindByName($oci_request, ":bind9", $length_useful);
-    OCIBindByName($oci_request, ":bind10", $capacity);
-    OCIBindByName($oci_request, ":bind11", $add_field1);
-    OCIBindByName($oci_request, ":bind12", $add_field2);
-    OCIBindByName($oci_request, ":bind13", $add_field3);
-    OCIBindByName($oci_request, ":bind14", $disabled);
-    OCIBindByName($oci_request, ":bind15", $type);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $parent_id);
+    oci_bind_by_name($oci_request, ":bind3", $parent_type);
+    oci_bind_by_name($oci_request, ":bind4", $number);
+    oci_bind_by_name($oci_request, ":bind5", $purpose);
+    oci_bind_by_name($oci_request, ":bind6", $pointer_from);
+    oci_bind_by_name($oci_request, ":bind7", $pointer_to);
+    oci_bind_by_name($oci_request, ":bind8", $length_limit);
+    oci_bind_by_name($oci_request, ":bind9", $length_useful);
+    oci_bind_by_name($oci_request, ":bind10", $capacity);
+    oci_bind_by_name($oci_request, ":bind11", $add_field1);
+    oci_bind_by_name($oci_request, ":bind12", $add_field2);
+    oci_bind_by_name($oci_request, ":bind13", $add_field3);
+    oci_bind_by_name($oci_request, ":bind14", $disabled);
+    oci_bind_by_name($oci_request, ":bind15", $type);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -119,20 +119,20 @@ if ($_POST['ajax_action']==='change_railway_attr') {
     $disabled = filter_input(INPUT_POST,'disabled');
     $type = filter_input(INPUT_POST,'type');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $railway_id);
-    OCIBindByName($oci_request, ":bind3", $number);
-    OCIBindByName($oci_request, ":bind4", $purpose);
-    OCIBindByName($oci_request, ":bind5", $pointer_from);
-    OCIBindByName($oci_request, ":bind6", $pointer_to);
-    OCIBindByName($oci_request, ":bind7", $length_limit);
-    OCIBindByName($oci_request, ":bind8", $length_useful);
-    OCIBindByName($oci_request, ":bind9", $capacity);
-    OCIBindByName($oci_request, ":bind10", $add_field1);
-    OCIBindByName($oci_request, ":bind11", $add_field2);
-    OCIBindByName($oci_request, ":bind12", $add_field3);
-    OCIBindByName($oci_request, ":bind13", $disabled);
-    OCIBindByName($oci_request, ":bind14", $type);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $railway_id);
+    oci_bind_by_name($oci_request, ":bind3", $number);
+    oci_bind_by_name($oci_request, ":bind4", $purpose);
+    oci_bind_by_name($oci_request, ":bind5", $pointer_from);
+    oci_bind_by_name($oci_request, ":bind6", $pointer_to);
+    oci_bind_by_name($oci_request, ":bind7", $length_limit);
+    oci_bind_by_name($oci_request, ":bind8", $length_useful);
+    oci_bind_by_name($oci_request, ":bind9", $capacity);
+    oci_bind_by_name($oci_request, ":bind10", $add_field1);
+    oci_bind_by_name($oci_request, ":bind11", $add_field2);
+    oci_bind_by_name($oci_request, ":bind12", $add_field3);
+    oci_bind_by_name($oci_request, ":bind13", $disabled);
+    oci_bind_by_name($oci_request, ":bind14", $type);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -173,11 +173,11 @@ if ($_POST['ajax_action']==='add_point') {
     $name = filter_input(INPUT_POST,'name');
     $descr = filter_input(INPUT_POST,'descr');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $parent_id);
-    OCIBindByName($oci_request, ":bind3", $parent_type);
-    OCIBindByName($oci_request, ":bind4", $name);
-    OCIBindByName($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $parent_id);
+    oci_bind_by_name($oci_request, ":bind3", $parent_type);
+    oci_bind_by_name($oci_request, ":bind4", $name);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -197,10 +197,10 @@ if ($_POST['ajax_action']==='change_order_for_railway') {
     $type = filter_input(INPUT_POST,'type');
     $action = filter_input(INPUT_POST,'action');
 
-    OCIBindByName($oci_request, ":bind1", $result,100);
-    OCIBindByName($oci_request, ":bind2", $id);
-    OCIBindByName($oci_request, ":bind3", $type);
-    OCIBindByName($oci_request, ":bind4", $action);
+    oci_bind_by_name($oci_request, ":bind1", $result,100);
+    oci_bind_by_name($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind3", $type);
+    oci_bind_by_name($oci_request, ":bind4", $action);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -239,7 +239,7 @@ if ($_POST['ajax_action']==='old_get_credential_descr') {
     $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_credential_descr(:bind1))');
     $credential_id = filter_input(INPUT_POST,'credential_id');
 
-    OCIBindByName($oci_child, ":bind1", $credential_id);
+    oci_bind_by_name($oci_child, ":bind1", $credential_id);
     oci_execute($oci_child);
     while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
         array_push($arrChild, $tmp);
@@ -260,7 +260,7 @@ if ($_POST['ajax_action']==='get_credential_descr') {
     $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_credential_descr_new(:bind1))');
     $credential_id = filter_input(INPUT_POST,'credential_id');
 
-    OCIBindByName($oci_child, ":bind1", $credential_id);
+    oci_bind_by_name($oci_child, ":bind1", $credential_id);
     oci_execute($oci_child);
     while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
         array_push($arrChild, $tmp);
@@ -285,9 +285,9 @@ if ($_POST['ajax_action']==='save_new_credential') {
         $params = filter_input(INPUT_POST,'params');
         $userID = $auth->getUserId();
 
-        OCIBindByName($oci_request, ":bind1", $result,100);
-        OCIBindByName($oci_request, ":bind2", $userID);
-        OCIBindByName($oci_request, ":bind3", $params);
+        oci_bind_by_name($oci_request, ":bind1", $result,100);
+        oci_bind_by_name($oci_request, ":bind2", $userID);
+        oci_bind_by_name($oci_request, ":bind3", $params);
         oci_execute($oci_request);
         oci_close($conn);
         echo $result;
@@ -415,66 +415,66 @@ if ($_POST['ajax_action']==='old_save_new_credential') {
 	$entry_foreign_cont = filter_input(INPUT_POST,'entry_foreign_cont');
 	$scale_type_1831_manual = filter_input(INPUT_POST,'scale_type_1831_manual');
 
-    OCIBindByName($oci_request, ":bind1", $result,100);
-    OCIBindByName($oci_request, ":bind2", $credential_name);
-    OCIBindByName($oci_request, ":bind3", $moving_inside_railway);
-    OCIBindByName($oci_request, ":bind4", $moving_inside_shop);
-    OCIBindByName($oci_request, ":bind5", $moving_inside_station);
-    OCIBindByName($oci_request, ":bind6", $moving_between_station);
-    OCIBindByName($oci_request, ":bind7", $change_attribute);
-    OCIBindByName($oci_request, ":bind8", $change_weight);
-    OCIBindByName($oci_request, ":bind9", $enter_inspection);
-    OCIBindByName($oci_request, ":bind10", $enter_inspection_add);
-    OCIBindByName($oci_request, ":bind11", $register_notification);
-    OCIBindByName($oci_request, ":bind12", $entry_foreign_car);
-    OCIBindByName($oci_request, ":bind13", $administrator);
-    OCIBindByName($oci_request, ":bind14", $receive_to_station);
-    OCIBindByName($oci_request, ":bind15", $work_with_groups);
-    OCIBindByName($oci_request, ":bind16", $out_from_ugl);
-    OCIBindByName($oci_request, ":bind17", $add_attribute);
-    OCIBindByName($oci_request, ":bind18", $create_request);
-    OCIBindByName($oci_request, ":bind19", $change_request);
-    OCIBindByName($oci_request, ":bind20", $view_request);
-    OCIBindByName($oci_request, ":bind21", $complete_request);
-    OCIBindByName($oci_request, ":bind22", $del_ins_doc);
-    OCIBindByName($oci_request, ":bind23", $return_from_psp);
-    OCIBindByName($oci_request, ":bind24", $autocreate_request_v);
-    OCIBindByName($oci_request, ":bind25", $autocreate_request_o);
-    OCIBindByName($oci_request, ":bind26", $autocreate_request_t);
-    OCIBindByName($oci_request, ":bind27", $weigh_import);
-    OCIBindByName($oci_request, ":bind28", $weigh_import_corr);
-    OCIBindByName($oci_request, ":bind29", $weigh_delete);
-    OCIBindByName($oci_request, ":bind30", $export_shop_info);
-    OCIBindByName($oci_request, ":bind31", $create_invoice_out);
-    OCIBindByName($oci_request, ":bind32", $send_invoice_to_etran);
-    OCIBindByName($oci_request, ":bind33", $register_notification_gu);
+    oci_bind_by_name($oci_request, ":bind1", $result,100);
+    oci_bind_by_name($oci_request, ":bind2", $credential_name);
+    oci_bind_by_name($oci_request, ":bind3", $moving_inside_railway);
+    oci_bind_by_name($oci_request, ":bind4", $moving_inside_shop);
+    oci_bind_by_name($oci_request, ":bind5", $moving_inside_station);
+    oci_bind_by_name($oci_request, ":bind6", $moving_between_station);
+    oci_bind_by_name($oci_request, ":bind7", $change_attribute);
+    oci_bind_by_name($oci_request, ":bind8", $change_weight);
+    oci_bind_by_name($oci_request, ":bind9", $enter_inspection);
+    oci_bind_by_name($oci_request, ":bind10", $enter_inspection_add);
+    oci_bind_by_name($oci_request, ":bind11", $register_notification);
+    oci_bind_by_name($oci_request, ":bind12", $entry_foreign_car);
+    oci_bind_by_name($oci_request, ":bind13", $administrator);
+    oci_bind_by_name($oci_request, ":bind14", $receive_to_station);
+    oci_bind_by_name($oci_request, ":bind15", $work_with_groups);
+    oci_bind_by_name($oci_request, ":bind16", $out_from_ugl);
+    oci_bind_by_name($oci_request, ":bind17", $add_attribute);
+    oci_bind_by_name($oci_request, ":bind18", $create_request);
+    oci_bind_by_name($oci_request, ":bind19", $change_request);
+    oci_bind_by_name($oci_request, ":bind20", $view_request);
+    oci_bind_by_name($oci_request, ":bind21", $complete_request);
+    oci_bind_by_name($oci_request, ":bind22", $del_ins_doc);
+    oci_bind_by_name($oci_request, ":bind23", $return_from_psp);
+    oci_bind_by_name($oci_request, ":bind24", $autocreate_request_v);
+    oci_bind_by_name($oci_request, ":bind25", $autocreate_request_o);
+    oci_bind_by_name($oci_request, ":bind26", $autocreate_request_t);
+    oci_bind_by_name($oci_request, ":bind27", $weigh_import);
+    oci_bind_by_name($oci_request, ":bind28", $weigh_import_corr);
+    oci_bind_by_name($oci_request, ":bind29", $weigh_delete);
+    oci_bind_by_name($oci_request, ":bind30", $export_shop_info);
+    oci_bind_by_name($oci_request, ":bind31", $create_invoice_out);
+    oci_bind_by_name($oci_request, ":bind32", $send_invoice_to_etran);
+    oci_bind_by_name($oci_request, ":bind33", $register_notification_gu);
     
     
-    OCIBindByName($oci_request, ":bind34", $route_add);
-    OCIBindByName($oci_request, ":bind35", $route_processing);
-    OCIBindByName($oci_request, ":bind36", $route_closing);
+    oci_bind_by_name($oci_request, ":bind34", $route_add);
+    oci_bind_by_name($oci_request, ":bind35", $route_processing);
+    oci_bind_by_name($oci_request, ":bind36", $route_closing);
     
     
-    OCIBindByName($oci_request, ":bind37", $output_defective_cars);
-    OCIBindByName($oci_request, ":bind38", $export_notification_gu);
-    OCIBindByName($oci_request, ":bind39", $fix_dev_rule);
-    OCIBindByName($oci_request, ":bind40", $fix_dev_place);
+    oci_bind_by_name($oci_request, ":bind37", $output_defective_cars);
+    oci_bind_by_name($oci_request, ":bind38", $export_notification_gu);
+    oci_bind_by_name($oci_request, ":bind39", $fix_dev_rule);
+    oci_bind_by_name($oci_request, ":bind40", $fix_dev_place);
 	
 	
-	OCIBindByName($oci_request, ":bind41", $enter_dev_inspection);
-	OCIBindByName($oci_request, ":bind42", $fix_dev_add);
-	OCIBindByName($oci_request, ":bind43", $fix_dev_undock);
-	OCIBindByName($oci_request, ":bind44", $fix_dev_update);
+	oci_bind_by_name($oci_request, ":bind41", $enter_dev_inspection);
+	oci_bind_by_name($oci_request, ":bind42", $fix_dev_add);
+	oci_bind_by_name($oci_request, ":bind43", $fix_dev_undock);
+	oci_bind_by_name($oci_request, ":bind44", $fix_dev_update);
 	
 	
-	OCIBindByName($oci_request, ":bind45", $shift_update);
-	OCIBindByName($oci_request, ":bind46", $control_cars);
-	OCIBindByName($oci_request, ":bind47", $weighing_dispatcher);
-	OCIBindByName($oci_request, ":bind48", $process_of_wagons);
-	OCIBindByName($oci_request, ":bind49", $update_of_nsi);
-	OCIBindByName($oci_request, ":bind50", $export_samples);
-	OCIBindByName($oci_request, ":bind51", $entry_foreign_cont);
-	OCIBindByName($oci_request, ":bind52", $scale_type_1831_manual);
+	oci_bind_by_name($oci_request, ":bind45", $shift_update);
+	oci_bind_by_name($oci_request, ":bind46", $control_cars);
+	oci_bind_by_name($oci_request, ":bind47", $weighing_dispatcher);
+	oci_bind_by_name($oci_request, ":bind48", $process_of_wagons);
+	oci_bind_by_name($oci_request, ":bind49", $update_of_nsi);
+	oci_bind_by_name($oci_request, ":bind50", $export_samples);
+	oci_bind_by_name($oci_request, ":bind51", $entry_foreign_cont);
+	oci_bind_by_name($oci_request, ":bind52", $scale_type_1831_manual);
 	
 	
 	
@@ -611,69 +611,69 @@ if ($_POST['ajax_action']==='change_credential') {
 	$entry_foreign_cont = filter_input(INPUT_POST,'entry_foreign_cont');
 	$scale_type_1831_manual = filter_input(INPUT_POST,'scale_type_1831_manual');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000);
-    OCIBindByName($oci_request, ":bind2", $credential_id);
-    OCIBindByName($oci_request, ":bind3", $credential_name);
-    OCIBindByName($oci_request, ":bind4", $moving_inside_railway);
-    OCIBindByName($oci_request, ":bind5", $moving_inside_shop);
-    OCIBindByName($oci_request, ":bind6", $moving_inside_station);
-    OCIBindByName($oci_request, ":bind7", $moving_between_station);
-    OCIBindByName($oci_request, ":bind8", $change_attribute);
-    OCIBindByName($oci_request, ":bind9", $change_weight);
-    OCIBindByName($oci_request, ":bind10", $enter_inspection);
-    OCIBindByName($oci_request, ":bind11", $enter_inspection_add);
-    OCIBindByName($oci_request, ":bind12", $register_notification);
-    OCIBindByName($oci_request, ":bind13", $entry_foreign_car);
-    OCIBindByName($oci_request, ":bind14", $administrator);
-    OCIBindByName($oci_request, ":bind15", $receive_to_station);
-    OCIBindByName($oci_request, ":bind16", $work_with_groups);
-    OCIBindByName($oci_request, ":bind17", $out_from_ugl);
-    OCIBindByName($oci_request, ":bind18", $add_attribute);
-    OCIBindByName($oci_request, ":bind19", $create_request);
-    OCIBindByName($oci_request, ":bind20", $change_request);
-    OCIBindByName($oci_request, ":bind21", $view_request);
-    OCIBindByName($oci_request, ":bind22", $complete_request);
-    OCIBindByName($oci_request, ":bind23", $del_ins_doc);
-    OCIBindByName($oci_request, ":bind24", $return_from_psp);
-    OCIBindByName($oci_request, ":bind25", $autocreate_request_v);
-    OCIBindByName($oci_request, ":bind26", $autocreate_request_o);
-    OCIBindByName($oci_request, ":bind27", $autocreate_request_t);
-    OCIBindByName($oci_request, ":bind28", $weigh_import);
-    OCIBindByName($oci_request, ":bind29", $weigh_import_corr);
-    OCIBindByName($oci_request, ":bind30", $weigh_delete);
-    OCIBindByName($oci_request, ":bind31", $export_shop_info);
-    OCIBindByName($oci_request, ":bind32", $create_invoice_out);
-    OCIBindByName($oci_request, ":bind33", $send_invoice_to_etran);
-    OCIBindByName($oci_request, ":bind34", $register_notification_gu);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000);
+    oci_bind_by_name($oci_request, ":bind2", $credential_id);
+    oci_bind_by_name($oci_request, ":bind3", $credential_name);
+    oci_bind_by_name($oci_request, ":bind4", $moving_inside_railway);
+    oci_bind_by_name($oci_request, ":bind5", $moving_inside_shop);
+    oci_bind_by_name($oci_request, ":bind6", $moving_inside_station);
+    oci_bind_by_name($oci_request, ":bind7", $moving_between_station);
+    oci_bind_by_name($oci_request, ":bind8", $change_attribute);
+    oci_bind_by_name($oci_request, ":bind9", $change_weight);
+    oci_bind_by_name($oci_request, ":bind10", $enter_inspection);
+    oci_bind_by_name($oci_request, ":bind11", $enter_inspection_add);
+    oci_bind_by_name($oci_request, ":bind12", $register_notification);
+    oci_bind_by_name($oci_request, ":bind13", $entry_foreign_car);
+    oci_bind_by_name($oci_request, ":bind14", $administrator);
+    oci_bind_by_name($oci_request, ":bind15", $receive_to_station);
+    oci_bind_by_name($oci_request, ":bind16", $work_with_groups);
+    oci_bind_by_name($oci_request, ":bind17", $out_from_ugl);
+    oci_bind_by_name($oci_request, ":bind18", $add_attribute);
+    oci_bind_by_name($oci_request, ":bind19", $create_request);
+    oci_bind_by_name($oci_request, ":bind20", $change_request);
+    oci_bind_by_name($oci_request, ":bind21", $view_request);
+    oci_bind_by_name($oci_request, ":bind22", $complete_request);
+    oci_bind_by_name($oci_request, ":bind23", $del_ins_doc);
+    oci_bind_by_name($oci_request, ":bind24", $return_from_psp);
+    oci_bind_by_name($oci_request, ":bind25", $autocreate_request_v);
+    oci_bind_by_name($oci_request, ":bind26", $autocreate_request_o);
+    oci_bind_by_name($oci_request, ":bind27", $autocreate_request_t);
+    oci_bind_by_name($oci_request, ":bind28", $weigh_import);
+    oci_bind_by_name($oci_request, ":bind29", $weigh_import_corr);
+    oci_bind_by_name($oci_request, ":bind30", $weigh_delete);
+    oci_bind_by_name($oci_request, ":bind31", $export_shop_info);
+    oci_bind_by_name($oci_request, ":bind32", $create_invoice_out);
+    oci_bind_by_name($oci_request, ":bind33", $send_invoice_to_etran);
+    oci_bind_by_name($oci_request, ":bind34", $register_notification_gu);
     
     
-    OCIBindByName($oci_request, ":bind35", $route_add);
-    OCIBindByName($oci_request, ":bind36", $route_processing);
-    OCIBindByName($oci_request, ":bind37", $route_closing);
+    oci_bind_by_name($oci_request, ":bind35", $route_add);
+    oci_bind_by_name($oci_request, ":bind36", $route_processing);
+    oci_bind_by_name($oci_request, ":bind37", $route_closing);
     
     
-    OCIBindByName($oci_request, ":bind38", $output_defective_cars);
-    OCIBindByName($oci_request, ":bind39", $export_notification_gu);
-    OCIBindByName($oci_request, ":bind40", $fix_dev_rule);
-    OCIBindByName($oci_request, ":bind41", $fix_dev_place);
+    oci_bind_by_name($oci_request, ":bind38", $output_defective_cars);
+    oci_bind_by_name($oci_request, ":bind39", $export_notification_gu);
+    oci_bind_by_name($oci_request, ":bind40", $fix_dev_rule);
+    oci_bind_by_name($oci_request, ":bind41", $fix_dev_place);
 	
 	
-	OCIBindByName($oci_request, ":bind42", $enter_dev_inspection);
-	OCIBindByName($oci_request, ":bind43", $fix_dev_add);
-	OCIBindByName($oci_request, ":bind44", $fix_dev_undock);
-	OCIBindByName($oci_request, ":bind45", $fix_dev_update);
+	oci_bind_by_name($oci_request, ":bind42", $enter_dev_inspection);
+	oci_bind_by_name($oci_request, ":bind43", $fix_dev_add);
+	oci_bind_by_name($oci_request, ":bind44", $fix_dev_undock);
+	oci_bind_by_name($oci_request, ":bind45", $fix_dev_update);
     
     
-	OCIBindByName($oci_request, ":bind46", $shift_update);
-	OCIBindByName($oci_request, ":bind47", $control_cars);
+	oci_bind_by_name($oci_request, ":bind46", $shift_update);
+	oci_bind_by_name($oci_request, ":bind47", $control_cars);
 	
 	
-	OCIBindByName($oci_request, ":bind48", $weighing_dispatcher);
-	OCIBindByName($oci_request, ":bind49", $process_of_wagons);
-	OCIBindByName($oci_request, ":bind50", $update_of_nsi);
-	OCIBindByName($oci_request, ":bind51", $export_samples);
-	OCIBindByName($oci_request, ":bind52", $entry_foreign_cont);
-	OCIBindByName($oci_request, ":bind53", $scale_type_1831_manual);
+	oci_bind_by_name($oci_request, ":bind48", $weighing_dispatcher);
+	oci_bind_by_name($oci_request, ":bind49", $process_of_wagons);
+	oci_bind_by_name($oci_request, ":bind50", $update_of_nsi);
+	oci_bind_by_name($oci_request, ":bind51", $export_samples);
+	oci_bind_by_name($oci_request, ":bind52", $entry_foreign_cont);
+	oci_bind_by_name($oci_request, ":bind53", $scale_type_1831_manual);
 	
 	
 	
@@ -695,8 +695,8 @@ if ($_POST['ajax_action']==='delete_credential') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.delete_credential(:bind2); end;');
     $credential_id = filter_input(INPUT_POST,'credential_id');
 
-    OCIBindByName($oci_request, ":bind1", $result,100);
-    OCIBindByName($oci_request, ":bind2", $credential_id);
+    oci_bind_by_name($oci_request, ":bind1", $result,100);
+    oci_bind_by_name($oci_request, ":bind2", $credential_id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -735,7 +735,7 @@ if ($_POST['ajax_action']==='get_user_descr') {
     $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_user_descr(:bind1))');
     $user_id = filter_input(INPUT_POST,'user_id');
 
-    OCIBindByName($oci_child, ":bind1", $user_id);
+    oci_bind_by_name($oci_child, ":bind1", $user_id);
     oci_execute($oci_child);
     while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
         array_push($arrChild, $tmp);
@@ -752,7 +752,15 @@ if ($_POST['ajax_action']==='add_user') {
             trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
     }
 
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.add_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11); end;');
+    $oci_request = oci_parse($conn, "declare
+                                        l_log_id number:=xx_etw.xx_disl_log_seq.NEXTVAL ();
+                                      begin  
+
+                                            :bind1 := xx_dislocation.add_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12); 
+                                      exception when others then 
+                                            
+                                            xx_dislocation.log_new (l_log_id, 'php add_user', 'Error = '||sqlerrm);
+                                      end;");
     $login = filter_input(INPUT_POST,'login');
     $full_name = filter_input(INPUT_POST,'full_name');
     $enterprise = filter_input(INPUT_POST,'enterprise');
@@ -763,18 +771,20 @@ if ($_POST['ajax_action']==='add_user') {
     $default_station = filter_input(INPUT_POST,'default_station');
     $stations = filter_input(INPUT_POST,'stations');
     $credentials = filter_input(INPUT_POST,'credentials');
+    $user_email = filter_input(INPUT_POST,'user_email');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $login);
-    OCIBindByName($oci_request, ":bind3", $full_name);
-    OCIBindByName($oci_request, ":bind4", $enterprise);
-    OCIBindByName($oci_request, ":bind5", $division);
-    OCIBindByName($oci_request, ":bind6", $change_pwd);
-    OCIBindByName($oci_request, ":bind7", $open);
-    OCIBindByName($oci_request, ":bind8", $phone_num);
-    OCIBindByName($oci_request, ":bind9", $default_station);
-    OCIBindByName($oci_request, ":bind10", $stations);
-    OCIBindByName($oci_request, ":bind11", $credentials);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $login);
+    oci_bind_by_name($oci_request, ":bind3", $full_name);
+    oci_bind_by_name($oci_request, ":bind4", $enterprise);
+    oci_bind_by_name($oci_request, ":bind5", $division);
+    oci_bind_by_name($oci_request, ":bind6", $change_pwd);
+    oci_bind_by_name($oci_request, ":bind7", $open);
+    oci_bind_by_name($oci_request, ":bind8", $phone_num);
+    oci_bind_by_name($oci_request, ":bind9", $default_station);
+    oci_bind_by_name($oci_request, ":bind10", $stations);
+    oci_bind_by_name($oci_request, ":bind11", $credentials);
+    oci_bind_by_name($oci_request, ":bind12", $user_email);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -789,7 +799,7 @@ if ($_POST['ajax_action']==='change_user') {
             trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
     }
 
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12); end;');
+    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12,:bind13); end;');
     $user_id = filter_input(INPUT_POST,'user_id');
     $login = filter_input(INPUT_POST,'login');
     $full_name = filter_input(INPUT_POST,'full_name');
@@ -801,19 +811,22 @@ if ($_POST['ajax_action']==='change_user') {
     $default_station = filter_input(INPUT_POST,'default_station');
     $stations = filter_input(INPUT_POST,'stations');
     $credentials = filter_input(INPUT_POST,'credentials');
+    $user_email = filter_input(INPUT_POST,'user_email');
+    
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $user_id);
-    OCIBindByName($oci_request, ":bind3", $login);
-    OCIBindByName($oci_request, ":bind4", $full_name);
-    OCIBindByName($oci_request, ":bind5", $enterprise);
-    OCIBindByName($oci_request, ":bind6", $division);
-    OCIBindByName($oci_request, ":bind7", $change_pwd);
-    OCIBindByName($oci_request, ":bind8", $open);
-    OCIBindByName($oci_request, ":bind9", $phone_num);
-    OCIBindByName($oci_request, ":bind10", $default_station);
-    OCIBindByName($oci_request, ":bind11", $stations);
-    OCIBindByName($oci_request, ":bind12", $credentials);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $user_id);
+    oci_bind_by_name($oci_request, ":bind3", $login);
+    oci_bind_by_name($oci_request, ":bind4", $full_name);
+    oci_bind_by_name($oci_request, ":bind5", $enterprise);
+    oci_bind_by_name($oci_request, ":bind6", $division);
+    oci_bind_by_name($oci_request, ":bind7", $change_pwd);
+    oci_bind_by_name($oci_request, ":bind8", $open);
+    oci_bind_by_name($oci_request, ":bind9", $phone_num);
+    oci_bind_by_name($oci_request, ":bind10", $default_station);
+    oci_bind_by_name($oci_request, ":bind11", $stations);
+    oci_bind_by_name($oci_request, ":bind12", $credentials);
+    oci_bind_by_name($oci_request, ":bind13", $user_email);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -852,11 +865,11 @@ if ($_POST['ajax_action']==='change_ins_doc_type') {
     $descr = filter_input(INPUT_POST,'descr');
     $storage_life = filter_input(INPUT_POST,'storage_life');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $type_id);
-    OCIBindByName($oci_request, ":bind3", $name);
-    OCIBindByName($oci_request, ":bind4", $descr);
-    OCIBindByName($oci_request, ":bind5", $storage_life);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $type_id);
+    oci_bind_by_name($oci_request, ":bind3", $name);
+    oci_bind_by_name($oci_request, ":bind4", $descr);
+    oci_bind_by_name($oci_request, ":bind5", $storage_life);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -872,7 +885,7 @@ if ($_POST['ajax_action']==='create_new_ins_doc_type') {
     }
 
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.create_new_ins_doc_type(); end;');
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -890,8 +903,8 @@ if ($_POST['ajax_action']==='del_ins_doc_type') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_ins_doc_type(:bind2); end;');
     $type_id = filter_input(INPUT_POST,'type_id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $type_id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $type_id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -932,13 +945,13 @@ if ($_POST['ajax_action']==='save_rail_service_rgd') {
     $end_date = filter_input(INPUT_POST,'end_date');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);        
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $code);
-    OCIBindByName($oci_request, ":bind5", $category);
-    OCIBindByName($oci_request, ":bind6", $beg_date);
-    OCIBindByName($oci_request, ":bind7", $end_date);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);        
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $code);
+    oci_bind_by_name($oci_request, ":bind5", $category);
+    oci_bind_by_name($oci_request, ":bind6", $beg_date);
+    oci_bind_by_name($oci_request, ":bind7", $end_date);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -956,8 +969,8 @@ if ($_POST['ajax_action']==='del_rail_service_rgd') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_service_rgd(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1001,16 +1014,16 @@ if ($_POST['ajax_action']==='save_rail_service') {
     $request_tasks = filter_input(INPUT_POST,'request_tasks');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);   
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $code);
-    OCIBindByName($oci_request, ":bind5", $descr);
-    OCIBindByName($oci_request, ":bind6", $descr_full);
-    OCIBindByName($oci_request, ":bind7", $beg_date);
-    OCIBindByName($oci_request, ":bind8", $end_date);
-    OCIBindByName($oci_request, ":bind9", $service_rgd_id);
-    OCIBindByName($oci_request, ":bind10", $request_tasks);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);   
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $code);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind6", $descr_full);
+    oci_bind_by_name($oci_request, ":bind7", $beg_date);
+    oci_bind_by_name($oci_request, ":bind8", $end_date);
+    oci_bind_by_name($oci_request, ":bind9", $service_rgd_id);
+    oci_bind_by_name($oci_request, ":bind10", $request_tasks);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1028,8 +1041,8 @@ if ($_POST['ajax_action']==='del_rail_service') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_service(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1073,16 +1086,16 @@ if ($_POST['ajax_action']==='save_rail_contract') {
     $end_date = filter_input(INPUT_POST,'end_date');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);  
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $num);
-    OCIBindByName($oci_request, ":bind5", $descr);
-    OCIBindByName($oci_request, ":bind6", $owner);
-    OCIBindByName($oci_request, ":bind7", $freight_owner);
-    OCIBindByName($oci_request, ":bind8", $freight_owner_short);
-    OCIBindByName($oci_request, ":bind9", $beg_date);
-    OCIBindByName($oci_request, ":bind10", $end_date);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);  
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $num);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind6", $owner);
+    oci_bind_by_name($oci_request, ":bind7", $freight_owner);
+    oci_bind_by_name($oci_request, ":bind8", $freight_owner_short);
+    oci_bind_by_name($oci_request, ":bind9", $beg_date);
+    oci_bind_by_name($oci_request, ":bind10", $end_date);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1100,8 +1113,8 @@ if ($_POST['ajax_action']==='del_rail_contract') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1143,14 +1156,14 @@ if ($_POST['ajax_action']==='save_rail_contract_dop') {
     $contract_id = filter_input(INPUT_POST,'contract_id');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);  
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $num);
-    OCIBindByName($oci_request, ":bind5", $descr);
-    OCIBindByName($oci_request, ":bind6", $beg_date);
-    OCIBindByName($oci_request, ":bind7", $end_date);
-    OCIBindByName($oci_request, ":bind8", $contract_id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);  
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $num);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind6", $beg_date);
+    oci_bind_by_name($oci_request, ":bind7", $end_date);
+    oci_bind_by_name($oci_request, ":bind8", $contract_id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1168,8 +1181,8 @@ if ($_POST['ajax_action']==='del_rail_contract_dop') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_dop(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1229,14 +1242,14 @@ if ($_POST['ajax_action']==='save_rail_contract_change') {
     $contract_id = filter_input(INPUT_POST,'contract_id');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);  
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $num);
-    OCIBindByName($oci_request, ":bind5", $descr);
-    OCIBindByName($oci_request, ":bind6", $beg_date);
-    OCIBindByName($oci_request, ":bind7", $end_date);
-    OCIBindByName($oci_request, ":bind8", $contract_id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);  
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $num);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind6", $beg_date);
+    oci_bind_by_name($oci_request, ":bind7", $end_date);
+    oci_bind_by_name($oci_request, ":bind8", $contract_id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1254,8 +1267,8 @@ if ($_POST['ajax_action']==='del_rail_contract_change') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_change(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1316,15 +1329,15 @@ if ($_POST['ajax_action']==='save_rail_contract_services') {
     $cost_nds = filter_input(INPUT_POST,'cost_nds');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $userID);
-    OCIBindByName($oci_request, ":bind3", $id);
-    OCIBindByName($oci_request, ":bind4", $contract_id);
-    OCIBindByName($oci_request, ":bind5", $service_id);
-    OCIBindByName($oci_request, ":bind6", $ei);
-    OCIBindByName($oci_request, ":bind7", $ei_descr);
-    OCIBindByName($oci_request, ":bind8", $cost);
-    OCIBindByName($oci_request, ":bind9", $cost_nds);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $userID);
+    oci_bind_by_name($oci_request, ":bind3", $id);
+    oci_bind_by_name($oci_request, ":bind4", $contract_id);
+    oci_bind_by_name($oci_request, ":bind5", $service_id);
+    oci_bind_by_name($oci_request, ":bind6", $ei);
+    oci_bind_by_name($oci_request, ":bind7", $ei_descr);
+    oci_bind_by_name($oci_request, ":bind8", $cost);
+    oci_bind_by_name($oci_request, ":bind9", $cost_nds);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1342,8 +1355,8 @@ if ($_POST['ajax_action']==='del_rail_contract_services') {
     $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_services(:bind2); end;');
     $id = filter_input(INPUT_POST,'id');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $id);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $id);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1364,11 +1377,11 @@ if ($_POST['ajax_action']==='add_area') {
     $name = filter_input(INPUT_POST,'name');
     $descr = filter_input(INPUT_POST,'descr');
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);
-    OCIBindByName($oci_request, ":bind2", $parent_id);
-    OCIBindByName($oci_request, ":bind3", $parent_type);
-    OCIBindByName($oci_request, ":bind4", $name);
-    OCIBindByName($oci_request, ":bind5", $descr);
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
+    oci_bind_by_name($oci_request, ":bind2", $parent_id);
+    oci_bind_by_name($oci_request, ":bind3", $parent_type);
+    oci_bind_by_name($oci_request, ":bind4", $name);
+    oci_bind_by_name($oci_request, ":bind5", $descr);
     oci_execute($oci_request);
 
     oci_close($conn);
@@ -1412,7 +1425,7 @@ if ($_POST['ajax_action']==='get_period_closing') {
     $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_period_closing(:bind1))');
     $period_id = filter_input(INPUT_POST,'period_id');
 
-    OCIBindByName($oci_request, ":bind1", $period_id);
+    oci_bind_by_name($oci_request, ":bind1", $period_id);
     oci_execute($oci_request);
 
     $arrResult = array();
@@ -1458,11 +1471,11 @@ if ($_POST['ajax_action']==='save_period_status') {
     $status_id = filter_input(INPUT_POST,'status_id');
     $userID = $auth->getUserId();
 
-    OCIBindByName($oci_request, ":bind1", $result,1000000);   
-    OCIBindByName($oci_request, ":bind2", $period_id);
-    OCIBindByName($oci_request, ":bind3", $oper_id);
-    OCIBindByName($oci_request, ":bind4", $status_id);
-    OCIBindByName($oci_request, ":bind5", $userID);   
+    oci_bind_by_name($oci_request, ":bind1", $result,1000000);   
+    oci_bind_by_name($oci_request, ":bind2", $period_id);
+    oci_bind_by_name($oci_request, ":bind3", $oper_id);
+    oci_bind_by_name($oci_request, ":bind4", $status_id);
+    oci_bind_by_name($oci_request, ":bind5", $userID);   
     oci_execute($oci_request);
 
     oci_close($conn);

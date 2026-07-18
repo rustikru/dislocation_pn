@@ -32,6 +32,7 @@ if (!$auth->isAuthAdmin()) {
         <meta charset="utf-8">
         <title>Внутренняя дислокация</title>
         <script src="../jquery/3.7/jquery-3.7.1.js" type="text/javascript"></script>
+        <script src="../jquery/3.7/jquery-migrate-3.4.1.js" type="text/javascript"></script>
         <script src="../jquery/3.7/jquery-ui.min.js" type="text/javascript"></script>
 
         <script src="../js/general_function.js" type="text/javascript"></script>
@@ -135,6 +136,11 @@ if (!$auth->isAuthAdmin()) {
                                     <div>
                                         <label>Полное имя (Фамилия И.О.)</label>
                                         <input id="user_full_name" maxlength="100"
+                                            class="text ui-widget-content ui-corner-all">
+                                    </div>
+                                    <div>
+                                        <label>Email</label>
+                                        <input id="user_email" maxlength="100"
                                             class="text ui-widget-content ui-corner-all">
                                     </div>
                                     <div>
