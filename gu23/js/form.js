@@ -208,7 +208,7 @@ function showMainFields() {
     },
   )
 }
-
+// --- Причина и обстоятельства ---
 function showReasonFields() {
   const $place = $('#form-reason-place').empty()
   // Причина и обстоятельства
@@ -273,7 +273,7 @@ function validateAndGetDate($inp) {
     !$inp.hasClass('red_bckg_color')
   return isValid ? value : ''
 }
-
+// --- плашка с длительностью простоя ---
 function showDurationBanner() {
   const $place = $('#form-duration-place')
   if (activeDraft.type !== 'end') return $place.empty()
@@ -305,7 +305,7 @@ function showDurationBanner() {
     )
   }
 }
-
+// --- загрузка списка открытых актов начала простоя ---
 function loadOpenStartsList() {
   const proceedLoading = (list) => {
     activeDraft._openStarts = list || []
@@ -333,7 +333,7 @@ function loadOpenStartsList() {
     proceedLoading(activeDraft._openStarts)
   }
 }
-
+// Применяем выбранный акт начала простоя к текущему черновику
 function applySelectedStartAct(id, filterNums = null) {
   const selectedAct = (activeDraft._openStarts || []).find(
     (item) => String(item.ID) === String(id),
@@ -410,7 +410,9 @@ function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   function showMatches(searchText) {
     const searchTextLower = (searchText || '').trim().toLowerCase()
     const matches = searchTextLower
-      ? items.filter((it) => it.label.toLowerCase().indexOf(searchTextLower) !== -1)
+      ? items.filter(
+          (it) => it.label.toLowerCase().indexOf(searchTextLower) !== -1,
+        )
       : items
     $dropdown.empty()
     activeIdx = -1
@@ -784,7 +786,7 @@ function findOpenStayByWagons() {
 function ClearTableDislocation() {
   $('#wtbl').empty()
 }
-
+// --- отрисовка таблицы вагонов ---
 function showWagonsTable() {
   const $place = $('#wagons-table-place').empty()
   const $summaryPlace = $('#wagon-summary-place').empty()
@@ -890,7 +892,7 @@ const signerRules = {
     rzdLabel: 'Работник станции ОАО "РЖД"',
   },
 }
-
+// Получаем  подписантов для текущего типа акта
 function getSignerSlots(actType) {
   const rules = signerRules[actType] || signerRules.default
   const slots = []
@@ -913,7 +915,7 @@ function getSignerSlots(actType) {
 
   return slots
 }
-
+// Отрисовываем блок подписантов
 function showSignersFields() {
   const $container = $('#form-signers-place')
     .empty()
@@ -936,7 +938,7 @@ function showSignersFields() {
   manualSignerInputChanges()
   manualSignerHints(manualSlots)
 }
-
+//
 function putSignersToSlots(signerSlots) {
   const current = activeDraft.signers || []
   if (!current.length) return
@@ -974,7 +976,7 @@ function signerMatchesSlot(signer, slot) {
   if (!signer.stype) return slot.type === 'own'
   return signer.stype === slot.type
 }
-
+// Получаем список подписантов предприятия для текущего акта
 function getOwnSignersForAct() {
   // const dept = activeDraft.departmentCode
   // Временно отключаем фильтрацию по цеху
@@ -1077,7 +1079,7 @@ function signerSelectHtml(i, signer, signersList, usedIds) {
     </select>
   `
 }
-
+//
 function signerModeButtonClicks() {
   $('.signer-mode-btn').on('click', function () {
     const slot = $(this).data('slot')
@@ -1187,8 +1189,10 @@ function showFormButtons() {
   const sendBtn = hasPerm('SEND_APPROVAL')
     ? `<button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>`
     : ''
-  const saveStatus = activeDraft.status === 'on_correction' ? 'on_correction' : 'draft'
-  const saveLabel = activeDraft.status === 'on_correction' ? 'Сохранить' : 'Сохранить Проект'
+  const saveStatus =
+    activeDraft.status === 'on_correction' ? 'on_correction' : 'draft'
+  const saveLabel =
+    activeDraft.status === 'on_correction' ? 'Сохранить' : 'Сохранить Проект'
 
   $('#form-footer').html(`
     <button class="btn ghost" id="btn-cancel">Отмена</button>
@@ -1203,7 +1207,7 @@ function showFormButtons() {
   $('#btn-saveDraft').on('click', () => saveActToServer(saveStatus))
   $('#btn-saveActive').on('click', () => saveActToServer('active'))
 }
-
+// Проверка формы перед сохранением
 function validateForm(checkSigners) {
   const errors = []
 
@@ -1213,7 +1217,7 @@ function validateForm(checkSigners) {
 
   return errors
 }
-
+// Проверка основных полей формы
 function checkMainFields(errors) {
   if (!activeDraft.departmentCode) errors.push('Не указан цех')
   if (!activeDraft.reasonId) errors.push('Не указана причина составления')
@@ -1234,7 +1238,7 @@ function checkMainFields(errors) {
     errors.push('Не указана ст. назначения') */
   if (!activeDraft.stationToId) errors.push('Не указана ст. назначения')
 }
-
+// Проверка дат акта
 function checkActDates(errors) {
   if (activeDraft.type === 'start' && !activeDraft.startAt)
     errors.push('Не указана дата начала простоя')
@@ -1254,7 +1258,7 @@ function checkActDates(errors) {
     }
   }
 }
-
+// Проверка обязательных подписантов
 function checkRequiredSigners(errors) {
   const signerSlots = getSignerSlots(activeDraft.type)
   const emptySlot = signerSlots.findIndex(
@@ -1263,7 +1267,7 @@ function checkRequiredSigners(errors) {
   )
   if (emptySlot >= 0) errors.push(`Не указан подписант ${emptySlot + 1}`)
 }
-
+// Проверка, заполнен ли подписант (ФИО + должность + организация)
 function isFilledSigner(signer) {
   if (!signer || !signer.fio || !signer.fio.trim()) return false
   if (signer.manual)
@@ -1275,7 +1279,7 @@ function isFilledSigner(signer) {
     )
   return true
 }
-
+// --- сохранение акта в БД ---
 let actSaveInProcess = false
 
 function setSaveButtonsDisabled(disabled) {
@@ -1310,12 +1314,12 @@ function saveActToServer(status, skipWarning = false) {
       finishSaveRequest()
     })
 }
-
+// Проверка ошибок перед сохранением
 function getSaveErrors(status) {
   if (status === 'active') return validateForm(true)
   return activeDraft.departmentCode ? [] : ['Не указан цех']
 }
-
+// Формируем объект данных для сохранения акта
 function getActDataForSave(status, skipWarning) {
   return {
     id: activeDraft.id || 0,
@@ -1325,19 +1329,26 @@ function getActDataForSave(status, skipWarning) {
     station: activeDraft.stationId || '',
     st_from: activeDraft.stationFromId || '',
     st_to: activeDraft.stationToId || '',
+    // Номер накладной
     waybill_no: activeDraft.waybillNumber || '',
+    // Груз
     cargo_ref: activeDraft.cargoReference || '',
+    // Причина
     reason: activeDraft.reasonId,
+    // обстоятельства
     circumstances: activeDraft.circumstances,
     start_at: formatToDatabaseDate(activeDraft.startAt),
     end_at: formatToDatabaseDate(activeDraft.endAt),
+    // Признак, что акт составлен в рамках другого акта начала простоя (для актов окончания)
     linked_start_id: activeDraft.linkedStartId || '',
     wagons: JSON.stringify(activeDraft.wagons),
+    // Подписанты — массив объектов с полями: id, fio, post, org, manual, stype
     signers: JSON.stringify(activeDraft.signers.filter(Boolean)),
+    // Признак игнорирования предупреждения о дублирующемся открытом акте начала простоя
     force: skipWarning ? 'Y' : 'N',
   }
 }
-
+// После успешного сохранения акта
 function afterActSaved(status, response) {
   setActiveDraft(null)
 
@@ -1372,7 +1383,7 @@ function afterActSaved(status, response) {
   finishSaveRequest()
   navigateTo('card', response.id)
 }
-
+// Обработка ошибки сохранения акта
 function showSaveError(status, response) {
   const msg = (response && response.msg) || 'Ошибка сохранения'
   if (/уже есть открытый акт начала/.test(msg)) {
