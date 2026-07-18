@@ -244,6 +244,7 @@ tbody tr:last-child td {
 }
 
 .btn-save, .btn-add-record {
+    background-color: #2d9662;
     background-color: var(--accent, #2d9662);
     color: white;
     padding: 7px 14px;
@@ -271,7 +272,8 @@ tbody tr:last-child td {
     letter-spacing: 0.2px;
 }
 
-.btn-save:hover {
+.btn-save:hover, .btn-add-record:hover {
+    background-color: #1f6b46;
     background-color: var(--accent-deep, #1f6b46);
 }
 

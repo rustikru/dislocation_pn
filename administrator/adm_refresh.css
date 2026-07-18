@@ -9,15 +9,16 @@
     --ink-2: #4a5666;
     --ink-3: #7c8896;
 
-    --accent: oklch(0.50 0.085 158);
-    --accent-deep: oklch(0.40 0.075 158);
-    --accent-soft: oklch(0.95 0.025 158);
-    --accent-line: oklch(0.86 0.045 158);
+    /* HEX вместо OKLCH: совместимо со старыми Firefox. */
+    --accent: #2d9662;
+    --accent-deep: #1f6b46;
+    --accent-soft: #e6f5ec;
+    --accent-line: #b8ddc8;
 
-    --err: oklch(0.55 0.16 25);
-    --err-bg: oklch(0.94 0.05 25);
+    --err: #c0392b;
+    --err-bg: #fbeceb;
 
-    --sel-bg: oklch(0.93 0.04 158);
+    --sel-bg: #dcefe4;
 
     --shadow: 0 1px 2px rgba(20, 30, 45, .05), 0 6px 20px rgba(20, 30, 45, .07);
     --shadow-pop: 0 8px 28px rgba(20, 30, 45, .18);
@@ -338,14 +339,24 @@ header:before {
     border-color: var(--ink-3);
 }
 
-.button[id^="save_new_"] {
+.button[id^="save_new_"],
+.button[id^="change_"],
+.button[id^="add_new_"],
+.aside > .buttonset .button[id^="add_new_"] {
+    background: #2d9662;
     background: var(--accent);
+    border-color: #2d9662;
     border-color: var(--accent);
     color: #fff;
 }
 
-.button[id^="save_new_"]:hover {
+.button[id^="save_new_"]:hover,
+.button[id^="change_"]:hover,
+.button[id^="add_new_"]:hover,
+.aside > .buttonset .button[id^="add_new_"]:hover {
+    background: #1f6b46;
     background: var(--accent-deep);
+    border-color: #1f6b46;
     border-color: var(--accent-deep);
 }
 
@@ -504,6 +515,7 @@ header:before {
     font-size: 12px;
     font-weight: 500;
     white-space: normal;
+    margin-right: 12px;
 }
 
 .credential-descr > div > input.text,
@@ -534,6 +546,7 @@ textarea {
 }
 
 select {
+    -moz-appearance: none;
     appearance: none;
     padding-right: 30px;
     cursor: pointer;
@@ -630,6 +643,16 @@ div.border div.header {
     position: static;
     flex: 0 0 auto;
     cursor: pointer;
+    margin-right: 8px;
+}
+
+@supports (gap: 1px) {
+    .credential-descr > div > label,
+    .user-descr > div > label,
+    .credential-input,
+    .checkbox-input {
+        margin-right: 0;
+    }
 }
 
 /* Станции — компактный горизонтальный ряд вместо вертикального списка */

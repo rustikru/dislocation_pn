@@ -52,12 +52,12 @@ if (!$auth->isAuthAdmin()) {
         <script type="text/javascript" src="modules/adm_user/adm_user.js"></script>
         <link rel="stylesheet" href="modules/adm_user/adm_user.css" type="text/css">
 
-        <link rel="stylesheet" href="modules/directory/css/style.css" type="text/css">
+        <link rel="stylesheet" href="modules/directory/css/style.css?ver=2" type="text/css">
 
         <link rel="stylesheet" href="modules/periods/periods.css" type="text/css">
         <script type="text/javascript" src="modules/periods/periods.js"></script>
 
-        <link rel="stylesheet" href="adm_refresh.css?ver=15" type="text/css">
+        <link rel="stylesheet" href="adm_refresh.css?ver=16" type="text/css">
 
     </head>
 
