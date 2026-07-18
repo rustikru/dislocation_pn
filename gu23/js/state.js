@@ -19,14 +19,14 @@ export const applicationState = {
   isAdmin: false,
   userPerms: new Set(), // коды полномочий текущего пользователя
 }
-
+/** add 25.06.2026 BekmansurovRR */
 /** Проверить наличие полномочия у текущего пользователя */
 export function hasPerm(code) {
   return (
     applicationState.isAdmin === true || applicationState.userPerms.has(code)
   )
 }
-
+/** add 25.06.2026 BekmansurovRR */
 /** Текущий пользователь — администратор */
 export function isAdmin() {
   return applicationState.isAdmin === true

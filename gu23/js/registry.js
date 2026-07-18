@@ -129,11 +129,12 @@ function showArchivePage(container) {
     'type',
   )
   addMultiChoiceFilter(
-    ['', 'draft', 'active', 'closed', 'annulled', 'signed', 'rejected'],
+    ['', 'draft', 'active', 'on_correction', 'closed', 'annulled', 'signed', 'rejected'],
     [
       'Все статусы',
       'Проект',
       'Открыт',
+      'На корректировке',
       'Закрыт',
       'Аннулирован',
       'Подписан',

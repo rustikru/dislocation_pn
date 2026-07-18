@@ -1187,10 +1187,12 @@ function showFormButtons() {
   const sendBtn = hasPerm('SEND_APPROVAL')
     ? `<button class="btn primary" id="btn-saveActive">Сохранить и отправить на подписание</button>`
     : ''
+  const saveStatus = activeDraft.status === 'on_correction' ? 'on_correction' : 'draft'
+  const saveLabel = activeDraft.status === 'on_correction' ? 'Сохранить' : 'Сохранить Проект'
 
   $('#form-footer').html(`
     <button class="btn ghost" id="btn-cancel">Отмена</button>
-    <button class="btn" id="btn-saveDraft">Сохранить Проект</button>
+    <button class="btn" id="btn-saveDraft">${saveLabel}</button>
     ${sendBtn}
   `)
 
@@ -1198,7 +1200,7 @@ function showFormButtons() {
     setActiveDraft(null)
     navigateTo('archive')
   })
-  $('#btn-saveDraft').on('click', () => saveActToServer('draft'))
+  $('#btn-saveDraft').on('click', () => saveActToServer(saveStatus))
   $('#btn-saveActive').on('click', () => saveActToServer('active'))
 }
 

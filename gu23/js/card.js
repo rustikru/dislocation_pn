@@ -73,16 +73,16 @@ function showActionsMenu(act, data) {
   }
 
   // --- черновик: редактирование / удаление ---
-  // Редактировать и удалять можно только Проект (draft).
-  if (act.STATUS === 'draft' && hasPerm('EDIT_OWN_ACT') && data.canEditDraft) {
+  if (
+    (act.STATUS === 'draft' || act.STATUS === 'on_correction') &&
+    hasPerm('EDIT_OWN_ACT') &&
+    data.canEditDraft
+  ) {
     addMenuItem('Редактировать', () => editDraftAct(data))
-    addMenuItem('Удалить проект', () => deleteDraftAct(act), 'danger')
+    if (act.STATUS === 'draft') {
+      addMenuItem('Удалить проект', () => deleteDraftAct(act), 'danger')
+    }
   }
-  //  Правка акта «на подписании» администратором — пока отключено.
-  // gu23_save_act). ограничить типом: добавить && act.ACT_TYPE === 'other'.
-  // else if (act.STATUS === 'active' && isAdmin()) {
-  //   addMenuItem('Редактировать', () => editDraftAct(data))
-  // }
 
   // --- рассылка ссылок на подписание ---
   if (
@@ -274,6 +274,8 @@ function showSignersBlock(
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#d1f0db;color:#2d7a47"> Подписано</span>'
     if (status === 'rejected')
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fddede;color:#a03030"> Отклонено</span>'
+    if (status === 'on_correction')
+      return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#e8eaed;color:#5f6368"> На корректировке</span>'
     if (status === 'pending')
       return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3cc;color:#7a5900"> В процессе</span>'
     return ''
@@ -295,7 +297,8 @@ function showSignersBlock(
     ? signers
         .map((s) => {
           const isRzd = s.STYPE === 'rzd'
-          const approval = !isRzd && s.USER_ID ? approvalsByUser[s.USER_ID] : null
+          const approval =
+            !isRzd && s.USER_ID ? approvalsByUser[s.USER_ID] : null
           const isCurrentSigner =
             currentSignerId !== '' && String(s.USER_ID) === currentSignerId
           let pill = ''
@@ -343,16 +346,22 @@ function showSignersBlock(
   let myBannerHtml = ''
   if (canSign) {
     myBannerHtml = `
-      <div id="my-approval-banner" style="border-radius:6px;padding:12px 14px;margin-bottom:4px">
+      <div id="my-approval-banner" class="approval-box">
         <div style="font-size:13px;margin-bottom:8px;color:#1d4ed8"></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn sm" id="btn-sign-approve" style="background:#2d7a47;color:#fff">Подписать</button>
-          <button class="btn sm" id="btn-sign-reject"  style="background:#a03030;color:#fff">Отклонить</button>
+        <div class="approval-buttons">
+          <button class="btn sm approval-btn approval-ok" id="btn-sign-approve">Подписать</button>
+          <button class="btn sm approval-btn approval-no" id="btn-sign-reject">Отклонить</button>
+          <button class="btn sm approval-btn approval-correction" id="btn-sign-correction">В корректировку</button>
         </div>
         <div id="reject-reason-box" style="display:none;margin-top:8px">
           <textarea id="reject-reason-txt" placeholder="Причина отклонения…"
             style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
-          <button class="btn sm" id="btn-sign-reject-confirm" style="margin-top:6px;background:#a03030;color:#fff">Отклоненить</button>
+          <button class="btn sm approval-btn approval-no" id="btn-sign-reject-confirm" style="margin-top:6px">Отклонить</button>
+        </div>
+        <div id="correction-reason-box" style="display:none;margin-top:8px">
+          <textarea id="correction-reason-txt" placeholder="Причина корректировки…"
+            style="width:100%;min-height:60px;padding:6px 10px;border:1px solid var(--line2,#ddd);border-radius:5px;font-size:13px;resize:vertical"></textarea>
+          <button class="btn sm" id="btn-sign-correction-confirm" style="margin-top:6px">Отправить</button>
         </div>
       </div>`
   }
@@ -366,8 +375,16 @@ function showSignersBlock(
 
     $('#btn-sign-reject').on('click', () => {
       const box = $('#reject-reason-box')
+      $('#correction-reason-box').hide()
       box.toggle()
       if (box.is(':visible')) $('#reject-reason-txt').focus()
+    })
+
+    $('#btn-sign-correction').on('click', () => {
+      const box = $('#correction-reason-box')
+      $('#reject-reason-box').hide()
+      box.toggle()
+      if (box.is(':visible')) $('#correction-reason-txt').focus()
     })
 
     $('#btn-sign-reject-confirm').on('click', () => {
@@ -377,6 +394,15 @@ function showSignersBlock(
         return
       }
       submitInAppDecision(act.ID, 'rejected', reason)
+    })
+
+    $('#btn-sign-correction-confirm').on('click', () => {
+      const reason = $('#correction-reason-txt').val().trim()
+      if (!reason) {
+        showToast('Укажите причину', 'err')
+        return
+      }
+      submitInAppDecision(act.ID, 'on_correction', reason)
     })
   }
 }
@@ -499,7 +525,7 @@ function editDraftAct(data) {
   setActiveDraft({
     id: act.ID,
     type: act.ACT_TYPE,
-    status: 'draft',
+    status: act.STATUS,
     departmentCode: act.DEPT,
     stationId: String(act.STATION_ID || ''),
     stationFromId: String(act.ST_FROM_ID || ''),

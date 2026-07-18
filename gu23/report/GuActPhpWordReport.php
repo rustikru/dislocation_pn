@@ -164,8 +164,8 @@ class GuActPhpWordReport
 
         foreach ($rows as $idx => $signer) {
             $num = $idx + 1;
-            $doc->setValue("SIGNER_POST#$num", $this->cleanValue((string) ($signer['POST'] ?? '')));
-            $doc->setValue("SIGNER_FIO#$num", $this->cleanValue((string) ($signer['FIO'] ?? '')));
+            $doc->setValue("SIGNER_POST#$num", $this->cleanValue($this->signerCellText((string) ($signer['POST'] ?? ''), $idx, count($rows))));
+            $doc->setValue("SIGNER_FIO#$num", $this->cleanValue($this->signerCellText((string) ($signer['FIO'] ?? ''), $idx, count($rows))));
         }
 
         $doc->setValue('SIGNER_1_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
@@ -187,8 +187,8 @@ class GuActPhpWordReport
 
         foreach ($rows as $idx => $signer) {
             $num = $idx + 1;
-            $doc->setValue("SIGNER_RZD_POST#$num", $this->cleanValue((string) ($signer['POST'] ?? '')));
-            $doc->setValue("SIGNER_RZD_FIO#$num", $this->cleanValue((string) ($signer['FIO'] ?? '')));
+            $doc->setValue("SIGNER_RZD_POST#$num", $this->cleanValue($this->signerCellText((string) ($signer['POST'] ?? ''), $idx, count($rows))));
+            $doc->setValue("SIGNER_RZD_FIO#$num", $this->cleanValue($this->signerCellText((string) ($signer['FIO'] ?? ''), $idx, count($rows))));
         }
 
         $doc->setValue('SIGNER_RZD_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
@@ -516,6 +516,11 @@ class GuActPhpWordReport
         }
 
         return $post !== '' ? 'Должность: ' . $post : 'Ф.И.О.: ' . $fio;
+    }
+
+    private function signerCellText(string $text, int $idx, int $count): string
+    {
+        return $idx + 1 < $count ? $text . "\n" : $text;
     }
 
     private function formatDate(string $date): string

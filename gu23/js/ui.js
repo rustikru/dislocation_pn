@@ -14,6 +14,7 @@ const actStatusLabels = {
   annulled: { label: 'Аннулирован', className: 'st-annulled' },
   signed: { label: 'Подписан', className: 'st-signed' },
   rejected: { label: 'Отклонён', className: 'st-rejected' },
+  on_correction: { label: 'На корректировке', className: 'st-oncorrection' },
 }
 
 export function showStatusChip(status) {
@@ -25,7 +26,10 @@ export function showStatusChip(status) {
 }
 /* Название типа акта */
 export function showTypeName(type) {
-  const typeInfo = actTypeLabels[type] || { label: type, className: 'typ-other' }
+  const typeInfo = actTypeLabels[type] || {
+    label: type,
+    className: 'typ-other',
+  }
   return typeInfo.label
 }
 
@@ -39,7 +43,10 @@ export function showStatusName(status) {
 }
 
 export function showTypeChip(type) {
-  const typeInfo = actTypeLabels[type] || { label: type, className: 'typ-other' }
+  const typeInfo = actTypeLabels[type] || {
+    label: type,
+    className: 'typ-other',
+  }
   return `<span class="typchip ${typeInfo.className}">${typeInfo.label}</span>`
 }
 

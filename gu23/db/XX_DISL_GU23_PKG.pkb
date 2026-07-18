@@ -11,15 +11,26 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                                раздельные справочники станций и подписантов;
                                                справочник грузов.
   ******************************************************************************/
-   c_package     constant varchar2(30) := 'xx_disl_gu23_pkg';
-   c_dtf         constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us          constant char(1) := chr(31);            -- разделитель полей
-   c_rs          constant char(1) := chr(30);          -- разделитель записей
-   g_client_ip   varchar2(64) := null; -- IP клиента текущего запроса
-   g_server_host varchar2(240) := sys_context(
+   c_package       constant varchar2(30) := 'xx_disl_gu23_pkg';
+   c_dtf           constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
+   c_us            constant char(1) := chr(31);            -- разделитель полей
+   c_rs            constant char(1) := chr(30);          -- разделитель записей
+   g_client_ip     varchar2(64) := null; -- IP клиента текущего запроса
+   g_server_host   varchar2(240) := sys_context(
       'USERENV',
       'SERVER_HOST'
    );
+   g_email_subject constant varchar2(240) := 'Дислокация.Уведомление "ГУ-23"';
+   function html_escape (
+      p_text in varchar2
+   ) return varchar2;
+
+   function gu23_correction_mail_html (
+      p_act_id    in number,
+      p_user_name in varchar2,
+      p_comment   in varchar2,
+      p_base_url  in varchar2 default null
+   ) return clob;
 
    procedure gu23_set_client_ip (
       p_ip in varchar2
@@ -630,7 +641,10 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           order by name
       ) loop
          l_row.id := r.id;
-         l_row.code := nvl(r.code, to_char(r.id));
+         l_row.code := nvl(
+            r.code,
+            to_char(r.id)
+         );
          l_row.name := r.name;
          pipe row ( l_row );
       end loop;
@@ -2126,7 +2140,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          end;
 
             -- Редактировать можно ТОЛЬКО Проект.
-         if v_cur_status <> 'draft' then
+         if v_cur_status not in ( 'draft',
+                                  'on_correction' ) then
             return format_error('Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
          end if;
          if
@@ -2139,7 +2154,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             )
             and gu23_is_admin(p_data.p_user_id) <> 'Y'
          then
-            return format_error('Редактировать Проект может только создатель акта');
+            return format_error('Редактировать акт может только создатель или администратор');
          end if;
 
             --  Разрешить администратору правку акта "на подписании":
@@ -2183,10 +2198,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                    1
                 ) +
                                   case
-                                     when v_cur_status = 'draft' then
-                                        0
-                                     else
+                                     when v_cur_status = 'on_correction'
+                                        and p_data.p_status = 'active' then
                                         1
+                                     else
+                                        0
                                   end
           where id = v_id;
 
@@ -2195,6 +2211,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
          delete from xx_disl_gu23_signer
           where act_id = v_id;
+
+         if
+            v_cur_status = 'on_correction'
+            and p_data.p_status = 'active'
+         then
+            delete from xx_disl_gu23_approval
+             where act_id = v_id;
+         end if;
         -- скорректирован на стадии подписании
         -- сбрасываем, требуется переподписание
         /*if v_cur_status <> 'draft'
@@ -2808,7 +2832,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into l_rejected
         from xx_disl_gu23_approval
        where act_id = p_act_id
-         and status = 'rejected'; -- ожидает подписание
+         and status in ( 'rejected',
+                         'on_correction' );
 
       if l_rejected > 0 then
          return;
@@ -3020,14 +3045,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             and status = 'active';
       end if;
    end sync_act_status;
-
+   -- подписание/отклонение/корректировка по ссылке из письма.
    function gu23_approval_save_decision (
       p_act_id      in number,
       p_approver_id in number,
       p_status      in varchar2,
       p_comment     in varchar2,
       p_token_sig   in varchar2,
-      p_signer_ip   in varchar2 default null
+      p_signer_ip   in varchar2 default null,
+      p_base_url    in varchar2 default null
    ) return varchar2 is
       v_cnt      number;
       v_hist_txt varchar2(1000);
@@ -3047,7 +3073,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
        where id = p_act_id;
 
       if p_status in ( 'approved',
-                       'rejected' ) then
+                       'rejected',
+                       'on_correction' ) then
          for r in (
             select approver_id
               from table ( gu23_approval_next_signer(p_act_id) )
@@ -3120,7 +3147,17 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                        ||
             case
                when p_comment is not null then
-                  ' ? ' || p_comment
+                  ' - ' || p_comment
+               else
+                  ''
+            end;
+      elsif p_status = 'on_correction' then
+         v_hist_txt := 'Отправлен на корректировку: '
+                       || g_user_name(p_approver_id)
+                       ||
+            case
+               when p_comment is not null then
+                  ' - ' || p_comment
                else
                   ''
             end;
@@ -3134,6 +3171,49 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             p_text    => v_hist_txt,
             p_ip      => p_signer_ip
          );
+      end if;
+      -- add 15.07.2026 BekmansurovRR
+      if p_status = 'on_correction' then
+         update xx_disl_gu23_act
+            set status = 'on_correction',
+                modified_at = sysdate
+          where id = p_act_id
+            and status = 'active';
+
+         declare
+            v_email     varchar2(256);
+            v_user_name varchar2(256);
+            v_body      clob;
+         begin
+            v_user_name := g_user_name(p_approver_id);
+            select lower(du.email_address)
+              into v_email
+              from xx_disl_gu23_act a
+              left join xx_disl_users_emp_v du
+            on du.id = a.created_by
+             where a.id = p_act_id;
+
+            if v_email is not null then
+               v_body := gu23_correction_mail_html(
+                  p_act_id,
+                  v_user_name,
+                  p_comment,
+                  p_base_url
+               );
+	               -- Отправка письма на корректировку
+               gu23_send_mail(
+                  p_to      => v_email,
+                  p_subject => g_email_subject || ' (Корректировка)',
+                  p_body    => v_body
+               );
+            end if;
+         exception
+            when others then
+               null;
+         end;
+
+         commit;
+         return 'OK';
       end if;
 
         -- Автоматически обновить статус акта
@@ -3271,7 +3351,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         into v_cnt
         from xx_disl_gu23_act
        where id = p_act_id
-         and status = 'draft'
+         and status in ( 'draft',
+                         'on_correction' )
          and ( created_by = p_user_id
           or gu23_is_admin(p_user_id) = 'Y' );
 
@@ -3319,7 +3400,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_user_id   in number,
       p_status    in varchar2,
       p_comment   in varchar2,
-      p_signer_ip in varchar2 default null
+      p_signer_ip in varchar2 default null,
+      p_base_url  in varchar2 default null
    ) return varchar2 is
       v_ver  number;
       v_next number;
@@ -3334,7 +3416,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
        where id = p_act_id;
 
       if p_status in ( 'approved',
-                       'rejected' ) then
+                       'rejected',
+                       'on_correction' ) then
          for r in (
             select approver_id
               from table ( gu23_approval_next_signer(p_act_id) )
@@ -3407,10 +3490,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       begin
          v_txt :=
             case p_status
-               when 'approved' then
+               when 'approved'      then
                   'Подписано'
-               when 'rejected' then
+               when 'rejected'      then
                   'Отклонено: ' || p_comment
+               when 'on_correction' then
+                  'Отправлен на корректировку: ' || p_comment
                else
                   p_status
             end;
@@ -3424,6 +3509,48 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          );
 
       end;
+
+      if p_status = 'on_correction' then
+         update xx_disl_gu23_act
+            set status = 'on_correction',
+                modified_at = sysdate
+          where id = p_act_id
+            and status = 'active';
+
+         declare
+            v_email     varchar2(256);
+            v_user_name varchar2(256);
+            v_body      clob;
+         begin
+            v_user_name := g_user_name(p_user_id);
+            select lower(du.email_address)
+              into v_email
+              from xx_disl_gu23_act a
+              left join xx_disl_users_emp_v du
+            on du.id = a.created_by
+             where a.id = p_act_id;
+
+            if v_email is not null then
+               v_body := gu23_correction_mail_html(
+                  p_act_id,
+                  v_user_name,
+                  p_comment,
+                  p_base_url
+               );
+               gu23_send_mail(
+                  p_to      => v_email,
+                  p_subject => g_email_subject || ' (Корректировка)',
+                  p_body    => v_body
+               );
+            end if;
+         exception
+            when others then
+               null;
+         end;
+
+         commit;
+         return 'OK';
+      end if;
 
         -- Автоматически обновить статус акта
       sync_act_status(p_act_id);
@@ -3977,6 +4104,55 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       );
       return v_base || p_path;
    end;
+
+   function gu23_correction_mail_html (
+      p_act_id    in number,
+      p_user_name in varchar2,
+      p_comment   in varchar2,
+      p_base_url  in varchar2
+   ) return clob is
+      v_act_number varchar2(64);
+      v_card_url   varchar2(1000);
+   begin
+      select act_number
+        into v_act_number
+        from xx_disl_gu23_act
+       where id = p_act_id;
+
+      v_card_url := gu23_act_link(
+         p_base_url,
+         '/gu23/card.php?id=' || p_act_id
+      );
+      return '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Акт ГУ-23 отправлен на корректировку</title></head>'
+             || '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222">'
+             || '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0"><tr><td align="center">'
+             || '<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
+             || '<tr><td style="background:#471364;padding:24px 32px">'
+             || '<div style="font-size:20px;font-weight:700;color:#fff">Акт ГУ-23 отправлен на корректировку</div>'
+             || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
+             || html_escape(v_act_number)
+             || '</div></td></tr>'
+             || '<tr><td style="padding:28px 32px">'
+             || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Документ возвращен для исправления замечаний. Ссылка на акт: '
+             || '<a href="'
+             || html_escape(v_card_url)
+             || '" style="color:#471364;font-weight:700;text-decoration:none;">'
+             || html_escape(v_act_number)
+             || '</a></p>'
+             || '<div style="border:1px solid #e0e4ea;border-radius:6px;background:#f8f9fb;padding:16px 18px">'
+             || '<table cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;line-height:1.7">'
+             || '<tr><td style="color:#777;width:150px;vertical-align:top">Кто вернул:</td>'
+             || '<td style="color:#222"><b>'
+             || html_escape(p_user_name)
+             || '</b></td></tr>'
+             || '<tr><td style="color:#777;vertical-align:top;padding-top:8px">Причина возврата:</td>'
+             || '<td style="color:#222;font-weight:700;padding-top:8px;line-height:1.4">'
+             || html_escape(p_comment)
+             || '</td></tr></table></div></td></tr>'
+             || '<tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Это автоматическое сообщение - не отвечайте на него.</td></tr>'
+             || '</table></td></tr></table></body></html>';
+   end;
+
     -- Html письмо
    function gu23_approval_mail_html (
       p_act_id         in number,
@@ -4004,6 +4180,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_card_url      varchar2(1000);
       v_status_html   varchar2(1000);
       v_row_no        number := 0;
+      v_version       number; -- add 17.07.2026 BekmansurovRR
    begin
       select act_number,
              dept_code,
@@ -4022,7 +4199,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 created_at,
                 'DD.MM.YYYY HH24:MI:SS'
              ),
-             created_by
+             created_by,
+             nvl(
+                content_version,
+                1
+             )
         into
          v_act_number,
          v_dept,
@@ -4035,7 +4216,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          v_wagon_cnt,
          v_circ,
          v_created_at,
-         v_created_by_id
+         v_created_by_id,
+         v_version
         from xx_disl_gu23_act_v
        where id = p_act_id;
 
@@ -4074,7 +4256,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</a></p>'
                 || '<div style="border:1px solid #e0e4ea;border-radius:6px;background:#f8f9fb;padding:14px 18px;margin-bottom:22px">'
                 || '<table cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;line-height:1.7">'
-                || '<tr><td style="color:#777;width:170px">Номер акта</td><td><b>'
+                || '<tr><td style="color:#777;width:170px">Версия документа: </td><td><b>'
+                || html_escape(v_version)
+                || '</b></td></tr><tr><td style="color:#777;width:170px">Номер акта</td><td><b>'
                 || html_escape(v_act_number)
                 || '</td></tr><tr><td style="color:#777">Дата создания</td><td>'
                 || html_escape(v_created_at)
@@ -4240,9 +4424,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          v_name
       );
       gu23_send_mail(
-         v_email,
-         'Дислокация.Уведомление "ГУ-23"',
-         v_body
+         p_to      => v_email,
+         p_subject => g_email_subject,
+         p_body    => v_body
       );
       return 'OK' || c_us;            --|| 'Ссылка отправлена: ' || v_email;
 
@@ -4310,6 +4494,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_function,
          'x_to_email=>' || x_to_email
       );
+      insert into xx_disl_gu23_mail_test (
+         p_to,
+         p_subject,
+         p_body,
+         p_from
+      ) values
+         ( x_to_email,
+           x_subject,
+           x_msg,
+           x_sender );
 /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then

@@ -60,7 +60,7 @@ class ApprovalRepository
         $result = null;
         $st = oci_parse(
             $this->conn,
-            'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_save_decision(:act, :uid, :s, :c, :sig, :ip); END;'
+            'BEGIN :r := xx_disl_gu23_pkg.gu23_approval_save_decision(:act, :uid, :s, :c, :sig, :ip, :base); END;'
         );
         oci_bind_by_name($st, ':r', $result, 64);
         oci_bind_by_name($st, ':act', $actId);
@@ -69,7 +69,15 @@ class ApprovalRepository
         oci_bind_by_name($st, ':c', $comment, 1000);
         oci_bind_by_name($st, ':sig', $token);
         oci_bind_by_name($st, ':ip', $signerIp, 64);
+        $baseUrl = $this->baseUrl();
+        oci_bind_by_name($st, ':base', $baseUrl, 1000);
         oci_execute($st);
         return (string) $result;
+    }
+
+    private function baseUrl(): string
+    {
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+        return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 }

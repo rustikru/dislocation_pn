@@ -459,7 +459,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_status      in varchar2,
       p_comment     in varchar2,
       p_token_sig   in varchar2,
-      p_signer_ip   in varchar2 default null
+      p_signer_ip   in varchar2 default null,
+      p_base_url    in varchar2 default null
    ) return varchar2;
 
     -- Текущий статус согласования одного пользователя по акту
@@ -520,7 +521,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_user_id   in number,
       p_status    in varchar2,
       p_comment   in varchar2,
-      p_signer_ip in varchar2 default null
+      p_signer_ip in varchar2 default null,
+      p_base_url  in varchar2 default null
    ) return varchar2;
 
     -- ---- Роли и доступ ----

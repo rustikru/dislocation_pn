@@ -185,7 +185,7 @@ class GuActRepository
                 case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
                     $this->resendApproval();
                     break;
-                case 'gu23_approve_in_app':     // подписание/отклонение прямо со странички
+                case 'gu23_approve_in_app':     // решение по акту прямо со странички
                     $this->approveInApp();
                     break;
 
@@ -892,7 +892,7 @@ class GuActRepository
     /* подписание акта            */
     /* ----------------------------------------------------------------- */
 
-    /** Подписание или отклонение акта */
+    /** Решение по акту */
     private function approveInApp(): void
     {
         if (!$this->permGranted('SIGN_ACT')) {
@@ -904,23 +904,24 @@ class GuActRepository
         $comment = trim($this->cleanTextForOracle((string) filter_input(INPUT_POST, 'comment')));
         $userId = $this->auth->getUserId();
 
-        if (!$actId || !in_array($decision, ['approved', 'rejected'], true)) {
+        if (!$actId || !in_array($decision, ['approved', 'rejected', 'on_correction'], true)) {
             echo json_encode(['ok' => false, 'msg' => 'Некорректные параметры']);
             return;
         }
-        if ($decision === 'rejected' && $comment === '') {
-            echo json_encode(['ok' => false, 'msg' => 'При отклонении укажите причину']);
+        if (in_array($decision, ['rejected', 'on_correction'], true) && $comment === '') {
+            echo json_encode(['ok' => false, 'msg' => 'Укажите причину']);
             return;
         }
 
         $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment, :ip)',
+            'xx_disl_gu23_pkg.gu23_direct_decision(:act, :uid, :status, :comment, :ip, :base)',
             [
                 ':act' => $actId,
                 ':uid' => $userId,
                 ':status' => $decision,
                 ':comment' => $comment,
                 ':ip' => $this->clientIp(),
+                ':base' => $this->baseUrl(),
             ]
         );
 
@@ -928,7 +929,9 @@ class GuActRepository
             $parts = explode(self::US, $result, 2);
             echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
         } else {
-            $label = $decision === 'approved' ? 'Акт подписан' : 'Акт отклонён';
+            $label = $decision === 'approved'
+                ? 'Акт подписан'
+                : ($decision === 'on_correction' ? 'Акт отправлен на корректировку' : 'Акт отклонён');
             if ($decision === 'approved') {
                 $sent = $this->callPackageFunction(
                     'xx_disl_gu23_pkg.gu23_send_next_approval_mail(:act, :base)',

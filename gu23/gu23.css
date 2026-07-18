@@ -38,6 +38,7 @@
   --info: #566b86;
   --infobg: #ebeef3;
   --draft: #6d6f74;
+  --oncorrection: #fea257;
   --sign: #8a6d44;
   --rej: #9e5b52;
   --annul: #9b9da2;
@@ -414,6 +415,56 @@ a {
   font-size: 12px;
 }
 
+.approval-box {
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+.approval-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.approval-btn {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.approval-buttons .approval-btn {
+  flex: 1 1 calc(50% - 3px);
+  justify-content: center;
+}
+.approval-buttons .approval-correction {
+  flex-basis: 100%;
+}
+.approval-ok {
+  background: #2d7a47;
+  color: #fff;
+  border-color: #2d7a47;
+}
+.approval-no {
+  background: #a03030;
+  color: #fff;
+  border-color: #a03030;
+}
+.approval-buttons .approval-btn:hover,
+#reject-reason-box .approval-btn:hover,
+#correction-reason-box .approval-btn:hover {
+  opacity: 0.82;
+}
+.approval-ok:hover {
+  background: #2d7a47;
+  color: #fff;
+  border-color: #2d7a47;
+}
+.approval-no:hover {
+  background: #a03030;
+  color: #fff;
+  border-color: #a03030;
+}
+
 .btn.report-word {
   display: inline-flex;
   align-items: center;
@@ -656,6 +707,11 @@ a {
 .st-closed {
   color: var(--info);
   background: var(--infobg);
+}
+
+.st-oncorrection {
+  color: var(--oncorrection);
+  background: var(--raise);
 }
 .typchip {
   font-size: 11px;

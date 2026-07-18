@@ -9,7 +9,7 @@ export function sendApiRequest(action, data) {
   })
 }
 
-// Настройка загрузки и перехват ошибок
+// перехват ошибок
 $(document).ready(() => {
   $(document).ajaxStart(() => $('.loadImg').show())
   $(document).ajaxStop(() => $('.loadImg').hide())

@@ -54,7 +54,9 @@ if ($act['STATUS'] === 'closed'){
 // -------------------------------------------------------------------
 $existing = $tokenInfo;
 if ($existing && $existing['STATUS'] !== 'pending') {
-    $statusLabel = $existing['STATUS'] === 'approved' ? 'Подписано' : 'Отклонено';
+    $statusLabel = $existing['STATUS'] === 'approved'
+        ? 'Подписано'
+        : ($existing['STATUS'] === 'on_correction' ? 'На корректировке' : 'Отклонено');
     $decidedAt = $existing['DECIDED_AT'] ?? '';
     showPage('Уже обработано', "
         <p>Вы уже подписали акт ранее <b>{$actNumber}</b>.</p>
@@ -76,6 +78,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'reject') {
     if (str_starts_with($result, 'OK')) {
         showPage('Акт отклонён', "
             <p>Вы отклонили акт <b>{$actNumber}</b>.</p>
+            <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
+            <p class=\"ok\">Сохранено.</p>
+        ");
+    } else {
+        showPage('Ошибка', '<p class="err">' . htmlspecialchars(approvalErrorText($result)) . '</p>');
+    }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'correction') {
+    $comment = trim(gu23_clean_text_for_oracle((string) ($_POST['comment'] ?? '')));
+    if ($comment === '') {
+        showCorrectionForm($actNumber, $token, 'Укажите причину корректировки');
+        exit;
+    }
+    $result = $repo->saveDecisionResult($actId, $approverId, 'on_correction', $comment, $token, $signerIp);
+    if (str_starts_with($result, 'OK')) {
+        showPage('Акт отправлен на корректировку', "
+            <p>Акт <b>{$actNumber}</b> отправлен на корректировку.</p>
             <p class=\"muted\" style=\"margin: 12px 0; padding-left: 10px; border-left: 2px solid #dadce0;\">Причина: " . htmlspecialchars($comment) . "</p>
             <p class=\"ok\">Сохранено.</p>
         ");
@@ -110,6 +131,11 @@ if ($action === 'approve') {
 // -------------------------------------------------------------------
 if ($action === 'reject') {
     showRejectForm($actNumber, $token);
+    exit;
+}
+
+if ($action === 'correction') {
+    showCorrectionForm($actNumber, $token);
     exit;
 }
 
@@ -160,6 +186,28 @@ function showRejectForm(string $actNumber, string $token, string $error = ''): v
             <button type=\"submit\"
                 style=\"background:#5f6368; color:#ffffff; padding:10px 24px; border:none; border-radius:4px; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;\">
                 Отклонить
+            </button>
+        </form>
+    ");
+}
+
+function showCorrectionForm(string $actNumber, string $token, string $error = ''): void
+{
+    $qs = http_build_query(['token' => $token, 'action' => 'correction']);
+    $errorHtml = $error ? "<p class=\"err\" style=\"margin-bottom: 15px;\">{$error}</p>" : '';
+    showPage('Корректировка акта', "
+        {$errorHtml}
+        <p style=\"margin-bottom: 20px;\">Отправить акт <b>{$actNumber}</b> на корректировку</p>
+        <form method=\"post\" action=\"/gu23/approve.php?{$qs}\">
+            <label style=\"display:block; margin-bottom:8px; color:#5f6368; font-size:13px; font-weight:600;\">УКАЖИТЕ ПРИЧИНУ КОРРЕКТИРОВКИ:</label>
+            <textarea name=\"comment\" rows=\"4\"
+                style=\"width:100%; box-sizing:border-box; max-width:100%; padding:12px; border:1px solid #dadce0; border-radius:4px; font-size:14px; font-family:inherit; color:#202124; outline:none;\"
+                placeholder=\"Причина корректировки...\"
+                required></textarea>
+            <br><br>
+            <button type=\"submit\"
+                style=\"background:#5f6368; color:#ffffff; padding:10px 24px; border:none; border-radius:4px; font-size:14px; font-weight:600; cursor:pointer; transition: background 0.2s;\">
+                Отправить
             </button>
         </form>
     ");
