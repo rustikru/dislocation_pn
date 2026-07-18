@@ -5,6 +5,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
 
 class GuActPhpWordReport
 {
+    // Шаблоны для разных типов актов
     const TEMPLATES = [
         'start' => 'act23_start.docx',
         'end' => 'act23_end.docx',
@@ -53,7 +54,6 @@ class GuActPhpWordReport
             }
         }
     }
-
     private function saveDocx(array $act, array $wagons, array $signers, array $approvals): string
     {
         $actType = strtolower((string) ($act['ACT_TYPE'] ?? 'other'));
@@ -75,11 +75,11 @@ class GuActPhpWordReport
             || $this->templateHas($templatePath, 'SIGNER_RZD_FIO');
         $mainSigners = $hasRzdBlock ? $this->getNonRzdSigners($paperSigners) : $paperSigners;
 
-        $this->fillAct($doc, $act);
-        $this->fillSignerLine($doc, $printSigners);
-        $this->fillWagons($doc, $wagons);
-        $this->fillMainSigners($doc, $mainSigners);
-        $this->fillRzdSigners($doc, $rzdSigners, $hasRzdBlock);
+        $this->actValues($doc, $act);
+        $this->signerLine($doc, $printSigners);
+        $this->wagonRows($doc, $wagons);
+        $this->mainSigners($doc, $mainSigners);
+        $this->rzdSigners($doc, $rzdSigners, $hasRzdBlock);
 
         $path = tempnam(sys_get_temp_dir(), 'gu23_phpword_');
         if ($path === false) {
@@ -94,7 +94,7 @@ class GuActPhpWordReport
         return $docxPath;
     }
 
-    private function fillAct(TemplateProcessor $doc, array $act): void
+    private function actValues(TemplateProcessor $doc, array $act): void
     {
         $values = [
             'ACT_NUMBER' => $act['ACT_NUMBER'] ?? '',
@@ -115,7 +115,7 @@ class GuActPhpWordReport
         }
     }
 
-    private function fillSignerLine(TemplateProcessor $doc, array $signers): void
+    private function signerLine(TemplateProcessor $doc, array $signers): void
     {
         $lines = [];
         foreach ($signers as $signer) {
@@ -128,7 +128,7 @@ class GuActPhpWordReport
         $doc->setValue('SIGNER_LINE', $this->cleanValue(implode("\n", $lines)));
     }
 
-    private function fillWagons(TemplateProcessor $doc, array $wagons): void
+    private function wagonRows(TemplateProcessor $doc, array $wagons): void
     {
         $rows = $wagons ?: [[]];
         $doc->cloneRow('WAGON_NO', count($rows));
@@ -153,7 +153,7 @@ class GuActPhpWordReport
         }
     }
 
-    private function fillMainSigners(TemplateProcessor $doc, array $signers): void
+    private function mainSigners(TemplateProcessor $doc, array $signers): void
     {
         if (!$signers) {
             return;
@@ -176,7 +176,7 @@ class GuActPhpWordReport
         $doc->setValue('SIGNER_3_FIO', $this->cleanValue((string) ($signers[2]['FIO'] ?? '')));
     }
 
-    private function fillRzdSigners(TemplateProcessor $doc, array $signers, bool $hasRzdBlock): void
+    private function rzdSigners(TemplateProcessor $doc, array $signers, bool $hasRzdBlock): void
     {
         if (!$hasRzdBlock || !$signers) {
             return;
@@ -215,9 +215,10 @@ class GuActPhpWordReport
                 $xml = $this->removeTablesByText($xml, ['${SIGNER_RZD_POST}', '${SIGNER_RZD_FIO}']);
             }
 
+            $xml = $this->signatureRows($xml, [count($mainSigners), count($rzdSigners)]);
             $xml = $this->formatSignerLineLabels($xml);
             $xml = $pepApprovals
-                ? $this->fillPepTableXml($xml, $pepApprovals)
+                ? $this->pepTable($xml, $pepApprovals)
                 : $this->removeTablesByText($xml, ['${PEP_FULL_NAME}', '${PEP_APPROVED_ID}', '${PEP_DECIDED_AT}']);
 
             $zip->addFromString('word/document.xml', $xml);
@@ -240,6 +241,66 @@ class GuActPhpWordReport
             },
             $xml
         ) ?? $xml;
+    }
+
+    private function signatureRows(string $xml, array $counts): string
+    {
+        $counts = array_values(array_filter($counts, static fn(int $count): bool => $count > 0));
+        if (!$counts) {
+            return $xml;
+        }
+
+        $idx = 0;
+        return preg_replace_callback(
+            '#<w:tbl\b.*?</w:tbl>#s',
+            function (array $m) use ($counts, &$idx): string {
+                if (!str_contains($m[0], '(подпись)')) {
+                    return $m[0];
+                }
+
+                $count = $counts[$idx] ?? 0;
+                $idx++;
+
+                if ($count < 2) {
+                    return $m[0];
+                }
+
+                return $this->signatureRowsInTable($m[0], $count);
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    private function signatureRowsInTable(string $tableXml, int $count): string
+    {
+        if (!preg_match_all('#<w:tr\b[^>]*>.*?</w:tr>#s', $tableXml, $rows, PREG_OFFSET_CAPTURE)) {
+            return $tableXml;
+        }
+
+        $signRowIdx = null;
+        foreach ($rows[0] as $idx => [$rowXml]) {
+            if (str_contains($rowXml, '(подпись)')) {
+                $signRowIdx = $idx;
+                break;
+            }
+        }
+
+        if ($signRowIdx === null || $signRowIdx < $count) {
+            return $tableXml;
+        }
+
+        $firstRowIdx = $signRowIdx - $count;
+        $signRow = $rows[0][$signRowIdx][0];
+        $newRows = '';
+
+        for ($idx = $firstRowIdx; $idx < $signRowIdx; $idx++) {
+            $newRows .= $rows[0][$idx][0] . $signRow;
+        }
+
+        $start = $rows[0][$firstRowIdx][1];
+        $end = $rows[0][$signRowIdx][1] + strlen($signRow);
+
+        return substr_replace($tableXml, $newRows, $start, $end - $start);
     }
 
     private function formatSignerLineLabels(string $xml): string
@@ -333,7 +394,7 @@ class GuActPhpWordReport
         return '<w:t' . $space . '>' . htmlspecialchars($text, ENT_XML1, 'UTF-8') . '</w:t>';
     }
 
-    private function fillPepTableXml(string $xml, array $approvals): string
+    private function pepTable(string $xml, array $approvals): string
     {
         $done = false;
         return preg_replace_callback(
@@ -520,7 +581,7 @@ class GuActPhpWordReport
 
     private function signerCellText(string $text, int $idx, int $count): string
     {
-        return $idx + 1 < $count ? $text . "\n" : $text;
+        return $text;
     }
 
     private function formatDate(string $date): string

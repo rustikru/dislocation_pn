@@ -1,8 +1,9 @@
 <?php
 /**
- * Gu23Logger
  *
- *  gu23/log/gu23-YYYY-MM-DD.log
+ * Notick Alex
+ * 
+ * gu23/log/gu23-YYYY-MM-DD.log
  * 
  * ERROR, WARN, INFO, DEBUG
  */

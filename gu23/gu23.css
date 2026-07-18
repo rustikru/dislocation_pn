@@ -15,8 +15,7 @@
   background: var(--primary, #2563eb);
   color: #fff;
 }
-/* Совместимость: вёрстка на Flexbox (без CSS Grid и flex-gap),
-   чтобы корректно работать в т.ч. на Firefox 45-48. var() поддерживается с FF31. */
+
 :root {
   --bg: #f3f3f1;
   --surface: #ffffff;

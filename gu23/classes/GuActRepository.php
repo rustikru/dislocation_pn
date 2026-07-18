@@ -1,7 +1,7 @@
 <?php
 /**
  * GuActRepository.php
- *
+ * add 05.06.2026 BekmansurovRR
  * Репозиторий модуля "ГУ-23 · Акты общей формы".
  */
 
@@ -20,6 +20,7 @@ if (!function_exists('mb_strlen')) {
 }
 
 require_once __DIR__ . '/Gu23Logger.php';
+require_once __DIR__ . '/Gu23Db.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -31,11 +32,13 @@ class GuActRepository
     const US = "\x1F";   // CHR(31) — между полями
 
     private $conn;
+    private Gu23Db $db;
     private AuthClass $auth;
 
     public function __construct($conn, AuthClass $auth)
     {
         $this->conn = $conn;
+        $this->db = new Gu23Db($conn);
         $this->auth = $auth;
     }
 
@@ -53,18 +56,16 @@ class GuActRepository
         if (!$userId) {
             return false;
         }
-        $st = oci_parse($conn, 'BEGIN :r := xx_disl_gu23_pkg.gu23_can_access(:uid); END;');
-        if (!$st) {
+        try {
+            $db = new Gu23Db($conn);
+            return $db->value(
+                'xx_disl_gu23_pkg.gu23_can_access(:uid)',
+                [':uid' => $userId],
+                2
+            ) === 'Y';
+        } catch (\Throwable $e) {
             return false;
         }
-        $result = null;
-        oci_bind_by_name($st, ':r', $result, 2);
-        oci_bind_by_name($st, ':uid', $userId);
-        $ok = @oci_execute($st);
-        if (!$ok) {
-            return false;
-        }
-        return $result === 'Y';
     }
 
     /** Проверить: является ли текущий пользователь администратором ГУ-23. */
@@ -258,27 +259,7 @@ class GuActRepository
     /** вернуть массив строк. */
     private function selectRows(string $sql, array $params = []): array
     {
-        $statement = @oci_parse($this->conn, $sql);
-        if (!$statement) {
-            $error = oci_error($this->conn);
-            $message = 'oci_parse: ' . ($error['message'] ?? '?') . ' | SQL: ' . $sql;
-            Gu23Logger::error($message, ['params' => array_keys($params)]);
-            throw new \RuntimeException($message);
-        }
-        foreach ($params as $name => $value) {
-            oci_bind_by_name($statement, $name, $params[$name]);
-        }
-        if (!@oci_execute($statement)) {
-            $error = oci_error($statement);
-            $message = 'oci_execute: ' . ($error['message'] ?? '?') . ' | SQL: ' . $sql;
-            Gu23Logger::error($message, ['params' => array_keys($params), 'offset' => $error['offset'] ?? null]);
-            throw new \RuntimeException($message);
-        }
-        $rows = [];
-        while ($row = oci_fetch_array($statement, OCI_ASSOC + OCI_RETURN_NULLS + OCI_RETURN_LOBS)) {
-            $rows[] = $row;
-        }
-        return $rows;
+        return $this->db->rows($sql, $params);
     }
 
     /** Склеить массив записей в CLOB-строку с разделителями  */
@@ -355,26 +336,7 @@ class GuActRepository
     /** Вызвать функцию пакета. */
     private function callPackageFunction(string $packageFunction, array $params, int $resultLength = 256): ?string
     {
-        $sql = 'BEGIN :ret_val := ' . $packageFunction . '; END;';
-        $statement = @oci_parse($this->conn, $sql);
-        if (!$statement) {
-            $error = oci_error($this->conn);
-            $message = 'oci_parse: ' . ($error['message'] ?? '?') . ' | expr: ' . $packageFunction;
-            Gu23Logger::error($message);
-            throw new \RuntimeException($message);
-        }
-        $result = null;
-        oci_bind_by_name($statement, ':ret_val', $result, $resultLength);
-        foreach ($params as $name => $value) {
-            oci_bind_by_name($statement, $name, $params[$name]);
-        }
-        if (!@oci_execute($statement)) {
-            $error = oci_error($statement);
-            $message = 'oci_execute: ' . ($error['message'] ?? '?') . ' | expr: ' . $packageFunction;
-            Gu23Logger::error($message, ['params' => array_keys($params), 'offset' => $error['offset'] ?? null]);
-            throw new \RuntimeException($message);
-        }
-        return $result;
+        return $this->db->value($packageFunction, $params, $resultLength);
     }
 
     private function baseUrl(): string
@@ -386,10 +348,7 @@ class GuActRepository
     /** Привязать строку как  CLOB. */
     private function putClobParam($statement, string $name, string $value)
     {
-        $lob = oci_new_descriptor($this->conn, OCI_DTYPE_LOB);
-        $lob->writeTemporary($value === '' ? ' ' : $value);
-        oci_bind_by_name($statement, $name, $lob, -1, OCI_B_CLOB);
-        return $lob;
+        return $this->db->clob($statement, $name, $value);
     }
 
     /* ----------------------------------------------------------------- */
