@@ -1218,7 +1218,7 @@ class GuActRepository
         $sheet->getColumnDimension('F')->setAutoSize(true);
         $sheet->getStyle('C:C')->getAlignment()->setWrapText(true);
 
-        // Применяем жирный шрифт и выравнивание для общего заголовка
+        // шрифт и выравнивание
         $sheet->getStyle('A1')->getFont()->setBold(true);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $sheet->getRowDimension(1)->setRowHeight(30);
@@ -1236,6 +1236,7 @@ class GuActRepository
 
     private function actKindNames(): array
     {
+        // На случай, если справочник пуст
         $names = [
             'start' => 'Начало',
             'end' => 'Окончание',
@@ -1360,7 +1361,7 @@ class GuActRepository
         ]);
     }
 
-    /** Матрица полномочий: все пары роль × полномочие с отметкой доступа. */
+    /** Матрица полномочий */
     private function rolePerms(): void
     {
         if (!$this->permGranted('MANAGE_ROLES')) {
