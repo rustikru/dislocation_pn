@@ -1,6 +1,10 @@
 <?php
 session_start(); //Запускаем сессии
-include('../connection.php');
+if (file_exists(__DIR__ . '/../db_config.local.php')) {
+    require_once __DIR__ . '/../db_config.local.php';
+} else {
+    require_once __DIR__ . '/../db_config.php';
+}
 global $user;
 global $pwd;
 global $db;
@@ -8,300 +12,387 @@ global $db;
 include('../login.php');
 $auth = new AuthClass();
 
-if ($_POST['ajax_action']==='railway_add_info') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_railway_add_info(:bind1))');
-    oci_bind_by_name($oci_child, ":bind1", $_POST['railway_id']);
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
+require_once __DIR__ . '/../lib/Logger/ErrorLogger.php';
+require_once __DIR__ . '/../lib/OracleDB/OracleDatabase.php';
 
-    echo json_encode($arrChild);
+$ajaxAction = $_POST['ajax_action'] ?? '';
+$logger = new ErrorLogger();
+$database = new OracleDatabase($user, $pwd, $db);
+
+function executeOracleAction(
+    string $action,
+    array $parameters,
+    callable $oracleCall,
+    bool $jsonResponse,
+    OracleDatabase $database,
+    ErrorLogger $logger
+): void {
+    try {
+        $result = $oracleCall();
+        echo $jsonResponse ? json_encode($result, JSON_UNESCAPED_UNICODE) : $result;
+    } catch (Throwable $exception) {
+        $logger->error($action, $exception->getMessage(), $exception->getCode(), ['parameters' => $parameters]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
 }
 
-if ($_POST['ajax_action']==='change_parent_for_railway') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'railway_add_info') {
+    $oracleParams = [
+        'railway_id' => $_POST['railway_id'] ?? null,
+    ];
+
+    try {
+        if ($oracleParams['railway_id'] === null || $oracleParams['railway_id'] === '') {
+            throw new Exception('Не заполнен параметр: railway_id');
+        }
+
+        $result = $database->fetchAll(
+            'select * from table(xx_dislocation.get_railway_add_info(:railway_id))',
+            $oracleParams
+        );
+
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error(
+            $ajaxAction,
+            $exception->getMessage(),
+            $exception->getCode(),
+            ['parameters' => $oracleParams]
+        );
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_parent_for_railway(:bind2,:bind3,:bind4,:bind5); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $type = filter_input(INPUT_POST,'type');
-    $new_parent_id = filter_input(INPUT_POST,'new_parent_id');
-    $new_parent_type = filter_input(INPUT_POST,'new_parent_type');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_bind_by_name($oci_request, ":bind3", $type);
-    oci_bind_by_name($oci_request, ":bind4", $new_parent_id);
-    oci_bind_by_name($oci_request, ":bind5", $new_parent_type);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='add_railway') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
+if ($ajaxAction === 'change_parent_for_railway') {
+    $oracleParams = [
+        'id' => $_POST['id'] ?? null,
+        'type' => $_POST['type'] ?? null,
+        'new_parent_id' => $_POST['new_parent_id'] ?? null,
+        'new_parent_type' => $_POST['new_parent_type'] ?? null,
+    ];
 
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.add_railway(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12,:bind13,:bind14,:bind15); end;');
-    $parent_id = filter_input(INPUT_POST,'parent_id');
-    $parent_type = filter_input(INPUT_POST,'parent_type');
-    $number = filter_input(INPUT_POST,'number');
-    $purpose = filter_input(INPUT_POST,'purpose');
-    $pointer_from = filter_input(INPUT_POST,'pointer_from');
-    $pointer_to = filter_input(INPUT_POST,'pointer_to');
-    $length_limit = filter_input(INPUT_POST,'length_limit');
-    $length_useful = filter_input(INPUT_POST,'length_useful');
-    $capacity = filter_input(INPUT_POST,'capacity');
-    $add_field1 = filter_input(INPUT_POST,'add_field1');
-    $add_field2 = filter_input(INPUT_POST,'add_field2');
-    $add_field3 = filter_input(INPUT_POST,'add_field3');
-    $disabled = filter_input(INPUT_POST,'disabled');
-    $type = filter_input(INPUT_POST,'type');
+    try {
+        $requiredParams = ['id', 'type', 'new_parent_id', 'new_parent_type'];
+        foreach ($requiredParams as $paramName) {
+            if ($oracleParams[$paramName] === null || $oracleParams[$paramName] === '') {
+                throw new Exception('Не заполнен параметр: ' . $paramName);
+            }
+        }
 
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $parent_id);
-    oci_bind_by_name($oci_request, ":bind3", $parent_type);
-    oci_bind_by_name($oci_request, ":bind4", $number);
-    oci_bind_by_name($oci_request, ":bind5", $purpose);
-    oci_bind_by_name($oci_request, ":bind6", $pointer_from);
-    oci_bind_by_name($oci_request, ":bind7", $pointer_to);
-    oci_bind_by_name($oci_request, ":bind8", $length_limit);
-    oci_bind_by_name($oci_request, ":bind9", $length_useful);
-    oci_bind_by_name($oci_request, ":bind10", $capacity);
-    oci_bind_by_name($oci_request, ":bind11", $add_field1);
-    oci_bind_by_name($oci_request, ":bind12", $add_field2);
-    oci_bind_by_name($oci_request, ":bind13", $add_field3);
-    oci_bind_by_name($oci_request, ":bind14", $disabled);
-    oci_bind_by_name($oci_request, ":bind15", $type);
-    oci_execute($oci_request);
+        $result = $database->callFunction(
+            'begin :result := xx_dislocation.change_parent_for_railway('
+                . ':id, :type, :new_parent_id, :new_parent_type); end;',
+            $oracleParams,
+            ['length' => 1000000]
+        );
 
-    oci_close($conn);
-
-    echo $result;
-}
-
-if ($_POST['ajax_action']==='change_railway_attr') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_railway_attr(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12,:bind13,:bind14); end;');
-    $railway_id = filter_input(INPUT_POST,'railway_id');
-    $number = filter_input(INPUT_POST,'number');
-    $purpose = filter_input(INPUT_POST,'purpose');
-    $pointer_from = filter_input(INPUT_POST,'pointer_from');
-    $pointer_to = filter_input(INPUT_POST,'pointer_to');
-    $length_limit = filter_input(INPUT_POST,'length_limit');
-    $length_useful = filter_input(INPUT_POST,'length_useful');
-    $capacity = filter_input(INPUT_POST,'capacity');
-    $add_field1 = filter_input(INPUT_POST,'add_field1');
-    $add_field2 = filter_input(INPUT_POST,'add_field2');
-    $add_field3 = filter_input(INPUT_POST,'add_field3');
-    $disabled = filter_input(INPUT_POST,'disabled');
-    $type = filter_input(INPUT_POST,'type');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $railway_id);
-    oci_bind_by_name($oci_request, ":bind3", $number);
-    oci_bind_by_name($oci_request, ":bind4", $purpose);
-    oci_bind_by_name($oci_request, ":bind5", $pointer_from);
-    oci_bind_by_name($oci_request, ":bind6", $pointer_to);
-    oci_bind_by_name($oci_request, ":bind7", $length_limit);
-    oci_bind_by_name($oci_request, ":bind8", $length_useful);
-    oci_bind_by_name($oci_request, ":bind9", $capacity);
-    oci_bind_by_name($oci_request, ":bind10", $add_field1);
-    oci_bind_by_name($oci_request, ":bind11", $add_field2);
-    oci_bind_by_name($oci_request, ":bind12", $add_field3);
-    oci_bind_by_name($oci_request, ":bind13", $disabled);
-    oci_bind_by_name($oci_request, ":bind14", $type);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
-}
-
-if ($_POST['ajax_action']==='get_stations') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.getStations)');
-    oci_execute($oci_request);
-
-    $arrResult = array();
-    while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-            array_push($arrResult, $tmp);
-    }
-
-    oci_close($conn);
-
-    echo json_encode($arrResult);
-}
-
-if ($_POST['ajax_action']==='add_point') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.add_point(:bind2,:bind3,:bind4,:bind5); end;');
-    $parent_id = filter_input(INPUT_POST,'parent_id');
-    $parent_type = filter_input(INPUT_POST,'parent_type');
-    $name = filter_input(INPUT_POST,'name');
-    $descr = filter_input(INPUT_POST,'descr');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $parent_id);
-    oci_bind_by_name($oci_request, ":bind3", $parent_type);
-    oci_bind_by_name($oci_request, ":bind4", $name);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
-}
-
-if ($_POST['ajax_action']==='change_order_for_railway') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_order_for_railway(:bind2,:bind3,:bind4); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $type = filter_input(INPUT_POST,'type');
-    $action = filter_input(INPUT_POST,'action');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,100);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_bind_by_name($oci_request, ":bind3", $type);
-    oci_bind_by_name($oci_request, ":bind4", $action);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
-}
-
-if ($_POST['ajax_action']==='get_credentials') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_credentials)');
-    oci_execute($oci_request);
-
-    $arrResult = array();
-    while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-            array_push($arrResult, $tmp);
-    }
-
-    oci_close($conn);
-
-    echo json_encode($arrResult);
-}
-//Не используется
-if ($_POST['ajax_action']==='old_get_credential_descr') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_credential_descr(:bind1))');
-    $credential_id = filter_input(INPUT_POST,'credential_id');
-
-    oci_bind_by_name($oci_child, ":bind1", $credential_id);
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
-}
-
-if ($_POST['ajax_action']==='get_credential_descr') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_credential_descr_new(:bind1))');
-    $credential_id = filter_input(INPUT_POST,'credential_id');
-
-    oci_bind_by_name($oci_child, ":bind1", $credential_id);
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
-}
-
-if ($_POST['ajax_action']==='save_new_credential') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    $oci_request = oci_parse($conn, '
-		declare	
-		begin
-            :bind1:=xx_dislocation.save_new_credential_new(:bind2, :bind3);
-
-		end;');
-        $params = filter_input(INPUT_POST,'params');
-        $userID = $auth->getUserId();
-
-        oci_bind_by_name($oci_request, ":bind1", $result,100);
-        oci_bind_by_name($oci_request, ":bind2", $userID);
-        oci_bind_by_name($oci_request, ":bind3", $params);
-        oci_execute($oci_request);
-        oci_close($conn);
         echo $result;
+    } catch (Throwable $exception) {
+        $logger->error(
+            $ajaxAction,
+            $exception->getMessage(),
+            $exception->getCode(),
+            ['parameters' => $oracleParams]
+        );
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'add_user') {
+    $oracleParams = [
+        'login' => $_POST['login'] ?? null,
+        'full_name' => $_POST['full_name'] ?? null,
+        'enterprise' => $_POST['enterprise'] ?? null,
+        'division' => $_POST['division'] ?? null,
+        'change_pwd' => $_POST['change_pwd'] ?? null,
+        'open' => $_POST['open'] ?? null,
+        'phone_num' => $_POST['phone_num'] ?? null,
+        'default_station' => $_POST['default_station'] ?? null,
+        'stations' => $_POST['stations'] ?? null,
+        'credentials' => $_POST['credentials'] ?? null,
+        'user_email' => $_POST['user_email'] ?? null,
+    ];
+
+    try {
+        $result = $database->callFunction(
+            'begin :result := xx_dislocation.add_user('
+                . ':login, :full_name, :enterprise, :division, :change_pwd, :open, '
+                . ':phone_num, :default_station, :stations, :credentials, :user_email); end;',
+            $oracleParams,
+            ['length' => 1000000]
+        );
+
+        echo $result;
+    } catch (Throwable $exception) {
+        $logger->error(
+            $ajaxAction,
+            $exception->getMessage(),
+            $exception->getCode(),
+            ['parameters' => $oracleParams]
+        );
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'change_user') {
+    $oracleParams = [
+        'user_id' => $_POST['user_id'] ?? null,
+        'login' => $_POST['login'] ?? null,
+        'full_name' => $_POST['full_name'] ?? null,
+        'enterprise' => $_POST['enterprise'] ?? null,
+        'division' => $_POST['division'] ?? null,
+        'change_pwd' => $_POST['change_pwd'] ?? null,
+        'open' => $_POST['open'] ?? null,
+        'phone_num' => $_POST['phone_num'] ?? null,
+        'default_station' => $_POST['default_station'] ?? null,
+        'stations' => $_POST['stations'] ?? null,
+        'credentials' => $_POST['credentials'] ?? null,
+        'user_email' => $_POST['user_email'] ?? null,
+    ];
+
+    try {
+        $result = $database->callFunction(
+            'begin :result := xx_dislocation.change_user('
+                . ':user_id, :login, :full_name, :enterprise, :division, :change_pwd, :open, '
+                . ':phone_num, :default_station, :stations, :credentials, :user_email); end;',
+            $oracleParams,
+            ['length' => 1000000]
+        );
+
+        echo $result;
+    } catch (Throwable $exception) {
+        $logger->error(
+            $ajaxAction,
+            $exception->getMessage(),
+            $exception->getCode(),
+            ['parameters' => $oracleParams]
+        );
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'add_railway') {
+    $oracleParams = [];
+    foreach (['parent_id', 'parent_type', 'number', 'purpose', 'pointer_from', 'pointer_to', 'length_limit', 'length_useful', 'capacity', 'add_field1', 'add_field2', 'add_field3', 'disabled', 'type'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
+    }
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.add_railway(:parent_id, :parent_type, :number, :purpose, :pointer_from, :pointer_to, :length_limit, :length_useful, :capacity, :add_field1, :add_field2, :add_field3, :disabled, :type); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'change_railway_attr') {
+    $oracleParams = [];
+    foreach (['railway_id', 'number', 'purpose', 'pointer_from', 'pointer_to', 'length_limit', 'length_useful', 'capacity', 'add_field1', 'add_field2', 'add_field3', 'disabled', 'type'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
+    }
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.change_railway_attr(:railway_id, :number, :purpose, :pointer_from, :pointer_to, :length_limit, :length_useful, :capacity, :add_field1, :add_field2, :add_field3, :disabled, :type); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'get_stations') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.getStations)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'add_point') {
+    $oracleParams = [];
+    foreach (['parent_id', 'parent_type', 'name', 'descr'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
+    }
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.add_point(:parent_id, :parent_type, :name, :descr); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'change_order_for_railway') {
+    $oracleParams = [];
+    foreach (['id', 'type', 'action'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
+    }
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.change_order_for_railway(:id, :type, :action); end;',
+            $oracleParams,
+            ['length' => 100]
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'get_credentials') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.get_credentials)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+if ($ajaxAction === 'get_credential_descr') {
+    $oracleParams = ['credential_id' => $_POST['credential_id'] ?? null];
+    try {
+        echo json_encode($database->fetchAll(
+            'select * from table(xx_dislocation.get_credential_descr_new(:credential_id))',
+            $oracleParams
+        ), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
+if ($ajaxAction === 'save_new_credential') {
+    $oracleParams = [
+        'user_id' => $auth->getUserId(),
+        'params' => $_POST['params'] ?? null,
+    ];
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.save_new_credential_new(:user_id, :params); end;',
+            $oracleParams,
+            ['length' => 100]
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
 }
 
 
-if ($_POST['ajax_action']==='old_save_new_credential') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, '
+if ($ajaxAction === 'old_save_new_credential') {
+    $oracleParams = [
+        'bind2' => $_POST['credential_name'] ?? null,
+        'bind3' => $_POST['moving_inside_railway'] ?? null,
+        'bind4' => $_POST['moving_inside_shop'] ?? null,
+        'bind5' => $_POST['moving_inside_station'] ?? null,
+        'bind6' => $_POST['moving_between_station'] ?? null,
+        'bind7' => $_POST['change_attribute'] ?? null,
+        'bind8' => $_POST['change_weight'] ?? null,
+        'bind9' => $_POST['enter_inspection'] ?? null,
+        'bind10' => $_POST['enter_inspection_add'] ?? null,
+        'bind11' => $_POST['register_notification'] ?? null,
+        'bind12' => $_POST['entry_foreign_car'] ?? null,
+        'bind13' => $_POST['administrator'] ?? null,
+        'bind14' => $_POST['receive_to_station'] ?? null,
+        'bind15' => $_POST['work_with_groups'] ?? null,
+        'bind16' => $_POST['out_from_ugl'] ?? null,
+        'bind17' => $_POST['add_attribute'] ?? null,
+        'bind18' => $_POST['create_request'] ?? null,
+        'bind19' => $_POST['change_request'] ?? null,
+        'bind20' => $_POST['view_request'] ?? null,
+        'bind21' => $_POST['complete_request'] ?? null,
+        'bind22' => $_POST['del_ins_doc'] ?? null,
+        'bind23' => $_POST['return_from_psp'] ?? null,
+        'bind24' => $_POST['autocreate_request_v'] ?? null,
+        'bind25' => $_POST['autocreate_request_o'] ?? null,
+        'bind26' => $_POST['autocreate_request_t'] ?? null,
+        'bind27' => $_POST['weigh_import'] ?? null,
+        'bind28' => $_POST['weigh_import_corr'] ?? null,
+        'bind29' => $_POST['weigh_delete'] ?? null,
+        'bind30' => $_POST['export_shop_info'] ?? null,
+        'bind31' => $_POST['create_invoice_out'] ?? null,
+        'bind32' => $_POST['send_invoice_to_etran'] ?? null,
+        'bind33' => $_POST['register_notification_gu'] ?? null,
+        'bind34' => $_POST['route_add'] ?? null,
+        'bind35' => $_POST['route_processing'] ?? null,
+        'bind36' => $_POST['route_closing'] ?? null,
+        'bind37' => $_POST['output_defective_cars'] ?? null,
+        'bind38' => $_POST['export_notification_gu'] ?? null,
+        'bind39' => $_POST['fix_dev_rule'] ?? null,
+        'bind40' => $_POST['fix_dev_place'] ?? null,
+        'bind41' => $_POST['enter_dev_inspection'] ?? null,
+        'bind42' => $_POST['fix_dev_add'] ?? null,
+        'bind43' => $_POST['fix_dev_undock'] ?? null,
+        'bind44' => $_POST['fix_dev_update'] ?? null,
+        'bind45' => $_POST['shift_update'] ?? null,
+        'bind46' => $_POST['control_cars'] ?? null,
+        'bind47' => $_POST['weighing_dispatcher'] ?? null,
+        'bind48' => $_POST['process_of_wagons'] ?? null,
+        'bind49' => $_POST['update_of_nsi'] ?? null,
+        'bind50' => $_POST['export_samples'] ?? null,
+        'bind51' => $_POST['entry_foreign_cont'] ?? null,
+        'bind52' => $_POST['scale_type_1831_manual'] ?? null,
+    ];
+    $sql = '
 		declare
 			l_add_data  xx_etw.xx_dislocation.t_xx_user_credential_row;
 		begin
@@ -360,141 +451,70 @@ if ($_POST['ajax_action']==='old_save_new_credential') {
 			
 			
 			
-			:bind1:=xx_dislocation.save_new_credential(l_add_data);
+			:result:=xx_dislocation.save_new_credential(l_add_data);
 
-		end;');
-    $credential_name = filter_input(INPUT_POST,'credential_name');
-    $moving_inside_railway = filter_input(INPUT_POST,'moving_inside_railway');
-    $moving_inside_shop = filter_input(INPUT_POST,'moving_inside_shop');
-    $moving_inside_station = filter_input(INPUT_POST,'moving_inside_station');
-    $moving_between_station = filter_input(INPUT_POST,'moving_between_station');
-    $change_attribute = filter_input(INPUT_POST,'change_attribute');
-    $change_weight = filter_input(INPUT_POST,'change_weight');
-    $enter_inspection = filter_input(INPUT_POST,'enter_inspection');
-    $enter_inspection_add = filter_input(INPUT_POST,'enter_inspection_add');
-    $register_notification = filter_input(INPUT_POST,'register_notification');
-    $entry_foreign_car = filter_input(INPUT_POST,'entry_foreign_car');
-    $administrator = filter_input(INPUT_POST,'administrator');
-    $receive_to_station = filter_input(INPUT_POST,'receive_to_station');
-    $work_with_groups = filter_input(INPUT_POST,'work_with_groups');
-    $out_from_ugl = filter_input(INPUT_POST,'out_from_ugl');
-    $add_attribute = filter_input(INPUT_POST,'add_attribute');
-    $create_request = filter_input(INPUT_POST,'create_request');
-    $change_request = filter_input(INPUT_POST,'change_request');
-    $view_request = filter_input(INPUT_POST,'view_request');
-    $complete_request = filter_input(INPUT_POST,'complete_request');
-    $del_ins_doc = filter_input(INPUT_POST,'del_ins_doc');
-    $return_from_psp = filter_input(INPUT_POST,'return_from_psp');
-    $autocreate_request_v = filter_input(INPUT_POST,'autocreate_request_v');
-    $autocreate_request_o = filter_input(INPUT_POST,'autocreate_request_o');
-    $autocreate_request_t = filter_input(INPUT_POST,'autocreate_request_t');
-    $weigh_import = filter_input(INPUT_POST,'weigh_import');
-    $weigh_import_corr = filter_input(INPUT_POST,'weigh_import_corr');
-    $weigh_delete = filter_input(INPUT_POST,'weigh_delete');
-    $export_shop_info = filter_input(INPUT_POST,'export_shop_info');
-    $create_invoice_out = filter_input(INPUT_POST,'create_invoice_out');
-    $send_invoice_to_etran = filter_input(INPUT_POST,'send_invoice_to_etran');
-    $register_notification_gu = filter_input(INPUT_POST,'register_notification_gu');
-    $route_add = filter_input(INPUT_POST,'route_add');
-    $route_processing = filter_input(INPUT_POST,'route_processing');
-    $route_closing = filter_input(INPUT_POST,'route_closing');
-    $output_defective_cars = filter_input(INPUT_POST,'output_defective_cars');
-    $export_notification_gu = filter_input(INPUT_POST,'export_notification_gu');
-    $fix_dev_rule = filter_input(INPUT_POST,'fix_dev_rule');
-    $fix_dev_place = filter_input(INPUT_POST,'fix_dev_place');
-	$enter_dev_inspection = filter_input(INPUT_POST,'enter_dev_inspection');
-	$fix_dev_add = filter_input(INPUT_POST,'fix_dev_add');
-	$fix_dev_undock = filter_input(INPUT_POST,'fix_dev_undock');
-	$fix_dev_update = filter_input(INPUT_POST,'fix_dev_update');
-	$shift_update = filter_input(INPUT_POST,'shift_update');
-	$control_cars = filter_input(INPUT_POST,'control_cars');
-	$weighing_dispatcher = filter_input(INPUT_POST,'weighing_dispatcher');
-	$process_of_wagons = filter_input(INPUT_POST,'process_of_wagons');
-	$update_of_nsi = filter_input(INPUT_POST,'update_of_nsi');
-	$export_samples = filter_input(INPUT_POST,'export_samples');
-	$entry_foreign_cont = filter_input(INPUT_POST,'entry_foreign_cont');
-	$scale_type_1831_manual = filter_input(INPUT_POST,'scale_type_1831_manual');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,100);
-    oci_bind_by_name($oci_request, ":bind2", $credential_name);
-    oci_bind_by_name($oci_request, ":bind3", $moving_inside_railway);
-    oci_bind_by_name($oci_request, ":bind4", $moving_inside_shop);
-    oci_bind_by_name($oci_request, ":bind5", $moving_inside_station);
-    oci_bind_by_name($oci_request, ":bind6", $moving_between_station);
-    oci_bind_by_name($oci_request, ":bind7", $change_attribute);
-    oci_bind_by_name($oci_request, ":bind8", $change_weight);
-    oci_bind_by_name($oci_request, ":bind9", $enter_inspection);
-    oci_bind_by_name($oci_request, ":bind10", $enter_inspection_add);
-    oci_bind_by_name($oci_request, ":bind11", $register_notification);
-    oci_bind_by_name($oci_request, ":bind12", $entry_foreign_car);
-    oci_bind_by_name($oci_request, ":bind13", $administrator);
-    oci_bind_by_name($oci_request, ":bind14", $receive_to_station);
-    oci_bind_by_name($oci_request, ":bind15", $work_with_groups);
-    oci_bind_by_name($oci_request, ":bind16", $out_from_ugl);
-    oci_bind_by_name($oci_request, ":bind17", $add_attribute);
-    oci_bind_by_name($oci_request, ":bind18", $create_request);
-    oci_bind_by_name($oci_request, ":bind19", $change_request);
-    oci_bind_by_name($oci_request, ":bind20", $view_request);
-    oci_bind_by_name($oci_request, ":bind21", $complete_request);
-    oci_bind_by_name($oci_request, ":bind22", $del_ins_doc);
-    oci_bind_by_name($oci_request, ":bind23", $return_from_psp);
-    oci_bind_by_name($oci_request, ":bind24", $autocreate_request_v);
-    oci_bind_by_name($oci_request, ":bind25", $autocreate_request_o);
-    oci_bind_by_name($oci_request, ":bind26", $autocreate_request_t);
-    oci_bind_by_name($oci_request, ":bind27", $weigh_import);
-    oci_bind_by_name($oci_request, ":bind28", $weigh_import_corr);
-    oci_bind_by_name($oci_request, ":bind29", $weigh_delete);
-    oci_bind_by_name($oci_request, ":bind30", $export_shop_info);
-    oci_bind_by_name($oci_request, ":bind31", $create_invoice_out);
-    oci_bind_by_name($oci_request, ":bind32", $send_invoice_to_etran);
-    oci_bind_by_name($oci_request, ":bind33", $register_notification_gu);
-    
-    
-    oci_bind_by_name($oci_request, ":bind34", $route_add);
-    oci_bind_by_name($oci_request, ":bind35", $route_processing);
-    oci_bind_by_name($oci_request, ":bind36", $route_closing);
-    
-    
-    oci_bind_by_name($oci_request, ":bind37", $output_defective_cars);
-    oci_bind_by_name($oci_request, ":bind38", $export_notification_gu);
-    oci_bind_by_name($oci_request, ":bind39", $fix_dev_rule);
-    oci_bind_by_name($oci_request, ":bind40", $fix_dev_place);
-	
-	
-	oci_bind_by_name($oci_request, ":bind41", $enter_dev_inspection);
-	oci_bind_by_name($oci_request, ":bind42", $fix_dev_add);
-	oci_bind_by_name($oci_request, ":bind43", $fix_dev_undock);
-	oci_bind_by_name($oci_request, ":bind44", $fix_dev_update);
-	
-	
-	oci_bind_by_name($oci_request, ":bind45", $shift_update);
-	oci_bind_by_name($oci_request, ":bind46", $control_cars);
-	oci_bind_by_name($oci_request, ":bind47", $weighing_dispatcher);
-	oci_bind_by_name($oci_request, ":bind48", $process_of_wagons);
-	oci_bind_by_name($oci_request, ":bind49", $update_of_nsi);
-	oci_bind_by_name($oci_request, ":bind50", $export_samples);
-	oci_bind_by_name($oci_request, ":bind51", $entry_foreign_cont);
-	oci_bind_by_name($oci_request, ":bind52", $scale_type_1831_manual);
-	
-	
-	
-	
-	
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+		end;';
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams, $sql) {
+        return $database->callFunction($sql, $oracleParams, ['length' => 100]);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='change_credential') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, '
+if ($ajaxAction === 'change_credential') {
+    $oracleParams = [
+        'bind2' => $_POST['credential_id'] ?? null,
+        'bind3' => $_POST['credential_name'] ?? null,
+        'bind4' => $_POST['moving_inside_railway'] ?? null,
+        'bind5' => $_POST['moving_inside_shop'] ?? null,
+        'bind6' => $_POST['moving_inside_station'] ?? null,
+        'bind7' => $_POST['moving_between_station'] ?? null,
+        'bind8' => $_POST['change_attribute'] ?? null,
+        'bind9' => $_POST['change_weight'] ?? null,
+        'bind10' => $_POST['enter_inspection'] ?? null,
+        'bind11' => $_POST['enter_inspection_add'] ?? null,
+        'bind12' => $_POST['register_notification'] ?? null,
+        'bind13' => $_POST['entry_foreign_car'] ?? null,
+        'bind14' => $_POST['administrator'] ?? null,
+        'bind15' => $_POST['receive_to_station'] ?? null,
+        'bind16' => $_POST['work_with_groups'] ?? null,
+        'bind17' => $_POST['out_from_ugl'] ?? null,
+        'bind18' => $_POST['add_attribute'] ?? null,
+        'bind19' => $_POST['create_request'] ?? null,
+        'bind20' => $_POST['change_request'] ?? null,
+        'bind21' => $_POST['view_request'] ?? null,
+        'bind22' => $_POST['complete_request'] ?? null,
+        'bind23' => $_POST['del_ins_doc'] ?? null,
+        'bind24' => $_POST['return_from_psp'] ?? null,
+        'bind25' => $_POST['autocreate_request_v'] ?? null,
+        'bind26' => $_POST['autocreate_request_o'] ?? null,
+        'bind27' => $_POST['autocreate_request_t'] ?? null,
+        'bind28' => $_POST['weigh_import'] ?? null,
+        'bind29' => $_POST['weigh_import_corr'] ?? null,
+        'bind30' => $_POST['weigh_delete'] ?? null,
+        'bind31' => $_POST['export_shop_info'] ?? null,
+        'bind32' => $_POST['create_invoice_out'] ?? null,
+        'bind33' => $_POST['send_invoice_to_etran'] ?? null,
+        'bind34' => $_POST['register_notification_gu'] ?? null,
+        'bind35' => $_POST['route_add'] ?? null,
+        'bind36' => $_POST['route_processing'] ?? null,
+        'bind37' => $_POST['route_closing'] ?? null,
+        'bind38' => $_POST['output_defective_cars'] ?? null,
+        'bind39' => $_POST['export_notification_gu'] ?? null,
+        'bind40' => $_POST['fix_dev_rule'] ?? null,
+        'bind41' => $_POST['fix_dev_place'] ?? null,
+        'bind42' => $_POST['enter_dev_inspection'] ?? null,
+        'bind43' => $_POST['fix_dev_add'] ?? null,
+        'bind44' => $_POST['fix_dev_undock'] ?? null,
+        'bind45' => $_POST['fix_dev_update'] ?? null,
+        'bind46' => $_POST['shift_update'] ?? null,
+        'bind47' => $_POST['control_cars'] ?? null,
+        'bind48' => $_POST['weighing_dispatcher'] ?? null,
+        'bind49' => $_POST['process_of_wagons'] ?? null,
+        'bind50' => $_POST['update_of_nsi'] ?? null,
+        'bind51' => $_POST['export_samples'] ?? null,
+        'bind52' => $_POST['entry_foreign_cont'] ?? null,
+        'bind53' => $_POST['scale_type_1831_manual'] ?? null,
+    ];
+    $sql = '
 		declare
 			l_add_data  xx_etw.xx_dislocation.t_xx_user_credential_row;
 		begin
@@ -555,930 +575,407 @@ if ($_POST['ajax_action']==='change_credential') {
 			
 			
 		   
-			:bind1:=xx_dislocation.change_credential(:bind2,l_add_data);
+			:result:=xx_dislocation.change_credential(:bind2,l_add_data);
 
-		end;');
-    $credential_id = filter_input(INPUT_POST,'credential_id');
-    $credential_name = filter_input(INPUT_POST,'credential_name');
-    $moving_inside_railway = filter_input(INPUT_POST,'moving_inside_railway');
-    $moving_inside_shop = filter_input(INPUT_POST,'moving_inside_shop');
-    $moving_inside_station = filter_input(INPUT_POST,'moving_inside_station');
-    $moving_between_station = filter_input(INPUT_POST,'moving_between_station');
-    $change_attribute = filter_input(INPUT_POST,'change_attribute');
-    $change_weight = filter_input(INPUT_POST,'change_weight');
-    $enter_inspection = filter_input(INPUT_POST,'enter_inspection');
-    $enter_inspection_add = filter_input(INPUT_POST,'enter_inspection_add');
-    $register_notification = filter_input(INPUT_POST,'register_notification');
-    $entry_foreign_car = filter_input(INPUT_POST,'entry_foreign_car');
-    $administrator = filter_input(INPUT_POST,'administrator');
-    $receive_to_station = filter_input(INPUT_POST,'receive_to_station');
-    $work_with_groups = filter_input(INPUT_POST,'work_with_groups');
-    $out_from_ugl = filter_input(INPUT_POST,'out_from_ugl');
-    $add_attribute = filter_input(INPUT_POST,'add_attribute');
-    $create_request = filter_input(INPUT_POST,'create_request');
-    $change_request = filter_input(INPUT_POST,'change_request');
-    $view_request = filter_input(INPUT_POST,'view_request');
-    $complete_request = filter_input(INPUT_POST,'complete_request');
-    $del_ins_doc = filter_input(INPUT_POST,'del_ins_doc');
-    $return_from_psp = filter_input(INPUT_POST,'return_from_psp');
-    $autocreate_request_v = filter_input(INPUT_POST,'autocreate_request_v');
-    $autocreate_request_o = filter_input(INPUT_POST,'autocreate_request_o');
-    $autocreate_request_t = filter_input(INPUT_POST,'autocreate_request_t');
-    $weigh_import = filter_input(INPUT_POST,'weigh_import');
-    $weigh_import_corr = filter_input(INPUT_POST,'weigh_import_corr');
-    $weigh_delete = filter_input(INPUT_POST,'weigh_delete');
-    $export_shop_info = filter_input(INPUT_POST,'export_shop_info');
-    $create_invoice_out = filter_input(INPUT_POST,'create_invoice_out');
-    $send_invoice_to_etran = filter_input(INPUT_POST,'send_invoice_to_etran');
-    $register_notification_gu = filter_input(INPUT_POST,'register_notification_gu');
-    $route_add = filter_input(INPUT_POST,'route_add');
-    $route_processing = filter_input(INPUT_POST,'route_processing');
-    $route_closing = filter_input(INPUT_POST,'route_closing');
-    $output_defective_cars = filter_input(INPUT_POST,'output_defective_cars');
-    $export_notification_gu = filter_input(INPUT_POST,'export_notification_gu');
-    $fix_dev_rule = filter_input(INPUT_POST,'fix_dev_rule');
-    $fix_dev_place = filter_input(INPUT_POST,'fix_dev_place');
-	$enter_dev_inspection = filter_input(INPUT_POST,'enter_dev_inspection');
-	$fix_dev_add = filter_input(INPUT_POST,'fix_dev_add');
-	$fix_dev_undock = filter_input(INPUT_POST,'fix_dev_undock');
-	$fix_dev_update = filter_input(INPUT_POST,'fix_dev_update');
-	$shift_update = filter_input(INPUT_POST,'shift_update');
-	$control_cars = filter_input(INPUT_POST,'control_cars');
-	$weighing_dispatcher = filter_input(INPUT_POST,'weighing_dispatcher');
-	$process_of_wagons = filter_input(INPUT_POST,'process_of_wagons');
-	$update_of_nsi = filter_input(INPUT_POST,'update_of_nsi');
-	$export_samples = filter_input(INPUT_POST,'export_samples');
-	$entry_foreign_cont = filter_input(INPUT_POST,'entry_foreign_cont');
-	$scale_type_1831_manual = filter_input(INPUT_POST,'scale_type_1831_manual');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000);
-    oci_bind_by_name($oci_request, ":bind2", $credential_id);
-    oci_bind_by_name($oci_request, ":bind3", $credential_name);
-    oci_bind_by_name($oci_request, ":bind4", $moving_inside_railway);
-    oci_bind_by_name($oci_request, ":bind5", $moving_inside_shop);
-    oci_bind_by_name($oci_request, ":bind6", $moving_inside_station);
-    oci_bind_by_name($oci_request, ":bind7", $moving_between_station);
-    oci_bind_by_name($oci_request, ":bind8", $change_attribute);
-    oci_bind_by_name($oci_request, ":bind9", $change_weight);
-    oci_bind_by_name($oci_request, ":bind10", $enter_inspection);
-    oci_bind_by_name($oci_request, ":bind11", $enter_inspection_add);
-    oci_bind_by_name($oci_request, ":bind12", $register_notification);
-    oci_bind_by_name($oci_request, ":bind13", $entry_foreign_car);
-    oci_bind_by_name($oci_request, ":bind14", $administrator);
-    oci_bind_by_name($oci_request, ":bind15", $receive_to_station);
-    oci_bind_by_name($oci_request, ":bind16", $work_with_groups);
-    oci_bind_by_name($oci_request, ":bind17", $out_from_ugl);
-    oci_bind_by_name($oci_request, ":bind18", $add_attribute);
-    oci_bind_by_name($oci_request, ":bind19", $create_request);
-    oci_bind_by_name($oci_request, ":bind20", $change_request);
-    oci_bind_by_name($oci_request, ":bind21", $view_request);
-    oci_bind_by_name($oci_request, ":bind22", $complete_request);
-    oci_bind_by_name($oci_request, ":bind23", $del_ins_doc);
-    oci_bind_by_name($oci_request, ":bind24", $return_from_psp);
-    oci_bind_by_name($oci_request, ":bind25", $autocreate_request_v);
-    oci_bind_by_name($oci_request, ":bind26", $autocreate_request_o);
-    oci_bind_by_name($oci_request, ":bind27", $autocreate_request_t);
-    oci_bind_by_name($oci_request, ":bind28", $weigh_import);
-    oci_bind_by_name($oci_request, ":bind29", $weigh_import_corr);
-    oci_bind_by_name($oci_request, ":bind30", $weigh_delete);
-    oci_bind_by_name($oci_request, ":bind31", $export_shop_info);
-    oci_bind_by_name($oci_request, ":bind32", $create_invoice_out);
-    oci_bind_by_name($oci_request, ":bind33", $send_invoice_to_etran);
-    oci_bind_by_name($oci_request, ":bind34", $register_notification_gu);
-    
-    
-    oci_bind_by_name($oci_request, ":bind35", $route_add);
-    oci_bind_by_name($oci_request, ":bind36", $route_processing);
-    oci_bind_by_name($oci_request, ":bind37", $route_closing);
-    
-    
-    oci_bind_by_name($oci_request, ":bind38", $output_defective_cars);
-    oci_bind_by_name($oci_request, ":bind39", $export_notification_gu);
-    oci_bind_by_name($oci_request, ":bind40", $fix_dev_rule);
-    oci_bind_by_name($oci_request, ":bind41", $fix_dev_place);
-	
-	
-	oci_bind_by_name($oci_request, ":bind42", $enter_dev_inspection);
-	oci_bind_by_name($oci_request, ":bind43", $fix_dev_add);
-	oci_bind_by_name($oci_request, ":bind44", $fix_dev_undock);
-	oci_bind_by_name($oci_request, ":bind45", $fix_dev_update);
-    
-    
-	oci_bind_by_name($oci_request, ":bind46", $shift_update);
-	oci_bind_by_name($oci_request, ":bind47", $control_cars);
-	
-	
-	oci_bind_by_name($oci_request, ":bind48", $weighing_dispatcher);
-	oci_bind_by_name($oci_request, ":bind49", $process_of_wagons);
-	oci_bind_by_name($oci_request, ":bind50", $update_of_nsi);
-	oci_bind_by_name($oci_request, ":bind51", $export_samples);
-	oci_bind_by_name($oci_request, ":bind52", $entry_foreign_cont);
-	oci_bind_by_name($oci_request, ":bind53", $scale_type_1831_manual);
-	
-	
-	
-	
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+		end;';
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams, $sql) {
+        return $database->callFunction($sql, $oracleParams, ['length' => 1000]);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='delete_credential') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'delete_credential') {
+    $oracleParams = ['credential_id' => $_POST['credential_id'] ?? null];
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.delete_credential(:credential_id); end;',
+            $oracleParams,
+            ['length' => 100]
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.delete_credential(:bind2); end;');
-    $credential_id = filter_input(INPUT_POST,'credential_id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,100);
-    oci_bind_by_name($oci_request, ":bind2", $credential_id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='get_users') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'get_users') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.get_users)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_users)');
-    oci_execute($oci_request);
-
-    $arrResult = array();
-    while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-            array_push($arrResult, $tmp);
-    }
-
-    oci_close($conn);
-
-    echo json_encode($arrResult);
+    exit;
 }
 
-if ($_POST['ajax_action']==='get_user_descr') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'get_user_descr') {
+    $oracleParams = ['user_id' => $_POST['user_id'] ?? null];
+    try {
+        echo json_encode($database->fetchAll(
+            'select * from table(xx_dislocation.get_user_descr(:user_id))',
+            $oracleParams
+        ), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_user_descr(:bind1))');
-    $user_id = filter_input(INPUT_POST,'user_id');
-
-    oci_bind_by_name($oci_child, ":bind1", $user_id);
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    exit;
 }
 
-if ($_POST['ajax_action']==='add_user') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'get_ins_doc_types') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.get_ins_doc_types)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, "declare
-                                        l_log_id number:=xx_etw.xx_disl_log_seq.NEXTVAL ();
-                                      begin  
-
-                                            :bind1 := xx_dislocation.add_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12); 
-                                      exception when others then 
-                                            
-                                            xx_dislocation.log_new (l_log_id, 'php add_user', 'Error = '||sqlerrm);
-                                      end;");
-    $login = filter_input(INPUT_POST,'login');
-    $full_name = filter_input(INPUT_POST,'full_name');
-    $enterprise = filter_input(INPUT_POST,'enterprise');
-    $division = filter_input(INPUT_POST,'division');
-    $change_pwd = filter_input(INPUT_POST,'change_pwd');
-    $open = filter_input(INPUT_POST,'open');
-    $phone_num = filter_input(INPUT_POST,'phone_num');
-    $default_station = filter_input(INPUT_POST,'default_station');
-    $stations = filter_input(INPUT_POST,'stations');
-    $credentials = filter_input(INPUT_POST,'credentials');
-    $user_email = filter_input(INPUT_POST,'user_email');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $login);
-    oci_bind_by_name($oci_request, ":bind3", $full_name);
-    oci_bind_by_name($oci_request, ":bind4", $enterprise);
-    oci_bind_by_name($oci_request, ":bind5", $division);
-    oci_bind_by_name($oci_request, ":bind6", $change_pwd);
-    oci_bind_by_name($oci_request, ":bind7", $open);
-    oci_bind_by_name($oci_request, ":bind8", $phone_num);
-    oci_bind_by_name($oci_request, ":bind9", $default_station);
-    oci_bind_by_name($oci_request, ":bind10", $stations);
-    oci_bind_by_name($oci_request, ":bind11", $credentials);
-    oci_bind_by_name($oci_request, ":bind12", $user_email);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='change_user') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'change_ins_doc_type') {
+    $oracleParams = [];
+    foreach (['type_id', 'name', 'descr', 'storage_life'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_user(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10,:bind11,:bind12,:bind13); end;');
-    $user_id = filter_input(INPUT_POST,'user_id');
-    $login = filter_input(INPUT_POST,'login');
-    $full_name = filter_input(INPUT_POST,'full_name');
-    $enterprise = filter_input(INPUT_POST,'enterprise');
-    $division = filter_input(INPUT_POST,'division');
-    $change_pwd = filter_input(INPUT_POST,'change_pwd');
-    $open = filter_input(INPUT_POST,'open');
-    $phone_num = filter_input(INPUT_POST,'phone_num');
-    $default_station = filter_input(INPUT_POST,'default_station');
-    $stations = filter_input(INPUT_POST,'stations');
-    $credentials = filter_input(INPUT_POST,'credentials');
-    $user_email = filter_input(INPUT_POST,'user_email');
-    
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $user_id);
-    oci_bind_by_name($oci_request, ":bind3", $login);
-    oci_bind_by_name($oci_request, ":bind4", $full_name);
-    oci_bind_by_name($oci_request, ":bind5", $enterprise);
-    oci_bind_by_name($oci_request, ":bind6", $division);
-    oci_bind_by_name($oci_request, ":bind7", $change_pwd);
-    oci_bind_by_name($oci_request, ":bind8", $open);
-    oci_bind_by_name($oci_request, ":bind9", $phone_num);
-    oci_bind_by_name($oci_request, ":bind10", $default_station);
-    oci_bind_by_name($oci_request, ":bind11", $stations);
-    oci_bind_by_name($oci_request, ":bind12", $credentials);
-    oci_bind_by_name($oci_request, ":bind13", $user_email);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.change_ins_doc_type(:type_id, :name, :descr, :storage_life); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
 }
 
-if ($_POST['ajax_action']==='get_ins_doc_types') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'create_new_ins_doc_type') {
+    $oracleParams = [];
+    try {
+        echo $database->callFunction('begin :result := xx_dislocation.create_new_ins_doc_type(); end;');
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_ins_doc_types)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    exit;
 }
 
-if ($_POST['ajax_action']==='change_ins_doc_type') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'del_ins_doc_type') {
+    $oracleParams = ['type_id' => $_POST['type_id'] ?? null];
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.del_ins_doc_type(:type_id); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.change_ins_doc_type(:bind2,:bind3,:bind4,:bind5); end;');
-    $type_id = filter_input(INPUT_POST,'type_id');
-    $name = filter_input(INPUT_POST,'name');
-    $descr = filter_input(INPUT_POST,'descr');
-    $storage_life = filter_input(INPUT_POST,'storage_life');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $type_id);
-    oci_bind_by_name($oci_request, ":bind3", $name);
-    oci_bind_by_name($oci_request, ":bind4", $descr);
-    oci_bind_by_name($oci_request, ":bind5", $storage_life);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='create_new_ins_doc_type') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'get_rail_services_rgd') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.get_rail_services_rgd)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.create_new_ins_doc_type(); end;');
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='del_ins_doc_type') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_service_rgd') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'code', 'category', 'beg_date', 'end_date'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_ins_doc_type(:bind2); end;');
-    $type_id = filter_input(INPUT_POST,'type_id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $type_id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_service_rgd(:user_id, :id, :code, :category, :beg_date, :end_date); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
 }
 
-if ($_POST['ajax_action']==='get_rail_services_rgd') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'del_rail_service_rgd') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    try {
+        echo $database->callFunction('begin :result := xx_dislocation.del_rail_service_rgd(:id); end;', $oracleParams);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_services_rgd)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    exit;
 }
 
-if ($_POST['ajax_action']==='save_rail_service_rgd') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'get_rail_services') {
+    $oracleParams = [];
+    try {
+        echo json_encode($database->fetchAll('select * from table(xx_dislocation.get_rail_services)'), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_service_rgd(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $code = filter_input(INPUT_POST,'code');
-    $category = filter_input(INPUT_POST,'category');
-    $beg_date = filter_input(INPUT_POST,'beg_date');
-    $end_date = filter_input(INPUT_POST,'end_date');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);        
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $code);
-    oci_bind_by_name($oci_request, ":bind5", $category);
-    oci_bind_by_name($oci_request, ":bind6", $beg_date);
-    oci_bind_by_name($oci_request, ":bind7", $end_date);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    exit;
 }
 
-if ($_POST['ajax_action']==='del_rail_service_rgd') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_service') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'code', 'descr', 'descr_full', 'beg_date', 'end_date', 'service_rgd_id', 'request_tasks'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_service_rgd(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    try {
+        echo $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_service(:user_id, :id, :code, :descr, :descr_full, :beg_date, :end_date, :service_rgd_id, :request_tasks); end;',
+            $oracleParams
+        );
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
+    }
+    exit;
 }
 
-if ($_POST['ajax_action']==='get_rail_services') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'del_rail_service') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    try {
+        echo $database->callFunction('begin :result := xx_dislocation.del_rail_service(:id); end;', $oracleParams);
+    } catch (Throwable $exception) {
+        $logger->error($ajaxAction, $exception->getMessage(), $exception->getCode(), ['parameters' => $oracleParams]);
+        http_response_code(500);
+        echo 'Ошибка выполнения операции';
+    } finally {
+        $database->close();
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_services)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    exit;
 }
 
-if ($_POST['ajax_action']==='save_rail_service') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_service(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $code = filter_input(INPUT_POST,'code');
-    $descr = filter_input(INPUT_POST,'descr');
-    $descr_full = filter_input(INPUT_POST,'descr_full');
-    $beg_date = filter_input(INPUT_POST,'beg_date');
-    $end_date = filter_input(INPUT_POST,'end_date');
-    $service_rgd_id = filter_input(INPUT_POST,'service_rgd_id');
-    $request_tasks = filter_input(INPUT_POST,'request_tasks');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);   
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $code);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_bind_by_name($oci_request, ":bind6", $descr_full);
-    oci_bind_by_name($oci_request, ":bind7", $beg_date);
-    oci_bind_by_name($oci_request, ":bind8", $end_date);
-    oci_bind_by_name($oci_request, ":bind9", $service_rgd_id);
-    oci_bind_by_name($oci_request, ":bind10", $request_tasks);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_contracts') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_contracts)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='del_rail_service') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_contract') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'num', 'descr', 'owner', 'freight_owner', 'freight_owner_short', 'beg_date', 'end_date'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_service(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_contract(:user_id, :id, :num, :descr, :owner, :freight_owner, :freight_owner_short, :beg_date, :end_date); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_contracts') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_contracts)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+if ($ajaxAction === 'del_rail_contract') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction('begin :result := xx_dislocation.del_rail_contract(:id); end;', $oracleParams);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='save_rail_contract') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_contract(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9,:bind10); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $num = filter_input(INPUT_POST,'num');
-    $descr = filter_input(INPUT_POST,'descr');
-    $owner = filter_input(INPUT_POST,'owner');
-    $freight_owner = filter_input(INPUT_POST,'freight_owner');
-    $freight_owner_short = filter_input(INPUT_POST,'freight_owner_short');
-    $beg_date = filter_input(INPUT_POST,'beg_date');
-    $end_date = filter_input(INPUT_POST,'end_date');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);  
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $num);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_bind_by_name($oci_request, ":bind6", $owner);
-    oci_bind_by_name($oci_request, ":bind7", $freight_owner);
-    oci_bind_by_name($oci_request, ":bind8", $freight_owner_short);
-    oci_bind_by_name($oci_request, ":bind9", $beg_date);
-    oci_bind_by_name($oci_request, ":bind10", $end_date);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_contract_dop') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_contract_dop)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='del_rail_contract') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_contract_dop') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'num', 'descr', 'beg_date', 'end_date', 'contract_id'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_contract_dop(:user_id, :id, :num, :descr, :beg_date, :end_date, :contract_id); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_contract_dop') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_contract_dop)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+if ($ajaxAction === 'del_rail_contract_dop') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction('begin :result := xx_dislocation.del_rail_contract_dop(:id); end;', $oracleParams);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='save_rail_contract_dop') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_contract_dop(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $num = filter_input(INPUT_POST,'num');
-    $descr = filter_input(INPUT_POST,'descr');
-    $beg_date = filter_input(INPUT_POST,'beg_date');
-    $end_date = filter_input(INPUT_POST,'end_date');
-    $contract_id = filter_input(INPUT_POST,'contract_id');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);  
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $num);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_bind_by_name($oci_request, ":bind6", $beg_date);
-    oci_bind_by_name($oci_request, ":bind7", $end_date);
-    oci_bind_by_name($oci_request, ":bind8", $contract_id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_contract_change') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_contract_change)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='del_rail_contract_dop') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_dop(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_parent_contracts') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_parent_contracts)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_contract_change') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_contract_change') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'num', 'descr', 'beg_date', 'end_date', 'contract_id'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_contract_change)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_contract_change(:user_id, :id, :num, :descr, :beg_date, :end_date, :contract_id); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_parent_contracts') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_parent_contracts)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+if ($ajaxAction === 'del_rail_contract_change') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction('begin :result := xx_dislocation.del_rail_contract_change(:id); end;', $oracleParams);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='save_rail_contract_change') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_contract_change(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $num = filter_input(INPUT_POST,'num');
-    $descr = filter_input(INPUT_POST,'descr');
-    $beg_date = filter_input(INPUT_POST,'beg_date');
-    $end_date = filter_input(INPUT_POST,'end_date');
-    $contract_id = filter_input(INPUT_POST,'contract_id');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);  
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $num);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_bind_by_name($oci_request, ":bind6", $beg_date);
-    oci_bind_by_name($oci_request, ":bind7", $end_date);
-    oci_bind_by_name($oci_request, ":bind8", $contract_id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_contract_services') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_contract_services)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='del_rail_contract_change') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_change(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_rail_parent_contracts_add') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_rail_parent_contracts_add)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_contract_services') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'save_rail_contract_services') {
+    $oracleParams = ['user_id' => $auth->getUserId()];
+    foreach (['id', 'contract_id', 'service_id', 'ei', 'ei_descr', 'cost', 'cost_nds'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_contract_services)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.save_rail_contract_services(:user_id, :id, :contract_id, :service_id, :ei, :ei_descr, :cost, :cost_nds); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_rail_parent_contracts_add') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_rail_parent_contracts_add)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        array_push($arrChild, $tmp);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+if ($ajaxAction === 'del_rail_contract_services') {
+    $oracleParams = ['id' => $_POST['id'] ?? null];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction('begin :result := xx_dislocation.del_rail_contract_services(:id); end;', $oracleParams);
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='save_rail_contract_services') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
+if ($ajaxAction === 'add_area') {
+    $oracleParams = [];
+    foreach (['parent_id', 'parent_type', 'name', 'descr'] as $name) {
+        $oracleParams[$name] = $_POST[$name] ?? null;
     }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_rail_contract_services(:bind2,:bind3,:bind4,:bind5,:bind6,:bind7,:bind8,:bind9); end;');
-    $id = filter_input(INPUT_POST,'id');
-    $contract_id = filter_input(INPUT_POST,'contract_id');
-    $service_id = filter_input(INPUT_POST,'service_id');
-    $ei = filter_input(INPUT_POST,'ei');
-    $ei_descr = filter_input(INPUT_POST,'ei_descr');
-    $cost = filter_input(INPUT_POST,'cost');
-    $cost_nds = filter_input(INPUT_POST,'cost_nds');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $userID);
-    oci_bind_by_name($oci_request, ":bind3", $id);
-    oci_bind_by_name($oci_request, ":bind4", $contract_id);
-    oci_bind_by_name($oci_request, ":bind5", $service_id);
-    oci_bind_by_name($oci_request, ":bind6", $ei);
-    oci_bind_by_name($oci_request, ":bind7", $ei_descr);
-    oci_bind_by_name($oci_request, ":bind8", $cost);
-    oci_bind_by_name($oci_request, ":bind9", $cost_nds);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.add_area(:parent_id, :parent_type, :name, :descr); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='del_rail_contract_services') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-        $e = oci_error();
-        trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.del_rail_contract_services(:bind2); end;');
-    $id = filter_input(INPUT_POST,'id');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $id);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_periods') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        $rows = $database->fetchAll('select * from table(xx_dislocation.get_periods)');
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = [
+                'PER_ID' => $row['PER_ID'],
+                'PERIOD' => $row['PERIOD'],
+                'PER_MONTH' => $row['PER_MONTH'],
+                'PER_YEAR' => $row['PER_YEAR'],
+                'PER_FROM' => $row['PER_FROM'],
+                'PER_TO' => $row['PER_TO'],
+                'PERIOD_CLOSING' => $row['PERIOD_CLOSING'],
+            ];
+        }
+        return $result;
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='add_area') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.add_area(:bind2,:bind3,:bind4,:bind5); end;');
-    $parent_id = filter_input(INPUT_POST,'parent_id');
-    $parent_type = filter_input(INPUT_POST,'parent_type');
-    $name = filter_input(INPUT_POST,'name');
-    $descr = filter_input(INPUT_POST,'descr');
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);
-    oci_bind_by_name($oci_request, ":bind2", $parent_id);
-    oci_bind_by_name($oci_request, ":bind3", $parent_type);
-    oci_bind_by_name($oci_request, ":bind4", $name);
-    oci_bind_by_name($oci_request, ":bind5", $descr);
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'get_period_closing') {
+    $oracleParams = ['period_id' => $_POST['period_id'] ?? null];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->fetchAll(
+            'select * from table(xx_dislocation.get_period_closing(:period_id))',
+            $oracleParams
+        );
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_periods') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-    
-    $arrChild = array();
-    $oci_child = oci_parse($conn, 'select * from table(xx_dislocation.get_periods)');
-    oci_execute($oci_child);
-    while ($tmp = oci_fetch_array($oci_child, OCI_ASSOC+OCI_RETURN_NULLS)) {
-        //array_push($arrChild, $tmp);
-		array_push($arrChild,['PER_ID' => $tmp['PER_ID']
-							 ,'PERIOD' => $tmp['PERIOD']
-							 ,'PER_MONTH' => $tmp['PER_MONTH']
-							 ,'PER_YEAR' => $tmp['PER_YEAR']
-							 ,'PER_FROM' => $tmp['PER_FROM']
-							 ,'PER_TO' => $tmp['PER_TO']
-							 ,'PERIOD_CLOSING' => $tmp['PERIOD_CLOSING']->load()
-		]);
-    }
-    oci_close($conn);
-
-    echo json_encode($arrChild);
+if ($ajaxAction === 'get_period_status') {
+    $oracleParams = [];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database) {
+        return $database->fetchAll('select * from table(xx_dislocation.get_period_status)');
+    }, true, $database, $logger);
 }
 
-if ($_POST['ajax_action']==='get_period_closing') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_period_closing(:bind1))');
-    $period_id = filter_input(INPUT_POST,'period_id');
-
-    oci_bind_by_name($oci_request, ":bind1", $period_id);
-    oci_execute($oci_request);
-
-    $arrResult = array();
-    while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-            array_push($arrResult, $tmp);
-    }
-
-    oci_close($conn);
-
-    echo json_encode($arrResult);
-}
-
-if ($_POST['ajax_action']==='get_period_status') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'select * from table(xx_dislocation.get_period_status)');
-    oci_execute($oci_request);
-
-    $arrResult = array();
-    while ($tmp = oci_fetch_array($oci_request, OCI_ASSOC+OCI_RETURN_NULLS)) {
-            array_push($arrResult, $tmp);
-    }
-
-    oci_close($conn);
-
-    echo json_encode($arrResult);
-}
-
-if ($_POST['ajax_action']==='save_period_status') {
-    $conn = oci_connect($user,$pwd,$db,"AL32UTF8");
-    if (!$conn) {
-            $e = oci_error();
-            trigger_error(htmlentities($e['message'], ENT_QUOTES), E_USER_ERROR);
-    }
-
-    $oci_request = oci_parse($conn, 'begin  :bind1 := xx_dislocation.save_period_status(:bind2,:bind3,:bind4,:bind5); end;');
-    $period_id = filter_input(INPUT_POST,'period_id');
-    $oper_id = filter_input(INPUT_POST,'oper_id');
-    $status_id = filter_input(INPUT_POST,'status_id');
-    $userID = $auth->getUserId();
-
-    oci_bind_by_name($oci_request, ":bind1", $result,1000000);   
-    oci_bind_by_name($oci_request, ":bind2", $period_id);
-    oci_bind_by_name($oci_request, ":bind3", $oper_id);
-    oci_bind_by_name($oci_request, ":bind4", $status_id);
-    oci_bind_by_name($oci_request, ":bind5", $userID);   
-    oci_execute($oci_request);
-
-    oci_close($conn);
-
-    echo $result;
+if ($ajaxAction === 'save_period_status') {
+    $oracleParams = [
+        'period_id' => $_POST['period_id'] ?? null,
+        'oper_id' => $_POST['oper_id'] ?? null,
+        'status_id' => $_POST['status_id'] ?? null,
+        'user_id' => $auth->getUserId(),
+    ];
+    executeOracleAction($ajaxAction, $oracleParams, function () use ($database, $oracleParams) {
+        return $database->callFunction(
+            'begin :result := xx_dislocation.save_period_status(:period_id, :oper_id, :status_id, :user_id); end;',
+            $oracleParams
+        );
+    }, false, $database, $logger);
 }
