@@ -40,7 +40,7 @@ function setBrowserUrl(pageName, selectedId = null, replace = false) {
     window.history.pushState(browserPage, '', url)
   }
 }
-
+//
 function getPageUrl(pageName, selectedId = null) {
   if (pageName === 'card' && selectedId) {
     return `card.php?id=${encodeURIComponent(selectedId)}`
@@ -114,7 +114,11 @@ $(document).ready(() => {
       }
     }
 
-    setBrowserUrl(applicationState.currentPage, $('#view').data('selected-id'), true)
+    setBrowserUrl(
+      applicationState.currentPage,
+      $('#view').data('selected-id'),
+      true,
+    )
 
     window.addEventListener('popstate', () => {
       const next = getPageFromLocation()

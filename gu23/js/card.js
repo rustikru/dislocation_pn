@@ -27,7 +27,7 @@ export function showCard(container) {
     })
   })
 }
-
+// Отображение карточки акта
 function showCardView(data) {
   const act = data.act
 
@@ -54,7 +54,7 @@ function showCardView(data) {
   )
   showHistoryBlock(data.history)
 }
-
+//  меню действий
 function showActionsMenu(act, data) {
   const $menu = $('#actions-menu')
   let menuItemsCount = 0
@@ -151,7 +151,7 @@ function showActionsMenu(act, data) {
 function closeActionsMenu() {
   $('#actions-menu').hide()
 }
-
+// Блок Детали акта
 function showDetailsBlock(act) {
   const rows = [
     { l: '№ Акта', v: act.ACT_NUMBER },
@@ -421,7 +421,7 @@ function submitInAppDecision(actId, decision, comment) {
     }
   })
 }
-
+// Блок Файлы
 function showAttachmentsBlock(
   act,
   files,

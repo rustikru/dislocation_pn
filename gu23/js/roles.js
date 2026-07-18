@@ -21,9 +21,9 @@ export function showRoles(container) {
   })
 }
 
-/* ══════════════════════════════════════════════════════════
-   Матрица полномочий
-   ══════════════════════════════════════════════════════════ */
+/* ************************************************************
+                    ПолномочиЯ
+  ************************************************************ */
 
 function loadRolePerms() {
   $('#roles-matrix-wrap').html(
@@ -210,9 +210,9 @@ function revokePerm(roleId, permId, checkbox) {
     .always(() => $(checkbox).prop('disabled', false))
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ************************************************************
    Таблица пользователей (с постраничиным выводом)
-   ══════════════════════════════════════════════════════════ */
+   ************************************************************ */
 
 function loadUsers() {
   sendApiRequest('gu23_roles_users', {
@@ -320,7 +320,7 @@ function showUsers(users, roles, total, page, pageSize) {
     }
   })
 }
-
+// HTML строки для таблицы пользователя
 function userRowHtml(u, roles) {
   const assignedIds = new Set(u.roles.map((r) => String(r.role_id)))
   const roleCellsHtml = roles
@@ -344,7 +344,7 @@ function userRowHtml(u, roles) {
     ${roleCellsHtml}
   </tr>`
 }
-
+// вывод
 function pagesHtml(page, pages, total) {
   if (pages <= 1) return ''
 
@@ -369,7 +369,7 @@ function pagesHtml(page, pages, total) {
     </div>
   `
 }
-
+// Назначить роль пользователю
 function assignRole(userId, roleId, checkbox) {
   $(checkbox).prop('disabled', true)
   sendApiRequest('gu23_role_assign', { user_id: userId, role_id: roleId })
@@ -387,7 +387,7 @@ function assignRole(userId, roleId, checkbox) {
     })
     .always(() => $(checkbox).prop('disabled', false))
 }
-
+// Отозвать роль у пользователя
 function revokeRole(userId, roleId, checkbox) {
   checkbox.checked = false
   $(checkbox).prop('disabled', true)
