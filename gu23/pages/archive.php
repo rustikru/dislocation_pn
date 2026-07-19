@@ -9,6 +9,12 @@
   <div class="searchbox">
     <input type="text" class="inp" id="search-input" placeholder="Номер акта, номер вагона, причина...">
   </div>
+  <div class="refs-actions archive-excel-actions">
+    <button class="refs-action-btn" id="btn-export-acts" type="button">
+      <img src="/img/ms_excel.svg" alt="Выгрузить акты" class="refs-excel-icon">
+      <span>Excel</span>
+    </button>
+  </div>
 </div>
 
 <div class="card" id="acts-table-container"></div>

@@ -219,6 +219,31 @@ function showArchivePage(container) {
   // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))
 
+  $('#btn-export-acts').on('click', () => {
+    const $form = $(`
+      <form method="post" action="/gu23/data.php" style="display:none">
+        <input type="hidden" name="ajax_action" value="gu23_acts_excel">
+        <input type="hidden" name="q">
+        <input type="hidden" name="type">
+        <input type="hidden" name="status">
+        <input type="hidden" name="dept">
+        <input type="hidden" name="date_from">
+        <input type="hidden" name="date_to">
+        <input type="hidden" name="has_signed">
+      </form>
+    `)
+    $form.find('[name="q"]').val(archiveFilter.q)
+    $form.find('[name="type"]').val(archiveFilter.type)
+    $form.find('[name="status"]').val(archiveFilter.status)
+    $form.find('[name="dept"]').val(archiveFilter.dept)
+    $form.find('[name="date_from"]').val(archiveFilter.date_from)
+    $form.find('[name="date_to"]').val(archiveFilter.date_to)
+    $form.find('[name="has_signed"]').val(archiveFilter.has_signed)
+    $('body').append($form)
+    $form.trigger('submit')
+    $form.remove()
+  })
+
   // Поиск с задержкой
   $('#search-input').on('input', function () {
     archiveFilter.q = $(this).val().trim()

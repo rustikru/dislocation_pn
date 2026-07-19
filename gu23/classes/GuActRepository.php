@@ -23,6 +23,7 @@ require_once __DIR__ . '/Gu23Logger.php';
 require_once __DIR__ . '/Gu23Db.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
+require_once __DIR__ . '/../report/GuActExcelReport.php';
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 class GuActRepository
@@ -140,6 +141,9 @@ class GuActRepository
                     break;
                 case 'gu23_get_acts':           // реестр актов с фильтрами
                     $this->getActs();
+                    break;
+                case 'gu23_acts_excel':         // выгрузка архива актов в Excel
+                    $this->downloadActsExcel();
                     break;
                 case 'gu23_get_act':            // карточка одного акта
                     $this->getActCard();
@@ -429,6 +433,20 @@ class GuActRepository
         );
 
         echo json_encode(['acts' => $acts, 'total' => $total, 'page' => $page, 'page_size' => $limit]);
+    }
+
+    private function downloadActsExcel(): void
+    {
+        $report = new GuActExcelReport($this->db);
+        $report->download([
+            'q' => filter_input(INPUT_POST, 'q') ?: null,
+            'type' => filter_input(INPUT_POST, 'type') ?: null,
+            'status' => filter_input(INPUT_POST, 'status') ?: null,
+            'dept' => filter_input(INPUT_POST, 'dept') ?: null,
+            'date_from' => filter_input(INPUT_POST, 'date_from') ?: null,
+            'date_to' => filter_input(INPUT_POST, 'date_to') ?: null,
+            'has_signed' => filter_input(INPUT_POST, 'has_signed') ?: null,
+        ]);
     }
 
     /** Карточка одного акта: реквизиты, вагоны, файлы, подписанты, история, статус согласования. */

@@ -1367,6 +1367,14 @@ textarea.inp {
   height: 18px;
   display: block;
 }
+.archive-excel-actions {
+  height: 30px;
+}
+.archive-excel-actions .refs-action-btn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
 .perm-matrix tr {
   cursor: default;
 }
