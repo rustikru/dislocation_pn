@@ -334,7 +334,7 @@ function showSignersBlock(
         .join('')
     : '<div class="muted">Подписанты не назначены</div>'
 
-  //  кнопка "подписать" — только для пользователей с правом SIGN_ACT или пользователь из
+  //  кнопка "подписать" — только для пользователей с правом SIGN_ACT или пользователь из подписания, если акт в процессе
   const canSign =
     act.STATUS === 'active' &&
     hasPerm('SIGN_ACT') &&
@@ -344,6 +344,7 @@ function showSignersBlock(
     //В процессе
     (myApproval === 'pending' || (myApproval === 'none' && isUserSigner))
   let myBannerHtml = ''
+  // кнопки подписания
   if (canSign) {
     myBannerHtml = `
       <div id="my-approval-banner" class="approval-box">
