@@ -1475,6 +1475,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              ei.inv_number as waybill_no,                             -- накладная
              eif.freight_name as cargo_name,                                  -- груз
              ( ecar.car_owner_name ) as owner,                                 -- собственнк
+             inv_from_station_code as st_from_code,
              inv_to_station_code as st_to_code,
              upper(trim(inv_to_station_name)) as dest_station,                  -- станция назначения
              upper(trim(inv_from_station_name)) as depart_station                -- станция отправления
@@ -1654,6 +1655,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.owner := null;
             l_row.kind := null;
             l_row.st_from := null;
+            l_row.st_from_code := null;
             l_row.st_to := null;
             l_row.cargo := null;
             l_row.weight := null;
@@ -1676,6 +1678,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                l_row.owner := d.owner;
                l_row.kind := d.wagon_type_code;
                l_row.st_from := d.depart_station;
+               l_row.st_from_code := d.st_from_code;
                l_row.st_to := d.dest_station;
                l_row.cargo := d.cargo_name;
                l_row.weight := d.weight;
@@ -1703,6 +1706,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             l_row.owner := d.owner;
             l_row.kind := d.wagon_type_code;
             l_row.st_from := d.depart_station;
+            l_row.st_from_code := d.st_from_code;
             l_row.st_to := d.dest_station;
             l_row.cargo := d.cargo_name;
             l_row.weight := d.weight;

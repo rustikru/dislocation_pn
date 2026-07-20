@@ -17,6 +17,12 @@ import {
 } from './utils.js'
 import { showFormField, showToast, showConfirmBox } from './ui.js'
 
+const defaultStationRules = {
+  stationName: 'Новая',
+  departments: [],
+  skipDepartments: ['ЖДЦ', 'УПРАВЛЕНИЕ'],
+}
+
 export function showForm(container) {
   if (!activeDraft) createNewDraft('start')
 
@@ -132,6 +138,7 @@ function showDateField() {
 
 function showMainFields() {
   const $place = $('#form-main-fields-place').empty()
+  const stationFixed = setDefaultStation()
   // Строка Цех + Станции
   const deptsHtml = references.departmentsList
     .map(
@@ -156,7 +163,7 @@ function showMainFields() {
   $place.append(`
     <div class="cols">
       ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
-      ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
+      ${showFormField('Ст. составления', `<select class="inp" id="sel-station" ${stationFixed ? 'disabled' : ''}>${stationsHtml}</select>`, true)}
     </div>
   `)
 
@@ -169,6 +176,7 @@ function showMainFields() {
       activeDraft.signers = activeDraft.signers.map((s) =>
         s && !s.manual ? null : s,
       )
+      showMainFields()
       showSignersFields()
     }
   })
@@ -207,6 +215,34 @@ function showMainFields() {
       activeDraft.cargoReference = $('#auto-cargo').val()
     },
   )
+}
+
+function setDefaultStation() {
+  if (activeDraft.id) return false
+
+  const deptCode = String(activeDraft.departmentCode || '').trim().toUpperCase()
+  if (
+    defaultStationRules.departments.length > 0 &&
+    !defaultStationRules.departments.includes(deptCode)
+  ) {
+    return false
+  }
+
+  if (defaultStationRules.skipDepartments.includes(deptCode)) {
+    return false
+  }
+
+  const station = (references.stationsList || []).find(
+    (row) =>
+      String(row.NAME || '').trim().toUpperCase() ===
+      defaultStationRules.stationName.toUpperCase(),
+  )
+  if (!station) {
+    return false
+  }
+
+  activeDraft.stationId = String(station.CODE)
+  return true
 }
 // --- Причина и обстоятельства ---
 function showReasonFields() {
@@ -698,10 +734,14 @@ function loadWagonsDataFromDislocation() {
       }
     })
 
-    // Автозаполнение «Груз» и «Ст. назначения» из дислокации, если ещё не заполнены
+    // Автозаполнение «Груз», «Ст. отправления» и «Ст. назначения» из дислокации, если ещё не заполнены
     if (firstFound) {
       if (!activeDraft.cargoReference && firstFound.CARGO)
         activeDraft.cargoReference = firstFound.CARGO //  груз
+      if (!activeDraft.stationFromId && firstFound.ST_FROM_CODE) {
+        activeDraft.stationFromId = firstFound.ST_FROM_CODE // id станции отправления
+        activeDraft.stationFromName = firstFound.ST_FROM // станции отправления
+      }
       if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения

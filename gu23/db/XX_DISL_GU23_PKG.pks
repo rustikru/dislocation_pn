@@ -132,6 +132,7 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
          owner      varchar2(128),
          kind       varchar2(128),
          st_from    varchar2(128),
+         st_from_code varchar2(128),
          st_to      varchar2(128),
          st_to_code varchar2(128),
          cargo      varchar2(256),
