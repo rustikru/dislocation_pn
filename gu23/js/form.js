@@ -138,7 +138,7 @@ function showDateField() {
 
 function showMainFields() {
   const $place = $('#form-main-fields-place').empty()
-  const stationFixed = setDefaultStation()
+  setDefaultStation()
   // Строка Цех + Станции
   const deptsHtml = references.departmentsList
     .map(
@@ -734,15 +734,15 @@ function loadWagonsDataFromDislocation() {
       }
     })
 
-    // Автозаполнение «Груз», «Ст. отправления» и «Ст. назначения» из дислокации, если ещё не заполнены
+    // Автозаполнение «Груз», «Ст. отправления» и «Ст. назначения» из дислокации
     if (firstFound) {
-      if (!activeDraft.cargoReference && firstFound.CARGO)
+      if (firstFound.CARGO)
         activeDraft.cargoReference = firstFound.CARGO //  груз
-      if (!activeDraft.stationFromId && firstFound.ST_FROM_CODE) {
+      if (firstFound.ST_FROM_CODE) {
         activeDraft.stationFromId = firstFound.ST_FROM_CODE // id станции отправления
         activeDraft.stationFromName = firstFound.ST_FROM // станции отправления
       }
-      if (!activeDraft.stationToId && firstFound.ST_TO_CODE) {
+      if (firstFound.ST_TO_CODE) {
         activeDraft.stationToId = firstFound.ST_TO_CODE // id станции назначения
         activeDraft.stationToName = firstFound.ST_TO //  станции назначения
       }
