@@ -129,6 +129,18 @@
    );
    type xx_disl_gu23_hist_tab is
       table of xx_disl_gu23_hist_row;
+   type t_gu23_notice_row is record (
+         id          number,
+         title       varchar2(300),
+         body        varchar2(4000),
+         notice_type varchar2(30),
+         image_path  varchar2(500),
+         created_at  varchar2(20),
+         is_read     varchar2(1),
+         active      varchar2(1)
+   );
+   type t_gu23_notice_tab is
+      table of t_gu23_notice_row;
    type xx_disl_gu23_wagon_row is record (
          wagon_no     varchar2(16),
          owner        varchar2(128),
@@ -622,6 +634,39 @@
    function gu23_perm_revoke (
       p_role_id in number,
       p_perm_id in number
+   ) return varchar2;
+
+    -- ---- Новости и подсказки ----
+   function gu23_notices (
+      p_user_id in number
+   ) return t_gu23_notice_tab
+      pipelined;
+
+   function gu23_notice_count (
+      p_user_id in number
+   ) return number;
+
+   function gu23_notice_read (
+      p_user_id   in number,
+      p_notice_id in number
+   ) return varchar2;
+
+   function gu23_notices_all (
+      p_user_id in number
+   ) return t_gu23_notice_tab
+      pipelined;
+
+   function gu23_notice_save (
+      p_id          in number,
+      p_title       in varchar2,
+      p_body        in varchar2,
+      p_notice_type in varchar2,
+      p_image_path  in varchar2,
+      p_user_id     in number
+   ) return varchar2;
+
+   function gu23_notice_toggle (
+      p_notice_id in number
    ) return varchar2;
 
     -- ---- Администрирование справочников ----

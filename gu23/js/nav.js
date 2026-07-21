@@ -17,6 +17,12 @@ export function drawNav() {
     icon: 'archive.svg',
     label: 'Архив актов',
   })
+  navigationItems.push({
+    page: 'notices',
+    icon: 'agenda.svg',
+    label: 'Уведомления',
+    count: applicationState.noticeCount || 0,
+  })
   // rem 17.07.2026 BekmansurovRR Справочники доступны всем пользователям, только на просмотр, без возможности редактирования.
   //if (hasPerm('MANAGE_REFS')) {
   // Справочники
@@ -60,6 +66,7 @@ export function drawNav() {
       <button class="navbtn ${isActive ? 'active' : ''}" title="${item.label}">
         <span class="ic"> <img src="/img/nav/${item.icon}" alt="Word" width="18" height="18" style="flex-shrink:0"></span>
         <span>${item.label}</span>
+        ${item.count ? `<b class="notice-badge">${item.count}</b>` : ''}
       </button>
     `)
 

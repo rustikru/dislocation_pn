@@ -3919,8 +3919,222 @@
    exception
       when others then
          rollback;
-         return format_error();
+      return format_error();
    end gu23_perm_revoke;
+
+    -- ----------------------------------------------------------------
+    -- Новости и подсказки
+    -- ----------------------------------------------------------------
+
+   function gu23_notices (
+      p_user_id in number
+   ) return t_gu23_notice_tab
+      pipelined
+   is
+      l_row t_gu23_notice_row;
+   begin
+      for r in (
+         select n.id,
+                n.title,
+                n.body,
+                n.notice_type,
+                n.image_path,
+                to_char(n.created_at, c_dtf) created_at,
+                case
+                   when nr.notice_id is null then
+                      'N'
+                   else
+                      'Y'
+                end is_read
+           from xx_disl_gu23_notice n
+           left join xx_disl_gu23_notice_read nr
+         on nr.notice_id = n.id
+            and nr.user_id = p_user_id
+          where n.active = 'Y'
+            and sysdate between n.start_date and n.end_date
+          order by n.created_at desc,
+                   n.id desc
+      ) loop
+         l_row.id := r.id;
+         l_row.title := r.title;
+         l_row.body := r.body;
+         l_row.notice_type := r.notice_type;
+         l_row.image_path := r.image_path;
+         l_row.created_at := r.created_at;
+         l_row.is_read := r.is_read;
+         l_row.active := 'Y';
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end gu23_notices;
+
+   function gu23_notice_count (
+      p_user_id in number
+   ) return number is
+      l_count number;
+   begin
+      select count(*)
+        into l_count
+        from xx_disl_gu23_notice n
+       where n.active = 'Y'
+         and sysdate between n.start_date and n.end_date
+         and not exists (
+         select 1
+           from xx_disl_gu23_notice_read nr
+          where nr.notice_id = n.id
+            and nr.user_id = p_user_id
+      );
+
+      return l_count;
+   end gu23_notice_count;
+
+   function gu23_notice_read (
+      p_user_id   in number,
+      p_notice_id in number
+   ) return varchar2 is
+   begin
+      insert into xx_disl_gu23_notice_read (
+         notice_id,
+         user_id,
+         read_at
+      )
+         select p_notice_id,
+                p_user_id,
+                sysdate
+           from dual
+          where not exists (
+            select 1
+              from xx_disl_gu23_notice_read
+             where notice_id = p_notice_id
+               and user_id = p_user_id
+         );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_read;
+
+   function gu23_notices_all (
+      p_user_id in number
+   ) return t_gu23_notice_tab
+      pipelined
+   is
+      l_row t_gu23_notice_row;
+   begin
+      for r in (
+         select id,
+                title,
+                body,
+                notice_type,
+                image_path,
+                to_char(created_at, c_dtf) created_at,
+                case
+                   when nr.notice_id is null then
+                      'N'
+                   else
+                      'Y'
+                end is_read,
+                active
+           from xx_disl_gu23_notice n
+           left join xx_disl_gu23_notice_read nr
+         on nr.notice_id = n.id
+            and nr.user_id = p_user_id
+          order by created_at desc,
+                   id desc
+      ) loop
+         l_row.id := r.id;
+         l_row.title := r.title;
+         l_row.body := r.body;
+         l_row.notice_type := r.notice_type;
+         l_row.image_path := r.image_path;
+         l_row.created_at := r.created_at;
+         l_row.is_read := r.is_read;
+         l_row.active := r.active;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end gu23_notices_all;
+
+   function gu23_notice_save (
+      p_id          in number,
+      p_title       in varchar2,
+      p_body        in varchar2,
+      p_notice_type in varchar2,
+      p_image_path  in varchar2,
+      p_user_id     in number
+   ) return varchar2 is
+      l_id number;
+   begin
+      if trim(p_title) is null then
+         return 'ERR' || c_us || 'Укажите заголовок';
+      end if;
+
+      if nvl(p_id, 0) = 0 then
+         l_id := xx_disl_gu23_notice_seq.nextval;
+
+         insert into xx_disl_gu23_notice (
+            id,
+            title,
+            body,
+            notice_type,
+            image_path,
+            active,
+            created_by,
+            created_at
+         ) values (
+            l_id,
+            trim(p_title),
+            p_body,
+            nvl(p_notice_type, 'news'),
+            trim(p_image_path),
+            'Y',
+            p_user_id,
+            sysdate
+         );
+      else
+         l_id := p_id;
+
+         update xx_disl_gu23_notice
+            set title = trim(p_title),
+                body = p_body,
+                notice_type = nvl(p_notice_type, 'news'),
+                image_path = trim(p_image_path)
+          where id = p_id;
+      end if;
+
+      commit;
+      return 'OK' || c_us || l_id;
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_save;
+
+   function gu23_notice_toggle (
+      p_notice_id in number
+   ) return varchar2 is
+   begin
+      update xx_disl_gu23_notice
+         set active = case
+                         when active = 'Y' then
+                            'N'
+                         else
+                            'Y'
+                      end
+       where id = p_notice_id;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_toggle;
 
     -- ----------------------------------------------------------------
     -- Администрирование справочников

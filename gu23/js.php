@@ -14,6 +14,7 @@ $files = [
     $base . '/js/card.js',
     $base . '/js/refs.js',
     $base . '/js/roles.js',
+    $base . '/js/notices.js',
     $base . '/js/app.js',
 ];
 

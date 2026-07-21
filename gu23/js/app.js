@@ -8,6 +8,7 @@ import { showCard } from './card.js'
 import { showWagonSearch } from './wagonSearch.js'
 import { showRefs } from './refs.js'
 import { showRoles } from './roles.js'
+import { showNotices, loadNoticeCount } from './notices.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
@@ -84,6 +85,7 @@ export function showApplication() {
     wsearch: showWagonSearch, // Поиск вагонов
     refs: showRefs, // Справочники
     roles: showRoles, // Роли и бла бла
+    notices: showNotices, // Новости и подсказки
   }
   // Если текущая страница не найдена, показываем реестр
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive
@@ -129,5 +131,6 @@ $(document).ready(() => {
 
     // Показываем страничку
     showApplication() //
+    loadNoticeCount().done(() => drawNav())
   })
 })

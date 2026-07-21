@@ -194,6 +194,29 @@ class GuActRepository
                     $this->approveInApp();
                     break;
 
+                // --- новости и подсказки ---
+                case 'gu23_notices':            // список новостей
+                    $this->notices();
+                    break;
+                case 'gu23_notice_count':       // количество непрочитанных
+                    $this->noticeCount();
+                    break;
+                case 'gu23_notice_read':        // отметить новость прочитанной
+                    $this->noticeRead();
+                    break;
+                case 'gu23_notices_all':        // список новостей для управления
+                    $this->noticesAll();
+                    break;
+                case 'gu23_notice_save':        // сохранить новость
+                    $this->noticeSave();
+                    break;
+                case 'gu23_notice_toggle':      // включить / отключить новость
+                    $this->noticeToggle();
+                    break;
+                case 'gu23_notice_image_upload': // загрузить картинку для новости
+                    $this->noticeImageUpload();
+                    break;
+
                 // --- справочники (администрирование) ---
                 case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском 
                     $this->refsGetAll();
@@ -451,6 +474,175 @@ class GuActRepository
             'date_to' => filter_input(INPUT_POST, 'date_to') ?: null,
             'has_signed' => filter_input(INPUT_POST, 'has_signed') ?: null,
         ]);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* новости и подсказки                                                */
+    /* ----------------------------------------------------------------- */
+
+    private function notices(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $rows = $this->selectRows(
+            'select * from table(xx_disl_gu23_pkg.gu23_notices(:p_user_id))',
+            [':p_user_id' => $userId]
+        );
+
+        echo json_encode(['ok' => true, 'rows' => $rows]);
+    }
+
+    private function noticeCount(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $count = (int) $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_count(:p_user_id)',
+            [':p_user_id' => $userId],
+            20
+        );
+
+        echo json_encode(['ok' => true, 'count' => $count]);
+    }
+
+    private function noticeRead(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $id = (int) filter_input(INPUT_POST, 'id');
+
+        if ($id <= 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
+            return;
+        }
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_read(:p_user_id, :notice_id)',
+            [':p_user_id' => $userId, ':notice_id' => $id],
+            1000
+        );
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true]);
+            return;
+        }
+
+        $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+    }
+
+    private function noticesAll(): void
+    {
+        if (!$this->permGranted('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        $userId = (int) $this->auth->getUserId();
+        $rows = $this->selectRows(
+            'select * from table(xx_disl_gu23_pkg.gu23_notices_all(:p_user_id))',
+            [':p_user_id' => $userId]
+        );
+        echo json_encode(['ok' => true, 'rows' => $rows]);
+    }
+
+    private function noticeSave(): void
+    {
+        if (!$this->permGranted('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        $userId = (int) $this->auth->getUserId();
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $title = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'title')));
+        $body = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'body')));
+        $noticeType = trim((string) filter_input(INPUT_POST, 'notice_type'));
+        $imagePath = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'image_path')));
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_save(:p_id, :p_title, :p_body, :p_notice_type, :p_image_path, :p_user_id)',
+            [
+                ':p_id' => $id,
+                ':p_title' => $title,
+                ':p_body' => $body,
+                ':p_notice_type' => $noticeType,
+                ':p_image_path' => $imagePath,
+                ':p_user_id' => $userId,
+            ],
+            1000
+        );
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true]);
+            return;
+        }
+
+        $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+    }
+
+    private function noticeImageUpload(): void
+    {
+        if (!$this->permGranted('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        if (empty($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
+            echo json_encode(['ok' => false, 'msg' => 'Файл не выбран']);
+            return;
+        }
+
+        $file = $_FILES['file'];
+        $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($ext, $allowed, true)) {
+            echo json_encode(['ok' => false, 'msg' => 'Можно загрузить только изображение']);
+            return;
+        }
+
+        $dir = dirname(__DIR__) . '/img/news';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
+            echo json_encode(['ok' => false, 'msg' => 'Не удалось создать папку для картинок']);
+            return;
+        }
+
+        $name = 'notice_' . date('Ymd_His') . '_' . mt_rand(1000, 9999) . '.' . $ext;
+        $path = $dir . '/' . $name;
+
+        if (!move_uploaded_file($file['tmp_name'], $path)) {
+            echo json_encode(['ok' => false, 'msg' => 'Не удалось сохранить файл']);
+            return;
+        }
+
+        echo json_encode(['ok' => true, 'path' => '/gu23/img/news/' . $name]);
+    }
+
+    private function noticeToggle(): void
+    {
+        if (!$this->permGranted('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+
+        $id = (int) filter_input(INPUT_POST, 'id');
+        if ($id <= 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
+            return;
+        }
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_toggle(:p_notice_id)',
+            [':p_notice_id' => $id],
+            1000
+        );
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true]);
+            return;
+        }
+
+        $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
     }
 
     /** Карточка одного акта: реквизиты, вагоны, файлы, подписанты, история, статус согласования. */

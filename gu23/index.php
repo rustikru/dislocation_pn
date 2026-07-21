@@ -29,7 +29,7 @@ require_once __DIR__ . '/classes/GuActRepository.php';
 if ($auth->isAuth()) {
     if (GuActRepository::canAccess($conn1, $auth)) {
         $startPage = $_GET['page'] ?? '';
-        $allowedPages = ['archive', 'new', 'wsearch', 'refs', 'roles'];
+        $allowedPages = ['archive', 'new', 'wsearch', 'refs', 'roles', 'notices'];
         if (!in_array($startPage, $allowedPages, true)) {
             $startPage = '';
         }
