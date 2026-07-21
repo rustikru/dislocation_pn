@@ -1,5 +1,5 @@
-create or replace package body xx_etw.xx_disl_gu23_pkg as
-    /******************************************************************************
+﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
+    /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
      REVISIONS:
@@ -10,11 +10,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                                waybill_no, cargo_ref;
                                                раздельные справочники станций и подписантов;
                                                справочник грузов.
-  ******************************************************************************/
+     1.2        25.06.2026   BekmansurovRR   1. Добавлена рассылка писем и уведомлений подписантам.
+  **********************************************************************************************************************************/
    c_package       constant varchar2(30) := 'xx_disl_gu23_pkg';
    c_dtf           constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
-   c_us            constant char(1) := chr(31);            -- разделитель полей
-   c_rs            constant char(1) := chr(30);          -- разделитель записей
+   c_us            constant char(1) := chr(31);      -- разделитель полей
+   c_rs            constant char(1) := chr(30);    -- разделитель записей
    g_client_ip     varchar2(64) := null; -- IP клиента текущего запроса
    g_server_host   varchar2(240) := sys_context(
       'USERENV',
@@ -329,7 +330,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end parse_wagon_clob;
 
-    -- следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
+    --rem 06.07.2026 BekmansurovRR следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
+    --add 06.07.2026 BekmansurovRR следующий уникальный номер акта ГУ23-ГОД-000001
    function g_next_number (
       p_dept_id in number
    ) return varchar2 is
@@ -402,6 +404,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       o.cargo_ref := a.cargo_ref;
       o.reason_id := a.reason_id;
       o.reason_name := a.reason_name;
+      o.categ_name := a.categ_name;
       o.circumstances := a.circumstances;
       o.start_at := to_char(
          a.start_at,
@@ -440,7 +443,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
     -- ----------------------------------------------------------------
     -- сохранение данных в таблицы (общий API)
     -- ----------------------------------------------------------------
-
    procedure insert_act (
       p_row in xx_disl_gu23_act%rowtype
    ) is
@@ -493,6 +495,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            p_row.modified_by );
    end insert_act;
 
+    -- Обновление акта
    procedure update_act (
       p_row in xx_disl_gu23_act%rowtype
    ) is
@@ -520,6 +523,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
        where id = p_row.id;
    end update_act;
 
+    -- Строки акта
    procedure insert_act_row (
       p_row in xx_disl_gu23_act_row%rowtype
    ) is
@@ -548,6 +552,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            p_row.waybill_no );
    end insert_act_row;
 
+    -- Подписанты акта
    procedure insert_signer (
       p_row in xx_disl_gu23_signer%rowtype
    ) is
@@ -606,24 +611,28 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select id,
-                name
-           from xx_disl_gu23_ref_reason
-          where active = 'Y'
+         select rr.id,
+                rr.name,
+                rr.categ_name -- add 21.07.2026 BekmansurovRR
+           from xx_disl_gu23_ref_reason_v rr
+          where rr.active = 'Y'
             and ( p_kind is null
-             or act_kind in ( 'any',
-                              p_kind ) )
+             or rr.act_kind in ( 'any',
+                                 p_kind ) )
           order by name
       ) loop
          l_row.id := ( r.id );
          l_row.code := to_char(r.id);
          l_row.name := r.name;
+         l_row.categ_name := r.categ_name;
          pipe row ( l_row );
       end loop;
 
       return;
    end;
 
+    -- add 15.06.2026
+    -- Общий справочник (построен по аналогии, как коды поиска)
    function gu23_get_general_ref (
       p_ref_code in varchar2
    ) return xx_disl_gu23_ref_tab
@@ -723,11 +732,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select fr_code_etsng as code,
                 fr_name as name
            from etw_nsi_freight
-          where trunc(sysdate) between recdatebegin and recdateend /*and (   fr_name like UPPER ('%Метанол%')
-                                                                                                      or fr_name like UPPER ('%Карбамид%')
-                                                                                                      or fr_name like UPPER ('%Уротропин%')
-                                                                                                      or fr_name like UPPER ('%Меламин%'))
-                                                                                                      */
+          where trunc(sysdate) between recdatebegin and recdateend
       ) loop
          l_row.code := r.name;
          l_row.name := r.name;
@@ -767,7 +772,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- подписанты - работники станции ОАО РЖД
+    -- подписанты - работники станции ОАО РЖД и другие, которые подписывают "ручками", а не через форму
    function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
       pipelined
    is
@@ -800,6 +805,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
     -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null)
     -- уникальные ФИО/должность/организация из истории актов.
+    -- Чтобы заново не вводить
    function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
       pipelined
    is
@@ -836,42 +842,36 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
     -- акты
     -- ----------------------------------------------------------------
    function gu23_get_acts (
-      p_q          in varchar2 default null,
-      p_type       in varchar2 default null,
-      p_status     in varchar2 default null,
-      p_dept_id    in varchar2 default null,
-      p_date_from  in varchar2 default null,
-      p_date_to    in varchar2 default null,
-      p_has_signed in varchar2 default null,
-      p_page       in number default 1,
-      p_page_size  in number default null
+      p_data in t_gu23_get_act
    ) return xx_disl_gu23_act_tab
       pipelined
    is
+      l_prm  t_gu23_get_act;
       v_idx  number := 0;
-      v_q    varchar2(512) := lower(p_q);
       v_from date :=
          case
-            when p_date_from is not null then
-               to_date(p_date_from,
+            when p_data.p_date_from is not null then
+               to_date(p_data.p_date_from,
                        'DD.MM.YYYY')
          end;
       v_to   date :=
          case
-            when p_date_to is not null then
-               to_date(p_date_to,
+            when p_data.p_date_to is not null then
+               to_date(p_data.p_date_to,
                        'DD.MM.YYYY') + 1
          end;
       v_size number := nvl(
-         p_page_size,
+         p_data.p_page_size,
          1000000
       );
       v_off  number := ( nvl(
-         p_page,
+         p_data.p_page,
          1
       ) - 1 ) * v_size;
       v_end  number := v_off + v_size;
    begin
+      l_prm := p_data;
+      l_prm.p_q := lower(l_prm.p_q);
       for a in (
          select id,
                 act_number,
@@ -890,6 +890,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 cargo_ref,
                 reason_id,
                 reason_name,
+                categ_name,
                 circumstances,
                 start_at,
                 end_at,
@@ -913,28 +914,30 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
               from (
                select *
                  from xx_disl_gu23_act_v a
-                where ( p_type is null
+                where ( l_prm.p_type is null
                    or instr(
                   ','
-                  || p_type
+                  || l_prm.p_type
                   || ',',
                   ','
                   || a.act_type
                   || ','
                ) > 0 )
-                  and ( p_status is null
+                                           -- Статус
+                  and ( l_prm.p_status is null
                    or instr(
                   ','
-                  || p_status
+                  || l_prm.p_status
                   || ',',
                   ','
                   || a.status
                   || ','
                ) > 0 )
-                  and ( p_dept_id is null
+                                           -- Цех составления
+                  and ( l_prm.p_dept_id is null
                    or instr(
                   ','
-                  || p_dept_id
+                  || l_prm.p_dept_id
                   || ',',
                   ','
                   || a.dept_id
@@ -967,9 +970,19 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                ) < v_to ) )
                    or ( a.start_at is null
                   and a.end_at is null ) )
+                                           --- add 21.07.2026 BekmansurovRR категория причины
+                  and ( l_prm.p_reason_categ is null
+                   or instr(
+                  ','
+                  || l_prm.p_reason_categ
+                  || ',',
+                  ','
+                  || a.categ_name
+                  || ','
+               ) > 0 )
                                            -- есть прикреплённый подписанный файл
                   and ( nvl(
-                  p_has_signed,
+                  l_prm.p_has_signed,
                   'N'
                ) <> 'Y'
                    or exists (
@@ -978,29 +991,32 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                    where f.act_id = a.id
                      and f.file_category = 'signed'
                ) )
-                  and ( v_q is null
+                                           -- l_prm.p_q - обычное общее(текстовое) поле на форме, чтобы искать по разным значениям
+                  and ( l_prm.p_q is null
                or lower(a.act_number) like '%'
-                        || v_q
+                        || l_prm.p_q
                         || '%'
                or lower(a.act_start_number) like '%'
-                        || v_q
+                        || l_prm.p_q
                         || '%'
                or lower(a.reason_name) like '%'
-                                            || v_q
+                                            || l_prm.p_q
                                             || '%'
-                   or exists (
+                   or exists
+                                                       -- Поиск по вагонам
+                    (
                   select 1
                     from xx_disl_gu23_act_row r
                    where r.act_id = a.id
                      and r.wagon_no like '%'
-                                         || p_q
+                                         || l_prm.p_q
                                          || '%'
                ) )
                 order by a.created_at desc
             ) a
              where rownum <= v_end
          )
-          where rn > v_off
+          where rn > v_off       -- Ограничение по выводу на страницу
           order by created_at desc
       ) loop
          pipe row ( g_act_row(a) );
@@ -1011,54 +1027,60 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
     -- количество актов
    function gu23_count_acts (
-      p_q          in varchar2 default null,
-      p_type       in varchar2 default null,
-      p_status     in varchar2 default null,
-      p_dept_id    in varchar2 default null,
-      p_date_from  in varchar2 default null,
-      p_date_to    in varchar2 default null,
-      p_has_signed in varchar2 default null
+      p_data in t_gu23_get_act
    ) return number is
-      v_q    varchar2(512) := lower(p_q);
+      l_prm  t_gu23_get_act;
+      v_q    varchar2(4000) := lower(p_data.p_q);
       v_from date :=
          case
-            when p_date_from is not null then
-               to_date(p_date_from,
+            when p_data.p_date_from is not null then
+               to_date(p_data.p_date_from,
                        'DD.MM.YYYY')
          end;
       v_to   date :=
          case
-            when p_date_to is not null then
-               to_date(p_date_to,
+            when p_data.p_date_to is not null then
+               to_date(p_data.p_date_to,
                        'DD.MM.YYYY') + 1
          end;
       v_cnt  number;
    begin
+      l_prm := p_data;
       select count(*)
         into v_cnt
         from xx_disl_gu23_act_v a
-       where ( p_type is null
+       where ( l_prm.p_type is null
           or instr(
          ','
-         || p_type
+         || l_prm.p_type
          || ',',
          ','
          || a.act_type
          || ','
       ) > 0 )
-         and ( p_status is null
+         and ( l_prm.p_status is null
           or instr(
          ','
-         || p_status
+         || l_prm.p_status
          || ',',
          ','
          || a.status
          || ','
       ) > 0 )
-         and ( p_dept_id is null
+               --- add 21.07.2026 BekmansurovRR категория причины
+         and ( l_prm.p_reason_categ is null
           or instr(
          ','
-         || p_dept_id
+         || l_prm.p_reason_categ
+         || ',',
+         ','
+         || a.categ_name
+         || ','
+      ) > 0 )
+         and ( l_prm.p_dept_id is null
+          or instr(
+         ','
+         || l_prm.p_dept_id
          || ',',
          ','
          || a.dept_id
@@ -1077,7 +1099,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          and ( v_to is null
           or a.end_at < v_to ) ) )
          and ( nvl(
-         p_has_signed,
+         l_prm.p_has_signed,
          'N'
       ) <> 'Y'
           or exists (
@@ -1101,7 +1123,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            from xx_disl_gu23_act_row r
           where r.act_id = a.id
             and r.wagon_no like '%'
-                                || p_q
+                                || l_prm.p_q
                                 || '%'
       ) );
 
@@ -1206,6 +1228,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+    -- Информация по файлу
    function gu23_file_info (
       p_file_id in number
    ) return varchar2 is
@@ -1340,10 +1363,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                  from xx_disl_gu23_act e,
                       xx_disl_gu23_act_row er
                 where er.act_id = e.id
-                  and e.act_type = 'end'
-                  and e.status in ( 'active',
-                                    'signed',
-                                    'closed' )
+                  and e.act_type = 'end' -- Тип акта "Окончание простоя"
+                  and e.status in ( 'active', -- Активный
+                                    'signed', -- Подписан
+                                    'closed' -- Закрыт
+                                     )
+                                                         -- Дочерний акт(связанный акт)
                   and e.linked_start_id = a.id
                   and er.wagon_no = sr.wagon_no
             )
@@ -2148,6 +2173,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                   'on_correction' ) then
             return format_error('Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
          end if;
+
          if
             nvl(
                v_created_by,
@@ -2275,7 +2301,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   vw_weight := null;
             end;
          else
-                -- для окончания берём данные из акта начала 
+                -- для окончания берём данные из акта начала
             vw_owner := w.owner;
             vw_kind := w.kind;
             vw_from := w.st_from;
@@ -2625,6 +2651,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          rollback;
          return format_error();
    end;
+
     -- Закрытие акта
    function gu23_close_act (
       p_id      in number,
@@ -2823,6 +2850,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
       return;
    end;
+
     -- Следущий подписант в маршруте,кто ождидает
    function gu23_approval_next_signer (
       p_act_id in number
@@ -2860,7 +2888,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             on a.act_id = s.act_id
                and a.approver_id = u.id
              where s.act_id = p_act_id
-               and s.stype = 'own' -- только МТФ люди
+               and s.stype = 'own'        -- только МТФ люди
                and nvl(
                a.status,
                'pending'
@@ -2922,6 +2950,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       when others then
          return format_error();
    end;
+
     -- данные подписаиня по токкену
    function gu23_approval_by_token (
       p_token in varchar2
@@ -3049,7 +3078,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             and status = 'active';
       end if;
    end sync_act_status;
-   -- подписание/отклонение/корректировка по ссылке из письма.
+
+    -- подписание/отклонение/корректировка по ссылке из письма.
    function gu23_approval_save_decision (
       p_act_id      in number,
       p_approver_id in number,
@@ -3176,7 +3206,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             p_ip      => p_signer_ip
          );
       end if;
-      -- add 15.07.2026 BekmansurovRR
+
+        -- add 15.07.2026 BekmansurovRR
       if p_status = 'on_correction' then
          update xx_disl_gu23_act
             set status = 'on_correction',
@@ -3204,7 +3235,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                   p_comment,
                   p_base_url
                );
-	               -- Отправка письма на корректировку
+                    -- Отправка письма на корректировку
                gu23_send_mail(
                   p_to      => v_email,
                   p_subject => g_email_subject || ' (Корректировка)',
@@ -3511,7 +3542,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             p_text    => v_txt,
             p_ip      => p_signer_ip
          );
-
       end;
 
       if p_status = 'on_correction' then
@@ -3904,19 +3934,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_row t_gu23_ref_reason_row;
    begin
       for r in (
-         select id,
-                name,
-                act_kind,
-                categ,
-                (
-                   select gr.name
-                     from xx_disl_general_ref gr
-                    where gr.id = rr.categ
-                      and gr.ref_code = 'CATEG_CAUSE'
-                      and sysdate between gr.start_effect_date and gr.end_effect_date
-                ) as categ_name,
-                active
-           from xx_disl_gu23_ref_reason rr
+         select rr.id,
+                rr.name,
+                rr.act_kind,
+                rr.categ,
+                rr.categ_name,
+                rr.active
+           from xx_disl_gu23_ref_reason_v rr
           order by active desc,
                    name
       ) loop
@@ -4087,6 +4111,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          '&#39;'
       );
    end;
+
     -- токкен для подписания через письмо (пока не отключили такую возможность, только через сайт)
    function gu23_new_approval_token return varchar2 is
    begin
@@ -4184,7 +4209,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       v_card_url      varchar2(1000);
       v_status_html   varchar2(1000);
       v_row_no        number := 0;
-      v_version       number; -- add 17.07.2026 BekmansurovRR
+      v_version       number;              -- add 17.07.2026 BekmansurovRR
    begin
       select act_number,
              dept_code,
@@ -4207,7 +4232,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
              nvl(
                 content_version,
                 1
-             )
+             )        -- add 13.07.2026 BekmansurovRR
         into
          v_act_number,
          v_dept,
@@ -4250,9 +4275,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
                 || html_escape(v_act_number)
                 || '</div></td></tr><tr><td style="padding:28px 32px">'
-            --|| '<p style="margin:0 0 10px;font-size:15px;line-height:1.5">'
-            --|| html_escape(p_recipient_name)
-            --|| ', для вас сформирован запрос на подписание акта.</p>'
                 || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Подробная информация по акту доступна по ссылке: <a href="'
                 || v_card_url
                 || '">'
@@ -4374,7 +4396,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || '</table></td></tr></table></body></html>';
       return v_html;
    end;
-    
+
     -- Отправка писем подписантам
    function gu23_send_approval_mail (
       p_act_id      in number,
@@ -4433,7 +4455,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          p_body    => v_body
       );
       return 'OK' || c_us;            --|| 'Ссылка отправлена: ' || v_email;
-
    exception
       when no_data_found then
          return 'ERR'
@@ -4498,16 +4519,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_function,
          'x_to_email=>' || x_to_email
       );
-      insert into xx_disl_gu23_mail_test (
-         p_to,
-         p_subject,
-         p_body,
-         p_from
-      ) values
-         ( x_to_email,
-           x_subject,
-           x_msg,
-           x_sender );
+
 /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
