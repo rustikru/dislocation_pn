@@ -163,7 +163,7 @@ function showMainFields() {
   $place.append(`
     <div class="cols">
       ${showFormField('Цех составления', `<select class="inp" id="sel-dept">${deptsHtml}</select>`, true)}
-      ${showFormField('Ст. составления', `<select class="inp" id="sel-station" ${stationFixed ? 'disabled' : ''}>${stationsHtml}</select>`, true)}
+      ${showFormField('Ст. составления', `<select class="inp" id="sel-station">${stationsHtml}</select>`, true)}
     </div>
   `)
 
