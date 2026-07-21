@@ -269,27 +269,31 @@ as
         return xx_disl_gu23_signer_tab
         pipelined;
 
-    type t_gu23_get_act is record
-    (
-        p_q               varchar2 (4000),
-        p_type            varchar2 (250),
-        p_status          varchar2 (250),
-        p_dept_id         varchar2 (250),
-        p_date_from       varchar2 (250),                      -- 'DD.MM.YYYY'
-        p_date_to         varchar2 (250),                      -- 'DD.MM.YYYY'
-        p_has_signed      varchar2 (250),       -- 'Y' = есть подписанный файл
-        p_reason_categ    varchar2 (250),     --- add 21.07.2026 BekmansurovRR
-        p_page            number := 1,                 -- номер страницы (с 1)
-        p_page_size       number               -- размер страницы (null = все)
-    );
-
     -- ---- Акты ----
-    function gu23_get_acts (p_data in t_gu23_get_act)
+    function gu23_get_acts (
+        p_q in varchar2,
+        p_type in varchar2,
+        p_status in varchar2,
+        p_dept_id in varchar2,
+        p_date_from in varchar2,
+        p_date_to in varchar2,
+        p_has_signed in varchar2,
+        p_reason_categ in varchar2,
+        p_page in number,
+        p_page_size in number)
         return xx_disl_gu23_act_tab
         pipelined;
 
     -- количество актов под те же фильтры
-    function gu23_count_acts (p_data in t_gu23_get_act)
+    function gu23_count_acts (
+        p_q in varchar2,
+        p_type in varchar2,
+        p_status in varchar2,
+        p_dept_id in varchar2,
+        p_date_from in varchar2,
+        p_date_to in varchar2,
+        p_has_signed in varchar2,
+        p_reason_categ in varchar2)
         return number;
 
     function gu23_get_act (p_id in number)

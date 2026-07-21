@@ -842,108 +842,112 @@
     -- акты
     -- ----------------------------------------------------------------
    function gu23_get_acts (
-      p_data in t_gu23_get_act
+      p_q            in varchar2,
+      p_type         in varchar2,
+      p_status       in varchar2,
+      p_dept_id      in varchar2,
+      p_date_from    in varchar2,
+      p_date_to      in varchar2,
+      p_has_signed   in varchar2,
+      p_reason_categ in varchar2,
+      p_page         in number,
+      p_page_size    in number
    ) return xx_disl_gu23_act_tab
       pipelined
    is
-      l_prm  t_gu23_get_act;
-      v_idx  number := 0;
+      l_cur  sys_refcursor;
+      l_row  t_gu23_act_row;
+      v_q    varchar2(4000) := lower(p_q);
       v_from date :=
          case
-            when p_data.p_date_from is not null then
-               to_date(p_data.p_date_from,
+            when p_date_from is not null then
+               to_date(p_date_from,
                        'DD.MM.YYYY')
          end;
       v_to   date :=
          case
-            when p_data.p_date_to is not null then
-               to_date(p_data.p_date_to,
+            when p_date_to is not null then
+               to_date(p_date_to,
                        'DD.MM.YYYY') + 1
          end;
       v_size number := nvl(
-         p_data.p_page_size,
+         p_page_size,
          1000000
       );
       v_off  number := ( nvl(
-         p_data.p_page,
+         p_page,
          1
       ) - 1 ) * v_size;
       v_end  number := v_off + v_size;
    begin
-      l_prm := p_data;
-      l_prm.p_q := lower(l_prm.p_q);
-      for a in (
-         select id,
-                act_number,
-                act_start_number,
-                act_type,
-                status,
-                dept_id,
-                dept_code,
-                dept_name,
-                station_id,
-                station,
-                st_from_id,
-                st_from,
-                st_to_id,
-                st_to,
-                cargo_ref,
-                reason_id,
-                reason_name,
-                categ_name,
-                circumstances,
-                start_at,
-                end_at,
-                dur_days,
-                dur_hours,
-                dur_total_h,
-                cal_days,
-                linked_start_id,
-                linked_start_number,
-                wagon_cnt,
-                file_cnt,
-                annul_reason,
-                created_at,
-                created_by,
-                modified_at,
-                modified_by,
-                content_version
+      open l_cur for
+         select a.id,
+                a.act_number,
+                a.act_start_number,
+                a.act_type,
+                a.status,
+                a.dept_id,
+                a.dept_code dept,
+                a.station_id,
+                a.station,
+                a.st_from_id,
+                a.st_from,
+                a.st_to_id,
+                a.st_to,
+                a.cargo_ref,
+                a.reason_id,
+                a.reason_name,
+                a.categ_name,
+                a.circumstances,
+                to_char(a.start_at, c_dtf) start_at,
+                to_char(a.end_at, c_dtf) end_at,
+                a.dur_days,
+                a.dur_hours,
+                a.dur_total_h,
+                a.cal_days,
+                a.linked_start_id,
+                a.linked_start_number,
+                a.wagon_cnt,
+                a.file_cnt,
+                a.annul_reason,
+                to_char(a.created_at, c_dtf) created_at,
+                du.full_name created_by,
+                to_char(a.modified_at, c_dtf) modified_at,
+                nvl(a.content_version, 1) content_version,
+                a.rn
            from (
             select a.*,
                    rownum rn
               from (
                select *
                  from xx_disl_gu23_act_v a
-                where ( l_prm.p_type is null
+                where ( p_type is null
                    or instr(
                   ','
-                  || l_prm.p_type
+                  || p_type
                   || ',',
                   ','
                   || a.act_type
                   || ','
                ) > 0 )
-                                           -- Статус
-                  and ( l_prm.p_status is null
+                  and ( p_status is null
                    or instr(
                   ','
-                  || l_prm.p_status
+                  || p_status
                   || ',',
                   ','
                   || a.status
                   || ','
                ) > 0 )
-                                           -- Цех составления
-                  and ( l_prm.p_dept_id is null
+                  and ( p_dept_id is null
                    or instr(
                   ','
-                  || l_prm.p_dept_id
+                  || p_dept_id
                   || ',',
                   ','
                   || a.dept_id
                   || ','
                ) > 0 )
-                                           -- период: попадание по дате начала ИЛИ по дате окончания
                   and ( ( v_from is null
                   and v_to is null )
                    or ( a.start_at is not null
@@ -970,19 +974,17 @@
                ) < v_to ) )
                    or ( a.start_at is null
                   and a.end_at is null ) )
-                                           --- add 21.07.2026 BekmansurovRR категория причины
-                  and ( l_prm.p_reason_categ is null
+                  and ( p_reason_categ is null
                    or instr(
                   ','
-                  || l_prm.p_reason_categ
+                  || p_reason_categ
                   || ',',
                   ','
                   || a.categ_name
                   || ','
                ) > 0 )
-                                           -- есть прикреплённый подписанный файл
                   and ( nvl(
-                  l_prm.p_has_signed,
+                  p_has_signed,
                   'N'
                ) <> 'Y'
                    or exists (
@@ -991,96 +993,103 @@
                    where f.act_id = a.id
                      and f.file_category = 'signed'
                ) )
-                                           -- l_prm.p_q - обычное общее(текстовое) поле на форме, чтобы искать по разным значениям
-                  and ( l_prm.p_q is null
-               or lower(a.act_number) like '%'
-                        || l_prm.p_q
-                        || '%'
-               or lower(a.act_start_number) like '%'
-                        || l_prm.p_q
-                        || '%'
-               or lower(a.reason_name) like '%'
-                                            || l_prm.p_q
-                                            || '%'
-                   or exists
-                                                       -- Поиск по вагонам
-                    (
+                  and ( v_q is null
+                   or lower(a.act_number) like '%'
+                                             || v_q
+                                             || '%'
+                   or lower(a.act_start_number) like '%'
+                                                   || v_q
+                                                   || '%'
+                   or lower(a.reason_name) like '%'
+                                             || v_q
+                                             || '%'
+                   or exists (
                   select 1
                     from xx_disl_gu23_act_row r
                    where r.act_id = a.id
                      and r.wagon_no like '%'
-                                         || l_prm.p_q
+                                         || v_q
                                          || '%'
                ) )
                 order by a.created_at desc
             ) a
              where rownum <= v_end
-         )
-          where rn > v_off       -- Ограничение по выводу на страницу
-          order by created_at desc
-      ) loop
-         pipe row ( g_act_row(a) );
+         ) a
+           left join xx_disl_users du
+         on du.id = a.created_by
+          where a.rn > v_off
+          order by a.created_at desc;
+
+      loop
+         fetch l_cur into l_row;
+         exit when l_cur%notfound;
+         pipe row ( l_row );
       end loop;
 
+      close l_cur;
       return;
    end;
 
     -- количество актов
    function gu23_count_acts (
-      p_data in t_gu23_get_act
+      p_q            in varchar2,
+      p_type         in varchar2,
+      p_status       in varchar2,
+      p_dept_id      in varchar2,
+      p_date_from    in varchar2,
+      p_date_to      in varchar2,
+      p_has_signed   in varchar2,
+      p_reason_categ in varchar2
    ) return number is
-      l_prm  t_gu23_get_act;
-      v_q    varchar2(4000) := lower(p_data.p_q);
+      v_q    varchar2(4000) := lower(p_q);
       v_from date :=
          case
-            when p_data.p_date_from is not null then
-               to_date(p_data.p_date_from,
+            when p_date_from is not null then
+               to_date(p_date_from,
                        'DD.MM.YYYY')
          end;
       v_to   date :=
          case
-            when p_data.p_date_to is not null then
-               to_date(p_data.p_date_to,
+            when p_date_to is not null then
+               to_date(p_date_to,
                        'DD.MM.YYYY') + 1
          end;
       v_cnt  number;
    begin
-      l_prm := p_data;
       select count(*)
         into v_cnt
         from xx_disl_gu23_act_v a
-       where ( l_prm.p_type is null
+       where ( p_type is null
           or instr(
          ','
-         || l_prm.p_type
+         || p_type
          || ',',
          ','
          || a.act_type
          || ','
       ) > 0 )
-         and ( l_prm.p_status is null
+         and ( p_status is null
           or instr(
          ','
-         || l_prm.p_status
+         || p_status
          || ',',
          ','
          || a.status
          || ','
       ) > 0 )
-               --- add 21.07.2026 BekmansurovRR категория причины
-         and ( l_prm.p_reason_categ is null
+         and ( p_reason_categ is null
           or instr(
          ','
-         || l_prm.p_reason_categ
+         || p_reason_categ
          || ',',
          ','
          || a.categ_name
          || ','
       ) > 0 )
-         and ( l_prm.p_dept_id is null
+         and ( p_dept_id is null
           or instr(
          ','
-         || l_prm.p_dept_id
+         || p_dept_id
          || ',',
          ','
          || a.dept_id
@@ -1099,7 +1108,7 @@
          and ( v_to is null
           or a.end_at < v_to ) ) )
          and ( nvl(
-         l_prm.p_has_signed,
+         p_has_signed,
          'N'
       ) <> 'Y'
           or exists (
@@ -1109,21 +1118,21 @@
             and f.file_category = 'signed'
       ) )
          and ( v_q is null
-      or lower(a.act_number) like '%'
-               || v_q
-               || '%'
-      or lower(a.act_start_number) like '%'
-               || v_q
-               || '%'
-      or lower(a.reason_name) like '%'
-                                   || v_q
-                                   || '%'
+          or lower(a.act_number) like '%'
+                                      || v_q
+                                      || '%'
+          or lower(a.act_start_number) like '%'
+                                            || v_q
+                                            || '%'
+          or lower(a.reason_name) like '%'
+                                      || v_q
+                                      || '%'
           or exists (
          select 1
            from xx_disl_gu23_act_row r
           where r.act_id = a.id
             and r.wagon_no like '%'
-                                || l_prm.p_q
+                                || v_q
                                 || '%'
       ) );
 

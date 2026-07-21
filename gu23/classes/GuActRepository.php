@@ -396,39 +396,42 @@ class GuActRepository
         $type = filter_input(INPUT_POST, 'type') ?: null;
         $status = filter_input(INPUT_POST, 'status') ?: null;
         $dept = filter_input(INPUT_POST, 'dept') ?: null;
+        $reasonCateg = filter_input(INPUT_POST, 'reason_categ') ?: null;
         $dateFrom = filter_input(INPUT_POST, 'date_from') ?: null;
         $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
         $signedFile = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
-        // Общее количество 
+        // Общее количество
         $total = (int) $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ)',
             [
-                ':b1' => $q,
-                ':b2' => $type,
-                ':b3' => $status,
-                ':b4' => $dept,
-                ':b5' => $dateFrom,
-                ':b6' => $dateTo,
-                ':b7' => $signedFile
+                ':q' => $q,
+                ':type' => $type,
+                ':status' => $status,
+                ':dept' => $dept,
+                ':date_from' => $dateFrom,
+                ':date_to' => $dateTo,
+                ':has_signed' => $signedFile,
+                ':reason_categ' => $reasonCateg,
             ],
             40
         );
 
         $acts = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size))',
             [
-                ':b1' => $q,
-                ':b2' => $type,
-                ':b3' => $status,
-                ':b4' => $dept,
-                ':b5' => $dateFrom,
-                ':b6' => $dateTo,
-                ':b7' => $signedFile,
-                ':b8' => $page,
-                ':b9' => $limit
+                ':q' => $q,
+                ':type' => $type,
+                ':status' => $status,
+                ':dept' => $dept,
+                ':date_from' => $dateFrom,
+                ':date_to' => $dateTo,
+                ':has_signed' => $signedFile,
+                ':reason_categ' => $reasonCateg,
+                ':page' => $page,
+                ':page_size' => $limit,
             ]
         );
 
@@ -443,6 +446,7 @@ class GuActRepository
             'type' => filter_input(INPUT_POST, 'type') ?: null,
             'status' => filter_input(INPUT_POST, 'status') ?: null,
             'dept' => filter_input(INPUT_POST, 'dept') ?: null,
+            'reason_categ' => filter_input(INPUT_POST, 'reason_categ') ?: null,
             'date_from' => filter_input(INPUT_POST, 'date_from') ?: null,
             'date_to' => filter_input(INPUT_POST, 'date_to') ?: null,
             'has_signed' => filter_input(INPUT_POST, 'has_signed') ?: null,

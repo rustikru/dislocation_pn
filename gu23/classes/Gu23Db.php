@@ -69,7 +69,8 @@ class Gu23Db
     private function setValues($statement, array &$params): void
     {
         foreach ($params as $name => $value) {
-            oci_bind_by_name($statement, $name, $params[$name]);
+            $bindName = (strpos((string) $name, ':') === 0) ? (string) $name : ':' . $name;
+            oci_bind_by_name($statement, $bindName, $params[$name]);
         }
     }
 

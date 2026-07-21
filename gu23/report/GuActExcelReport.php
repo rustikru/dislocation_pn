@@ -91,32 +91,34 @@ class GuActExcelReport
     private function acts(array $filter): array
     {
         $total = (int) $this->db->value(
-            'xx_disl_gu23_pkg.gu23_count_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ)',
             [
-                ':b1' => $filter['q'] ?? null,
-                ':b2' => $filter['type'] ?? null,
-                ':b3' => $filter['status'] ?? null,
-                ':b4' => $filter['dept'] ?? null,
-                ':b5' => $filter['date_from'] ?? null,
-                ':b6' => $filter['date_to'] ?? null,
-                ':b7' => $filter['has_signed'] ?? null,
+                ':q' => $filter['q'] ?? null,
+                ':type' => $filter['type'] ?? null,
+                ':status' => $filter['status'] ?? null,
+                ':dept' => $filter['dept'] ?? null,
+                ':date_from' => $filter['date_from'] ?? null,
+                ':date_to' => $filter['date_to'] ?? null,
+                ':has_signed' => $filter['has_signed'] ?? null,
+                ':reason_categ' => $filter['reason_categ'] ?? null,
             ],
             40
         );
 
         $limit = max(1, $total);
         return $this->db->rows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(:b1,:b2,:b3,:b4,:b5,:b6,:b7,:b8,:b9))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size))',
             [
-                ':b1' => $filter['q'] ?? null,
-                ':b2' => $filter['type'] ?? null,
-                ':b3' => $filter['status'] ?? null,
-                ':b4' => $filter['dept'] ?? null,
-                ':b5' => $filter['date_from'] ?? null,
-                ':b6' => $filter['date_to'] ?? null,
-                ':b7' => $filter['has_signed'] ?? null,
-                ':b8' => 1,
-                ':b9' => $limit,
+                ':q' => $filter['q'] ?? null,
+                ':type' => $filter['type'] ?? null,
+                ':status' => $filter['status'] ?? null,
+                ':dept' => $filter['dept'] ?? null,
+                ':date_from' => $filter['date_from'] ?? null,
+                ':date_to' => $filter['date_to'] ?? null,
+                ':has_signed' => $filter['has_signed'] ?? null,
+                ':reason_categ' => $filter['reason_categ'] ?? null,
+                ':page' => 1,
+                ':page_size' => $limit,
             ]
         );
     }
