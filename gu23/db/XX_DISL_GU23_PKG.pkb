@@ -880,145 +880,162 @@
       ) - 1 ) * v_size;
       v_end  number := v_off + v_size;
    begin
-      open l_cur for
-         select a.id,
-                a.act_number,
-                a.act_start_number,
-                a.act_type,
-                a.status,
-                a.dept_id,
-                a.dept_code dept,
-                a.station_id,
-                a.station,
-                a.st_from_id,
-                a.st_from,
-                a.st_to_id,
-                a.st_to,
-                a.cargo_ref,
-                a.reason_id,
-                a.reason_name,
-                a.categ_name,
-                a.circumstances,
-                to_char(a.start_at, c_dtf) start_at,
-                to_char(a.end_at, c_dtf) end_at,
-                a.dur_days,
-                a.dur_hours,
-                a.dur_total_h,
-                a.cal_days,
-                a.linked_start_id,
-                a.linked_start_number,
-                a.wagon_cnt,
-                a.file_cnt,
-                a.annul_reason,
-                to_char(a.created_at, c_dtf) created_at,
-                du.full_name created_by,
-                to_char(a.modified_at, c_dtf) modified_at,
-                nvl(a.content_version, 1) content_version,
-                a.rn
-           from (
-            select a.*,
-                   rownum rn
-              from (
-               select *
-                 from xx_disl_gu23_act_v a
-                where ( p_type is null
-                   or instr(
-                  ','
-                  || p_type
-                  || ',',
-                  ','
-                  || a.act_type
-                  || ','
-               ) > 0 )
-                  and ( p_status is null
-                   or instr(
-                  ','
-                  || p_status
-                  || ',',
-                  ','
-                  || a.status
-                  || ','
-               ) > 0 )
-                  and ( p_dept_id is null
-                   or instr(
-                  ','
-                  || p_dept_id
-                  || ',',
-                  ','
-                  || a.dept_id
-                  || ','
-               ) > 0 )
-                  and ( ( v_from is null
-                  and v_to is null )
-                   or ( a.start_at is not null
-                  and ( v_from is null
-                   or nvl(
-                  a.start_at,
-                  v_from
-               ) >= v_from )
-                  and ( v_to is null
-                   or nvl(
-                  a.start_at,
-                  v_to
-               ) < v_to ) )
-                   or ( a.end_at is not null
-                  and ( v_from is null
-                   or nvl(
-                  a.end_at,
-                  v_from
-               ) >= v_from )
-                  and ( v_to is null
-                   or nvl(
-                  a.end_at,
-                  v_to
-               ) < v_to ) )
-                   or ( a.start_at is null
-                  and a.end_at is null ) )
-                  and ( p_reason_categ is null
-                   or instr(
-                  ','
-                  || p_reason_categ
-                  || ',',
-                  ','
-                  || a.categ_name
-                  || ','
-               ) > 0 )
-                  and ( nvl(
-                  p_has_signed,
-                  'N'
-               ) <> 'Y'
-                   or exists (
-                  select 1
-                    from xx_disl_gu23_file f
-                   where f.act_id = a.id
-                     and f.file_category = 'signed'
-               ) )
-                  and ( v_q is null
-                   or lower(a.act_number) like '%'
-                                             || v_q
-                                             || '%'
-                   or lower(a.act_start_number) like '%'
+      open l_cur for select a.id,
+                            a.act_number,
+                            a.act_start_number,
+                            a.act_type,
+                            a.status,
+                            a.dept_id,
+                            a.dept_code dept,
+                            a.station_id,
+                            a.station,
+                            a.st_from_id,
+                            a.st_from,
+                            a.st_to_id,
+                            a.st_to,
+                            a.cargo_ref,
+                            a.reason_id,
+                            a.reason_name,
+                            a.categ_name,
+                            a.circumstances,
+                            to_char(
+                                       a.start_at,
+                                       c_dtf
+                                    ) start_at,
+                            to_char(
+                                       a.end_at,
+                                       c_dtf
+                                    ) end_at,
+                            a.dur_days,
+                            a.dur_hours,
+                            a.dur_total_h,
+                            a.cal_days,
+                            a.linked_start_id,
+                            a.linked_start_number,
+                            a.wagon_cnt,
+                            a.file_cnt,
+                            a.annul_reason,
+                            to_char(
+                                       a.created_at,
+                                       c_dtf
+                                    ) created_at,
+                            du.full_name created_by,
+                            to_char(
+                                       a.modified_at,
+                                       c_dtf
+                                    ) modified_at,
+                            nvl(
+                                       a.content_version,
+                                       1
+                                    ) content_version,
+                            a.rn
+                                      from (
+                                       select a.*,
+                                              rownum rn
+                                         from (
+                                          select *
+                                            from xx_disl_gu23_act_v a
+                                           where ( p_type is null
+                                              or instr(
+                                             ','
+                                             || p_type
+                                             || ',',
+                                             ','
+                                             || a.act_type
+                                             || ','
+                                          ) > 0 )
+                                             and ( p_status is null
+                                              or instr(
+                                             ','
+                                             || p_status
+                                             || ',',
+                                             ','
+                                             || a.status
+                                             || ','
+                                          ) > 0 )
+                                             and ( p_dept_id is null
+                                              or instr(
+                                             ','
+                                             || p_dept_id
+                                             || ',',
+                                             ','
+                                             || a.dept_id
+                                             || ','
+                                          ) > 0 )
+                                             and ( ( v_from is null
+                                             and v_to is null )
+                                              or ( a.start_at is not null
+                                             and ( v_from is null
+                                              or nvl(
+                                             a.start_at,
+                                             v_from
+                                          ) >= v_from )
+                                             and ( v_to is null
+                                              or nvl(
+                                             a.start_at,
+                                             v_to
+                                          ) < v_to ) )
+                                              or ( a.end_at is not null
+                                             and ( v_from is null
+                                              or nvl(
+                                             a.end_at,
+                                             v_from
+                                          ) >= v_from )
+                                             and ( v_to is null
+                                              or nvl(
+                                             a.end_at,
+                                             v_to
+                                          ) < v_to ) )
+                                              or ( a.start_at is null
+                                             and a.end_at is null ) )
+                                             and ( p_reason_categ is null
+                                              or instr(
+                                             ','
+                                             || p_reason_categ
+                                             || ',',
+                                             ','
+                                             || nvl(
+                                                         a.categ_id,
+                                                         0
+                                                      )
+                                             || ','
+                                          ) > 0 )
+                                             and ( nvl(
+                                             p_has_signed,
+                                             'N'
+                                          ) <> 'Y'
+                                              or exists (
+                                             select 1
+                                               from xx_disl_gu23_file f
+                                              where f.act_id = a.id
+                                                and f.file_category = 'signed'
+                                          ) )
+                                             and ( v_q is null
+                                          or lower(a.act_number) like '%'
                                                    || v_q
                                                    || '%'
-                   or lower(a.reason_name) like '%'
-                                             || v_q
-                                             || '%'
-                   or exists (
-                  select 1
-                    from xx_disl_gu23_act_row r
-                   where r.act_id = a.id
-                     and r.wagon_no like '%'
-                                         || v_q
-                                         || '%'
-               ) )
-                order by a.created_at desc
-            ) a
-             where rownum <= v_end
-         ) a
-           left join xx_disl_users du
-         on du.id = a.created_by
-          where a.rn > v_off
-          order by a.created_at desc;
+                                          or lower(a.act_start_number) like '%'
+                                                   || v_q
+                                                   || '%'
+                                          or lower(a.reason_name) like '%'
+                                                                       || v_q
+                                                                       || '%'
+                                              or exists (
+                                             select 1
+                                               from xx_disl_gu23_act_row r
+                                              where r.act_id = a.id
+                                                and r.wagon_no like '%'
+                                                                    || v_q
+                                                                    || '%'
+                                          ) )
+                                           order by a.created_at desc
+                                       ) a
+                                        where rownum <= v_end
+                                    ) a
+                                      left join xx_disl_users du
+                                    on du.id = a.created_by
+                      where a.rn > v_off
+                      order by a.created_at desc;
 
       loop
          fetch l_cur into l_row;
@@ -1118,15 +1135,15 @@
             and f.file_category = 'signed'
       ) )
          and ( v_q is null
-          or lower(a.act_number) like '%'
-                                      || v_q
-                                      || '%'
-          or lower(a.act_start_number) like '%'
-                                            || v_q
-                                            || '%'
-          or lower(a.reason_name) like '%'
-                                      || v_q
-                                      || '%'
+      or lower(a.act_number) like '%'
+               || v_q
+               || '%'
+      or lower(a.act_start_number) like '%'
+               || v_q
+               || '%'
+      or lower(a.reason_name) like '%'
+                                   || v_q
+                                   || '%'
           or exists (
          select 1
            from xx_disl_gu23_act_row r
@@ -4528,33 +4545,33 @@
          l_function,
          'x_to_email=>' || x_to_email
       );
-
 /*
-        if UPPER (g_server_host) = 'M5000' and x_to_email is not null
-        then
-            if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
-            then
-                insert into xx_disl_gu23_mail_test (P_TO,
-                                                    P_SUBJECT,
-                                                    P_BODY,
-                                                    P_FROM)
-                     values (x_to_email,
-                             x_subject,
-                             x_msg,
-                             x_sender);
-            end if;
+        
+                if UPPER (g_server_host) = 'M5000' and x_to_email is not null
+                then
+                    if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
+                    then
+                        insert into xx_disl_gu23_mail_test (P_TO,
+                                                            P_SUBJECT,
+                                                            P_BODY,
+                                                            P_FROM)
+                             values (x_to_email,
+                                     x_subject,
+                                     x_msg,
+                                     x_sender);
+                    end if;
 
-            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
-                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
-                                                 p_subject     => x_subject,
-                                                 p_text_clob   => x_msg);
-        else
-            apps.xx_mtf_send_mail_pkg.send_mail (
-                p_sender      => x_sender,                       --отправитель
-                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
-                p_subject     => x_subject || ' -> ' || x_to_email,
-                p_text_clob   => x_msg);
-        end if;*/
+                    apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
+                                                         p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+                                                         p_subject     => x_subject,
+                                                         p_text_clob   => x_msg);
+                else
+                    apps.xx_mtf_send_mail_pkg.send_mail (
+                        p_sender      => x_sender,                       --отправитель
+                        p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
+                        p_subject     => x_subject || ' -> ' || x_to_email,
+                        p_text_clob   => x_msg);
+                end if;*/
 
       commit;
    end gu23_send_mail;
