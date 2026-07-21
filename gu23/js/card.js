@@ -165,6 +165,7 @@ function showDetailsBlock(act) {
     { l: 'Ст. назначения', v: act.ST_TO },
     { l: 'Груз', v: act.CARGO_REF },
     { l: 'Причина', v: act.REASON_NAME },
+    { l: 'Категория причины:', v: act.CATEG_NAME },
   ]
 
   let dlHtml = rows
@@ -212,7 +213,7 @@ function showDetailsBlock(act) {
     act.STATUS !== 'draft' &&
     act.STATUS !== 'annulled' &&
     act.STATUS !== 'rejected'
-      ? //wordButton +
+      ? wordButton +
         pdfButton
       : ''
   // Кнопки отчеты
@@ -538,6 +539,7 @@ function editDraftAct(data) {
     cargoReference: act.CARGO_REF || '',
     reasonId: String(act.REASON_ID || ''),
     reasonName: act.REASON_NAME,
+    categName: act.CATEG_NAME, // add 21.07.2026 BekmansurovRR
     circumstances: act.CIRCUMSTANCES || '',
     startAt: formatToInputDate(act.START_AT),
     endAt: formatToInputDate(act.END_AT),

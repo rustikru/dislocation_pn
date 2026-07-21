@@ -248,15 +248,20 @@ function setDefaultStation() {
 function showReasonFields() {
   const $place = $('#form-reason-place').empty()
   // Причина и обстоятельства
+  // Формируем список с расширенными данными
   const reasonItems = references.reasonsList.map((reason) => ({
-    label: reason.NAME || reason.CODE,
+    label: `${reason.NAME} (${reason.CATEG_NAME || 'Без категории'})`,
     value: reason.CODE,
+    name: reason.NAME,           // сохраняем только имя
+    code: reason.CODE,
+    categName: reason.CATEG_NAME  // Категория причины
   }))
+  // Начальное значение для поля (только NAME)
   const reasonInitLabel = (() => {
     const reason = references.reasonsList.find(
       (reason) => reason.CODE === activeDraft.reasonId,
     )
-    return reason ? reason.NAME || reason.CODE : activeDraft.reasonName || ''
+    return reason ? reason.NAME : activeDraft.reasonName || ''
   })()
 
   $place.html(`
@@ -270,8 +275,12 @@ function showReasonFields() {
     $('#reason-dropdown'),
     reasonItems,
     (it) => {
-      activeDraft.reasonId = it.value
-      activeDraft.reasonName = it.label
+      // При выборе сохраняем код и только имя
+      activeDraft.reasonId = it.code
+      activeDraft.reasonName = it.name
+      
+      // Подставляем в поле только NAME
+      $('#auto-reason').val(it.name)
     },
     function () {
       activeDraft.reasonId = ''

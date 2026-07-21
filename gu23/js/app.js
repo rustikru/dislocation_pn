@@ -103,6 +103,8 @@ $(document).ready(() => {
     references.signersOwnList = (response && response.signersOwn) || [] // Подписанты (собственные)
     references.signersRzdList = (response && response.signersRzd) || [] // Подписанты (РЖД)
     references.signersManualList = (response && response.signersManual) || [] // Подписанты (ручные)
+    references.reasonCategories = (response && response.reasonCategories) || [] // Кaтегории причин  // add 21.07.2026 BekmansurovRR
+
     applicationState.isAdmin = !!(response && response.isAdmin) // Админ или нет
     applicationState.userPerms = new Set((response && response.perms) || []) // Разрешения пользователя
 
