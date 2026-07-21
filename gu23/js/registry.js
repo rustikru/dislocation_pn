@@ -48,16 +48,16 @@ function showArchivePage(container) {
     })
   }
 
-  // Создание фильтра с множественным выбором
+  // Фильтр с данными
   const addMultiChoiceFilter = (options, labels, key) => {
-    const allLabel = labels[0] // первый элемент — «Все …»
+    const allLabel = labels[0] // самый первый элемент — «Все …»
     const $wrap = $('<div class="ms-filter"></div>')
     const $btn = $(
       '<button type="button" class="inp ms-btn">' + allLabel + '</button>',
     )
     const $menu = $('<div class="ms-menu"></div>')
 
-    // реальные значения
+    // значения
     const realCount = options.filter((v) => v !== '').length
 
     // поиск внутри списка
@@ -150,6 +150,15 @@ function showArchivePage(container) {
     'dept',
   )
 
+  // add 21.07.2026 BekmansurovRR
+  // Категории причин
+  const categCodes = references.reasonCategories.map((d) => d.NAME)
+   addMultiChoiceFilter(
+    [''].concat(references.reasonCategories.map((d) => String(d.ID))),
+    ['Все категории'].concat(categCodes),
+    'reason_categ',
+  )
+
   // закрытие выпадающих меню по клику вне
   $(document)
     .off('click.msfilter')
@@ -182,7 +191,7 @@ function showArchivePage(container) {
   })
   $('#archive-filters').append($dateFrom, $dateTo)
 
-  // Доп. фильтры (поповер): «Приложение» — Все / Подписанный документ
+  // Доп. фильтры: «Приложение» — Все / Подписанный документ
   const $extraWrap = $('<div class="ms-filter"></div>')
   const $extraBtn = $(
     '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
@@ -323,9 +332,10 @@ function showArchivePage(container) {
           '<td>' +
           escapeHtml(act.DEPT) +
           '</td>' +
-          '<td class="muted text-ellipsis" style="max-width:230px" title="' +
-          escapeHtml(act.REASON_NAME) +
-          '">' +
+          '<td class="muted text-ellipsis" style="max-width:230px">' +
+          escapeHtml(act.CATEG_NAME) +
+          '</td>' +
+          '<td class="muted text-ellipsis" style="max-width:230px">' +
           escapeHtml(act.REASON_NAME) +
           '</td>' +
           '<td class="num">' +
@@ -416,6 +426,7 @@ function showArchivePage(container) {
         '<th>Окончание простоя</th>' +
         '<th>Тип</th>' +
         '<th>Цех</th>' +
+        '<th>Категория причины</th>' +
         '<th>Причина</th>' +
         '<th>Вагоны</th>' +
         '<th>Статус</th>' +

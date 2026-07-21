@@ -445,7 +445,7 @@ function showReasonForm(reason) {
         </div>
         <div class="frow" style="margin-bottom:9px">
           <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Название <span style="color:red">*</span></label>
-          <input class="inp rf-name" style="font-size:14px;padding:6px 9px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Простой под выгрузкой">
+          <input class="inp rf-name" style="font-size:14px;padding:6px 9px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
         </div>
         <div class="frow" style="margin-bottom:9px">
           <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Тип акта</label>
