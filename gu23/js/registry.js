@@ -24,6 +24,7 @@ function showArchivePage(container) {
     type: '',
     status: '',
     dept: '',
+    reason_categ: '',
     date_from: toFilterDate(monthStart),
     date_to: toFilterDate(monthEnd),
     has_signed: '', // 'Y' = только с подписанным документом
@@ -153,7 +154,7 @@ function showArchivePage(container) {
   // add 21.07.2026 BekmansurovRR
   // Категории причин
   const categCodes = references.reasonCategories.map((d) => d.NAME)
-   addMultiChoiceFilter(
+  addMultiChoiceFilter(
     [''].concat(references.reasonCategories.map((d) => String(d.ID))),
     ['Все категории'].concat(categCodes),
     'reason_categ',
@@ -236,6 +237,7 @@ function showArchivePage(container) {
         <input type="hidden" name="type">
         <input type="hidden" name="status">
         <input type="hidden" name="dept">
+        <input type="hidden" name="reason_categ">
         <input type="hidden" name="date_from">
         <input type="hidden" name="date_to">
         <input type="hidden" name="has_signed">
@@ -245,6 +247,7 @@ function showArchivePage(container) {
     $form.find('[name="type"]').val(archiveFilter.type)
     $form.find('[name="status"]').val(archiveFilter.status)
     $form.find('[name="dept"]').val(archiveFilter.dept)
+    $form.find('[name="reason_categ"]').val(archiveFilter.reason_categ)
     $form.find('[name="date_from"]').val(archiveFilter.date_from)
     $form.find('[name="date_to"]').val(archiveFilter.date_to)
     $form.find('[name="has_signed"]').val(archiveFilter.has_signed)

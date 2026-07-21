@@ -279,7 +279,8 @@ class GuActExcelReport
             ['Поиск', $this->filterText($filter['q'] ?? '')],
             ['Тип акта', $this->filterList($filter['type'] ?? '', 'actType')],
             ['Статус', $this->filterList($filter['status'] ?? '', 'actStatus')],
-            ['Цех', $this->filterText($filter['dept'] ?? '')],
+            ['Цех', $this->filterNames($filter['dept'] ?? '', $this->deptNames())],
+            ['Категория причины', $this->filterNames($filter['reason_categ'] ?? '', $this->reasonCategoryNames())],
             ['Дата с', $this->filterText($filter['date_from'] ?? '')],
             ['Дата по', $this->filterText($filter['date_to'] ?? '')],
             ['Подписанный файл', (($filter['has_signed'] ?? '') === 'Y') ? 'Да' : 'Все'],
@@ -353,6 +354,58 @@ class GuActExcelReport
             $names[] = $listName === 'actStatus' ? $this->actStatus($part) : $this->actType($part);
         }
         return implode(', ', $names);
+    }
+
+    private function filterNames($value, array $names): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $value)), 'strlen');
+        $result = [];
+        foreach ($parts as $part) {
+            $result[] = $names[$part] ?? $part;
+        }
+
+        return implode(', ', $result);
+    }
+
+    private function deptNames(): array
+    {
+        $rows = $this->db->rows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())');
+        $names = [];
+        foreach ($rows as $row) {
+            $id = trim((string) ($row['ID'] ?? ''));
+            $code = trim((string) ($row['CODE'] ?? ''));
+            $name = trim((string) ($row['NAME'] ?? ''));
+            $text = $code !== '' ? $code : $name;
+            if ($id !== '') {
+                $names[$id] = $text;
+            }
+            if ($code !== '') {
+                $names[$code] = $text;
+            }
+        }
+        return $names;
+    }
+
+    private function reasonCategoryNames(): array
+    {
+        $rows = $this->db->rows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))");
+        $names = [];
+        foreach ($rows as $row) {
+            $id = trim((string) ($row['ID'] ?? ''));
+            $name = trim((string) ($row['NAME'] ?? ''));
+            if ($id !== '') {
+                $names[$id] = $name;
+            }
+            if ($name !== '') {
+                $names[$name] = $name;
+            }
+        }
+        return $names;
     }
 
     private function actType(string $type): string
