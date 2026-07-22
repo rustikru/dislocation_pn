@@ -3965,6 +3965,17 @@
           where n.active = 'Y'
             and n.module_code = 'GU23'
             and sysdate between n.start_date and n.end_date
+            and ( not exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+         )
+             or exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+               and nu.user_id = p_user_id
+         ) )
           order by n.created_at desc,
                    n.id desc
       ) loop
@@ -3994,6 +4005,17 @@
        where n.active = 'Y'
          and n.module_code = 'GU23'
          and sysdate between n.start_date and n.end_date
+         and ( not exists (
+         select 1
+           from xx_disl_module_notif_user nu
+          where nu.notification_id = n.id
+      )
+          or exists (
+         select 1
+           from xx_disl_module_notif_user nu
+          where nu.notification_id = n.id
+            and nu.user_id = p_user_id
+      ) )
          and not exists (
          select 1
            from xx_disl_module_notif_read nr
@@ -4017,9 +4039,20 @@
          select n.id,
                 p_user_id,
                 sysdate
-           from xx_disl_module_notif n
+          from xx_disl_module_notif n
           where n.id = p_notice_id
             and n.module_code = 'GU23'
+            and ( not exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+         )
+             or exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+               and nu.user_id = p_user_id
+         ) )
             and not exists (
             select 1
               from xx_disl_module_notif_read
@@ -4051,6 +4084,17 @@
           where n.active = 'Y'
             and n.module_code = 'GU23'
             and sysdate between n.start_date and n.end_date
+            and ( not exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+         )
+             or exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+               and nu.user_id = p_user_id
+         ) )
             and not exists (
             select 1
               from xx_disl_module_notif_read nr

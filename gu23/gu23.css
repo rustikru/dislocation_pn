@@ -973,6 +973,31 @@ textarea.inp {
 .mfoot > * + * {
   margin-left: 10px;
 }
+.notice-modal {
+  max-width: 660px;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 18px 42px rgba(32, 32, 28, 0.14);
+}
+.notice-modal .mhead {
+  padding: 14px 18px 0;
+  border-bottom: 1px solid #edf0f2;
+}
+.notice-modal .mhead h3 {
+  padding-bottom: 13px;
+  border-bottom: 3px solid var(--open);
+}
+.notice-modal .mbody {
+  padding: 18px 24px 0;
+}
+.notice-modal .mfoot {
+  padding: 14px 24px;
+  background: #f7f8fa;
+  border-top: 1px solid #edf0f2;
+}
+.notice-modal .mfoot > :first-child {
+  margin-right: auto;
+}
 
 .banner {
   border-radius: 7px;
@@ -1363,12 +1388,49 @@ textarea.inp {
   color: var(--ink2);
   font-size: 13px;
 }
+.notice-modal .notice-form {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 16px;
+}
+.notice-modal .notice-form label {
+  margin: 0;
+  padding-top: 9px;
+  color: #8b8d93;
+}
+.notice-modal .notice-form .inp {
+  height: 40px;
+  border-color: #dfe3e8;
+  border-radius: 6px;
+}
+.notice-modal .notice-form textarea.inp {
+  height: 132px;
+  min-height: 132px;
+  resize: vertical;
+}
 .notice-image-field {
   display: flex;
   gap: 8px;
 }
+.notice-modal .notice-image-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.notice-modal .notice-image-field .inp {
+  min-width: 0;
+}
+.notice-modal .notice-image-field .btn {
+  height: 40px;
+  white-space: nowrap;
+}
 .notice-image-field .nf-image-text {
   flex: 1;
+}
+.notice-modal .notice-image-preview {
+  grid-column: 2;
 }
 .notice-image-preview img {
   display: block;
@@ -1432,33 +1494,35 @@ textarea.inp {
   justify-content: center;
   background: transparent;
   border: 0;
-  border-left: 1px solid #393942;
-  border-right: 1px solid #4f5058;
+  border-left: 0;
+  border-right: 0;
   border-radius: 0;
   box-shadow: none;
 }
 .notice-top-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #f4f5f6;
 }
 .notice-top-btn img {
   width: 19px;
   height: 19px;
-  filter: brightness(0) invert(1);
+  filter: none;
 }
 .notice-top-count {
   position: absolute;
-  right: 3px;
-  top: 5px;
-  min-width: 18px;
-  height: 18px;
-  padding: 1px 5px;
+  right: 4px;
+  top: 6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
   border-radius: 999px;
   background: var(--open);
   color: #fff;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
   text-align: center;
-  border: 2px solid #4c4e5a;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 .notice-panel {
   position: absolute;

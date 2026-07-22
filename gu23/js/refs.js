@@ -223,29 +223,31 @@ function showSignerForm(signer) {
   if (!hasPerm('MANAGE_REFS')) return
   const isNew = !signer
   const $modal = $(`
-    <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:520px;max-width:96vw;padding:28px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <b style="font-size:16px">Подписант</b>
-          <button class="sf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
+    <div class="modal-backdrop ref-modal-wrap">
+      <div class="card ref-modal-card">
+        <div class="ref-modal-head">
+          <b>Подписант</b>
+          <button class="ref-close-btn sf-close">×</button>
         </div>
-        <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">ФИО</label>
-          <input class="inp sf-fio" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
+        <div class="ref-form">
+          <div class="frow">
+            <label>ФИО</label>
+            <input class="inp sf-fio" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
+          </div>
+          <div class="frow">
+            <label>Должность</label>
+            <input class="inp sf-post" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
+          </div>
+          <div class="frow">
+            <label>Организация</label>
+            <input class="inp sf-org" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
+          </div>
+          <div class="frow">
+            <label>Подразделение</label>
+            <input class="inp sf-unit" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
+          </div>
         </div>
-        <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Должность</label>
-          <input class="inp sf-post" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
-        </div>
-        <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Организация</label>
-          <input class="inp sf-org" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
-        </div>
-        <div class="frow" style="margin-bottom:22px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:5px">Подразделение</label>
-          <input class="inp sf-unit" style="font-size:14px;padding:8px 10px" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
-        </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div class="ref-modal-foot">
           <button class="btn ghost sf-cancel">Отмена</button>
           ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn sf-save">Сохранить</button>
@@ -437,25 +439,27 @@ function showReasonForm(reason) {
       .join('')
 
   const $modal = $(`
-    <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center">
-      <div class="card" style="width:440px;max-width:96vw;padding:18px 20px;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <b style="font-size:16px">Причина составления</b>
-          <button class="rf-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;line-height:1">×</button>
+    <div class="modal-backdrop ref-modal-wrap">
+      <div class="card ref-modal-card ref-modal-card-sm">
+        <div class="ref-modal-head">
+          <b>Причина составления</b>
+          <button class="ref-close-btn rf-close">×</button>
         </div>
-        <div class="frow" style="margin-bottom:9px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Название <span style="color:red">*</span></label>
-          <input class="inp rf-name" style="font-size:14px;padding:6px 9px" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
+        <div class="ref-form">
+          <div class="frow">
+            <label>Название <span class="ref-required">*</span></label>
+            <input class="inp rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
+          </div>
+          <div class="frow">
+            <label>Тип акта</label>
+            <select class="inp rf-kind">${kindOptions}</select>
+          </div>
+          <div class="frow">
+            <label>Категория</label>
+            <select class="inp rf-categ">${categoryOptions}</select>
+          </div>
         </div>
-        <div class="frow" style="margin-bottom:9px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Тип акта</label>
-          <select class="inp rf-kind" style="font-size:14px;padding:6px 9px">${kindOptions}</select>
-        </div>
-        <div class="frow" style="margin-bottom:14px">
-          <label style="display:block;font-size:13px;color:#666;margin-bottom:3px">Категория</label>
-          <select class="inp rf-categ" style="font-size:14px;padding:6px 9px">${categoryOptions}</select>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
+        <div class="ref-modal-foot">
           <button class="btn ghost rf-cancel">Отмена</button>
           ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
           <button class="btn rf-save">Сохранить</button>

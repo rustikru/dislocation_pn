@@ -371,7 +371,12 @@ function noticeForm(row) {
     onClick: () => noticeSave(row),
   })
 
-  openModalWindow(isNew ? 'Новая запись' : 'Новость', content, buttons)
+  openModalWindow(
+    isNew ? 'Новая запись' : 'Уведомление',
+    content,
+    buttons,
+    'notice-modal',
+  )
 
   $('.nf-image-btn').on('click', () => $('.nf-image-file').trigger('click'))
   $('.nf-image-file').on('change', function () {

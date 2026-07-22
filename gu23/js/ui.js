@@ -84,7 +84,8 @@ export function showToast(message, type) {
 }
 
 // модальное окошко
-export function openModalWindow(title, contentHtml, buttons = []) {
+export function openModalWindow(title, contentHtml, buttons = [], boxClass = '') {
+  const className = String(boxClass || '').replace(/[^a-zA-Z0-9_-]/g, '')
   const footerButtonsHtml = buttons
     .map(
       (button, index) => `
@@ -95,7 +96,7 @@ export function openModalWindow(title, contentHtml, buttons = []) {
 
   const modalHtml = `
     <div class="scrim" id="modal-backdrop">
-      <div class="modal">
+      <div class="modal${className ? ` ${className}` : ''}">
         <div class="mhead">
           <h3>${escapeHtml(title)}</h3>
           <button class="x" id="modal-close-x">×</button>
