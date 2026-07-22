@@ -3955,7 +3955,7 @@
                 end is_read
            from xx_disl_module_notif n
            left join xx_disl_general_ref nt
-         on nt.ref_code = 'NOTICE_TYPE'
+         on nt.ref_code = 'GU23_NOTICE_TYPE'
             and sysdate between nt.start_effect_date and nt.end_effect_date
             and ( nt.code = n.notice_type
              or to_char(nt.id) = n.notice_type )
@@ -4096,7 +4096,7 @@
                 n.active
            from xx_disl_module_notif n
            left join xx_disl_general_ref nt
-         on nt.ref_code = 'NOTICE_TYPE'
+         on nt.ref_code = 'GU23_NOTICE_TYPE'
             and sysdate between nt.start_effect_date and nt.end_effect_date
             and ( nt.code = n.notice_type
              or to_char(nt.id) = n.notice_type )
@@ -4150,7 +4150,7 @@
       )
         into l_notice_type
         from xx_disl_general_ref
-       where ref_code = 'NOTICE_TYPE'
+       where ref_code = 'GU23_NOTICE_TYPE'
          and sysdate between start_effect_date and end_effect_date;
 
       l_notice_type := nvl(

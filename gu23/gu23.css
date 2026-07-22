@@ -1255,6 +1255,13 @@ textarea.inp {
 .notice-item:hover {
   background: var(--surface2);
 }
+.notice-item.unread {
+  background: #f6f9fd;
+  border-left: 3px solid #7da0c4;
+}
+.notice-item.unread:hover {
+  background: #f1f6fc;
+}
 .notice-head {
   display: flex;
   align-items: center;
@@ -1402,11 +1409,13 @@ textarea.inp {
   display: flex;
   align-items: center;
   margin: 0;
+  gap: 0;
 }
 
 .headerrt .logout .notice-top,
 .headerrt .logout .headerfullname,
-.headerrt .logout .logoutbtn {
+.headerrt .logout .logoutbtn,
+.headerrt .logout .user-menu {
   float: none;
 }
 

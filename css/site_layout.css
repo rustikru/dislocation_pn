@@ -180,6 +180,11 @@ li.disabled{
 .headerrt {
     float: right;
 }
+.headerrt .logout {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
 .headerlt {
     /* display: inline-flex; */
 }
@@ -241,6 +246,101 @@ li.disabled{
 	text-decoration: none;
 	
 	
+}
+
+.user-menu {
+	position: relative;
+	float: left;
+	border-left: 1px solid #393942;
+}
+
+.user-menu-btn {
+	height: 40px;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 16px;
+	border: 0;
+	background: transparent;
+	color: #F3F3F3;
+	font-family: Helvetica, Arial, sans-serif;
+	font-weight: bold;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.user-menu-btn:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.user-menu-box {
+	display: none;
+	position: absolute;
+	right: 8px;
+	top: 44px;
+	width: 200px;
+	padding: 9px;
+	background: #fff;
+	color: #222;
+	border: 1px solid #d8d8d8;
+	border-radius: 8px;
+	box-shadow: 0 18px 48px rgba(32, 32, 28, 0.18);
+	z-index: 130;
+}
+
+.user-menu.open .user-menu-box {
+	display: block;
+}
+
+.user-menu-title {
+	font-size: 11.5px;
+	color: #8b8d93;
+	margin-bottom: 4px;
+}
+
+.user-menu-name {
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.user-menu-login {
+	margin-top: 1px;
+	color: #8b8d93;
+	font-family: monospace;
+	font-size: 11px;
+}
+
+.user-menu-profile {
+	width: 100%;
+	margin-top: 8px;
+	padding: 6px 9px;
+	border: 1px solid #d8d8d8;
+	border-radius: 6px;
+	background: #fff;
+	color: #333;
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.user-menu-exit {
+	width: 100%;
+	margin-top: 6px;
+	padding: 6px 9px;
+	border: 1px solid #d8d8d8;
+	border-radius: 6px;
+	background: #fff;
+	color: #a33;
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.user-menu-profile:hover,
+.user-menu-exit:hover {
+	opacity: 0.75;
 }
 
 .cars_table{
@@ -1993,5 +2093,3 @@ tr.last_elem{
 .table_for_weigh_from_shop_samples th:nth-child(18),.table_for_weigh_from_shop_samples td:nth-child(18) {
     width: 115px;
 }
-
-
