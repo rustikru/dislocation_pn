@@ -3923,7 +3923,7 @@
    end gu23_perm_revoke;
 
     -- ----------------------------------------------------------------
-    -- Новости и подсказки
+    -- Уведомления
     -- ----------------------------------------------------------------
 
    function gu23_notices (
@@ -3938,19 +3938,26 @@
                 n.title,
                 n.body,
                 n.notice_type,
+                nvl(nt.name, n.notice_type) notice_type_name,
                 n.image_path,
                 to_char(n.created_at, c_dtf) created_at,
                 case
-                   when nr.notice_id is null then
+                   when nr.notification_id is null then
                       'N'
                    else
                       'Y'
                 end is_read
-           from xx_disl_gu23_notice n
-           left join xx_disl_gu23_notice_read nr
-         on nr.notice_id = n.id
+           from xx_disl_module_notification n
+           left join xx_disl_general_ref nt
+         on nt.ref_code = 'GU23_NOTICE_TYPE'
+            and sysdate between nt.start_effect_date and nt.end_effect_date
+            and ( nt.code = n.notice_type
+             or to_char(nt.id) = n.notice_type )
+           left join xx_disl_module_notification_read nr
+         on nr.notification_id = n.id
             and nr.user_id = p_user_id
           where n.active = 'Y'
+            and n.module_code = 'GU23'
             and sysdate between n.start_date and n.end_date
           order by n.created_at desc,
                    n.id desc
@@ -3959,6 +3966,7 @@
          l_row.title := r.title;
          l_row.body := r.body;
          l_row.notice_type := r.notice_type;
+         l_row.notice_type_name := r.notice_type_name;
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
@@ -3976,13 +3984,14 @@
    begin
       select count(*)
         into l_count
-        from xx_disl_gu23_notice n
+       from xx_disl_module_notification n
        where n.active = 'Y'
+         and n.module_code = 'GU23'
          and sysdate between n.start_date and n.end_date
          and not exists (
          select 1
-           from xx_disl_gu23_notice_read nr
-          where nr.notice_id = n.id
+           from xx_disl_module_notification_read nr
+          where nr.notification_id = n.id
             and nr.user_id = p_user_id
       );
 
@@ -3994,19 +4003,21 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      insert into xx_disl_gu23_notice_read (
-         notice_id,
+      insert into xx_disl_module_notification_read (
+         notification_id,
          user_id,
          read_at
       )
-         select p_notice_id,
+         select n.id,
                 p_user_id,
                 sysdate
-           from dual
-          where not exists (
+          from xx_disl_module_notification n
+          where n.id = p_notice_id
+            and n.module_code = 'GU23'
+            and not exists (
             select 1
-              from xx_disl_gu23_notice_read
-             where notice_id = p_notice_id
+              from xx_disl_module_notification_read
+             where notification_id = p_notice_id
                and user_id = p_user_id
          );
 
@@ -4018,6 +4029,37 @@
          return format_error();
    end gu23_notice_read;
 
+   function gu23_notice_read_all (
+      p_user_id in number
+   ) return varchar2 is
+   begin
+      insert into xx_disl_module_notification_read (
+         notification_id,
+         user_id,
+         read_at
+      )
+         select n.id,
+                p_user_id,
+                sysdate
+           from xx_disl_module_notification n
+          where n.active = 'Y'
+            and n.module_code = 'GU23'
+            and sysdate between n.start_date and n.end_date
+            and not exists (
+               select 1
+                 from xx_disl_module_notification_read nr
+                where nr.notification_id = n.id
+                  and nr.user_id = p_user_id
+            );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_read_all;
+
    function gu23_notices_all (
       p_user_id in number
    ) return t_gu23_notice_tab
@@ -4026,30 +4068,38 @@
       l_row t_gu23_notice_row;
    begin
       for r in (
-         select id,
-                title,
-                body,
-                notice_type,
-                image_path,
-                to_char(created_at, c_dtf) created_at,
+         select n.id,
+                n.title,
+                n.body,
+                n.notice_type,
+                nvl(nt.name, n.notice_type) notice_type_name,
+                n.image_path,
+                to_char(n.created_at, c_dtf) created_at,
                 case
-                   when nr.notice_id is null then
+                   when nr.notification_id is null then
                       'N'
                    else
                       'Y'
                 end is_read,
-                active
-           from xx_disl_gu23_notice n
-           left join xx_disl_gu23_notice_read nr
-         on nr.notice_id = n.id
+                n.active
+           from xx_disl_module_notification n
+           left join xx_disl_general_ref nt
+         on nt.ref_code = 'GU23_NOTICE_TYPE'
+            and sysdate between nt.start_effect_date and nt.end_effect_date
+            and ( nt.code = n.notice_type
+             or to_char(nt.id) = n.notice_type )
+           left join xx_disl_module_notification_read nr
+         on nr.notification_id = n.id
             and nr.user_id = p_user_id
-          order by created_at desc,
-                   id desc
+          where n.module_code = 'GU23'
+          order by n.created_at desc,
+                   n.id desc
       ) loop
          l_row.id := r.id;
          l_row.title := r.title;
          l_row.body := r.body;
          l_row.notice_type := r.notice_type;
+         l_row.notice_type_name := r.notice_type_name;
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
@@ -4068,17 +4118,36 @@
       p_image_path  in varchar2,
       p_user_id     in number
    ) return varchar2 is
-      l_id number;
+      l_id          number;
+      l_notice_type varchar2(30);
    begin
       if trim(p_title) is null then
          return 'ERR' || c_us || 'Укажите заголовок';
       end if;
 
-      if nvl(p_id, 0) = 0 then
-         l_id := xx_disl_gu23_notice_seq.nextval;
+      select nvl(
+         max(nvl(
+            code,
+            to_char(id)
+         )) keep ( dense_rank first order by name ),
+         'notice'
+      )
+        into l_notice_type
+        from xx_disl_general_ref
+       where ref_code = 'GU23_NOTICE_TYPE'
+         and sysdate between start_effect_date and end_effect_date;
 
-         insert into xx_disl_gu23_notice (
+      l_notice_type := nvl(
+         trim(p_notice_type),
+         l_notice_type
+      );
+
+      if nvl(p_id, 0) = 0 then
+         l_id := xx_disl_module_notification_seq.nextval;
+
+         insert into xx_disl_module_notification (
             id,
+            module_code,
             title,
             body,
             notice_type,
@@ -4088,9 +4157,10 @@
             created_at
          ) values (
             l_id,
+            'GU23',
             trim(p_title),
             p_body,
-            nvl(p_notice_type, 'news'),
+            l_notice_type,
             trim(p_image_path),
             'Y',
             p_user_id,
@@ -4099,12 +4169,13 @@
       else
          l_id := p_id;
 
-         update xx_disl_gu23_notice
+         update xx_disl_module_notification
             set title = trim(p_title),
                 body = p_body,
-                notice_type = nvl(p_notice_type, 'news'),
+                notice_type = l_notice_type,
                 image_path = trim(p_image_path)
-          where id = p_id;
+          where id = p_id
+            and module_code = 'GU23';
       end if;
 
       commit;
@@ -4119,14 +4190,15 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      update xx_disl_gu23_notice
+      update xx_disl_module_notification
          set active = case
                          when active = 'Y' then
                             'N'
                          else
                             'Y'
                       end
-       where id = p_notice_id;
+       where id = p_notice_id
+         and module_code = 'GU23';
 
       commit;
       return 'OK';

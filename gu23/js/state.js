@@ -10,6 +10,7 @@ export const references = {
   signersOwnList: [], //  подписанты (собственные)
   signersRzdList: [], //  подписанты (РЖД)
   signersManualList: [], // ранее введённые вручную подписанты
+  noticeTypes: [], // типы уведомлений
 }
 
 // Текущее состояние

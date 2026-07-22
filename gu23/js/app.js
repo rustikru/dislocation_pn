@@ -8,7 +8,7 @@ import { showCard } from './card.js'
 import { showWagonSearch } from './wagonSearch.js'
 import { showRefs } from './refs.js'
 import { showRoles } from './roles.js'
-import { showNotices, loadNoticeCount } from './notices.js'
+import { showNotices, loadNoticeCount, prepareNoticePanel, showNoticeCount } from './notices.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
@@ -85,7 +85,7 @@ export function showApplication() {
     wsearch: showWagonSearch, // Поиск вагонов
     refs: showRefs, // Справочники
     roles: showRoles, // Роли и бла бла
-    notices: showNotices, // Новости и подсказки
+    notices: showNotices, // Уведомления
   }
   // Если текущая страница не найдена, показываем реестр
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive
@@ -106,6 +106,7 @@ $(document).ready(() => {
     references.signersRzdList = (response && response.signersRzd) || [] // Подписанты (РЖД)
     references.signersManualList = (response && response.signersManual) || [] // Подписанты (ручные)
     references.reasonCategories = (response && response.reasonCategories) || [] // Кaтегории причин  // add 21.07.2026 BekmansurovRR
+    references.noticeTypes = (response && response.noticeTypes) || [] // Типы уведомлений
 
     applicationState.isAdmin = !!(response && response.isAdmin) // Админ или нет
     applicationState.userPerms = new Set((response && response.perms) || []) // Разрешения пользователя
@@ -128,9 +129,16 @@ $(document).ready(() => {
       const next = getPageFromLocation()
       openPage(next.page, next.id)
     })
+    window.addEventListener('gu23-open-page', (event) => {
+      navigateTo((event.detail && event.detail.page) || 'archive')
+    })
 
     // Показываем страничку
+    prepareNoticePanel()
     showApplication() //
-    loadNoticeCount().done(() => drawNav())
+    loadNoticeCount().done(() => {
+      drawNav()
+      showNoticeCount()
+    })
   })
 })

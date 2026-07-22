@@ -194,17 +194,20 @@ class GuActRepository
                     $this->approveInApp();
                     break;
 
-                // --- новости и подсказки ---
-                case 'gu23_notices':            // список новостей
+                // --- уведомления ---
+                case 'gu23_notices':            // список уведомлений
                     $this->notices();
                     break;
                 case 'gu23_notice_count':       // количество непрочитанных
                     $this->noticeCount();
                     break;
-                case 'gu23_notice_read':        // отметить новость прочитанной
+                case 'gu23_notice_read':        // отметить уведомление прочитанным
                     $this->noticeRead();
                     break;
-                case 'gu23_notices_all':        // список новостей для управления
+                case 'gu23_notice_read_all':    // отметить все уведомления прочитанными
+                    $this->noticeReadAll();
+                    break;
+                case 'gu23_notices_all':        // список уведомлений для управления
                     $this->noticesAll();
                     break;
                 case 'gu23_notice_save':        // сохранить новость
@@ -397,6 +400,7 @@ class GuActRepository
             'cexes' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cex())'),
             'reasons' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
             'reasonCategories' => $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))"),
+            'noticeTypes' => $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_NOTICE_TYPE'))"),
             'stations' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
             'stations_from' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
             'cargos' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_cargo())'),
@@ -516,6 +520,25 @@ class GuActRepository
         $result = $this->callPackageFunction(
             'xx_disl_gu23_pkg.gu23_notice_read(:p_user_id, :notice_id)',
             [':p_user_id' => $userId, ':notice_id' => $id],
+            1000
+        );
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true]);
+            return;
+        }
+
+        $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+    }
+
+    private function noticeReadAll(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_read_all(:p_user_id)',
+            [':p_user_id' => $userId],
             1000
         );
 

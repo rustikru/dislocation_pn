@@ -7,3 +7,4 @@
 </div>
 
 <div class="notice-list" id="notice-list"></div>
+<div class="notice-pages" id="notice-pages"></div>

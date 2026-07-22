@@ -134,6 +134,7 @@
          title       varchar2(300),
          body        varchar2(4000),
          notice_type varchar2(30),
+         notice_type_name varchar2(500),
          image_path  varchar2(500),
          created_at  varchar2(20),
          is_read     varchar2(1),
@@ -636,7 +637,7 @@
       p_perm_id in number
    ) return varchar2;
 
-    -- ---- Новости и подсказки ----
+    -- ---- Уведомления ----
    function gu23_notices (
       p_user_id in number
    ) return t_gu23_notice_tab
@@ -649,6 +650,10 @@
    function gu23_notice_read (
       p_user_id   in number,
       p_notice_id in number
+   ) return varchar2;
+
+   function gu23_notice_read_all (
+      p_user_id in number
    ) return varchar2;
 
    function gu23_notices_all (

@@ -1,12 +1,73 @@
 import { sendApiRequest } from './api.js'
-import { applicationState, hasPerm } from './state.js'
+import { applicationState, hasPerm, references } from './state.js'
 import { escapeHtml, formatDateTime } from './utils.js'
-import { showToast, openModalWindow, closeModalWindow, showConfirmBox } from './ui.js'
+import {
+  showToast,
+  openModalWindow,
+  closeModalWindow,
+  showConfirmBox,
+} from './ui.js'
+
+let noticeRows = []
+let noticePage = 1
+const noticePageSize = 6
+const noticeTextLimit = 500
 
 export function loadNoticeCount() {
   return sendApiRequest('gu23_notice_count').done((response) => {
     applicationState.noticeCount = Number((response && response.count) || 0)
   })
+}
+
+export function showNoticeCount() {
+  const count = applicationState.noticeCount || 0
+  $('.notice-badge, .notice-top-count')
+    .text(count)
+    .toggle(count > 0)
+}
+
+export function prepareNoticePanel() {
+  const $place = $('#notice-top')
+  if (!$place.length || $place.children().length) return
+
+  $place.html(`
+    <button type="button" class="notice-top-btn" id="notice-top-btn" title="Уведомления">
+      <img src="/img/nav/notification.svg" alt="">
+      <b class="notice-top-count" style="display:none"></b>
+    </button>
+    <div class="notice-panel" id="notice-panel" style="display:none">
+      <div class="notice-panel-tabs">
+        <button type="button" class="active">Уведомления</button>
+      </div>
+      <div class="notice-panel-list" id="notice-panel-list"></div>
+      <div class="notice-panel-foot">
+        <button type="button" id="notice-panel-clear">Очистить</button>
+        <button type="button" id="notice-panel-all">Все уведомления</button>
+      </div>
+    </div>
+  `)
+
+  $('#notice-top-btn').on('click', (event) => {
+    event.stopPropagation()
+    const $panel = $('#notice-panel')
+    const isOpen = $panel.is(':visible')
+    $('.notice-panel').hide()
+    if (!isOpen) {
+      $panel.show()
+      noticePanelList()
+    }
+  })
+
+  $('#notice-panel').on('click', (event) => event.stopPropagation())
+  $('#notice-panel-clear').on('click', () => noticeClear())
+  $('#notice-panel-all').on('click', () => {
+    $('#notice-panel').hide()
+    window.dispatchEvent(
+      new CustomEvent('gu23-open-page', { detail: { page: 'notices' } }),
+    )
+  })
+  $(document).on('click', () => $('#notice-panel').hide())
+  $(window).on('scroll', () => $('#notice-panel').hide())
 }
 
 export function showNotices(container) {
@@ -22,28 +83,146 @@ function notices() {
   const action = hasPerm('MANAGE_REFS') ? 'gu23_notices_all' : 'gu23_notices'
 
   sendApiRequest(action).done((response) => {
-    const rows = (response && response.rows) || []
-    const $list = $('#notice-list').empty()
+    noticeRows = (response && response.rows) || []
+    noticePage = 1
+    noticeRowsPage()
+  })
+}
+
+function noticeRowsPage() {
+  const $list = $('#notice-list').empty()
+  const start = (noticePage - 1) * noticePageSize
+  const rows = noticeRows.slice(start, start + noticePageSize)
+
+  if (!rows.length) {
+    $list.html('<div class="empty-state">Уведомлений нет.</div>')
+    $('#notice-pages').empty()
+    return
+  }
+
+  rows.forEach((row) => {
+    const isRead = row.IS_READ === 'Y'
+    const canEdit = hasPerm('MANAGE_REFS')
+    const bodyText = shortNoticeText(row.BODY || '')
+    const $item = $(`
+      <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
+        <span class="notice-data">
+          <span class="notice-head">
+            <strong>${escapeHtml(row.TITLE || '')}</strong>
+            <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</em>
+            ${canEdit ? `<i>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</i>` : ''}
+          </span>
+          <span class="notice-date">${formatDateTime(row.CREATED_AT || '')}</span>
+          ${bodyText ? `<span class="notice-text">${escapeHtml(bodyText)}</span>` : ''}
+          ${row.IMAGE_PATH ? '<span class="notice-image-note">Есть картинка</span>' : ''}
+        </span>
+        <span class="notice-actions">
+          ${canEdit ? '<span class="notice-edit" title="Изменить">✎</span>' : ''}
+        </span>
+      </button>
+    `)
+
+    $item.on('click', () => {
+      if ($item.hasClass('unread')) {
+        noticeRead(row.ID, $item)
+      }
+      noticeView(row)
+    })
+
+    $item.find('.notice-edit').on('click', (event) => {
+      event.stopPropagation()
+      noticeForm(row)
+    })
+
+    $list.append($item)
+  })
+
+  noticePages()
+}
+
+function shortNoticeText(value) {
+  const text = String(value || '').trim()
+  if (text.length <= noticeTextLimit) return text
+  return `${text.slice(0, noticeTextLimit).trim()}...`
+}
+
+function noticeView(row) {
+  const content = `
+    <div class="notice-view">
+      <div class="notice-view-info">
+        <span class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</span>
+        <span>${formatDateTime(row.CREATED_AT || '')}</span>
+        ${hasPerm('MANAGE_REFS') ? `<span>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</span>` : ''}
+      </div>
+      <div class="notice-view-text">${escapeHtml(row.BODY || '')}</div>
+      ${row.IMAGE_PATH ? `<img class="notice-view-image" src="${escapeHtml(row.IMAGE_PATH)}" alt="">` : ''}
+    </div>
+  `
+
+  openModalWindow(row.TITLE || 'Уведомление', content, [
+    { label: 'Закрыть', className: 'btn ghost', onClick: closeModalWindow },
+  ])
+}
+
+function noticePages() {
+  const pages = Math.ceil(noticeRows.length / noticePageSize)
+  const $pages = $('#notice-pages').empty()
+  if (pages <= 1) return
+
+  let html = `<button class="page-btn notice-page-btn" data-page="${noticePage - 1}" ${noticePage <= 1 ? 'disabled' : ''}>‹</button>`
+  for (let page = 1; page <= pages; page++) {
+    html += `<button class="page-btn notice-page-btn ${page === noticePage ? 'page-btn-active' : ''}" data-page="${page}">${page}</button>`
+  }
+  html += `<button class="page-btn notice-page-btn" data-page="${noticePage + 1}" ${noticePage >= pages ? 'disabled' : ''}>›</button>`
+
+  $pages.html(html)
+  $pages
+    .off('click', '.notice-page-btn')
+    .on('click', '.notice-page-btn', function () {
+      const page = Number($(this).data('page'))
+      if (!page || page < 1 || page > pages || page === noticePage) return
+      noticePage = page
+      noticeRowsPage()
+    })
+}
+
+function noticeRead(id, $item) {
+  sendApiRequest('gu23_notice_read', { id: id }).done((response) => {
+    if (!response || response.ok !== true) return
+
+    $item.removeClass('unread')
+    if ($item.hasClass('notice-panel-item')) {
+      $item.remove()
+      if (!$('#notice-panel-list .notice-panel-item').length) {
+        $('#notice-panel-list').html('<div class="notice-panel-empty">Новых уведомлений нет.</div>')
+      }
+    }
+    noticeRows.forEach((row) => {
+      if (String(row.ID) === String(id)) row.IS_READ = 'Y'
+    })
+    loadNoticeCount().done(() => {
+      showNoticeCount()
+    })
+  })
+}
+
+function noticePanelList() {
+  sendApiRequest('gu23_notices').done((response) => {
+    const rows = ((response && response.rows) || []).filter((row) => row.IS_READ !== 'Y')
+    const $list = $('#notice-panel-list').empty()
 
     if (!rows.length) {
-      $list.html('<div class="empty-state">Уведомлений нет.</div>')
+      $list.html('<div class="notice-panel-empty">Новых уведомлений нет.</div>')
       return
     }
 
     rows.forEach((row) => {
       const isRead = row.IS_READ === 'Y'
-      const canEdit = hasPerm('MANAGE_REFS')
       const $item = $(`
-        <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
-          <span class="notice-head">
-            <strong>${escapeHtml(row.TITLE || '')}</strong>
-            <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeKind(row.NOTICE_TYPE)}</em>
-            ${canEdit ? `<i>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</i>` : ''}
-          </span>
-          <span class="notice-date">${formatDateTime(row.CREATED_AT || '')}</span>
-          <span class="notice-text">${escapeHtml(row.BODY || '')}</span>
-          ${row.IMAGE_PATH ? `<img class="notice-image" src="${escapeHtml(row.IMAGE_PATH)}" alt="">` : ''}
-          ${canEdit ? '<span class="notice-actions"><span class="btn ghost sm notice-edit">Изменить</span></span>' : ''}
+        <button type="button" class="notice-panel-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
+          <span class="notice-panel-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</span>
+          <strong>${escapeHtml(row.TITLE || '')}</strong>
+          <small>${formatDateTime(row.CREATED_AT || '')}</small>
         </button>
       `)
 
@@ -53,31 +232,34 @@ function notices() {
         }
       })
 
-      $item.find('.notice-edit').on('click', (event) => {
-        event.stopPropagation()
-        noticeForm(row)
-      })
-
       $list.append($item)
     })
   })
 }
 
-function noticeRead(id, $item) {
-  sendApiRequest('gu23_notice_read', { id: id }).done((response) => {
-    if (!response || response.ok !== true) return
+function noticeClear() {
+  sendApiRequest('gu23_notice_read_all').done((response) => {
+    if (!response || response.ok !== true) {
+      showToast((response && response.msg) || 'Ошибка', 'err')
+      return
+    }
 
-    $item.removeClass('unread')
-    loadNoticeCount().done(() => {
-      const count = applicationState.noticeCount || 0
-      $('.notice-badge').text(count).toggle(count > 0)
+    $('#notice-panel-list').html('<div class="notice-panel-empty">Новых уведомлений нет.</div>')
+    noticeRows.forEach((row) => {
+      row.IS_READ = 'Y'
     })
+    if ($('#notice-list').length) {
+      noticeRowsPage()
+    }
+    loadNoticeCount().done(showNoticeCount)
   })
 }
 
 function noticeForm(row) {
   const isNew = !row
-  const type = String(row?.NOTICE_TYPE || 'news').toLowerCase()
+  const firstType = (references.noticeTypes || [])[0] || {}
+  const type = String(row?.NOTICE_TYPE || firstType.CODE || firstType.ID || '').toLowerCase()
+  const typeOptions = noticeTypeOptions(type)
   const content = `
     <div class="notice-form">
       <label>Заголовок</label>
@@ -85,10 +267,7 @@ function noticeForm(row) {
 
       <label>Тип</label>
       <select class="inp nf-type">
-        <option value="news" ${type === 'news' ? 'selected' : ''}>Новость</option>
-        <option value="hint" ${type === 'hint' ? 'selected' : ''}>Подсказка</option>
-        <option value="warning" ${type === 'warning' ? 'selected' : ''}>Важно</option>
-        <option value="update" ${type === 'update' ? 'selected' : ''}>Доработка</option>
+        ${typeOptions}
       </select>
 
       <label>Текст</label>
@@ -157,7 +336,7 @@ function noticeSave(row) {
     closeModalWindow()
     showToast('Сохранено', 'ok')
     notices()
-    loadNoticeCount()
+    loadNoticeCount().done(showNoticeCount)
   })
 }
 
@@ -174,7 +353,7 @@ function noticeToggle(row) {
 
         closeModalWindow()
         notices()
-        loadNoticeCount()
+        loadNoticeCount().done(showNoticeCount)
       })
     },
   )
@@ -206,16 +385,36 @@ function noticeImageUpload(file) {
   })
 }
 
-function noticeKind(value) {
-  const names = {
-    news: 'Новость',
-    hint: 'Подсказка',
-    warning: 'Важно',
-    update: 'Доработка',
+function noticeTypeName(row) {
+  const code = String(row?.NOTICE_TYPE || '').toLowerCase()
+  const fromRow = row?.NOTICE_TYPE_NAME || ''
+  if (fromRow) return escapeHtml(fromRow)
+
+  const found = (references.noticeTypes || []).find((item) => {
+    const itemCode = String(item.CODE || item.ID || '').toLowerCase()
+    return itemCode === code
+  })
+  return escapeHtml(found?.NAME || row?.NOTICE_TYPE || 'Сообщение')
+}
+
+function noticeTypeOptions(current) {
+  const rows = references.noticeTypes || []
+  if (!rows.length) {
+    return `<option value="${escapeHtml(current || '')}">${escapeHtml(current || 'Сообщение')}</option>`
   }
-  return names[String(value || '').toLowerCase()] || 'Сообщение'
+
+  return rows
+    .map((row) => {
+      const value = String(row.CODE || row.ID || '')
+      const selected = value.toLowerCase() === current ? 'selected' : ''
+      return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(row.NAME || value)}</option>`
+    })
+    .join('')
 }
 
 function noticeTypeClass(value) {
-  return `notice-kind-${String(value || '').toLowerCase() || 'news'}`
+  const code = String(value || 'notice')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+  return `notice-kind-${code || 'notice'}`
 }

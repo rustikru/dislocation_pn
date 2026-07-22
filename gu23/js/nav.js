@@ -19,7 +19,7 @@ export function drawNav() {
   })
   navigationItems.push({
     page: 'notices',
-    icon: 'agenda.svg',
+    icon: 'notification.svg',
     label: 'Уведомления',
     count: applicationState.noticeCount || 0,
   })
@@ -66,7 +66,7 @@ export function drawNav() {
       <button class="navbtn ${isActive ? 'active' : ''}" title="${item.label}">
         <span class="ic"> <img src="/img/nav/${item.icon}" alt="Word" width="18" height="18" style="flex-shrink:0"></span>
         <span>${item.label}</span>
-        ${item.count ? `<b class="notice-badge">${item.count}</b>` : ''}
+        ${item.page === 'notices' ? `<b class="notice-badge" style="${item.count ? '' : 'display:none'}">${item.count || ''}</b>` : ''}
       </button>
     `)
 

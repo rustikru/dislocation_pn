@@ -64,9 +64,10 @@ if ($auth->isAuth()) {
         <body>
             <header>
                 <?php
-                //include('../modules/site/main-top.php');
+                include('../modules/site/main-top.php');
                 ?>
             </header>
+            <div class="notice-top" id="notice-top"></div>
             <div class="app">
                 <nav class="side" id="nav"></nav>
                 <main class="main">
