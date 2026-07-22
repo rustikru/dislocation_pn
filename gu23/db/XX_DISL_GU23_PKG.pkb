@@ -3919,13 +3919,13 @@
    exception
       when others then
          rollback;
-      return format_error();
+         return format_error();
    end gu23_perm_revoke;
 
     -- ----------------------------------------------------------------
+    -- add 22.07.2026 BekmansurovRR
     -- Уведомления
     -- ----------------------------------------------------------------
-
    function gu23_notices (
       p_user_id in number
    ) return t_gu23_notice_tab
@@ -3938,22 +3938,28 @@
                 n.title,
                 n.body,
                 n.notice_type,
-                nvl(nt.name, n.notice_type) notice_type_name,
+                nvl(
+                   nt.name,
+                   n.notice_type
+                ) notice_type_name,
                 n.image_path,
-                to_char(n.created_at, c_dtf) created_at,
+                to_char(
+                   n.created_at,
+                   c_dtf
+                ) created_at,
                 case
                    when nr.notification_id is null then
                       'N'
                    else
                       'Y'
                 end is_read
-           from xx_disl_module_notification n
+           from xx_disl_module_notif n
            left join xx_disl_general_ref nt
-         on nt.ref_code = 'GU23_NOTICE_TYPE'
+         on nt.ref_code = 'NOTICE_TYPE'
             and sysdate between nt.start_effect_date and nt.end_effect_date
             and ( nt.code = n.notice_type
              or to_char(nt.id) = n.notice_type )
-           left join xx_disl_module_notification_read nr
+           left join xx_disl_module_notif_read nr
          on nr.notification_id = n.id
             and nr.user_id = p_user_id
           where n.active = 'Y'
@@ -3984,13 +3990,13 @@
    begin
       select count(*)
         into l_count
-       from xx_disl_module_notification n
+        from xx_disl_module_notif n
        where n.active = 'Y'
          and n.module_code = 'GU23'
          and sysdate between n.start_date and n.end_date
          and not exists (
          select 1
-           from xx_disl_module_notification_read nr
+           from xx_disl_module_notif_read nr
           where nr.notification_id = n.id
             and nr.user_id = p_user_id
       );
@@ -4003,7 +4009,7 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      insert into xx_disl_module_notification_read (
+      insert into xx_disl_module_notif_read (
          notification_id,
          user_id,
          read_at
@@ -4011,12 +4017,12 @@
          select n.id,
                 p_user_id,
                 sysdate
-          from xx_disl_module_notification n
+           from xx_disl_module_notif n
           where n.id = p_notice_id
             and n.module_code = 'GU23'
             and not exists (
             select 1
-              from xx_disl_module_notification_read
+              from xx_disl_module_notif_read
              where notification_id = p_notice_id
                and user_id = p_user_id
          );
@@ -4033,7 +4039,7 @@
       p_user_id in number
    ) return varchar2 is
    begin
-      insert into xx_disl_module_notification_read (
+      insert into xx_disl_module_notif_read (
          notification_id,
          user_id,
          read_at
@@ -4041,16 +4047,16 @@
          select n.id,
                 p_user_id,
                 sysdate
-           from xx_disl_module_notification n
+           from xx_disl_module_notif n
           where n.active = 'Y'
             and n.module_code = 'GU23'
             and sysdate between n.start_date and n.end_date
             and not exists (
-               select 1
-                 from xx_disl_module_notification_read nr
-                where nr.notification_id = n.id
-                  and nr.user_id = p_user_id
-            );
+            select 1
+              from xx_disl_module_notif_read nr
+             where nr.notification_id = n.id
+               and nr.user_id = p_user_id
+         );
 
       commit;
       return 'OK';
@@ -4072,9 +4078,15 @@
                 n.title,
                 n.body,
                 n.notice_type,
-                nvl(nt.name, n.notice_type) notice_type_name,
+                nvl(
+                   nt.name,
+                   n.notice_type
+                ) notice_type_name,
                 n.image_path,
-                to_char(n.created_at, c_dtf) created_at,
+                to_char(
+                   n.created_at,
+                   c_dtf
+                ) created_at,
                 case
                    when nr.notification_id is null then
                       'N'
@@ -4082,13 +4094,13 @@
                       'Y'
                 end is_read,
                 n.active
-           from xx_disl_module_notification n
+           from xx_disl_module_notif n
            left join xx_disl_general_ref nt
-         on nt.ref_code = 'GU23_NOTICE_TYPE'
+         on nt.ref_code = 'NOTICE_TYPE'
             and sysdate between nt.start_effect_date and nt.end_effect_date
             and ( nt.code = n.notice_type
              or to_char(nt.id) = n.notice_type )
-           left join xx_disl_module_notification_read nr
+           left join xx_disl_module_notif_read nr
          on nr.notification_id = n.id
             and nr.user_id = p_user_id
           where n.module_code = 'GU23'
@@ -4110,6 +4122,8 @@
       return;
    end gu23_notices_all;
 
+    -- add 22.07.2026 BekmansurovRR
+    -- Сохраняем уведомление
    function gu23_notice_save (
       p_id          in number,
       p_title       in varchar2,
@@ -4122,30 +4136,33 @@
       l_notice_type varchar2(30);
    begin
       if trim(p_title) is null then
-         return 'ERR' || c_us || 'Укажите заголовок';
+         return 'ERR'
+                || c_us
+                || 'Укажите заголовок';
       end if;
 
       select nvl(
          max(nvl(
             code,
             to_char(id)
-         )) keep ( dense_rank first order by name ),
+         )) keep(dense_rank first order by name),
          'notice'
       )
         into l_notice_type
         from xx_disl_general_ref
-       where ref_code = 'GU23_NOTICE_TYPE'
+       where ref_code = 'NOTICE_TYPE'
          and sysdate between start_effect_date and end_effect_date;
 
       l_notice_type := nvl(
          trim(p_notice_type),
          l_notice_type
       );
-
-      if nvl(p_id, 0) = 0 then
-         l_id := xx_disl_module_notification_seq.nextval;
-
-         insert into xx_disl_module_notification (
+      if nvl(
+         p_id,
+         0
+      ) = 0 then
+         l_id := xx_disl_module_notif_seq.nextval;
+         insert into xx_disl_module_notif (
             id,
             module_code,
             title,
@@ -4155,21 +4172,19 @@
             active,
             created_by,
             created_at
-         ) values (
-            l_id,
-            'GU23',
-            trim(p_title),
-            p_body,
-            l_notice_type,
-            trim(p_image_path),
-            'Y',
-            p_user_id,
-            sysdate
-         );
+         ) values
+            ( l_id,
+              'GU23',
+              trim(p_title),
+              p_body,
+              l_notice_type,
+              trim(p_image_path),
+              'Y',
+              p_user_id,
+              sysdate );
       else
          l_id := p_id;
-
-         update xx_disl_module_notification
+         update xx_disl_module_notif
             set title = trim(p_title),
                 body = p_body,
                 notice_type = l_notice_type,
@@ -4179,7 +4194,9 @@
       end if;
 
       commit;
-      return 'OK' || c_us || l_id;
+      return 'OK'
+             || c_us
+             || l_id;
    exception
       when others then
          rollback;
@@ -4190,13 +4207,15 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      update xx_disl_module_notification
-         set active = case
-                         when active = 'Y' then
-                            'N'
-                         else
-                            'Y'
-                      end
+      update xx_disl_module_notif
+         set
+         active =
+            case
+               when active = 'Y' then
+                  'N'
+               else
+                  'Y'
+            end
        where id = p_notice_id
          and module_code = 'GU23';
 
@@ -4831,33 +4850,33 @@
          l_function,
          'x_to_email=>' || x_to_email
       );
-/*
-        
-                if UPPER (g_server_host) = 'M5000' and x_to_email is not null
-                then
-                    if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
-                    then
-                        insert into xx_disl_gu23_mail_test (P_TO,
-                                                            P_SUBJECT,
-                                                            P_BODY,
-                                                            P_FROM)
-                             values (x_to_email,
-                                     x_subject,
-                                     x_msg,
-                                     x_sender);
-                    end if;
 
-                    apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
-                                                         p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
-                                                         p_subject     => x_subject,
-                                                         p_text_clob   => x_msg);
-                else
-                    apps.xx_mtf_send_mail_pkg.send_mail (
-                        p_sender      => x_sender,                       --отправитель
-                        p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
-                        p_subject     => x_subject || ' -> ' || x_to_email,
-                        p_text_clob   => x_msg);
-                end if;*/
+/*
+        if UPPER (g_server_host) = 'M5000' and x_to_email is not null
+        then
+            if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
+            then
+                insert into xx_disl_gu23_mail_test (P_TO,
+                                                    P_SUBJECT,
+                                                    P_BODY,
+                                                    P_FROM)
+                     values (x_to_email,
+                             x_subject,
+                             x_msg,
+                             x_sender);
+            end if;
+
+            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
+                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+                                                 p_subject     => x_subject,
+                                                 p_text_clob   => x_msg);
+        else
+            apps.xx_mtf_send_mail_pkg.send_mail (
+                p_sender      => x_sender,                       --отправитель
+                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
+                p_subject     => x_subject || ' -> ' || x_to_email,
+                p_text_clob   => x_msg);
+        end if;*/
 
       commit;
    end gu23_send_mail;

@@ -130,15 +130,15 @@
    type xx_disl_gu23_hist_tab is
       table of xx_disl_gu23_hist_row;
    type t_gu23_notice_row is record (
-         id          number,
-         title       varchar2(300),
-         body        varchar2(4000),
-         notice_type varchar2(30),
+         id               number,
+         title            varchar2(300),
+         body             varchar2(4000),
+         notice_type      varchar2(30),
          notice_type_name varchar2(500),
-         image_path  varchar2(500),
-         created_at  varchar2(20),
-         is_read     varchar2(1),
-         active      varchar2(1)
+         image_path       varchar2(500),
+         created_at       varchar2(20),
+         is_read          varchar2(1),
+         active           varchar2(1)
    );
    type t_gu23_notice_tab is
       table of t_gu23_notice_row;
