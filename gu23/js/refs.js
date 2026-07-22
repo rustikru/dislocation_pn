@@ -1,6 +1,11 @@
 import { sendApiRequest } from './api.js'
 import { escapeHtml } from './utils.js'
-import { showToast, showConfirmBox } from './ui.js'
+import {
+  showToast,
+  showConfirmBox,
+  openModalWindow,
+  closeModalWindow,
+} from './ui.js'
 import { hasPerm } from './state.js'
 
 let refsTab = 'signers'
@@ -222,67 +227,30 @@ function showSignersList(items, total, page) {
 function showSignerForm(signer) {
   if (!hasPerm('MANAGE_REFS')) return
   const isNew = !signer
-  const $modal = $(`
-    <div class="modal-backdrop ref-modal-wrap">
-      <div class="card ref-modal-card">
-        <div class="ref-modal-head">
-          <b>Подписант</b>
-          <button class="ref-close-btn sf-close">×</button>
-        </div>
-        <div class="ref-form">
-          <div class="frow">
-            <label>ФИО</label>
-            <input class="inp sf-fio" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
-          </div>
-          <div class="frow">
-            <label>Должность</label>
-            <input class="inp sf-post" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
-          </div>
-          <div class="frow">
-            <label>Организация</label>
-            <input class="inp sf-org" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
-          </div>
-          <div class="frow">
-            <label>Подразделение</label>
-            <input class="inp sf-unit" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
-          </div>
-        </div>
-        <div class="ref-modal-foot">
-          <button class="btn ghost sf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger sf-toggle">${signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
-          <button class="btn sf-save">Сохранить</button>
-        </div>
+
+  const content = `
+    <div class="ref-form">
+      <div class="frow">
+        <label>ФИО <span class="req">*</span></label>
+        <input class="inp sf-fio" value="${escapeHtml(signer?.FIO || '')}" placeholder="Фамилия И.О.">
+      </div>
+      <div class="frow">
+        <label>Должность</label>
+        <input class="inp sf-post" value="${escapeHtml(signer?.POST || '')}" placeholder="Начальник станции">
+      </div>
+      <div class="frow">
+        <label>Организация</label>
+        <input class="inp sf-org" value="${escapeHtml(signer?.ORG || '')}" placeholder="ОАО РЖД">
+      </div>
+      <div class="frow">
+        <label>Подразделение</label>
+        <input class="inp sf-unit" value="${escapeHtml(signer?.UNIT || '')}" placeholder="ст. Углеуральская">
       </div>
     </div>
-  `)
+  `
 
-  $('body').append($modal)
-  $modal.find('.sf-fio').focus()
-
-  const close = () => $modal.remove()
-
-  $modal.find('.sf-close, .sf-cancel').on('click', close)
-  $modal.on('click', (e) => {
-    if ($(e.target).is($modal)) close()
-  })
-
-  $modal.find('.sf-toggle').on('click', () => {
-    const msg =
-      signer?.ACTIVE === 'Y'
-        ? 'Отключить подписанта?'
-        : 'Активировать подписанта?'
-    showConfirmBox('Изменить статус', msg, () => {
-      sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
-        if (r && r.ok) {
-          close()
-          reloadRefs()
-        } else showToast((r && r.msg) || 'Ошибка', 'err')
-      })
-    })
-  })
-
-  $modal.find('.sf-save').on('click', () => {
-    const fio = $modal.find('.sf-fio').val().trim()
+  const saveSigner = () => {
+    const fio = $('.sf-fio').val().trim()
     if (!fio) {
       showToast('ФИО обязательно', 'err')
       return
@@ -290,19 +258,58 @@ function showSignerForm(signer) {
     sendApiRequest('gu23_ref_signer_save', {
       id: signer?.ID || 0,
       fio,
-      post: $modal.find('.sf-post').val().trim(),
-      org: $modal.find('.sf-org').val().trim(),
-      unit: $modal.find('.sf-unit').val().trim(),
+      post: $('.sf-post').val().trim(),
+      org: $('.sf-org').val().trim(),
+      unit: $('.sf-unit').val().trim(),
     }).done((r) => {
       if (r && r.ok) {
-        close()
+        closeModalWindow()
         showToast(isNew ? 'Подписант добавлен' : 'Изменения сохранены', 'ok')
         reloadRefs()
       } else {
         showToast((r && r.msg) || 'Ошибка', 'err')
       }
     })
+  }
+
+  const toggleSigner = () => {
+    const msg =
+      signer?.ACTIVE === 'Y'
+        ? 'Отключить подписанта?'
+        : 'Активировать подписанта?'
+    showConfirmBox('Изменить статус', msg, () => {
+      sendApiRequest('gu23_ref_signer_toggle', { id: signer.ID }).done((r) => {
+        if (r && r.ok) {
+          closeModalWindow()
+          reloadRefs()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  }
+
+  const buttons = [
+    { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
+  ]
+  if (!isNew) {
+    buttons.push({
+      label: signer?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать',
+      className: 'btn ghost',
+      onClick: toggleSigner,
+    })
+  }
+  buttons.push({
+    label: 'Сохранить',
+    className: 'btn primary',
+    onClick: saveSigner,
   })
+
+  openModalWindow(
+    isNew ? 'Новый подписант' : 'Подписант',
+    content,
+    buttons,
+    'notice-modal',
+  )
+  $('.sf-fio').focus()
 }
 
 // ─────────────────────────────────────────────
@@ -438,61 +445,25 @@ function showReasonForm(reason) {
       )
       .join('')
 
-  const $modal = $(`
-    <div class="modal-backdrop ref-modal-wrap">
-      <div class="card ref-modal-card ref-modal-card-sm">
-        <div class="ref-modal-head">
-          <b>Причина составления</b>
-          <button class="ref-close-btn rf-close">×</button>
-        </div>
-        <div class="ref-form">
-          <div class="frow">
-            <label>Название <span class="ref-required">*</span></label>
-            <input class="inp rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
-          </div>
-          <div class="frow">
-            <label>Тип акта</label>
-            <select class="inp rf-kind">${kindOptions}</select>
-          </div>
-          <div class="frow">
-            <label>Категория</label>
-            <select class="inp rf-categ">${categoryOptions}</select>
-          </div>
-        </div>
-        <div class="ref-modal-foot">
-          <button class="btn ghost rf-cancel">Отмена</button>
-          ${!isNew ? `<button class="btn danger rf-toggle">${reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать'}</button>` : ''}
-          <button class="btn rf-save">Сохранить</button>
-        </div>
+  const content = `
+    <div class="ref-form">
+      <div class="frow">
+        <label>Название <span class="req">*</span></label>
+        <input class="inp rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
+      </div>
+      <div class="frow">
+        <label>Тип акта</label>
+        <select class="inp rf-kind">${kindOptions}</select>
+      </div>
+      <div class="frow">
+        <label>Категория</label>
+        <select class="inp rf-categ">${categoryOptions}</select>
       </div>
     </div>
-  `)
+  `
 
-  $('body').append($modal)
-  $modal.find('.rf-name').focus()
-
-  const close = () => $modal.remove()
-
-  $modal.find('.rf-close, .rf-cancel').on('click', close)
-  $modal.on('click', (e) => {
-    if ($(e.target).is($modal)) close()
-  })
-
-  $modal.find('.rf-toggle').on('click', () => {
-    const msg =
-      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
-    showConfirmBox('Изменить статус', msg, () => {
-      sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
-        if (r && r.ok) {
-          close()
-          reloadRefs()
-        } else showToast((r && r.msg) || 'Ошибка', 'err')
-      })
-    })
-  })
-
-  $modal.find('.rf-save').on('click', () => {
-    const name = $modal.find('.rf-name').val().trim()
+  const saveReason = () => {
+    const name = $('.rf-name').val().trim()
     if (!name) {
       showToast('Название обязательно', 'err')
       return
@@ -500,16 +471,53 @@ function showReasonForm(reason) {
     sendApiRequest('gu23_ref_reason_save', {
       id: reason?.ID || 0,
       name,
-      act_kind: $modal.find('.rf-kind').val(),
-      categ: $modal.find('.rf-categ').val(),
+      act_kind: $('.rf-kind').val(),
+      categ: $('.rf-categ').val(),
     }).done((r) => {
       if (r && r.ok) {
-        close()
+        closeModalWindow()
         showToast(isNew ? 'Причина добавлена' : 'Изменения сохранены', 'ok')
         reloadRefs()
       } else {
         showToast((r && r.msg) || 'Ошибка', 'err')
       }
     })
+  }
+
+  const toggleReason = () => {
+    const msg =
+      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
+    showConfirmBox('Изменить статус', msg, () => {
+      sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
+        if (r && r.ok) {
+          closeModalWindow()
+          reloadRefs()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  }
+
+  const buttons = [
+    { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
+  ]
+  if (!isNew) {
+    buttons.push({
+      label: reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать',
+      className: 'btn ghost',
+      onClick: toggleReason,
+    })
+  }
+  buttons.push({
+    label: 'Сохранить',
+    className: 'btn primary',
+    onClick: saveReason,
   })
+
+  openModalWindow(
+    isNew ? 'Новая причина' : 'Причина составления',
+    content,
+    buttons,
+    'notice-modal',
+  )
+  $('.rf-name').focus()
 }
