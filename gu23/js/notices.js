@@ -75,7 +75,7 @@ export function prepareNoticePanel() {
   $(document).on('click', () => $('#notice-panel').hide())
   $(window).on('scroll', () => $('#notice-panel').hide())
 }
-
+// Показ страницы уведомлений
 export function showNotices(container) {
   $(container).load('pages/notices.php', () => {
     $('#btn-add-notice')
@@ -84,7 +84,7 @@ export function showNotices(container) {
     notices()
   })
 }
-
+// Список уведомлений
 function notices() {
   const action = hasPerm('MANAGE_REFS') ? 'gu23_notices_all' : 'gu23_notices'
 
@@ -95,7 +95,7 @@ function notices() {
     noticeRowsPage()
   })
 }
-
+// Список уведомлений для страницы
 function noticeRowsPage() {
   const $list = $('#notice-list').empty()
   const filteredRows = noticeFilterRows()
@@ -149,12 +149,14 @@ function noticeRowsPage() {
 
   noticePages()
 }
-
+// Фильтрация уведомлений по типу
 function noticeFilterRows() {
   if (!noticeTypeFilter) return noticeRows
-  return noticeRows.filter((row) => noticeTypeCode(row.NOTICE_TYPE) === noticeTypeFilter)
+  return noticeRows.filter(
+    (row) => noticeTypeCode(row.NOTICE_TYPE) === noticeTypeFilter,
+  )
 }
-
+// Вкладки типов уведомлений
 function noticeTypeTabs() {
   const $place = $('#notice-type-tabs').empty()
   if (!$place.length) return
@@ -164,7 +166,9 @@ function noticeTypeTabs() {
   let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
 
   types.forEach((type) => {
-    const count = noticeRows.filter((row) => noticeTypeCode(row.NOTICE_TYPE) === type.code).length
+    const count = noticeRows.filter(
+      (row) => noticeTypeCode(row.NOTICE_TYPE) === type.code,
+    ).length
     html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === type.code ? 'active' : ''}" data-type="${escapeHtml(type.code)}">${escapeHtml(type.name)} (${count})</button>`
   })
 
@@ -177,7 +181,7 @@ function noticeTypeTabs() {
       noticeRowsPage()
     })
 }
-
+// Получение списка типов уведомлений
 function noticeTypes() {
   const fromRef = (references.noticeTypes || []).map((row) => ({
     code: noticeTypeCode(row.CODE || row.ID),
@@ -200,7 +204,7 @@ function shortNoticeText(value) {
   if (text.length <= noticeTextLimit) return text
   return `${text.slice(0, noticeTextLimit).trim()}...`
 }
-
+// Просмотр уведомления
 function noticeView(row) {
   const content = `
     <div class="notice-view">
@@ -218,7 +222,7 @@ function noticeView(row) {
     { label: 'Закрыть', className: 'btn ghost', onClick: closeModalWindow },
   ])
 }
-
+// Список уведомлений для страницы
 function noticePages() {
   const pages = Math.ceil(noticeFilterRows().length / noticePageSize)
   const $pages = $('#notice-pages').empty()
@@ -240,7 +244,7 @@ function noticePages() {
       noticeRowsPage()
     })
 }
-
+// Отметка уведомления как прочитанного
 function noticeRead(id, $item) {
   sendApiRequest('gu23_notice_read', { id: id }).done((response) => {
     if (!response || response.ok !== true) return
@@ -249,7 +253,9 @@ function noticeRead(id, $item) {
     if ($item.hasClass('notice-panel-item')) {
       $item.remove()
       if (!$('#notice-panel-list .notice-panel-item').length) {
-        $('#notice-panel-list').html('<div class="notice-panel-empty">Новых уведомлений нет.</div>')
+        $('#notice-panel-list').html(
+          '<div class="notice-panel-empty">Новых уведомлений нет.</div>',
+        )
       }
     }
     noticeRows.forEach((row) => {
@@ -260,10 +266,12 @@ function noticeRead(id, $item) {
     })
   })
 }
-
+// Список уведомлений
 function noticePanelList() {
   sendApiRequest('gu23_notices').done((response) => {
-    const rows = ((response && response.rows) || []).filter((row) => row.IS_READ !== 'Y')
+    const rows = ((response && response.rows) || []).filter(
+      (row) => row.IS_READ !== 'Y',
+    )
     const $list = $('#notice-panel-list').empty()
 
     if (!rows.length) {
@@ -293,7 +301,7 @@ function noticePanelList() {
     })
   })
 }
-
+// Очистка уведомлений
 function noticeClear() {
   sendApiRequest('gu23_notice_read_all').done((response) => {
     if (!response || response.ok !== true) {
@@ -301,7 +309,9 @@ function noticeClear() {
       return
     }
 
-    $('#notice-panel-list').html('<div class="notice-panel-empty">Новых уведомлений нет.</div>')
+    $('#notice-panel-list').html(
+      '<div class="notice-panel-empty">Новых уведомлений нет.</div>',
+    )
     noticeRows.forEach((row) => {
       row.IS_READ = 'Y'
     })
@@ -311,11 +321,13 @@ function noticeClear() {
     loadNoticeCount().done(showNoticeCount)
   })
 }
-
+// Форма редактирования/создания записи
 function noticeForm(row) {
   const isNew = !row
   const firstType = (references.noticeTypes || [])[0] || {}
-  const type = String(row?.NOTICE_TYPE || firstType.CODE || firstType.ID || '').toLowerCase()
+  const type = String(
+    row?.NOTICE_TYPE || firstType.CODE || firstType.ID || '',
+  ).toLowerCase()
   const typeOptions = noticeTypeOptions(type)
   const content = `
     <div class="notice-form">
@@ -370,7 +382,7 @@ function noticeForm(row) {
     $('.nf-image-path').val($(this).val().trim())
   })
 }
-
+// Сохранение записи
 function noticeSave(row) {
   const title = $('.nf-title').val().trim()
   if (!title) {
@@ -396,7 +408,7 @@ function noticeSave(row) {
     loadNoticeCount().done(showNoticeCount)
   })
 }
-
+// Включение/отключение записи
 function noticeToggle(row) {
   showConfirmBox(
     row.ACTIVE === 'Y' ? 'Отключить запись?' : 'Активировать запись?',
@@ -415,7 +427,7 @@ function noticeToggle(row) {
     },
   )
 }
-
+// Загрузка картинки для уведомления
 function noticeImageUpload(file) {
   const formData = new FormData()
   formData.append('ajax_action', 'gu23_notice_image_upload')
@@ -449,7 +461,8 @@ function noticeTypeName(row) {
     return itemCode === code
   })
 
-  if (found) return escapeHtml(found.NAME || found.CODE || found.ID || 'Сообщение')
+  if (found)
+    return escapeHtml(found.NAME || found.CODE || found.ID || 'Сообщение')
 
   const fromRow = row?.NOTICE_TYPE_NAME || ''
   if (fromRow) return escapeHtml(fromRow)
