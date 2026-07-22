@@ -136,6 +136,10 @@
       data.set('pwd_changed', 'Y')
     }
 
+    function unlockButton() {
+      if (button) button.disabled = false
+    }
+
     fetch('/modules/users/profile.php', {
       method: 'POST',
       credentials: 'same-origin',
@@ -153,6 +157,7 @@
         if (pwd2) pwd2.value = ''
         if (pwd1) pwd1.dataset.changed = '0'
         if (pwd2) pwd2.dataset.changed = '0'
+        unlockButton()
       })
       .catch(function (error) {
         if (message) {
@@ -161,9 +166,7 @@
           message.textContent = msg === 'The string did not match the expected pattern.' ? 'Не удалось сохранить профиль' : msg || 'Не удалось сохранить профиль'
           message.style.display = 'block'
         }
-      })
-      .finally(function () {
-        if (button) button.disabled = false
+        unlockButton()
       })
   }
 
@@ -171,9 +174,10 @@
     const button = event.target.closest('.user-menu-profile')
     if (button) {
       event.preventDefault()
-      document.querySelectorAll('.user-menu.open').forEach(function (item) {
-        item.classList.remove('open')
-      })
+      const openMenus = document.querySelectorAll('.user-menu.open')
+      for (let i = 0; i < openMenus.length; i++) {
+        openMenus[i].classList.remove('open')
+      }
       showProfile()
       return
     }
