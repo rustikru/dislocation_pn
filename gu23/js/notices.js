@@ -10,8 +10,9 @@ import {
 
 let noticeRows = []
 let noticePage = 1
+let noticeTypeFilter = ''
 const noticePageSize = 6
-const noticeTextLimit = 500
+const noticeTextLimit = 180
 
 export function loadNoticeCount() {
   return sendApiRequest('gu23_notice_count').done((response) => {
@@ -27,6 +28,11 @@ export function showNoticeCount() {
 }
 
 export function prepareNoticePanel() {
+  const $headerForm = $('.headerrt .logout')
+  if (!$('#notice-top').length && $headerForm.length) {
+    $headerForm.prepend('<div class="notice-top" id="notice-top"></div>')
+  }
+
   const $place = $('#notice-top')
   if (!$place.length || $place.children().length) return
 
@@ -85,14 +91,18 @@ function notices() {
   sendApiRequest(action).done((response) => {
     noticeRows = (response && response.rows) || []
     noticePage = 1
+    noticeTypeFilter = ''
     noticeRowsPage()
   })
 }
 
 function noticeRowsPage() {
   const $list = $('#notice-list').empty()
+  const filteredRows = noticeFilterRows()
   const start = (noticePage - 1) * noticePageSize
-  const rows = noticeRows.slice(start, start + noticePageSize)
+  const rows = filteredRows.slice(start, start + noticePageSize)
+
+  noticeTypeTabs()
 
   if (!rows.length) {
     $list.html('<div class="empty-state">Уведомлений нет.</div>')
@@ -108,11 +118,11 @@ function noticeRowsPage() {
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
         <span class="notice-data">
           <span class="notice-head">
-            <strong>${escapeHtml(row.TITLE || '')}</strong>
             <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</em>
+            <span class="notice-date">${formatDateTime(row.CREATED_AT || '')}</span>
             ${canEdit ? `<i>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</i>` : ''}
           </span>
-          <span class="notice-date">${formatDateTime(row.CREATED_AT || '')}</span>
+          <strong class="notice-title">${escapeHtml(row.TITLE || '')}</strong>
           ${bodyText ? `<span class="notice-text">${escapeHtml(bodyText)}</span>` : ''}
           ${row.IMAGE_PATH ? '<span class="notice-image-note">Есть картинка</span>' : ''}
         </span>
@@ -140,6 +150,51 @@ function noticeRowsPage() {
   noticePages()
 }
 
+function noticeFilterRows() {
+  if (!noticeTypeFilter) return noticeRows
+  return noticeRows.filter((row) => noticeTypeCode(row.NOTICE_TYPE) === noticeTypeFilter)
+}
+
+function noticeTypeTabs() {
+  const $place = $('#notice-type-tabs').empty()
+  if (!$place.length) return
+
+  const types = noticeTypes()
+  const allCount = noticeRows.length
+  let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
+
+  types.forEach((type) => {
+    const count = noticeRows.filter((row) => noticeTypeCode(row.NOTICE_TYPE) === type.code).length
+    html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === type.code ? 'active' : ''}" data-type="${escapeHtml(type.code)}">${escapeHtml(type.name)} (${count})</button>`
+  })
+
+  $place.html(html)
+  $place
+    .off('click', '.notice-type-tab')
+    .on('click', '.notice-type-tab', function () {
+      noticeTypeFilter = String($(this).data('type') || '')
+      noticePage = 1
+      noticeRowsPage()
+    })
+}
+
+function noticeTypes() {
+  const fromRef = (references.noticeTypes || []).map((row) => ({
+    code: noticeTypeCode(row.CODE || row.ID),
+    name: row.NAME || row.CODE || row.ID,
+  }))
+
+  if (fromRef.length) return fromRef
+
+  const types = {}
+  noticeRows.forEach((row) => {
+    const code = noticeTypeCode(row.NOTICE_TYPE)
+    if (code) types[code] = row.NOTICE_TYPE_NAME || row.NOTICE_TYPE
+  })
+
+  return Object.keys(types).map((code) => ({ code, name: types[code] }))
+}
+
 function shortNoticeText(value) {
   const text = String(value || '').trim()
   if (text.length <= noticeTextLimit) return text
@@ -165,7 +220,7 @@ function noticeView(row) {
 }
 
 function noticePages() {
-  const pages = Math.ceil(noticeRows.length / noticePageSize)
+  const pages = Math.ceil(noticeFilterRows().length / noticePageSize)
   const $pages = $('#notice-pages').empty()
   if (pages <= 1) return
 
@@ -227,6 +282,8 @@ function noticePanelList() {
       `)
 
       $item.on('click', () => {
+        $('#notice-panel').hide()
+        noticeView(row)
         if ($item.hasClass('unread')) {
           noticeRead(row.ID, $item)
         }
@@ -387,13 +444,16 @@ function noticeImageUpload(file) {
 
 function noticeTypeName(row) {
   const code = String(row?.NOTICE_TYPE || '').toLowerCase()
-  const fromRow = row?.NOTICE_TYPE_NAME || ''
-  if (fromRow) return escapeHtml(fromRow)
-
   const found = (references.noticeTypes || []).find((item) => {
     const itemCode = String(item.CODE || item.ID || '').toLowerCase()
     return itemCode === code
   })
+
+  if (found) return escapeHtml(found.NAME || found.CODE || found.ID || 'Сообщение')
+
+  const fromRow = row?.NOTICE_TYPE_NAME || ''
+  if (fromRow) return escapeHtml(fromRow)
+
   return escapeHtml(found?.NAME || row?.NOTICE_TYPE || 'Сообщение')
 }
 
@@ -413,8 +473,12 @@ function noticeTypeOptions(current) {
 }
 
 function noticeTypeClass(value) {
-  const code = String(value || 'notice')
+  const code = noticeTypeCode(value)
+  return `notice-kind-${code || 'notice'}`
+}
+
+function noticeTypeCode(value) {
+  return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '')
-  return `notice-kind-${code || 'notice'}`
 }

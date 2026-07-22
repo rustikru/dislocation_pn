@@ -6,5 +6,6 @@
     <button class="btn primary" id="btn-add-notice" style="display:none">+ Добавить</button>
 </div>
 
+<div class="notice-type-tabs" id="notice-type-tabs"></div>
 <div class="notice-list" id="notice-list"></div>
 <div class="notice-pages" id="notice-pages"></div>
