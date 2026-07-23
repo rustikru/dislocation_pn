@@ -138,6 +138,9 @@
          image_path       varchar2(500),
          created_at       varchar2(20),
          is_read          varchar2(1),
+         -- add 23.07.2026 BekmansurovRR
+         -- признак "избранное" уведомление для пользователя
+         is_favorite      varchar2(1),
          active           varchar2(1)
    );
    type t_gu23_notice_tab is
@@ -672,6 +675,21 @@
 
    function gu23_notice_toggle (
       p_notice_id in number
+   ) return varchar2;
+
+    -- add 23.07.2026 BekmansurovRR
+    -- переключение признака "избранное" уведомления для пользователя
+   function gu23_notice_favorite (
+      p_user_id   in number,
+      p_notice_id in number
+   ) return varchar2;
+
+    -- add 23.07.2026 BekmansurovRR
+    -- ручная установка признака прочтения (иконка-конверт: прочитано/не прочитано)
+   function gu23_notice_read_set (
+      p_user_id   in number,
+      p_notice_id in number,
+      p_read      in varchar2
    ) return varchar2;
 
     -- ---- Администрирование справочников ----

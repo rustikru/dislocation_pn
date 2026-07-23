@@ -3947,12 +3947,21 @@
                    n.created_at,
                    c_dtf
                 ) created_at,
+                -- add 23.07.2026 BekmansurovRR
+                -- прочитано определяем по дате прочтения (строка может
+                -- существовать только ради отметки "избранное")
                 case
-                   when nr.notification_id is null then
+                   when nr.read_at is null then
                       'N'
                    else
                       'Y'
-                end is_read
+                end is_read,
+                -- add 23.07.2026 BekmansurovRR
+                -- признак "избранное" для пользователя
+                nvl(
+                   nr.is_favorite,
+                   'N'
+                ) is_favorite
            from xx_disl_module_notif n
            left join xx_disl_general_ref nt
          on nt.ref_code = 'GU23_NOTICE_TYPE'
@@ -3987,6 +3996,9 @@
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
+         -- add 23.07.2026 BekmansurovRR
+         -- отдаём признак избранного в результат
+         l_row.is_favorite := r.is_favorite;
          l_row.active := 'Y';
          pipe row ( l_row );
       end loop;
@@ -4021,6 +4033,10 @@
            from xx_disl_module_notif_read nr
           where nr.notification_id = n.id
             and nr.user_id = p_user_id
+            -- add 23.07.2026 BekmansurovRR
+            -- непрочитанным считаем и случай, когда строка есть только
+            -- ради избранного (read_at не заполнен)
+            and nr.read_at is not null
       );
 
       return l_count;
@@ -4031,15 +4047,13 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      insert into xx_disl_module_notif_read (
-         notification_id,
-         user_id,
-         read_at
-      )
-         select n.id,
-                p_user_id,
-                sysdate
-          from xx_disl_module_notif n
+      -- add 23.07.2026 BekmansurovRR
+      -- MERGE вместо INSERT: строка уже может существовать ради отметки
+      -- "избранное", тогда просто проставляем дату прочтения
+      merge into xx_disl_module_notif_read t
+      using (
+         select n.id as notification_id
+           from xx_disl_module_notif n
           where n.id = p_notice_id
             and n.module_code = 'GU23'
             and ( not exists (
@@ -4053,12 +4067,22 @@
              where nu.notification_id = n.id
                and nu.user_id = p_user_id
          ) )
-            and not exists (
-            select 1
-              from xx_disl_module_notif_read
-             where notification_id = p_notice_id
-               and user_id = p_user_id
-         );
+      ) s on ( t.notification_id = s.notification_id
+               and t.user_id = p_user_id )
+      when matched then
+         update
+            set t.read_at = sysdate
+          where t.read_at is null
+      when not matched then
+         insert (
+            notification_id,
+            user_id,
+            read_at,
+            is_favorite )
+         values ( s.notification_id,
+                  p_user_id,
+                  sysdate,
+                  'N' );
 
       commit;
       return 'OK';
@@ -4072,14 +4096,12 @@
       p_user_id in number
    ) return varchar2 is
    begin
-      insert into xx_disl_module_notif_read (
-         notification_id,
-         user_id,
-         read_at
-      )
-         select n.id,
-                p_user_id,
-                sysdate
+      -- add 23.07.2026 BekmansurovRR
+      -- MERGE: помечаем прочитанными все видимые уведомления, сохраняя уже
+      -- имеющиеся строки (в т.ч. с отметкой "избранное")
+      merge into xx_disl_module_notif_read t
+      using (
+         select n.id as notification_id
            from xx_disl_module_notif n
           where n.active = 'Y'
             and n.module_code = 'GU23'
@@ -4095,12 +4117,22 @@
              where nu.notification_id = n.id
                and nu.user_id = p_user_id
          ) )
-            and not exists (
-            select 1
-              from xx_disl_module_notif_read nr
-             where nr.notification_id = n.id
-               and nr.user_id = p_user_id
-         );
+      ) s on ( t.notification_id = s.notification_id
+               and t.user_id = p_user_id )
+      when matched then
+         update
+            set t.read_at = sysdate
+          where t.read_at is null
+      when not matched then
+         insert (
+            notification_id,
+            user_id,
+            read_at,
+            is_favorite )
+         values ( s.notification_id,
+                  p_user_id,
+                  sysdate,
+                  'N' );
 
       commit;
       return 'OK';
@@ -4131,12 +4163,20 @@
                    n.created_at,
                    c_dtf
                 ) created_at,
+                -- add 23.07.2026 BekmansurovRR
+                -- прочитано определяем по дате прочтения
                 case
-                   when nr.notification_id is null then
+                   when nr.read_at is null then
                       'N'
                    else
                       'Y'
                 end is_read,
+                -- add 23.07.2026 BekmansurovRR
+                -- признак "избранное" для пользователя
+                nvl(
+                   nr.is_favorite,
+                   'N'
+                ) is_favorite,
                 n.active
            from xx_disl_module_notif n
            left join xx_disl_general_ref nt
@@ -4159,6 +4199,9 @@
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
+         -- add 23.07.2026 BekmansurovRR
+         -- отдаём признак избранного в результат
+         l_row.is_favorite := r.is_favorite;
          l_row.active := r.active;
          pipe row ( l_row );
       end loop;
@@ -4270,6 +4313,129 @@
          rollback;
          return format_error();
    end gu23_notice_toggle;
+
+    -- add 23.07.2026 BekmansurovRR
+    -- Переключение признака "избранное" уведомления для пользователя.
+    -- Возвращает 'OK' || us || новое_состояние ('Y'/'N').
+   function gu23_notice_favorite (
+      p_user_id   in number,
+      p_notice_id in number
+   ) return varchar2 is
+      l_state varchar2(1);
+   begin
+      merge into xx_disl_module_notif_read t
+      using (
+         select n.id as notification_id
+           from xx_disl_module_notif n
+          where n.id = p_notice_id
+            and n.module_code = 'GU23'
+            and ( not exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+         )
+             or exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+               and nu.user_id = p_user_id
+         ) )
+      ) s on ( t.notification_id = s.notification_id
+               and t.user_id = p_user_id )
+      when matched then
+         update
+            set t.is_favorite =
+               case
+                  when t.is_favorite = 'Y' then
+                     'N'
+                  else
+                     'Y'
+               end
+      when not matched then
+         insert (
+            notification_id,
+            user_id,
+            read_at,
+            is_favorite )
+         values ( s.notification_id,
+                  p_user_id,
+                  null,
+                  'Y' );
+
+      select nvl(
+         max(is_favorite),
+         'N'
+      )
+        into l_state
+        from xx_disl_module_notif_read
+       where notification_id = p_notice_id
+         and user_id = p_user_id;
+
+      commit;
+      return 'OK'
+             || c_us
+             || l_state;
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_favorite;
+
+    -- add 23.07.2026 BekmansurovRR
+    -- Ручная установка признака прочтения (иконка-конверт).
+    -- p_read = 'Y' — прочитано, иначе — не прочитано.
+   function gu23_notice_read_set (
+      p_user_id   in number,
+      p_notice_id in number,
+      p_read      in varchar2
+   ) return varchar2 is
+      l_read_at date := case
+         when p_read = 'Y' then
+            sysdate
+         else
+            null
+      end;
+   begin
+      merge into xx_disl_module_notif_read t
+      using (
+         select n.id as notification_id
+           from xx_disl_module_notif n
+          where n.id = p_notice_id
+            and n.module_code = 'GU23'
+            and ( not exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+         )
+             or exists (
+            select 1
+              from xx_disl_module_notif_user nu
+             where nu.notification_id = n.id
+               and nu.user_id = p_user_id
+         ) )
+      ) s on ( t.notification_id = s.notification_id
+               and t.user_id = p_user_id )
+      when matched then
+         update
+            set t.read_at = l_read_at
+      when not matched then
+         insert (
+            notification_id,
+            user_id,
+            read_at,
+            is_favorite )
+         values ( s.notification_id,
+                  p_user_id,
+                  l_read_at,
+                  'N' );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end gu23_notice_read_set;
 
     -- ----------------------------------------------------------------
     -- Администрирование справочников

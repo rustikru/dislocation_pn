@@ -204,6 +204,14 @@ class GuActRepository
                 case 'gu23_notice_read':        // отметить уведомление прочитанным
                     $this->noticeRead();
                     break;
+                // add 23.07.2026 BekmansurovRR
+                case 'gu23_notice_read_set':    // установить/снять признак прочтения (конверт)
+                    $this->noticeReadSet();
+                    break;
+                // add 23.07.2026 BekmansurovRR
+                case 'gu23_notice_favorite':    // переключить признак "избранное"
+                    $this->noticeFavorite();
+                    break;
                 case 'gu23_notice_read_all':    // отметить все уведомления прочитанными
                     $this->noticeReadAll();
                     break;
@@ -529,6 +537,62 @@ class GuActRepository
         }
 
         $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+    }
+
+    // add 23.07.2026 BekmansurovRR
+    // Ручная установка признака прочтения (иконка-конверт: прочитано/не прочитано)
+    private function noticeReadSet(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $read = strtoupper(trim((string) filter_input(INPUT_POST, 'read'))) === 'Y' ? 'Y' : 'N';
+
+        if ($id <= 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
+            return;
+        }
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_read_set(:p_user_id, :notice_id, :p_read)',
+            [':p_user_id' => $userId, ':notice_id' => $id, ':p_read' => $read],
+            1000
+        );
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true, 'is_read' => $read]);
+            return;
+        }
+
+        $parts = explode(self::US, (string) $result);
+        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
+    }
+
+    // add 23.07.2026 BekmansurovRR
+    // Переключение признака "избранное" уведомления для пользователя
+    private function noticeFavorite(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $id = (int) filter_input(INPUT_POST, 'id');
+
+        if ($id <= 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
+            return;
+        }
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_notice_favorite(:p_user_id, :notice_id)',
+            [':p_user_id' => $userId, ':notice_id' => $id],
+            1000
+        );
+
+        $parts = explode(self::US, (string) $result);
+
+        if (str_starts_with((string) $result, 'OK')) {
+            echo json_encode(['ok' => true, 'favorite' => $parts[1] ?? 'N']);
+            return;
+        }
+
         echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
     }
 

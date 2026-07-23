@@ -14,6 +14,15 @@ let noticeTypeFilter = ''
 const noticePageSize = 6
 const noticeTextLimit = 180
 
+// add 23.07.2026 BekmansurovRR
+// Иконки для строки уведомления: звезда (избранное) слева и конверт
+// (прочитано/не прочитано) справа. Инлайн-SVG — без внешних запросов и
+// с поддержкой старых браузеров.
+const NOTICE_STAR_SVG =
+  '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2.6l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.1l6.1-.9z"/></svg>'
+const NOTICE_MAIL_SVG =
+  '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7.5l8 5.2 8-5.2"/></svg>'
+
 export function loadNoticeCount() {
   return sendApiRequest('gu23_notice_count').done((response) => {
     applicationState.noticeCount = Number((response && response.count) || 0)
@@ -112,10 +121,14 @@ function noticeRowsPage() {
 
   rows.forEach((row) => {
     const isRead = row.IS_READ === 'Y'
+    const isFavorite = row.IS_FAVORITE === 'Y'
     const canEdit = hasPerm('MANAGE_REFS')
     const bodyText = shortNoticeText(row.BODY || '')
+    // add 23.07.2026 BekmansurovRR
+    // звезда (избранное) слева, конверт (прочитано/не прочитано) справа
     const $item = $(`
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
+        <span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>
         <span class="notice-data">
           <span class="notice-head">
             <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</em>
@@ -127,6 +140,7 @@ function noticeRowsPage() {
           ${row.IMAGE_PATH ? '<span class="notice-image-note">Есть картинка</span>' : ''}
         </span>
         <span class="notice-actions">
+          <span class="notice-mail ${isRead ? 'is-read' : 'is-unread'}" title="${isRead ? 'Прочитано (отметить непрочитанным)' : 'Не прочитано (отметить прочитанным)'}">${NOTICE_MAIL_SVG}</span>
           ${canEdit ? '<span class="notice-edit" title="Изменить">✎</span>' : ''}
         </span>
       </button>
@@ -137,6 +151,20 @@ function noticeRowsPage() {
         noticeRead(row.ID, $item)
       }
       noticeView(row)
+    })
+
+    // add 23.07.2026 BekmansurovRR
+    // клик по звезде — переключение избранного (без открытия уведомления)
+    $item.find('.notice-fav').on('click', (event) => {
+      event.stopPropagation()
+      noticeFavorite(row, $item.find('.notice-fav'))
+    })
+
+    // add 23.07.2026 BekmansurovRR
+    // клик по конверту — ручное переключение признака прочтения
+    $item.find('.notice-mail').on('click', (event) => {
+      event.stopPropagation()
+      noticeReadToggle(row, $item, $item.find('.notice-mail'))
     })
 
     $item.find('.notice-edit').on('click', (event) => {
@@ -264,6 +292,55 @@ function noticeRead(id, $item) {
     loadNoticeCount().done(() => {
       showNoticeCount()
     })
+  })
+}
+// add 23.07.2026 BekmansurovRR
+// Переключение признака "избранное" (иконка-звезда)
+function noticeFavorite(row, $fav) {
+  sendApiRequest('gu23_notice_favorite', { id: row.ID }).done((response) => {
+    if (!response || response.ok !== true) {
+      showToast((response && response.msg) || 'Ошибка', 'err')
+      return
+    }
+
+    const favorite = response.favorite === 'Y'
+    row.IS_FAVORITE = favorite ? 'Y' : 'N'
+    noticeRows.forEach((item) => {
+      if (String(item.ID) === String(row.ID)) item.IS_FAVORITE = row.IS_FAVORITE
+    })
+    $fav
+      .toggleClass('is-fav', favorite)
+      .attr('title', favorite ? 'Убрать из избранного' : 'В избранное')
+  })
+}
+// add 23.07.2026 BekmansurovRR
+// Ручное переключение признака прочтения (иконка-конверт)
+function noticeReadToggle(row, $item, $mail) {
+  const makeRead = row.IS_READ !== 'Y'
+  sendApiRequest('gu23_notice_read_set', {
+    id: row.ID,
+    read: makeRead ? 'Y' : 'N',
+  }).done((response) => {
+    if (!response || response.ok !== true) {
+      showToast((response && response.msg) || 'Ошибка', 'err')
+      return
+    }
+
+    row.IS_READ = makeRead ? 'Y' : 'N'
+    noticeRows.forEach((item) => {
+      if (String(item.ID) === String(row.ID)) item.IS_READ = row.IS_READ
+    })
+    $item.toggleClass('unread', !makeRead)
+    $mail
+      .toggleClass('is-read', makeRead)
+      .toggleClass('is-unread', !makeRead)
+      .attr(
+        'title',
+        makeRead
+          ? 'Прочитано (отметить непрочитанным)'
+          : 'Не прочитано (отметить прочитанным)',
+      )
+    loadNoticeCount().done(showNoticeCount)
   })
 }
 // Список уведомлений

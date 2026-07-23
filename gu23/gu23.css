@@ -1266,7 +1266,8 @@ textarea.inp {
 }
 .notice-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* add 23.07.2026 BekmansurovRR: звезда | текст | действия(конверт+править) */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -1276,6 +1277,59 @@ textarea.inp {
   border-radius: var(--r);
   padding: 8px 12px;
   color: var(--ink);
+}
+/* add 23.07.2026 BekmansurovRR: иконка "избранное" (звезда) слева */
+.notice-fav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  cursor: pointer;
+  color: #c9ccd1;
+}
+.notice-fav svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+}
+.notice-fav:hover {
+  color: #f0b429;
+}
+.notice-fav.is-fav {
+  color: #f5b301;
+}
+.notice-fav.is-fav svg {
+  fill: currentColor;
+  stroke: #e0a200;
+}
+/* add 23.07.2026 BekmansurovRR: иконка-конверт (прочитано/не прочитано) справа */
+.notice-mail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+.notice-mail svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.notice-mail:hover {
+  opacity: 0.72;
+}
+.notice-mail.is-unread {
+  color: #3d6ea5;
+}
+.notice-mail.is-read {
+  color: #b9bec6;
 }
 .notice-item:hover {
   background: var(--surface2);
@@ -1364,6 +1418,7 @@ textarea.inp {
   display: flex;
   align-items: center;
   align-self: center;
+  gap: 6px;
 }
 .notice-edit {
   width: 28px;
