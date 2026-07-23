@@ -205,7 +205,7 @@ class GuActRepository
                     $this->noticeRead();
                     break;
                 // add 23.07.2026 BekmansurovRR
-                case 'gu23_notice_read_set':    // установить/снять признак прочтения (конверт)
+                case 'gu23_notice_read_set':    // установить/снять признак прочтения 
                     $this->noticeReadSet();
                     break;
                 // add 23.07.2026 BekmansurovRR
@@ -218,13 +218,13 @@ class GuActRepository
                 case 'gu23_notices_all':        // список уведомлений для управления
                     $this->noticesAll();
                     break;
-                case 'gu23_notice_save':        // сохранить новость
+                case 'gu23_notice_save':        // сохранить уведомления
                     $this->noticeSave();
                     break;
-                case 'gu23_notice_toggle':      // включить / отключить новость
+                case 'gu23_notice_toggle':      // включить / отключить уведомления
                     $this->noticeToggle();
                     break;
-                case 'gu23_notice_image_upload': // загрузить картинку для новости
+                case 'gu23_notice_image_upload': // загрузить картинку для уведомления
                     $this->noticeImageUpload();
                     break;
 
@@ -272,7 +272,7 @@ class GuActRepository
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
             }
-            // Логируем неуспешные ответы (ok:false) — в gu23/log/
+            // Логируем неуспешные ответы  — в gu23/log/
             $out = ob_get_clean();
             $decoded = json_decode($out, true);
             if (is_array($decoded) && array_key_exists('ok', $decoded) && $decoded['ok'] === false) {

@@ -207,6 +207,7 @@ function noticeTypeTabs() {
   if (!$place.length) return
 
   const types = noticeTypes()
+  //Вкладка "Все"
   const allCount = noticeRows.length
   let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
 
@@ -350,8 +351,7 @@ function noticeFavorite(row, $fav) {
       .toggleClass('is-fav', favorite)
       .attr('title', favorite ? 'Убрать из избранного' : 'В избранное')
     // add 23.07.2026 BekmansurovRR
-    // на вкладке "Избранное" убираем снятую запись из списка,
-    // иначе обновляем счётчики вкладок
+    // на вкладке "Избранное" убираем снятую запись из списка
     if (noticeTypeFilter === NOTICE_FAVORITE_FILTER) {
       noticeRowsPage()
     } else {
