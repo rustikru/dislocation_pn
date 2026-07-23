@@ -19,6 +19,10 @@ const noticeTextLimit = 180
 const NOTICE_UNREAD_FILTER = '__unread__'
 
 // add 23.07.2026 BekmansurovRR
+// спец-значение фильтра вкладок для показа только избранных уведомлений
+const NOTICE_FAVORITE_FILTER = '__favorite__'
+
+// add 23.07.2026 BekmansurovRR
 // Иконки для строки уведомления: звезда (избранное) слева и конверт
 // (прочитано/не прочитано) справа. Инлайн-SVG — без внешних запросов и
 // с поддержкой старых браузеров.
@@ -192,6 +196,11 @@ function noticeFilterRows() {
   if (noticeTypeFilter === NOTICE_UNREAD_FILTER) {
     return noticeRows.filter((row) => row.IS_READ !== 'Y')
   }
+  // add 23.07.2026 BekmansurovRR
+  // вкладка "Избранное" — только избранные уведомления
+  if (noticeTypeFilter === NOTICE_FAVORITE_FILTER) {
+    return noticeRows.filter((row) => row.IS_FAVORITE === 'Y')
+  }
   if (!noticeTypeFilter) return noticeRows
   return noticeRows.filter(
     (row) => noticeTypeCode(row.NOTICE_TYPE) === noticeTypeFilter,
@@ -210,6 +219,11 @@ function noticeTypeTabs() {
   // вкладка "Непрочитанное" со счётчиком непрочитанных
   const unreadCount = noticeRows.filter((row) => row.IS_READ !== 'Y').length
   html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === NOTICE_UNREAD_FILTER ? 'active' : ''}" data-type="${NOTICE_UNREAD_FILTER}">Непрочитанное (${unreadCount})</button>`
+
+  // add 23.07.2026 BekmansurovRR
+  // вкладка "Избранное" в виде звёздочки со счётчиком избранных
+  const favoriteCount = noticeRows.filter((row) => row.IS_FAVORITE === 'Y').length
+  html += `<button type="button" class="notice-type-tab notice-type-tab-fav ${noticeTypeFilter === NOTICE_FAVORITE_FILTER ? 'active' : ''}" data-type="${NOTICE_FAVORITE_FILTER}" title="Избранное"><span class="notice-tab-star">${NOTICE_STAR_SVG}</span> (${favoriteCount})</button>`
 
   types.forEach((type) => {
     const count = noticeRows.filter(
@@ -338,6 +352,14 @@ function noticeFavorite(row, $fav) {
     $fav
       .toggleClass('is-fav', favorite)
       .attr('title', favorite ? 'Убрать из избранного' : 'В избранное')
+    // add 23.07.2026 BekmansurovRR
+    // на вкладке "Избранное" убираем снятую запись из списка,
+    // иначе обновляем счётчики вкладок
+    if (noticeTypeFilter === NOTICE_FAVORITE_FILTER) {
+      noticeRowsPage()
+    } else {
+      noticeTypeTabs()
+    }
   })
 }
 // add 23.07.2026 BekmansurovRR

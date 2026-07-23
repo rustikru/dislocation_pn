@@ -1264,6 +1264,24 @@ textarea.inp {
   border-color: var(--ink);
   color: #fff;
 }
+/* add 23.07.2026 BekmansurovRR: вкладка "Избранное" со звёздочкой */
+.notice-type-tab-fav {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.notice-tab-star {
+  display: inline-flex;
+  align-items: center;
+}
+.notice-tab-star svg {
+  width: 14px;
+  height: 14px;
+  fill: #f5b301;
+  stroke: #e0a200;
+  stroke-width: 1.4px;
+  stroke-linejoin: round;
+}
 .notice-item {
   display: grid;
   /* add 23.07.2026 BekmansurovRR: звезда | текст | действия(конверт+править) */
