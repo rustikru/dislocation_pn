@@ -216,14 +216,16 @@ function noticeTypeTabs() {
   let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
 
   // add 23.07.2026 BekmansurovRR
+  // вкладка "Избранное" в виде звёздочки со счётчиком избранных
+  const favoriteCount = noticeRows.filter(
+    (row) => row.IS_FAVORITE === 'Y',
+  ).length
+  html += `<button type="button" class="notice-type-tab notice-type-tab-fav ${noticeTypeFilter === NOTICE_FAVORITE_FILTER ? 'active' : ''}" data-type="${NOTICE_FAVORITE_FILTER}" title="Избранное"><span class="notice-tab-star">${NOTICE_STAR_SVG}</span> (${favoriteCount})</button>`
+
+  // add 23.07.2026 BekmansurovRR
   // вкладка "Непрочитанное" со счётчиком непрочитанных
   const unreadCount = noticeRows.filter((row) => row.IS_READ !== 'Y').length
   html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === NOTICE_UNREAD_FILTER ? 'active' : ''}" data-type="${NOTICE_UNREAD_FILTER}">Непрочитанное (${unreadCount})</button>`
-
-  // add 23.07.2026 BekmansurovRR
-  // вкладка "Избранное" в виде звёздочки со счётчиком избранных
-  const favoriteCount = noticeRows.filter((row) => row.IS_FAVORITE === 'Y').length
-  html += `<button type="button" class="notice-type-tab notice-type-tab-fav ${noticeTypeFilter === NOTICE_FAVORITE_FILTER ? 'active' : ''}" data-type="${NOTICE_FAVORITE_FILTER}" title="Избранное"><span class="notice-tab-star">${NOTICE_STAR_SVG}</span> (${favoriteCount})</button>`
 
   types.forEach((type) => {
     const count = noticeRows.filter(
