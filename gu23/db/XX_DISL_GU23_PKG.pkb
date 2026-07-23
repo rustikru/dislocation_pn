@@ -1,4 +1,4 @@
-﻿/* Formatted on 23.07.2026 9:35:48 (QP5 v5.417) */
+﻿/* Formatted on 23.07.2026 22:13:30 (QP5 v5.417) */
 create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
@@ -2214,17 +2214,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             return format_error('Редактировать акт может только создатель или администратор');
          end if;
 
-            --  Разрешить администратору правку акта "на подписании":
-            -- if
-            --    v_cur_status <> 'draft'
-            --    and not ( v_cur_status = 'active'
-            --              and gu23_is_admin(p_data.p_user_id) = 'Y'
-            --              -- and p_data.p_type = 'other'
-            --             )
-            -- then
-            --    return format_error('Действующий/закрытый акт не редактируется ...');
-            -- end if;
-
             -- если у Проекта ещё нет номера - присваиваем
          if v_number is null then
             v_number := g_next_number(v_dept_id);
@@ -2276,19 +2265,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             delete from xx_disl_gu23_approval
              where act_id = v_id;
          end if;
-        -- скорректирован на стадии подписании
-        -- сбрасываем, требуется переподписание
-        /*if v_cur_status <> 'draft'
-        then
-            delete from xx_disl_gu23_approval
-                  where act_id = v_id;
 
-            log_act_history (
-                p_act_id    => v_id,
-                p_user_id   => p_data.p_user_id,
-                p_text      =>
-                    'Акт скорректирован администратором на стадии подписания - ранее отрпавленные подписи сброшены');
-        end if;*/
       end if;
 
         -- разбираем вагоны
@@ -3162,7 +3139,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             set status = 'signed',
                 modified_at = sysdate
           where id = p_act_id
-            and act_type = 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали  
+            and act_type = 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали
             and status = 'active';
 
          update xx_disl_gu23_act
@@ -5148,7 +5125,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            x_subject,
            x_msg,
            x_sender );
-      /*
+/*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
