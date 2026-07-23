@@ -2566,7 +2566,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         -- закрытие циклов акта начала: частичное/полное
       if
          p_data.p_type = 'end'
-         and p_data.p_status = 'active'
+         and p_data.p_status in ( 'active',
+                                  'closed' )
          and p_data.p_linked_start_id is not null
       then
          select count(*)
@@ -2591,7 +2592,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                    modified_at = sysdate,
                    modified_by = p_data.p_user_id
              where id = p_data.p_linked_start_id
-               and status = 'active';
+               and status in ( 'active',
+                               'signed' -- upd 23.07.2026 Bekmansurovrr добавил проверку на статус signed, чтобы закрытие происходило и при подписании акта окончания
+                                );
 
             log_act_history(
                p_act_id  => p_data.p_linked_start_id,
