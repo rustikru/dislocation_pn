@@ -3099,6 +3099,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
       if v_approved >= v_total then
          update xx_disl_gu23_act
+            set status = 'signed',
+                modified_at = sysdate
+          where id = p_act_id
+            and act_type = 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали  
+            and status = 'active';
+
+         update xx_disl_gu23_act
             set status = 'closed',
                 modified_at = sysdate
           where id = p_act_id
