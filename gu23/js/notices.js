@@ -15,17 +15,15 @@ const noticePageSize = 6
 const noticeTextLimit = 180
 
 // add 23.07.2026 BekmansurovRR
-// спец-значение фильтра вкладок для показа только непрочитанных уведомлений
+// значение фильтра вкладок для показа только непрочитанных уведомлений
 const NOTICE_UNREAD_FILTER = '__unread__'
 
 // add 23.07.2026 BekmansurovRR
-// спец-значение фильтра вкладок для показа только избранных уведомлений
+// значение фильтра вкладок для показа только избранных уведомлений
 const NOTICE_FAVORITE_FILTER = '__favorite__'
 
 // add 23.07.2026 BekmansurovRR
-// Иконки для строки уведомления: звезда (избранное) слева и конверт
-// (прочитано/не прочитано) справа. Инлайн-SVG — без внешних запросов и
-// с поддержкой старых браузеров.
+// Иконки для строки уведомления
 const NOTICE_STAR_SVG =
   '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2.6l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.1l6.1-.9z"/></svg>'
 const NOTICE_MAIL_SVG =
@@ -117,7 +115,6 @@ function noticeRowsPage() {
   const $list = $('#notice-list').empty()
   const filteredRows = noticeFilterRows()
   // add 23.07.2026 BekmansurovRR
-  // не остаёмся на опустевшей странице (напр. после отметки прочтения)
   const lastPage = Math.max(1, Math.ceil(filteredRows.length / noticePageSize))
   if (noticePage > lastPage) noticePage = lastPage
   const start = (noticePage - 1) * noticePageSize
@@ -137,7 +134,7 @@ function noticeRowsPage() {
     const canEdit = hasPerm('MANAGE_REFS')
     const bodyText = shortNoticeText(row.BODY || '')
     // add 23.07.2026 BekmansurovRR
-    // звезда (избранное) слева, конверт (прочитано/не прочитано) справа
+    //  (избранное) слева,  (прочитано/не прочитано) справа
     const $item = $(`
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
         <span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>
@@ -166,14 +163,12 @@ function noticeRowsPage() {
     })
 
     // add 23.07.2026 BekmansurovRR
-    // клик по звезде — переключение избранного (без открытия уведомления)
     $item.find('.notice-fav').on('click', (event) => {
       event.stopPropagation()
       noticeFavorite(row, $item.find('.notice-fav'))
     })
 
     // add 23.07.2026 BekmansurovRR
-    // клик по конверту — ручное переключение признака прочтения
     $item.find('.notice-mail').on('click', (event) => {
       event.stopPropagation()
       noticeReadToggle(row, $item, $item.find('.notice-mail'))
@@ -192,12 +187,12 @@ function noticeRowsPage() {
 // Фильтрация уведомлений по типу
 function noticeFilterRows() {
   // add 23.07.2026 BekmansurovRR
-  // вкладка "Непрочитанное" — только непрочитанные уведомления
+  // вкладка "Непрочитанное"
   if (noticeTypeFilter === NOTICE_UNREAD_FILTER) {
     return noticeRows.filter((row) => row.IS_READ !== 'Y')
   }
   // add 23.07.2026 BekmansurovRR
-  // вкладка "Избранное" — только избранные уведомления
+  // вкладка "Избранное"
   if (noticeTypeFilter === NOTICE_FAVORITE_FILTER) {
     return noticeRows.filter((row) => row.IS_FAVORITE === 'Y')
   }
@@ -216,14 +211,14 @@ function noticeTypeTabs() {
   let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
 
   // add 23.07.2026 BekmansurovRR
-  // вкладка "Избранное" в виде звёздочки со счётчиком избранных
+  // вкладка "Избранное"
   const favoriteCount = noticeRows.filter(
     (row) => row.IS_FAVORITE === 'Y',
   ).length
   html += `<button type="button" class="notice-type-tab notice-type-tab-fav ${noticeTypeFilter === NOTICE_FAVORITE_FILTER ? 'active' : ''}" data-type="${NOTICE_FAVORITE_FILTER}" title="Избранное"><span class="notice-tab-star">${NOTICE_STAR_SVG}</span> (${favoriteCount})</button>`
 
   // add 23.07.2026 BekmansurovRR
-  // вкладка "Непрочитанное" со счётчиком непрочитанных
+  // вкладка "Непрочитанное"
   const unreadCount = noticeRows.filter((row) => row.IS_READ !== 'Y').length
   html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === NOTICE_UNREAD_FILTER ? 'active' : ''}" data-type="${NOTICE_UNREAD_FILTER}">Непрочитанное (${unreadCount})</button>`
 
