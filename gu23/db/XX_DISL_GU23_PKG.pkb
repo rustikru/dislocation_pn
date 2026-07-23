@@ -3051,6 +3051,63 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
+    -- add 24.07.2026 BekmansurovRR
+    -- Закрытие акта начала простоя. Акт начала закрывается, когда по всем его
+    -- вагонам созданы акты окончания и все они закрыты (status = 'closed').
+   procedure close_start_if_complete (
+      p_start_id in number,
+      p_user_id  in number default null
+   ) is
+      v_total  number;
+      v_closed number;
+   begin
+      if p_start_id is null then
+         return;
+      end if;
+
+        -- всего вагонов в акте начала
+      select count(distinct wagon_no)
+        into v_total
+        from xx_disl_gu23_act_row
+       where act_id = p_start_id;
+
+      if v_total = 0 then
+         return;
+      end if;
+
+        -- вагоны, закрытые актами окончания в статусе 'closed'
+      select count(distinct er.wagon_no)
+        into v_closed
+        from xx_disl_gu23_act     e,
+             xx_disl_gu23_act_row er
+       where er.act_id = e.id
+         and e.act_type = 'end'
+         and e.status = 'closed'
+         and e.linked_start_id = p_start_id;
+
+        -- закрываем акт начала, только если покрыты все вагоны
+      if v_closed >= v_total then
+         update xx_disl_gu23_act
+            set status      = 'closed',
+                modified_at = sysdate,
+                modified_by = nvl(
+                   p_user_id,
+                   modified_by
+                )
+          where id = p_start_id
+            and status in ( 'active',
+                            'signed' );
+
+         if sql%rowcount > 0 then
+            log_act_history(
+               p_act_id  => p_start_id,
+               p_user_id => p_user_id,
+               p_text    => 'Цикл простоя полностью закрыт: по всем вагонам подписаны акты окончания'
+            );
+         end if;
+      end if;
+   end close_start_if_complete;
+
     -- Автоматически обновить статус акта на основе подписантов.
     -- Вызывается после каждого сохранения решения.
    procedure sync_act_status (
@@ -3112,9 +3169,23 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             set status = 'closed',
                 modified_at = sysdate
           where id = p_act_id
-            and act_type != 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали  
+            and act_type != 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали
             and status = 'active';
       end if;
+
+        -- add 24.07.2026 BekmansurovRR
+        -- после синхронизации статуса: если это подписанный (закрытый) акт
+        -- окончания - пробуем закрыть связанный акт начала простоя
+      for r in (
+         select linked_start_id
+           from xx_disl_gu23_act
+          where id = p_act_id
+            and act_type = 'end'
+            and status = 'closed'
+            and linked_start_id is not null
+      ) loop
+         close_start_if_complete(r.linked_start_id);
+      end loop;
    end sync_act_status;
 
     -- подписание/отклонение/корректировка по ссылке из письма.
