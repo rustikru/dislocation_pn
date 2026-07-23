@@ -146,7 +146,7 @@ function noticeRowsPage() {
           </span>
           <strong class="notice-title">${escapeHtml(row.TITLE || '')}</strong>
           ${bodyText ? `<span class="notice-text">${escapeHtml(bodyText)}</span>` : ''}
-          ${row.IMAGE_PATH ? '<span class="notice-image-note">Есть картинка</span>' : ''}
+          ${row.IMAGE_PATH ? '<span class="notice-image-note"><b>Есть фото...</b></span>' : ''}
         </span>
         <span class="notice-actions">
           <span class="notice-mail ${isRead ? 'is-read' : 'is-unread'}" title="${isRead ? 'Прочитано (отметить непрочитанным)' : 'Не прочитано (отметить прочитанным)'}">${NOTICE_MAIL_SVG}</span>
