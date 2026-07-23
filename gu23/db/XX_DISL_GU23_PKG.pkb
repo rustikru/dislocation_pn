@@ -4852,14 +4852,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || html_escape(v_circ)
                 || '</b></td></tr></table></div>'
             -- rem 15.07.2026 (пока не отключили такую возможность, только через сайт)
-            /*
-            || '<p style="margin:0 0 22px"><a href="'
-            || v_approve_url
-            || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
-            || '<a href="'
-            || v_reject_url
-            || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
-            */
+
+                || '<p style="margin:0 0 22px"><a href="'
+                || v_approve_url
+                || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+                || '<a href="'
+                || v_reject_url
+                || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
                 || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
                 || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
                 || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'
@@ -5058,7 +5057,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_function,
          'x_to_email=>' || x_to_email
       );
-
+      insert into xx_disl_gu23_mail_test (
+         p_to,
+         p_subject,
+         p_body,
+         p_from
+      ) values
+         ( x_to_email,
+           x_subject,
+           x_msg,
+           x_sender );
       /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
