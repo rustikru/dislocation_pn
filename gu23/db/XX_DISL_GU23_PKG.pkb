@@ -1,4 +1,5 @@
-﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
+﻿/* Formatted on 23.07.2026 9:35:48 (QP5 v5.417) */
+create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -3947,17 +3948,16 @@
                    n.created_at,
                    c_dtf
                 ) created_at,
-                -- add 23.07.2026 BekmansurovRR
-                -- прочитано определяем по дате прочтения (строка может
-                -- существовать только ради отметки "избранное")
+                         -- add 23.07.2026 BekmansurovRR
+                         -- прочитано определяем по дате прочтения
                 case
                    when nr.read_at is null then
                       'N'
                    else
                       'Y'
                 end is_read,
-                -- add 23.07.2026 BekmansurovRR
-                -- признак "избранное" для пользователя
+                         -- add 23.07.2026 BekmansurovRR
+                         -- признак "избранное" для пользователя
                 nvl(
                    nr.is_favorite,
                    'N'
@@ -3996,8 +3996,8 @@
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
-         -- add 23.07.2026 BekmansurovRR
-         -- отдаём признак избранного в результат
+            -- add 23.07.2026 BekmansurovRR
+            -- отдаём признак избранного в результат
          l_row.is_favorite := r.is_favorite;
          l_row.active := 'Y';
          pipe row ( l_row );
@@ -4033,9 +4033,7 @@
            from xx_disl_module_notif_read nr
           where nr.notification_id = n.id
             and nr.user_id = p_user_id
-            -- add 23.07.2026 BekmansurovRR
-            -- непрочитанным считаем и случай, когда строка есть только
-            -- ради избранного (read_at не заполнен)
+                               -- add 23.07.2026 BekmansurovRR
             and nr.read_at is not null
       );
 
@@ -4047,9 +4045,8 @@
       p_notice_id in number
    ) return varchar2 is
    begin
-      -- add 23.07.2026 BekmansurovRR
-      -- MERGE вместо INSERT: строка уже может существовать ради отметки
-      -- "избранное", тогда просто проставляем дату прочтения
+        -- add 23.07.2026 BekmansurovRR
+        -- MERGE вместо INSERT
       merge into xx_disl_module_notif_read t
       using (
          select n.id as notification_id
@@ -4068,21 +4065,21 @@
                and nu.user_id = p_user_id
          ) )
       ) s on ( t.notification_id = s.notification_id
-               and t.user_id = p_user_id )
-      when matched then
-         update
-            set t.read_at = sysdate
-          where t.read_at is null
+         and t.user_id = p_user_id )
+      when matched then update
+      set t.read_at = sysdate
+       where t.read_at is null
       when not matched then
-         insert (
-            notification_id,
-            user_id,
-            read_at,
-            is_favorite )
-         values ( s.notification_id,
-                  p_user_id,
-                  sysdate,
-                  'N' );
+      insert (
+         notification_id,
+         user_id,
+         read_at,
+         is_favorite )
+      values
+         ( s.notification_id,
+           p_user_id,
+           sysdate,
+           'N' );
 
       commit;
       return 'OK';
@@ -4096,9 +4093,8 @@
       p_user_id in number
    ) return varchar2 is
    begin
-      -- add 23.07.2026 BekmansurovRR
-      -- MERGE: помечаем прочитанными все видимые уведомления, сохраняя уже
-      -- имеющиеся строки (в т.ч. с отметкой "избранное")
+        -- add 23.07.2026 BekmansurovRR
+        -- MERGE: помечаем прочитанными все видимые уведомления
       merge into xx_disl_module_notif_read t
       using (
          select n.id as notification_id
@@ -4118,21 +4114,21 @@
                and nu.user_id = p_user_id
          ) )
       ) s on ( t.notification_id = s.notification_id
-               and t.user_id = p_user_id )
-      when matched then
-         update
-            set t.read_at = sysdate
-          where t.read_at is null
+         and t.user_id = p_user_id )
+      when matched then update
+      set t.read_at = sysdate
+       where t.read_at is null
       when not matched then
-         insert (
-            notification_id,
-            user_id,
-            read_at,
-            is_favorite )
-         values ( s.notification_id,
-                  p_user_id,
-                  sysdate,
-                  'N' );
+      insert (
+         notification_id,
+         user_id,
+         read_at,
+         is_favorite )
+      values
+         ( s.notification_id,
+           p_user_id,
+           sysdate,
+           'N' );
 
       commit;
       return 'OK';
@@ -4163,16 +4159,16 @@
                    n.created_at,
                    c_dtf
                 ) created_at,
-                -- add 23.07.2026 BekmansurovRR
-                -- прочитано определяем по дате прочтения
+                         -- add 23.07.2026 BekmansurovRR
+                         -- прочитано определяем по дате прочтения
                 case
                    when nr.read_at is null then
                       'N'
                    else
                       'Y'
                 end is_read,
-                -- add 23.07.2026 BekmansurovRR
-                -- признак "избранное" для пользователя
+                         -- add 23.07.2026 BekmansurovRR
+                         -- признак "избранное" для пользователя
                 nvl(
                    nr.is_favorite,
                    'N'
@@ -4199,8 +4195,8 @@
          l_row.image_path := r.image_path;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
-         -- add 23.07.2026 BekmansurovRR
-         -- отдаём признак избранного в результат
+            -- add 23.07.2026 BekmansurovRR
+            -- отдаём признак избранного в результат
          l_row.is_favorite := r.is_favorite;
          l_row.active := r.active;
          pipe row ( l_row );
@@ -4341,26 +4337,26 @@
                and nu.user_id = p_user_id
          ) )
       ) s on ( t.notification_id = s.notification_id
-               and t.user_id = p_user_id )
-      when matched then
-         update
-            set t.is_favorite =
-               case
-                  when t.is_favorite = 'Y' then
-                     'N'
-                  else
-                     'Y'
-               end
+         and t.user_id = p_user_id )
+      when matched then update
+      set t.is_favorite =
+         case
+            when t.is_favorite = 'Y' then
+               'N'
+            else
+               'Y'
+         end
       when not matched then
-         insert (
-            notification_id,
-            user_id,
-            read_at,
-            is_favorite )
-         values ( s.notification_id,
-                  p_user_id,
-                  null,
-                  'Y' );
+      insert (
+         notification_id,
+         user_id,
+         read_at,
+         is_favorite )
+      values
+         ( s.notification_id,
+           p_user_id,
+           null,
+           'Y' );
 
       select nvl(
          max(is_favorite),
@@ -4389,12 +4385,13 @@
       p_notice_id in number,
       p_read      in varchar2
    ) return varchar2 is
-      l_read_at date := case
-         when p_read = 'Y' then
-            sysdate
-         else
-            null
-      end;
+      l_read_at date :=
+         case
+            when p_read = 'Y' then
+               sysdate
+            else
+               null
+         end;
    begin
       merge into xx_disl_module_notif_read t
       using (
@@ -4414,20 +4411,20 @@
                and nu.user_id = p_user_id
          ) )
       ) s on ( t.notification_id = s.notification_id
-               and t.user_id = p_user_id )
-      when matched then
-         update
-            set t.read_at = l_read_at
+         and t.user_id = p_user_id )
+      when matched then update
+      set t.read_at = l_read_at
       when not matched then
-         insert (
-            notification_id,
-            user_id,
-            read_at,
-            is_favorite )
-         values ( s.notification_id,
-                  p_user_id,
-                  l_read_at,
-                  'N' );
+      insert (
+         notification_id,
+         user_id,
+         read_at,
+         is_favorite )
+      values
+         ( s.notification_id,
+           p_user_id,
+           l_read_at,
+           'N' );
 
       commit;
       return 'OK';
@@ -5061,7 +5058,7 @@
          'x_to_email=>' || x_to_email
       );
 
-/*
+      /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
