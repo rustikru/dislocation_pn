@@ -15,6 +15,10 @@ const noticePageSize = 6
 const noticeTextLimit = 180
 
 // add 23.07.2026 BekmansurovRR
+// спец-значение фильтра вкладок для показа только непрочитанных уведомлений
+const NOTICE_UNREAD_FILTER = '__unread__'
+
+// add 23.07.2026 BekmansurovRR
 // Иконки для строки уведомления: звезда (избранное) слева и конверт
 // (прочитано/не прочитано) справа. Инлайн-SVG — без внешних запросов и
 // с поддержкой старых браузеров.
@@ -108,6 +112,10 @@ function notices() {
 function noticeRowsPage() {
   const $list = $('#notice-list').empty()
   const filteredRows = noticeFilterRows()
+  // add 23.07.2026 BekmansurovRR
+  // не остаёмся на опустевшей странице (напр. после отметки прочтения)
+  const lastPage = Math.max(1, Math.ceil(filteredRows.length / noticePageSize))
+  if (noticePage > lastPage) noticePage = lastPage
   const start = (noticePage - 1) * noticePageSize
   const rows = filteredRows.slice(start, start + noticePageSize)
 
@@ -179,6 +187,11 @@ function noticeRowsPage() {
 }
 // Фильтрация уведомлений по типу
 function noticeFilterRows() {
+  // add 23.07.2026 BekmansurovRR
+  // вкладка "Непрочитанное" — только непрочитанные уведомления
+  if (noticeTypeFilter === NOTICE_UNREAD_FILTER) {
+    return noticeRows.filter((row) => row.IS_READ !== 'Y')
+  }
   if (!noticeTypeFilter) return noticeRows
   return noticeRows.filter(
     (row) => noticeTypeCode(row.NOTICE_TYPE) === noticeTypeFilter,
@@ -192,6 +205,11 @@ function noticeTypeTabs() {
   const types = noticeTypes()
   const allCount = noticeRows.length
   let html = `<button type="button" class="notice-type-tab ${noticeTypeFilter === '' ? 'active' : ''}" data-type="">Все (${allCount})</button>`
+
+  // add 23.07.2026 BekmansurovRR
+  // вкладка "Непрочитанное" со счётчиком непрочитанных
+  const unreadCount = noticeRows.filter((row) => row.IS_READ !== 'Y').length
+  html += `<button type="button" class="notice-type-tab ${noticeTypeFilter === NOTICE_UNREAD_FILTER ? 'active' : ''}" data-type="${NOTICE_UNREAD_FILTER}">Непрочитанное (${unreadCount})</button>`
 
   types.forEach((type) => {
     const count = noticeRows.filter(
@@ -292,6 +310,15 @@ function noticeRead(id, $item) {
     loadNoticeCount().done(() => {
       showNoticeCount()
     })
+    // add 23.07.2026 BekmansurovRR
+    // держим список и счётчики вкладок актуальными на странице уведомлений
+    if (!$item.hasClass('notice-panel-item') && $('#notice-list').length) {
+      if (noticeTypeFilter === NOTICE_UNREAD_FILTER) {
+        noticeRowsPage()
+      } else {
+        noticeTypeTabs()
+      }
+    }
   })
 }
 // add 23.07.2026 BekmansurovRR
@@ -341,6 +368,14 @@ function noticeReadToggle(row, $item, $mail) {
           : 'Не прочитано (отметить прочитанным)',
       )
     loadNoticeCount().done(showNoticeCount)
+    // add 23.07.2026 BekmansurovRR
+    // на вкладке "Непрочитанное" убираем прочитанную запись из списка,
+    // иначе обновляем счётчики вкладок
+    if (noticeTypeFilter === NOTICE_UNREAD_FILTER) {
+      noticeRowsPage()
+    } else {
+      noticeTypeTabs()
+    }
   })
 }
 // Список уведомлений
