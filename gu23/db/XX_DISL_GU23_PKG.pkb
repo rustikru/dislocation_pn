@@ -2764,7 +2764,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          and v_linked is not null
       then
          update xx_disl_gu23_act
-            set status = 'active',
+            set status = 'signed',
                 modified_at = sysdate,
                 modified_by = p_data.p_user_id
           where id = v_linked
@@ -3078,7 +3078,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         -- вагоны, закрытые актами окончания в статусе 'closed'
       select count(distinct er.wagon_no)
         into v_closed
-        from xx_disl_gu23_act     e,
+        from xx_disl_gu23_act e,
              xx_disl_gu23_act_row er
        where er.act_id = e.id
          and e.act_type = 'end'
@@ -3088,7 +3088,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         -- закрываем акт начала, только если покрыты все вагоны
       if v_closed >= v_total then
          update xx_disl_gu23_act
-            set status      = 'closed',
+            set status = 'closed',
                 modified_at = sysdate,
                 modified_by = nvl(
                    p_user_id,
