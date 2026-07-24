@@ -18,8 +18,6 @@ export function showArchive(container) {
 function showArchivePage(container) {
   // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
   const twoDigits = (n) => String(n).padStart(2, '0')
-  const toInputDate = (d) =>
-    `${d.getFullYear()}-${twoDigits(d.getMonth() + 1)}-${twoDigits(d.getDate())}`
   const toFilterDate = (d) =>
     `${twoDigits(d.getDate())}.${twoDigits(d.getMonth() + 1)}.${d.getFullYear()}`
   const now = new Date()
@@ -46,6 +44,23 @@ function showArchivePage(container) {
     status: 'Статус',
     dept: 'Цех',
     reason_categ: 'Категория',
+  }
+  let selectedPresetId = ''
+
+  const presetParams = () => ({
+    q: archiveFilter.q,
+    type: archiveFilter.type,
+    status: archiveFilter.status,
+    dept: archiveFilter.dept,
+    reason_categ: archiveFilter.reason_categ,
+    date_from: archiveFilter.date_from,
+    date_to: archiveFilter.date_to,
+    has_signed: archiveFilter.has_signed,
+  })
+
+  const filterDateToInput = (value) => {
+    const parts = String(value || '').split('.')
+    return parts.length === 3 ? parts.reverse().join('-') : ''
   }
 
   // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
@@ -150,13 +165,13 @@ function showArchivePage(container) {
 
     $wrap.append($btn, $menu)
     // add 24.07.2026 BekmansurovRR: фильтры теперь внутри скрытой панели
-    $('#archive-filters-panel').append($wrap)
+    $('#archive-filter-controls').append($wrap)
   }
 
   // add 24.07.2026 BekmansurovRR: собираем все фильтры в скрытую панель
   // (вызывается заново при применении шаблона — чтобы виджеты отразили выбор)
   function buildFilters() {
-    $('#archive-filters-panel').empty()
+    $('#archive-filter-controls').empty()
     addMultiChoiceFilter(
     ['', 'start', 'end', 'other'],
     ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
@@ -201,12 +216,12 @@ function showArchivePage(container) {
   // Фильтр по периоду (дата начала или окончания). По умолчанию — текущий месяц.
   const $dateFrom = $(
     '<input type="date" class="inp" title="Дата с" value="' +
-      toInputDate(monthStart) +
+      filterDateToInput(archiveFilter.date_from) +
       '">',
   )
   const $dateTo = $(
     '<input type="date" class="inp" title="Дата по" value="' +
-      toInputDate(monthEnd) +
+      filterDateToInput(archiveFilter.date_to) +
       '">',
   )
   $dateFrom.on('change', (e) => {
@@ -221,7 +236,7 @@ function showArchivePage(container) {
       : ''
     archiveFilter.page = 1
   })
-  $('#archive-filters-panel').append($dateFrom, $dateTo)
+  $('#archive-filter-controls').append($dateFrom, $dateTo)
 
   // Доп. фильтры: «Приложение» — Все / Подписанный документ
   const $extraWrap = $('<div class="ms-filter"></div>')
@@ -256,7 +271,7 @@ function showArchivePage(container) {
     showFilterCount()
   })
   $extraWrap.append($extraBtn, $extraMenu)
-  $('#archive-filters-panel').append($extraWrap)
+  $('#archive-filter-controls').append($extraWrap)
 
     // add 24.07.2026 BekmansurovRR: отразить доп. фильтр из состояния
     if (archiveFilter.has_signed === 'Y') {
@@ -329,12 +344,19 @@ function showArchivePage(container) {
     } catch (e) {
       params = {}
     }
+    archiveFilter.q = params.q || ''
     archiveFilter.type = params.type || ''
     archiveFilter.status = params.status || ''
     archiveFilter.dept = params.dept || ''
     archiveFilter.reason_categ = params.reason_categ || ''
+    archiveFilter.date_from = params.date_from || toFilterDate(monthStart)
+    archiveFilter.date_to = params.date_to || toFilterDate(monthEnd)
     archiveFilter.has_signed = params.has_signed || ''
     archiveFilter.page = 1
+    selectedPresetId = String(preset.ID)
+    $('#archive-preset-select').val(selectedPresetId)
+    $('#search-input').val(archiveFilter.q)
+    updatePresetActions()
     buildFilters()
     showFilterCount()
     loadArchiveData()
@@ -343,7 +365,12 @@ function showArchivePage(container) {
 
   // add 24.07.2026 BekmansurovRR
   // Загрузка личных шаблонов пользователя в select «Мои шаблоны»
-  function loadPresets() {
+  function updatePresetActions() {
+    const hasPreset = !!$('#archive-preset-select').val()
+    $('#btn-update-preset, #btn-del-preset').prop('disabled', !hasPreset)
+  }
+
+  function loadPresets(options = {}) {
     sendApiRequest('gu23_filter_all').done((resp) => {
       presetList = (resp && resp.rows) || []
       const $select = $('#archive-preset-select')
@@ -357,17 +384,35 @@ function showArchivePage(container) {
             '</option>',
         )
       })
+      let presetToSelect = null
+      if (options.selectId) {
+        presetToSelect = presetList.find(
+          (preset) => String(preset.ID) === String(options.selectId),
+        )
+      } else if (options.selectName) {
+        presetToSelect = presetList.find(
+          (preset) => preset.FILTER_NAME === options.selectName,
+        )
+      }
       const defaultPreset = presetList.find((preset) => preset.IS_DEFAULT === 'Y')
-      if (defaultPreset) {
+      if (presetToSelect) {
+        selectedPresetId = String(presetToSelect.ID)
+        $select.val(selectedPresetId)
+      } else if (options.applyDefault !== false && defaultPreset) {
         $select.val(defaultPreset.ID)
         applyPreset(defaultPreset)
+      } else {
+        selectedPresetId = ''
       }
+      updatePresetActions()
     })
   }
 
   // Выбор шаблона из select
   $('#archive-preset-select').on('change', function () {
     const id = this.value
+    selectedPresetId = id
+    updatePresetActions()
     if (!id) {
       // «Мои шаблоны» (пусто) — вернуть системные фильтры
       showArchive(container)
@@ -384,13 +429,7 @@ function showArchivePage(container) {
       showToast('Укажите название шаблона', 'err')
       return
     }
-    const params = JSON.stringify({
-      type: archiveFilter.type,
-      status: archiveFilter.status,
-      dept: archiveFilter.dept,
-      reason_categ: archiveFilter.reason_categ,
-      has_signed: archiveFilter.has_signed,
-    })
+    const params = JSON.stringify(presetParams())
     sendApiRequest('gu23_filter_save', {
       filter_name: name,
       params: params,
@@ -399,7 +438,7 @@ function showArchivePage(container) {
       if (r && r.ok) {
         closeModalWindow()
         showToast('Шаблон сохранён', 'ok')
-        loadPresets()
+        loadPresets({ selectName: name, applyDefault: false })
       } else showToast((r && r.msg) || 'Ошибка', 'err')
     })
   }
@@ -415,6 +454,35 @@ function showArchivePage(container) {
       { label: 'Сохранить', className: 'btn primary', onClick: savePreset },
     ])
     $('#preset-name').focus()
+  })
+
+  // Обновить выбранный шаблон текущими значениями фильтров.
+  $('#btn-update-preset').on('click', () => {
+    const preset = presetList.find(
+      (item) => String(item.ID) === String(selectedPresetId),
+    )
+    if (!preset) {
+      showToast('Выберите шаблон', 'err')
+      return
+    }
+    showConfirmBox(
+      'Сохранить изменения',
+      'Заменить параметры шаблона «' + preset.FILTER_NAME + '» текущими?',
+      () => {
+        sendApiRequest('gu23_filter_save', {
+          id: preset.ID,
+          filter_name: preset.FILTER_NAME,
+          params: JSON.stringify(presetParams()),
+          is_default: preset.IS_DEFAULT === 'Y' ? 'Y' : 'N',
+        }).done((r) => {
+          if (r && r.ok) {
+            showToast('Изменения шаблона сохранены', 'ok')
+            loadPresets({ selectId: preset.ID, applyDefault: false })
+            showFilterSummary(preset.FILTER_NAME)
+          } else showToast((r && r.msg) || 'Ошибка', 'err')
+        })
+      },
+    )
   })
 
   // Удалить выбранный шаблон
