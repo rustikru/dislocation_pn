@@ -35,8 +35,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) return clob;
 
     -- add 24.07.2026 BekmansurovRR
-    -- forward-декларация: закрытие акта начала простоя вызывается из разных
-    -- мест (сохранение, подписание, ручное закрытие акта окончания)
+    -- закрытие акта начала простоя 
    procedure close_start_if_complete (
       p_start_id in number,
       p_user_id  in number default null
@@ -2676,9 +2675,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         -- add 24.07.2026 BekmansurovRR
         -- при ручном закрытии акта окончания пробуем закрыть акт начала
       if v_type = 'end' then
-         close_start_if_complete(v_link, p_user_id);
+         close_start_if_complete(
+            v_link,
+            p_user_id
+         );
       end if;
-
       commit;
       return 'OK';
    exception
@@ -3037,15 +3038,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
         from xx_disl_gu23_act_row sr
        where sr.act_id = p_start_id
          and not exists (
-            select 1
-              from xx_disl_gu23_act     e
-              join xx_disl_gu23_act_row er
-            on er.act_id = e.id
-             where e.act_type = 'end'
-               and e.status = 'closed'
-               and e.linked_start_id = p_start_id
-               and er.wagon_no = sr.wagon_no
-         );
+         select 1
+           from xx_disl_gu23_act e
+           join xx_disl_gu23_act_row er
+         on er.act_id = e.id
+          where e.act_type = 'end'
+            and e.status = 'closed'
+            and e.linked_start_id = p_start_id
+            and er.wagon_no = sr.wagon_no
+      );
 
         -- закрываем акт начала, только если не осталось незакрытых вагонов
       if v_open = 0 then
