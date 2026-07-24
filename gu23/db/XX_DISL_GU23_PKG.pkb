@@ -5153,7 +5153,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
-   function gu23_filters_row (
+   function gu23_users_filters (
       p_user_id in number
    ) return t_gu23_filter_tab
       pipelined

@@ -788,7 +788,7 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    );
    type t_gu23_filter_tab is
       table of t_gu23_filter_row;
-   function gu23_filters_row (
+   function gu23_users_filters (
       p_user_id in number
    ) return t_gu23_filter_tab
       pipelined;

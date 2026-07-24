@@ -248,6 +248,11 @@ class GuActRepository
                     $this->refReasonToggle();
                     break;
 
+                // Фильтры пользователей
+                case 'gu23_filter_all':
+                    $this->usersFilter();
+                    break;
+
                 // --- роли и полномочия ---
                 case 'gu23_roles_users':        // пользователи с назначенными ролями 
                     $this->rolesUsers();
@@ -489,7 +494,7 @@ class GuActRepository
     }
 
     /* ----------------------------------------------------------------- */
-    /* новости и подсказки                                                */
+    /* Уведомления                                               */
     /* ----------------------------------------------------------------- */
 
     private function notices(): void
@@ -1590,6 +1595,19 @@ class GuActRepository
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /* Фильтры пользователей                                             */
+    /* ----------------------------------------------------------------- */
+    private function usersFilter(): void
+    {
+        $userId = (int) $this->auth->getUserId();
+        $rows = $this->selectRows(
+            'select * from table(xx_disl_gu23_pkg.gu23_notices(:p_user_id))',
+            [':p_user_id' => $userId]
+        );
+        echo json_encode(['ok' => true, 'rows' => $rows]);
     }
 
     /** Переключить флаг active у причины. */
