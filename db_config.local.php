@@ -41,7 +41,7 @@ if (empty($_SESSION['is_auth'])) {
     $_SESSION['user_id'] = 281;
     //$_SESSION['login'] = 'BOYKOAD';
     //$_SESSION['user_id'] = 247;
-    $_SESSION['full_name'] = 'Локальный';
+    $_SESSION['full_name'] = 'BEKMANSUROVRR';
     $_SESSION['enterprise'] = 'МТФ';
     $_SESSION['flag_change_pwd'] = 'N';
     $_SESSION['administrator'] = 'Y';
