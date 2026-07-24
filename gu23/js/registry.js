@@ -11,11 +11,13 @@ import {
   closeModalWindow,
 } from './ui.js'
 
-export function showArchive(container) {
-  $(container).load('pages/archive.php', () => showArchivePage(container))
+export function showArchive(container, options = {}) {
+  $(container).load('pages/archive.php', () =>
+    showArchivePage(container, options),
+  )
 }
 
-function showArchivePage(container) {
+function showArchivePage(container, options = {}) {
   // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
   const twoDigits = (n) => String(n).padStart(2, '0')
   const toFilterDate = (d) =>
@@ -417,8 +419,9 @@ function showArchivePage(container) {
     selectedPresetId = id
     updatePresetActions()
     if (!id) {
-      // «Мои шаблоны» (пусто) — вернуть системные фильтры
-      showArchive(container)
+      // Явный выбор «Без шаблона» — вернуть системные фильтры,
+      // не применяя пользовательский шаблон по умолчанию.
+      showArchive(container, { applyDefaultPreset: false })
       return
     }
     const preset = presetList.find((p) => String(p.ID) === String(id))
@@ -510,8 +513,11 @@ function showArchivePage(container) {
     )
   })
 
-  // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
-  $('#btn-reset-filters').on('click', () => showArchive(container))
+  // Явный сброс возвращает системные фильтры (текущий месяц) и не должен
+  // повторно применять пользовательский шаблон по умолчанию.
+  $('#btn-reset-filters').on('click', () =>
+    showArchive(container, { applyDefaultPreset: false }),
+  )
 
   $('#btn-export-acts').on('click', () => {
     const $form = $(`
@@ -777,5 +783,5 @@ function showArchivePage(container) {
 
   loadArchiveData()
   // add 24.07.2026 BekmansurovRR: подгрузить личные шаблоны (и применить «по умолчанию»)
-  loadPresets()
+  loadPresets({ applyDefault: options.applyDefaultPreset !== false })
 }
