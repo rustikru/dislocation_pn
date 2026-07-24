@@ -1444,6 +1444,10 @@ textarea.inp {
   background: #e8f0fb;
   color: #315f93 !important;
 }
+.notice-kind-on_signed {
+  background: #e8f0fb;
+  color: #fc1818 !important;
+}
 .notice-kind-error {
   background: #f8e5e2;
   color: #9e3e34 !important;
