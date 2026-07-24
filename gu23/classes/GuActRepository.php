@@ -250,13 +250,13 @@ class GuActRepository
 
                 // Фильтры пользователей
                 case 'gu23_filter_all':
-                    $this->usersFilter();
+                    $this->usersFilter();           // Все фильтры текущего пользователя
                     break;
                 case 'gu23_filter_save':
-                    $this->usersFilterSave();
+                    $this->usersFilterSave();       // Сохраняем фильтры
                     break;
                 case 'gu23_filter_del':
-                    $this->usersFilterDel();
+                    $this->usersFilterDel();        // Удаляем фильтры
                     break;
 
                 // --- роли и полномочия ---
@@ -1620,7 +1620,7 @@ class GuActRepository
     // Сохранение фильтра пользователя
     private function usersFilterSave(): void
     {
-        // new = 0/пусто -> NULL, чтобы в пакете сработала ветка INSERT
+        // new = 0/пусто 
         $idRaw = filter_input(INPUT_POST, 'id');
         $id = $idRaw ? (int) $idRaw : null;
         $filter_name = (string) filter_input(INPUT_POST, 'filter_name');
@@ -1650,7 +1650,7 @@ class GuActRepository
         $this->printPackageResult($res);
     }
 
-    // Удаление фильтра пользователя (только своего)
+    // Удаление фильтра пользователя 
     private function usersFilterDel(): void
     {
         $id = (int) filter_input(INPUT_POST, 'id');
