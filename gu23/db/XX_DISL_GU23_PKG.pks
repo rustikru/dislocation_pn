@@ -775,8 +775,13 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
 
    -- add 24.07.2026 BekmansurovRR
    -- ---- Личные Фильтры пользователей----
+   -- Сохранение фильтра пользователя
    function gu23_filter_save (
       p_data in xx_disl_gu23_filter%rowtype
+   ) return varchar2;
+   -- Удаление фильтра пользователя
+   function gu23_filter_del (
+      p_id in number
    ) return varchar2;
 
    type t_gu23_filter_row is record (
@@ -788,6 +793,7 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    );
    type t_gu23_filter_tab is
       table of t_gu23_filter_row;
+   -- Вывод фильтра пользователя
    function gu23_users_filters (
       p_user_id in number
    ) return t_gu23_filter_tab

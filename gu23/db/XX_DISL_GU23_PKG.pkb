@@ -5153,6 +5153,21 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
+   -- Удаление фильтра пользователя
+   function gu23_filter_del (
+      p_id in number
+   ) return varchar2 is
+   begin
+      delete xx_disl_gu23_filter
+       where id = p_id;
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
    function gu23_users_filters (
       p_user_id in number
    ) return t_gu23_filter_tab
