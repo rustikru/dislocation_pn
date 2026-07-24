@@ -10,6 +10,11 @@
     <input type="text" class="inp" id="search-input" placeholder="Номер акта, номер вагона, причина...">
   </div>
 
+  <!-- Выбор шаблона всегда доступен в основной строке архива. -->
+  <select class="inp" id="archive-preset-select" title="Мои шаблоны фильтров">
+    <option value="">Мои шаблоны</option>
+  </select>
+
   <div class="refs-actions archive-excel-actions">
     <button class="refs-action-btn" id="btn-export-acts" type="button">
       <img src="/img/ms_excel.svg" alt="Выгрузить акты" class="refs-excel-icon">
@@ -27,14 +32,10 @@
 
 <!-- add 24.07.2026 BekmansurovRR: все фильтры спрятаны в этот блок -->
 <div class="archive-filters-panel" id="archive-filters-panel" style="display:none">
-  <!-- Управление шаблонами находится рядом с фильтрами, чтобы удаление нельзя было принять за сброс. -->
+  <!-- Действия над шаблонами находятся внутри панели фильтров. -->
   <div class="archive-preset-toolbar">
-    <label for="archive-preset-select">Шаблон фильтра</label>
-    <select class="inp" id="archive-preset-select" title="Мои шаблоны фильтров">
-      <option value="">Без шаблона</option>
-    </select>
     <button type="button" class="btn ghost" id="btn-save-preset"
-      title="Сохранить текущие параметры как новый шаблон">Сохранить как новый</button>
+      title="Сохранить текущие параметры как новый шаблон">Сохранить шаблон</button>
     <button type="button" class="btn ghost" id="btn-update-preset" disabled
       title="Записать текущие параметры в выбранный шаблон">Сохранить изменения</button>
     <button type="button" class="btn danger archive-preset-delete" id="btn-del-preset" disabled
