@@ -31,7 +31,7 @@
     <button type="button" class="btn ghost" id="btn-save-preset"
       title="Сохранить текущие параметры как новый шаблон">Сохранить как новый</button>
     <button type="button" class="btn ghost" id="btn-update-preset" disabled
-      title="Записать текущие параметры в выбранный шаблон">Сохранить изменения</button>
+      title="Изменить выбранный пользовательский фильтр">Сохранить изм. фильтра</button>
     <button type="button" class="btn danger archive-preset-delete" id="btn-del-preset" disabled
       title="Удалить выбранный шаблон">Удалить шаблон</button>
   </div>

@@ -464,7 +464,8 @@ function showArchivePage(container, options = {}) {
     $('#preset-name').focus()
   })
 
-  // Обновить выбранный шаблон текущими значениями фильтров.
+  // Изменить выбранный шаблон: название, признак «по умолчанию»
+  // и сохранить в нём текущие значения фильтров.
   $('#btn-update-preset').on('click', () => {
     const preset = presetList.find(
       (item) => String(item.ID) === String(selectedPresetId),
@@ -473,24 +474,43 @@ function showArchivePage(container, options = {}) {
       showToast('Выберите шаблон', 'err')
       return
     }
-    showConfirmBox(
-      'Сохранить изменения',
-      'Заменить параметры шаблона «' + preset.FILTER_NAME + '» текущими?',
-      () => {
-        sendApiRequest('gu23_filter_save', {
-          id: preset.ID,
-          filter_name: preset.FILTER_NAME,
-          params: JSON.stringify(presetParams()),
-          is_default: preset.IS_DEFAULT === 'Y' ? 'Y' : 'N',
-        }).done((r) => {
-          if (r && r.ok) {
-            showToast('Изменения шаблона сохранены', 'ok')
-            loadPresets({ selectId: preset.ID, applyDefault: false })
-            showFilterSummary(preset.FILTER_NAME)
-          } else showToast((r && r.msg) || 'Ошибка', 'err')
-        })
-      },
-    )
+
+    const content =
+      '<div class="frow"><label>Название фильтра</label>' +
+      '<input class="inp" id="preset-edit-name" placeholder="Название фильтра" value="' +
+      escapeHtml(preset.FILTER_NAME) +
+      '"></div>' +
+      '<label class="ms-item" style="margin-top:6px">' +
+      '<input type="checkbox" id="preset-edit-default"' +
+      (preset.IS_DEFAULT === 'Y' ? ' checked' : '') +
+      '><span>Сделать по умолчанию</span></label>'
+
+    const updatePreset = () => {
+      const name = $('#preset-edit-name').val().trim()
+      if (!name) {
+        showToast('Укажите название фильтра', 'err')
+        return
+      }
+      sendApiRequest('gu23_filter_save', {
+        id: preset.ID,
+        filter_name: name,
+        params: JSON.stringify(presetParams()),
+        is_default: $('#preset-edit-default').is(':checked') ? 'Y' : 'N',
+      }).done((r) => {
+        if (r && r.ok) {
+          closeModalWindow()
+          showToast('Фильтр изменён', 'ok')
+          loadPresets({ selectId: preset.ID, applyDefault: false })
+          showFilterSummary(name)
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    }
+
+    openModalWindow('Изменить фильтр', content, [
+      { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
+      { label: 'Сохранить', className: 'btn primary', onClick: updatePreset },
+    ])
+    $('#preset-edit-name').focus().select()
   })
 
   // Удалить выбранный шаблон
