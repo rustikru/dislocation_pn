@@ -5103,6 +5103,87 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          p_base_url
       );
    end;
+   /*
+      add 24.07.2026 BekmansurovRR
+      Фильтры пользователей.
+   */
+   function gu23_filter_save (
+      p_data in xx_disl_gu23_filter%rowtype
+   ) return varchar2 is
+      l_row xx_disl_gu23_filter%rowtype;
+   begin
+      l_row := p_data;
+      if l_row.id is null then
+         l_row.id := xx_disl_gu23_filter_seq.nextval;
+         insert into xx_disl_gu23_filter (
+            id,
+            user_id,
+            filter_name,
+            params,
+            created_by,
+            is_default
+         ) values
+            ( l_row.id,
+              l_row.user_id,
+              l_row.filter_name,
+              l_row.params,
+              l_row.created_by,
+              l_row.is_default );
+      else
+         if l_row.is_default = 'Y' then
+            update xx_disl_gu23_filter
+               set
+               is_default = 'N'
+             where user_id = l_row.user_id
+               and id != l_row.id;
+         end if;
+
+         update xx_disl_gu23_filter
+            set filter_name = l_row.filter_name,
+                params = l_row.params,
+                is_default = l_row.is_default,
+                last_updated_at = sysdate
+          where id = l_row.id;
+      end if;
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
+   function gu23_filters_row (
+      p_user_id in number
+   ) return t_gu23_filter_tab
+      pipelined
+   is
+      l_row t_gu23_filter_row;
+   begin
+      for r in (
+         select f.id,
+                f.filter_name,
+                f.params,
+                f.user_id,
+                f.created_by,
+                f.created_at,
+                nvl(
+                   f.is_default,
+                   'N'
+                ) as is_default
+           from xx_disl_gu23_filter f
+          where user_id = p_user_id
+          order by f.filter_name
+      ) loop
+         l_row.id := r.id;
+         l_row.user_id := r.user_id;
+         l_row.filter_name := r.filter_name;
+         l_row.params := r.params;
+         l_row.is_default := r.is_default;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end;
 
     /* ------------------------------------------------------------------ */
     -- отправка письма

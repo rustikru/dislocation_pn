@@ -772,5 +772,25 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    function gu23_ref_reason_toggle (
       p_id in number
    ) return varchar2;
+
+   -- add 24.07.2026 BekmansurovRR
+   -- ---- Личные Фильтры пользователей----
+   function gu23_filter_save (
+      p_data in xx_disl_gu23_filter%rowtype
+   ) return varchar2;
+
+   type t_gu23_filter_row is record (
+         id          number,
+         user_id     number,
+         filter_name varchar2(128),
+         params      clob,
+         is_default  varchar2(1)
+   );
+   type t_gu23_filter_tab is
+      table of t_gu23_filter_row;
+   function gu23_filters_row (
+      p_user_id in number
+   ) return t_gu23_filter_tab
+      pipelined;
 end xx_disl_gu23_pkg;
 /
