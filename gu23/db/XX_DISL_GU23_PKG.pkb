@@ -2418,7 +2418,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             end if;
          end if;
 
-            -- add 24.07.2026 BekmansurovRR: вставка через процедуру insert_act_row
          l_arow.id := xx_disl_gu23_act_row_seq.nextval;
          l_arow.act_id := v_id;
          l_arow.wagon_no := w.wagon_no;
@@ -2805,7 +2804,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
-    -- Следущий подписант в маршруте,кто ождидает
+    -- Следущий подписант в маршруте
    function gu23_approval_next_signer (
       p_act_id in number
    ) return t_gu23_approval_signer_tab
@@ -3953,8 +3952,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           where gu.status = 'active'
                        -- add 24.07.2026 BekmansurovRR
                        -- подписание последовательное: показываем уведомление только тому,
-                       -- чья сейчас очередь (текущий подписант по маршруту), а не всем
-                       -- у кого статус pending. Источник очереди — gu23_approval_next_signer
+                       -- чья сейчас очередь. 
+                       -- Кто следующий? — gu23_approval_next_signer
             and exists (
             select 1
               from table ( gu23_approval_next_signer(gu.id) ) ns
@@ -5126,11 +5125,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             ( l_row.id,
               l_row.user_id,
               l_row.filter_name,
-              l_row.params,
+              l_row.params, -- Данные(параметры) в формате json 
               l_row.created_by,
               l_row.is_default );
       else
          if l_row.is_default = 'Y' then
+            -- Сначала "удаляем" все записи по-умолчанию
             update xx_disl_gu23_filter
                set
                is_default = 'N'
@@ -5144,7 +5144,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 is_default = l_row.is_default,
                 last_updated_at = sysdate
           where id = l_row.id
-            -- add 24.07.2026 BekmansurovRR: правим только свой фильтр
             and user_id = l_row.user_id;
       end if;
       commit;
@@ -5161,7 +5160,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_user_id in number
    ) return varchar2 is
    begin
-      -- add 24.07.2026 BekmansurovRR: удаляем только свой фильтр
+      -- удаляем только свой фильтр
       delete xx_disl_gu23_filter
        where id = p_id
          and user_id = p_user_id;
@@ -5190,7 +5189,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 nvl(
                    f.is_default,
                    'N'
-                ) as is_default
+                ) as is_default -- фильтр по умолчанию
            from xx_disl_gu23_filter f
           where user_id = p_user_id
           order by f.filter_name
