@@ -1,4 +1,5 @@
-﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
+﻿/* Formatted on 24.07.2026 16:15:07 (QP5 v5.417) */
+create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -23,14 +24,17 @@
    );
    g_email_subject constant varchar2(240) := 'Дислокация.Уведомление "ГУ-23"';
    g_base_url      constant varchar2(500) := 'https://dislocation.mf.metafrax.ru';
-   
 
-    -- add 24.07.2026 BekmansurovRR
-    -- закрытие акта начала простоя
-   procedure close_start_if_complete (
-      p_start_id in number,
-      p_user_id  in number default null
-   );
+
+
+   function get23_base_url return varchar2 is
+   begin
+      if upper(g_server_host) = 'M5000' then
+         return g_base_url;
+      else
+         return 'http://localhost';
+      end if;
+   end;
 
    procedure gu23_set_client_ip (
       p_ip in varchar2
@@ -3935,7 +3939,7 @@
     -- add 22.07.2026 BekmansurovRR
     -- Уведомления
     -- ----------------------------------------------------------------
-   -- Список актов для уведомления, которые требуется подписать в текущий момент.
+    -- Список актов для уведомления, которые требуется подписать в текущий момент.
    function gu23_notices_virtual (
       p_user_id in number
    ) return t_gu23_notice_tab is
@@ -3947,10 +3951,10 @@
          select gu.*
            from xx_disl_gu23_act_v gu
           where gu.status = 'active'
-            -- add 24.07.2026 BekmansurovRR
-            -- подписание последовательное: показываем уведомление только тому,
-            -- чья сейчас очередь (текущий подписант по маршруту), а не всем
-            -- у кого статус pending. Источник очереди — gu23_approval_next_signer
+                       -- add 24.07.2026 BekmansurovRR
+                       -- подписание последовательное: показываем уведомление только тому,
+                       -- чья сейчас очередь (текущий подписант по маршруту), а не всем
+                       -- у кого статус pending. Источник очереди — gu23_approval_next_signer
             and exists (
             select 1
               from table ( gu23_approval_next_signer(gu.id) ) ns
@@ -3966,13 +3970,14 @@
                              || wag.wagon_no
                              || ';';
          end loop;
+
          l_result.extend;
          v_card_url := gu23_act_link(
-            g_base_url,
+            get23_base_url(),
             '/gu23/card.php?id=' || r.id
          );
-         l_result(l_result.last).title := 'Требуется подпись акт ' || r.act_number;
-         l_result(l_result.last).body := 'Требуется подписать акт '
+         l_result(l_result.last).title := 'Требуется подписание акта ' || r.act_number;
+         l_result(l_result.last).body := 'Требуется подписание акта '
                                          || r.act_number
                                          || chr(10)
                                          || 'Причина: '
@@ -4001,6 +4006,7 @@
                                          || '" style="color:#471364;font-weight:700;text-decoration:none;">'
                                          || html_escape(r.act_number)
                                          || '</a>';
+
          begin
             select code,
                    name
@@ -4011,8 +4017,8 @@
              where code = 'on_signed';
          exception
             when others then
-               l_result(l_result.last).notice_type := 'on_signed';
-               l_result(l_result.last).notice_type_name := 'На подписание';
+               l_result(l_result.last).notice_type := 'action_required';
+               l_result(l_result.last).notice_type_name := 'Требуют действия';
          end;
 
          l_result(l_result.last).active := 'Y';
@@ -4028,8 +4034,8 @@
 
    function gu23_notices (
       p_user_id in number,
-      -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё:
-      -- отключённые, вне срока, без учёта адресности)
+                           -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё:
+                           -- отключённые, вне срока, без учёта адресности)
       p_all     in varchar2 default 'N'
    ) return t_gu23_notice_tab
       pipelined
@@ -4038,9 +4044,8 @@
       l_virtual_notices t_gu23_notice_tab;
       l_idx             pls_integer;
    begin
-      
-      -- add 24.07.2026 BekmansurovRR
-      -- формируем временные уведомления
+        -- add 24.07.2026 BekmansurovRR
+        -- формируем временные уведомления
       l_virtual_notices := gu23_notices_virtual(p_user_id);
       if l_virtual_notices is not null then
          l_idx := l_virtual_notices.first;
@@ -4090,8 +4095,8 @@
          on nr.notification_id = n.id
             and nr.user_id = p_user_id
           where n.module_code = 'GU23'
-            -- add 24.07.2026 BekmansurovRR: при p_all='Y' фильтры видимости
-            -- (активность / срок показа / адресность) не применяются
+                         -- add 24.07.2026 BekmansurovRR: при p_all='Y' фильтры видимости
+                         -- (активность / срок показа / адресность) не применяются
             and ( p_all = 'Y'
              or n.active = 'Y' )
             and ( p_all = 'Y'
@@ -4164,8 +4169,9 @@
                                -- add 23.07.2026 BekmansurovRR
             and nr.read_at is not null
       );
-      -- add 24.07.2026 BekmansurovRR
-      -- формируем временные уведомления
+
+        -- add 24.07.2026 BekmansurovRR
+        -- формируем временные уведомления
       l_virtual_notices := gu23_notices_virtual(p_user_id);
       l_cnt := l_virtual_notices.count;
       l_count := l_count + nvl(
@@ -5127,41 +5133,32 @@
          l_function,
          'x_to_email=>' || x_to_email
       );
-      /*
-      if
-         upper(g_server_host) = 'M5000'
-         and x_to_email is not null
-      then
-         if trunc(sysdate) <= to_date ( '30.07.2026',
-         'DD.MM.YYYY' ) then
-            insert into xx_disl_gu23_mail_test (
-               p_to,
-               p_subject,
-               p_body,
-               p_from
-            ) values
-               ( x_to_email,
-                 x_subject,
-                 x_msg,
-                 x_sender );
-         end if;
+/*
+        if UPPER (g_server_host) = 'M5000' and x_to_email is not null
+        then
+            if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
+            then
+                insert into xx_disl_gu23_mail_test (p_to,
+                                                    p_subject,
+                                                    p_body,
+                                                    p_from)
+                     values (x_to_email,
+                             x_subject,
+                             x_msg,
+                             x_sender);
+            end if;
 
-         apps.xx_mtf_send_mail_pkg.send_mail(
-            p_sender    => x_sender, --отправитель
-            p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
-            p_subject   => x_subject,
-            p_text_clob => x_msg
-         );
-      else
-         apps.xx_mtf_send_mail_pkg.send_mail(
-            p_sender    => x_sender,                       --отправитель
-            p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
-            p_subject   => x_subject
-                         || ' -> '
-                         || x_to_email,
-            p_text_clob => x_msg
-         );
-      end if;*/
+            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
+                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+                                                 p_subject     => x_subject,
+                                                 p_text_clob   => x_msg);
+        else
+            apps.xx_mtf_send_mail_pkg.send_mail (
+                p_sender      => x_sender,                       --отправитель
+                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
+                p_subject     => x_subject || ' -> ' || x_to_email,
+                p_text_clob   => x_msg);
+        end if;*/
 
       commit;
    end gu23_send_mail;

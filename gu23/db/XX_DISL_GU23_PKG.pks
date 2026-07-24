@@ -1,4 +1,5 @@
-﻿create or replace package xx_etw.xx_disl_gu23_pkg as
+﻿/* Formatted on 24.07.2026 16:08:48 (QP5 v5.417) */
+create or replace package xx_etw.xx_disl_gu23_pkg as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
     PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -16,18 +17,21 @@
    procedure gu23_set_client_ip (
       p_ip in varchar2
    );
+
    function gu23_act_link (
       p_base_url in varchar2,
       p_path     in varchar2
    ) return varchar2;
+
    function fnc_mapping_dept (
       p_dept_name in varchar2
    ) return varchar2;
+
    function html_escape (
       p_text in varchar2
    ) return varchar2;
 
-   
+
     /* ---- Отправить HTML-письмо ---- */
    procedure gu23_send_mail (
       p_to      in varchar2,
@@ -561,6 +565,13 @@
       p_base_url  in varchar2 default null
    ) return varchar2;
 
+    -- add 24.07.2026 BekmansurovRR
+    -- закрытие акта начала простоя
+   procedure close_start_if_complete (
+      p_start_id in number,
+      p_user_id  in number default null
+   );
+
     -- ---- Роли и доступ ----
 
     -- Есть ли у пользователя хотя бы одна роль в модуле ГУ-23 ('Y'/'N')
@@ -662,7 +673,7 @@
 
    function gu23_notices (
       p_user_id in number,
-      -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё)
+                           -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё)
       p_all     in varchar2 default 'N'
    ) return t_gu23_notice_tab
       pipelined;
@@ -680,8 +691,8 @@
       p_user_id in number
    ) return varchar2;
 
-   -- add 24.07.2026 BekmansurovRR: gu23_notices_all удалён,
-   -- используется gu23_notices(p_user_id, p_all => 'Y')
+    -- add 24.07.2026 BekmansurovRR: gu23_notices_all удалён,
+    -- используется gu23_notices(p_user_id, p_all => 'Y')
 
    function gu23_notice_save (
       p_id          in number,
