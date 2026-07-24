@@ -1209,6 +1209,8 @@ textarea.inp {
 }
 .searchbox .inp {
   padding-left: 12px;
+  /* add 24.07.2026 BekmansurovRR: поле поиска на всю ширину блока */
+  width: 100%;
 }
 .searchbox::before {
   position: absolute;
