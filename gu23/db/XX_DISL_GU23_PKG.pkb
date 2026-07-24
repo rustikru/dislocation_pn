@@ -22,6 +22,7 @@
       'SERVER_HOST'
    );
    g_email_subject constant varchar2(240) := 'Дислокация.Уведомление "ГУ-23"';
+   g_base_url      constant varchar2(500) := 'https://dislocation.mf.metafrax.ru';
    
 
     -- add 24.07.2026 BekmansurovRR
@@ -3940,6 +3941,7 @@
    ) return t_gu23_notice_tab is
       l_result      t_gu23_notice_tab := t_gu23_notice_tab();
       l_list_wagons varchar2(2000);
+      v_card_url    varchar2(500);
    begin
       for r in (
          select gu.*
@@ -3965,6 +3967,10 @@
                              || ';';
          end loop;
          l_result.extend;
+         v_card_url := gu23_act_link(
+            g_base_url,
+            '/gu23/card.php?id=' || r.id
+         );
          l_result(l_result.last).title := 'Требуется подпись акт ' || r.act_number;
          l_result(l_result.last).body := 'Требуется подписать акт '
                                          || r.act_number
@@ -3989,7 +3995,12 @@
                   ''
             end
                                          || chr(10)
-                                         || 'Подробная информация доступна по ссылке: ';
+                                         || 'Подробная информация доступна по ссылке: '
+                                         || '<a href="'
+                                         || html_escape(v_card_url)
+                                         || '" style="color:#471364;font-weight:700;text-decoration:none;">'
+                                         || html_escape(r.act_number)
+                                         || '</a>';
          begin
             select code,
                    name

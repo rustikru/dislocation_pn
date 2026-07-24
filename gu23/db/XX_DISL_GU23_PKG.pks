@@ -16,7 +16,10 @@
    procedure gu23_set_client_ip (
       p_ip in varchar2
    );
-
+   function gu23_act_link (
+      p_base_url in varchar2,
+      p_path     in varchar2
+   ) return varchar2;
    function fnc_mapping_dept (
       p_dept_name in varchar2
    ) return varchar2;

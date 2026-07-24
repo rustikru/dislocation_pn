@@ -137,7 +137,6 @@ function noticeRowsPage() {
     // виртуальные записи (section_notif='virtual') нельзя читать/избранное/править
     const isVirtual = row.SECTION_NOTIF === 'virtual'
     // add 23.07.2026 BekmansurovRR
-    //  (избранное) слева,  (прочитано/не прочитано) справа
     const $item = $(`
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
         ${isVirtual ? '' : `<span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>`}
@@ -277,7 +276,7 @@ function noticeView(row) {
         <span>${formatDateTime(row.CREATED_AT || '')}</span>
         ${hasPerm('MANAGE_REFS') ? `<span>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</span>` : ''}
       </div>
-      <div class="notice-view-text">${escapeHtml(row.BODY || '')}</div>
+      <div class="notice-view-text">${row.BODY || ''}</div>
       ${row.IMAGE_PATH ? `<img class="notice-view-image" src="${escapeHtml(row.IMAGE_PATH)}" alt="">` : ''}
     </div>
   `
