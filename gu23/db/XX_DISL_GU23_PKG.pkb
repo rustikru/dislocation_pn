@@ -34,6 +34,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_base_url  in varchar2 default null
    ) return clob;
 
+    -- add 24.07.2026 BekmansurovRR
+    -- forward-декларация: закрытие акта начала простоя вызывается из разных
+    -- мест (сохранение, подписание, ручное закрытие акта окончания)
+   procedure close_start_if_complete (
+      p_start_id in number,
+      p_user_id  in number default null
+   );
+
    procedure gu23_set_client_ip (
       p_ip in varchar2
    ) is
@@ -2003,8 +2011,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       l_sig        xx_disl_gu23_signer%rowtype;
       v_dupnum     varchar2(64);
       v_has_start  number;
-      v_tot        number;
-      v_closed     number;
       v_cur_status varchar2(16);
       v_created_by number;
       v_len        pls_integer;
@@ -2540,57 +2546,20 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          insert_signer(l_sig);
       end loop;
 
-        -- закрытие циклов акта начала: частичное/полное
+        -- add 24.07.2026 BekmansurovRR
+        -- закрытие цикла вынесено в close_start_if_complete (единая логика):
+        -- акт начала закроется, когда по всем его вагонам подписаны акты
+        -- окончания. Здесь только вызываем.
       if
          p_data.p_type = 'end'
          and p_data.p_status in ( 'active',
                                   'closed' )
          and p_data.p_linked_start_id is not null
       then
-         select count(*)
-           into v_tot
-           from xx_disl_gu23_act_row
-          where act_id = p_data.p_linked_start_id;
-
-         select count(distinct er.wagon_no)
-           into v_closed
-           from xx_disl_gu23_act e,
-                xx_disl_gu23_act_row er
-          where er.act_id = e.id
-            and e.act_type = 'end'
-            and e.status in ( 'active',
-                              'signed',
-                              'closed' ) -- закрывающие; rejected/annulled ? нет
-            and e.linked_start_id = p_data.p_linked_start_id;
-
-         if v_closed >= v_tot then
-            update xx_disl_gu23_act
-               set status = 'closed',
-                   modified_at = sysdate,
-                   modified_by = p_data.p_user_id
-             where id = p_data.p_linked_start_id
-               and status in ( 'active',
-                               'signed' -- upd 23.07.2026 Bekmansurovrr добавил проверку на статус signed, чтобы закрытие происходило и при подписании акта окончания
-                                );
-
-            log_act_history(
-               p_act_id  => p_data.p_linked_start_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'Цикл простоя полностью закрыт актом окончания ' || v_number
-            );
-         else
-            log_act_history(
-               p_act_id  => p_data.p_linked_start_id,
-               p_user_id => p_data.p_user_id,
-               p_text    => 'Частично закрыто актом окончания '
-                         || v_number
-                         || ' ('
-                         || v_closed
-                         || ' из '
-                         || v_tot
-                         || ')'
-            );
-         end if;
+         close_start_if_complete(
+            p_data.p_linked_start_id,
+            p_data.p_user_id
+         );
       end if;
 
       l_row.id := xx_disl_gu23_hist_seq.nextval;
@@ -2666,12 +2635,15 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    ) return varchar2 is
       v_status varchar2(16);
       v_type   varchar2(16);
+      v_link   number;
    begin
       select status,
-             act_type
+             act_type,
+             linked_start_id
         into
          v_status,
-         v_type
+         v_type,
+         v_link
         from xx_disl_gu23_act
        where id = p_id;
 
@@ -2700,6 +2672,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          p_user_id => p_user_id,
          p_text    => 'Акт закрыт'
       );
+
+        -- add 24.07.2026 BekmansurovRR
+        -- при ручном закрытии акта окончания пробуем закрыть акт начала
+      if v_type = 'end' then
+         close_start_if_complete(v_link, p_user_id);
+      end if;
+
       commit;
       return 'OK';
    exception
@@ -3029,41 +3008,47 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    end;
 
     -- add 24.07.2026 BekmansurovRR
-    -- Закрытие акта начала простоя. Акт начала закрывается, когда по всем его
-    -- вагонам созданы акты окончания и все они закрыты (status = 'closed').
+    -- Закрытие акта начала простоя. Акт начала закрывается, когда по каждому
+    -- его вагону есть подписанный (status = 'closed') акт окончания.
    procedure close_start_if_complete (
       p_start_id in number,
       p_user_id  in number default null
    ) is
-      v_total  number;
-      v_closed number;
+      v_cnt  number;   -- всего вагонов в акте начала (защита от пустого)
+      v_open number;   -- вагоны акта начала без подписанного акта окончания
    begin
       if p_start_id is null then
          return;
       end if;
 
-        -- всего вагонов в акте начала
-      select count(distinct wagon_no)
-        into v_total
+        -- у пустого акта начала закрывать нечего
+      select count(*)
+        into v_cnt
         from xx_disl_gu23_act_row
        where act_id = p_start_id;
 
-      if v_total = 0 then
+      if v_cnt = 0 then
          return;
       end if;
 
-        -- вагоны, закрытые актами окончания в статусе 'closed'
-      select count(distinct er.wagon_no)
-        into v_closed
-        from xx_disl_gu23_act e,
-             xx_disl_gu23_act_row er
-       where er.act_id = e.id
-         and e.act_type = 'end'
-         and e.status = 'closed'
-         and e.linked_start_id = p_start_id;
+        -- вагоны акта начала, по которым НЕТ подписанного (closed) акта окончания
+      select count(*)
+        into v_open
+        from xx_disl_gu23_act_row sr
+       where sr.act_id = p_start_id
+         and not exists (
+            select 1
+              from xx_disl_gu23_act     e
+              join xx_disl_gu23_act_row er
+            on er.act_id = e.id
+             where e.act_type = 'end'
+               and e.status = 'closed'
+               and e.linked_start_id = p_start_id
+               and er.wagon_no = sr.wagon_no
+         );
 
-        -- закрываем акт начала, только если покрыты все вагоны
-      if v_closed >= v_total then
+        -- закрываем акт начала, только если не осталось незакрытых вагонов
+      if v_open = 0 then
          update xx_disl_gu23_act
             set status = 'closed',
                 modified_at = sysdate,
