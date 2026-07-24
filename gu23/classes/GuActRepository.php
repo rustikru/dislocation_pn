@@ -252,6 +252,9 @@ class GuActRepository
                 case 'gu23_filter_all':
                     $this->usersFilter();
                     break;
+                case 'gu23_filter_save':
+                    $this->usersFilterSave();
+                    break;
 
                 // --- роли и полномочия ---
                 case 'gu23_roles_users':        // пользователи с назначенными ролями 
@@ -1608,6 +1611,34 @@ class GuActRepository
             [':p_user_id' => $userId]
         );
         echo json_encode(['ok' => true, 'rows' => $rows]);
+    }
+
+    // Сохранение фиьтра пользователя
+    private function usersFilterSave(): void
+    {
+
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $filter_name = (string) filter_input(INPUT_POST, 'filter_name');
+        $params = (string) filter_input(INPUT_POST, 'params');
+        $uid = $this->auth->getUserId();
+        $sql = 'declare
+                    v_d xx_disl_gu23_filter%rowtype;
+                begin
+                    v_d.id      := :id;
+                    v_d.user_id := :uid;
+                    v_d.filter_name := :filter_name;
+                    v_d.params := :params;
+                    :res := xx_etw.xx_disl_gu23_pkg.gu23_filter_save(v_d);
+                end;';
+        $st = oci_parse($this->conn, $sql);
+        $res = '';
+        oci_bind_by_name($st, ':res', $res, 4000);
+        oci_bind_by_name($st, ':id', $id);
+        oci_bind_by_name($st, ':uid', $uid);
+        oci_bind_by_name($st, ':filter_name', $filter_name);
+        oci_bind_by_name($st, ':params', $params);
+        oci_execute($st);
+        $this->printPackageResult($res);
     }
 
     /** Переключить флаг active у причины. */
