@@ -968,17 +968,17 @@ function getSignerSlots(actType) {
 
   return slots
 }
-// Отрисовываем блок подписантов
+// блок подписантов
 function showSignersFields() {
   const $container = $('#form-signers-place')
     .empty()
     .append(
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
     )
-  // Получаем  подписантов для текущего типа акта
+  //   подписантов для текущего типа акта
   const signerSlots = getSignerSlots(activeDraft.type)
   putSignersToSlots(signerSlots)
-  // Получаем список подписантов предприятия для текущего акта
+  //  список подписантов предприятия для текущего акта
   const ownFiltered = getOwnSignersForAct()
   // Автоподстановка: для нового акта заполняем текущим пользователем
   fillFirstSigner(ownFiltered)
@@ -990,6 +990,7 @@ function showSignersFields() {
 
   signerModeButtonClicks()
   signerSelectChanges(ownFiltered)
+  // Ручные подписанты
   manualSignerInputChanges()
   manualSignerHints(manualSlots)
 }
@@ -1031,10 +1032,10 @@ function signerMatchesSlot(signer, slot) {
   if (!signer.stype) return slot.type === 'own'
   return signer.stype === slot.type
 }
-// Получаем список подписантов предприятия для текущего акта
+// список подписантов предприятия для текущего акта
 function getOwnSignersForAct() {
   // const dept = activeDraft.departmentCode
-  // Временно отключаем фильтрацию по цеху
+  // rem 11.07.2026 BekmansurovRR Временно отключаем фильтрацию по цеху
   /*const ownFiltered = (references.signersOwnList || []).filter(
     // Фильтрация по цеху составления
     (s) => !dept || !s.UNIT || s.UNIT.includes(dept),
