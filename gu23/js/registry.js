@@ -7,7 +7,8 @@ import {
   showTypeChip,
   showToast,
   showConfirmBox,
-  showPromptBox,
+  openModalWindow,
+  closeModalWindow,
 } from './ui.js'
 
 export function showArchive(container) {
@@ -377,27 +378,43 @@ function showArchivePage(container) {
   })
 
   // Сохранить текущие фильтры как новый шаблон
-  $('#btn-save-preset').on('click', () => {
-    showPromptBox('Сохранить шаблон', 'Название шаблона', (name) => {
-      const filterName = (name || '').trim()
-      if (!filterName) return
-      const params = JSON.stringify({
-        type: archiveFilter.type,
-        status: archiveFilter.status,
-        dept: archiveFilter.dept,
-        reason_categ: archiveFilter.reason_categ,
-        has_signed: archiveFilter.has_signed,
-      })
-      sendApiRequest('gu23_filter_save', {
-        filter_name: filterName,
-        params: params,
-      }).done((r) => {
-        if (r && r.ok) {
-          showToast('Шаблон сохранён', 'ok')
-          loadPresets()
-        } else showToast((r && r.msg) || 'Ошибка', 'err')
-      })
+  function savePreset() {
+    const name = $('#preset-name').val().trim()
+    if (!name) {
+      showToast('Укажите название шаблона', 'err')
+      return
+    }
+    const params = JSON.stringify({
+      type: archiveFilter.type,
+      status: archiveFilter.status,
+      dept: archiveFilter.dept,
+      reason_categ: archiveFilter.reason_categ,
+      has_signed: archiveFilter.has_signed,
     })
+    sendApiRequest('gu23_filter_save', {
+      filter_name: name,
+      params: params,
+      is_default: $('#preset-default').is(':checked') ? 'Y' : 'N',
+    }).done((r) => {
+      if (r && r.ok) {
+        closeModalWindow()
+        showToast('Шаблон сохранён', 'ok')
+        loadPresets()
+      } else showToast((r && r.msg) || 'Ошибка', 'err')
+    })
+  }
+
+  $('#btn-save-preset').on('click', () => {
+    const content =
+      '<div class="frow"><label>Название шаблона</label>' +
+      '<input class="inp" id="preset-name" placeholder="Напр. Цех АКМ, открытые"></div>' +
+      '<label class="ms-item" style="margin-top:6px">' +
+      '<input type="checkbox" id="preset-default"><span>Сделать по умолчанию</span></label>'
+    openModalWindow('Сохранить шаблон', content, [
+      { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
+      { label: 'Сохранить', className: 'btn primary', onClick: savePreset },
+    ])
+    $('#preset-name').focus()
   })
 
   // Удалить выбранный шаблон
