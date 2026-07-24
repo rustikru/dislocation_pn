@@ -3941,7 +3941,7 @@
       l_result t_gu23_notice_tab := t_gu23_notice_tab();
    begin
       for r in (
-         select gu.id
+         select gu.*
            from xx_disl_gu23_act gu
           where gu.status = 'active'
             and exists (
@@ -3972,6 +3972,19 @@
       l_virtual_notices t_gu23_notice_tab;
       l_idx             pls_integer;
    begin
+      
+      -- add 24.07.2026 BekmansurovRR
+      -- формируем временные уведомления
+      l_virtual_notices := gu23_notices_virtual(p_user_id);
+      if l_virtual_notices is not null then
+         l_idx := l_virtual_notices.first;
+         while l_idx is not null loop
+            l_row := l_virtual_notices(l_idx);
+            pipe row ( l_row );
+            l_idx := l_virtual_notices.next(l_idx);
+         end loop;
+      end if;
+
       for r in (
          select n.id,
                 n.title,
@@ -4042,17 +4055,7 @@
          pipe row ( l_row );
       end loop;
 
-      -- add 24.07.2026 BekmansurovRR
-      -- формируем временные уведомления
-      l_virtual_notices := gu23_notices_virtual(p_user_id);
-      if l_virtual_notices is not null then
-         l_idx := l_virtual_notices.first;
-         while l_idx is not null loop
-            l_row := l_virtual_notices(l_idx);
-            pipe row ( l_row );
-            l_idx := l_virtual_notices.next(l_idx);
-         end loop;
-      end if;
+
 
       return;
    end gu23_notices;
