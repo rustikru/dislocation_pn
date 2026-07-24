@@ -2,7 +2,13 @@ import { sendApiRequest } from './api.js'
 import { references } from './state.js'
 import { navigateTo } from './app.js'
 import { escapeHtml, formatDate, formatDateTime } from './utils.js'
-import { showStatusChip, showTypeChip } from './ui.js'
+import {
+  showStatusChip,
+  showTypeChip,
+  showToast,
+  showConfirmBox,
+  showPromptBox,
+} from './ui.js'
 
 export function showArchive(container) {
   $(container).load('pages/archive.php', () => showArchivePage(container))
@@ -31,6 +37,16 @@ function showArchivePage(container) {
     page: 1,
   }
 
+  // add 24.07.2026 BekmansurovRR: личные шаблоны фильтров
+  let presetList = [] // загруженные шаблоны пользователя
+  const filterLabelMap = {} // ключ -> { значение: подпись } для сводки
+  const filterTitles = {
+    type: 'Тип',
+    status: 'Статус',
+    dept: 'Цех',
+    reason_categ: 'Категория',
+  }
+
   // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
   // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
   const placeMenuNearButton = ($btn, $menu) => {
@@ -51,6 +67,11 @@ function showArchivePage(container) {
   // Фильтр с данными
   const addMultiChoiceFilter = (options, labels, key) => {
     const allLabel = labels[0] // самый первый элемент — «Все …»
+    filterLabelMap[key] = {}
+    // текущее выбранное состояние (чтобы отразить применённый шаблон)
+    const selected = String(archiveFilter[key] || '')
+      .split(',')
+      .filter(Boolean)
     const $wrap = $('<div class="ms-filter"></div>')
     const $btn = $(
       '<button type="button" class="inp ms-btn">' + allLabel + '</button>',
@@ -78,10 +99,14 @@ function showArchivePage(container) {
     // чекбоксы для  значений
     options.forEach((filterValue, idx) => {
       if (filterValue === '') return
+      filterLabelMap[key][filterValue] = labels[idx]
+      const checkedAttr = selected.indexOf(filterValue) !== -1 ? ' checked' : ''
       $menu.append(
         '<label class="ms-item"><input type="checkbox" value="' +
           filterValue +
-          '"><span>' +
+          '"' +
+          checkedAttr +
+          '><span>' +
           labels[idx] +
           '</span></label>',
       )
@@ -119,13 +144,19 @@ function showArchivePage(container) {
       }
     })
 
+    // add 24.07.2026 BekmansurovRR: отразить состояние в подписи кнопки
+    refreshFilterButton()
+
     $wrap.append($btn, $menu)
     // add 24.07.2026 BekmansurovRR: фильтры теперь внутри скрытой панели
     $('#archive-filters-panel').append($wrap)
   }
 
-  // Инициализация фильтров
-  addMultiChoiceFilter(
+  // add 24.07.2026 BekmansurovRR: собираем все фильтры в скрытую панель
+  // (вызывается заново при применении шаблона — чтобы виджеты отразили выбор)
+  function buildFilters() {
+    $('#archive-filters-panel').empty()
+    addMultiChoiceFilter(
     ['', 'start', 'end', 'other'],
     ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
     'type',
@@ -226,6 +257,15 @@ function showArchivePage(container) {
   $extraWrap.append($extraBtn, $extraMenu)
   $('#archive-filters-panel').append($extraWrap)
 
+    // add 24.07.2026 BekmansurovRR: отразить доп. фильтр из состояния
+    if (archiveFilter.has_signed === 'Y') {
+      $extraMenu.find('#filter-has-signed').val('signed')
+      $extraBtn.addClass('has-value')
+    }
+  }
+
+  buildFilters()
+
   // add 24.07.2026 BekmansurovRR
   // Открытие/закрытие скрытой панели фильтров
   $('#btn-toggle-filters').on('click', (e) => {
@@ -245,6 +285,138 @@ function showArchivePage(container) {
     $('#btn-toggle-filters').text(count ? 'Фильтры (' + count + ')' : 'Фильтры')
   }
   showFilterCount()
+
+  // add 24.07.2026 BekmansurovRR
+  // Сводка по применённому шаблону: «Цех: АКМ», «Статус (3)» и т.п.
+  function showFilterSummary(presetName) {
+    const parts = []
+    ;['type', 'status', 'dept', 'reason_categ'].forEach((key) => {
+      const values = String(archiveFilter[key] || '')
+        .split(',')
+        .filter(Boolean)
+      if (!values.length) return
+      if (values.length === 1) {
+        const label = (filterLabelMap[key] || {})[values[0]] || values[0]
+        parts.push(filterTitles[key] + ': ' + label)
+      } else {
+        parts.push(filterTitles[key] + ' (' + values.length + ')')
+      }
+    })
+    if (archiveFilter.has_signed === 'Y') parts.push('Подписанный документ')
+
+    const $box = $('#archive-filters-summary')
+    if (!parts.length) {
+      $box.hide().empty()
+      return
+    }
+    $box
+      .html(
+        '<b>' +
+          escapeHtml(presetName || 'Фильтр') +
+          ':</b> ' +
+          escapeHtml(parts.join(' · ')),
+      )
+      .show()
+  }
+
+  // add 24.07.2026 BekmansurovRR
+  // Применить выбранный шаблон: разложить params и перестроить фильтры
+  function applyPreset(preset) {
+    let params = {}
+    try {
+      params = JSON.parse(preset.PARAMS || '{}')
+    } catch (e) {
+      params = {}
+    }
+    archiveFilter.type = params.type || ''
+    archiveFilter.status = params.status || ''
+    archiveFilter.dept = params.dept || ''
+    archiveFilter.reason_categ = params.reason_categ || ''
+    archiveFilter.has_signed = params.has_signed || ''
+    archiveFilter.page = 1
+    buildFilters()
+    showFilterCount()
+    loadArchiveData()
+    showFilterSummary(preset.FILTER_NAME)
+  }
+
+  // add 24.07.2026 BekmansurovRR
+  // Загрузка личных шаблонов пользователя в select «Мои шаблоны»
+  function loadPresets() {
+    sendApiRequest('gu23_filter_all').done((resp) => {
+      presetList = (resp && resp.rows) || []
+      const $select = $('#archive-preset-select')
+      $select.find('option:not(:first)').remove()
+      presetList.forEach((preset) => {
+        $select.append(
+          '<option value="' +
+            preset.ID +
+            '">' +
+            escapeHtml(preset.FILTER_NAME) +
+            '</option>',
+        )
+      })
+      const defaultPreset = presetList.find((preset) => preset.IS_DEFAULT === 'Y')
+      if (defaultPreset) {
+        $select.val(defaultPreset.ID)
+        applyPreset(defaultPreset)
+      }
+    })
+  }
+
+  // Выбор шаблона из select
+  $('#archive-preset-select').on('change', function () {
+    const id = this.value
+    if (!id) {
+      // «Мои шаблоны» (пусто) — вернуть системные фильтры
+      showArchive(container)
+      return
+    }
+    const preset = presetList.find((p) => String(p.ID) === String(id))
+    if (preset) applyPreset(preset)
+  })
+
+  // Сохранить текущие фильтры как новый шаблон
+  $('#btn-save-preset').on('click', () => {
+    showPromptBox('Сохранить шаблон', 'Название шаблона', (name) => {
+      const filterName = (name || '').trim()
+      if (!filterName) return
+      const params = JSON.stringify({
+        type: archiveFilter.type,
+        status: archiveFilter.status,
+        dept: archiveFilter.dept,
+        reason_categ: archiveFilter.reason_categ,
+        has_signed: archiveFilter.has_signed,
+      })
+      sendApiRequest('gu23_filter_save', {
+        filter_name: filterName,
+        params: params,
+      }).done((r) => {
+        if (r && r.ok) {
+          showToast('Шаблон сохранён', 'ok')
+          loadPresets()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  })
+
+  // Удалить выбранный шаблон
+  $('#btn-del-preset').on('click', () => {
+    const id = $('#archive-preset-select').val()
+    if (!id) {
+      showToast('Выберите шаблон', 'err')
+      return
+    }
+    const preset = presetList.find((p) => String(p.ID) === String(id))
+    showConfirmBox('Удалить шаблон', (preset && preset.FILTER_NAME) || '', () => {
+      sendApiRequest('gu23_filter_del', { id: id }).done((r) => {
+        if (r && r.ok) {
+          showToast('Шаблон удалён', 'ok')
+          showArchive(container)
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  })
 
   // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))
@@ -290,6 +462,8 @@ function showArchivePage(container) {
   // Применение фильтров только по кнопке «Применить фильтр»
   $('#btn-apply-filters').on('click', () => {
     archiveFilter.page = 1
+    // ручное применение — это уже не «личный шаблон», сводку убираем
+    $('#archive-filters-summary').hide().empty()
     loadArchiveData()
   })
 
@@ -510,4 +684,6 @@ function showArchivePage(container) {
   }
 
   loadArchiveData()
+  // add 24.07.2026 BekmansurovRR: подгрузить личные шаблоны (и применить «по умолчанию»)
+  loadPresets()
 }

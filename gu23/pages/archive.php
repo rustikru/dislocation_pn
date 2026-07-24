@@ -10,10 +10,12 @@
     <input type="text" class="inp" id="search-input" placeholder="Номер акта, номер вагона, причина...">
   </div>
 
-  <!-- add 24.07.2026 BekmansurovRR: личные шаблоны фильтров (наполнение — этап 2) -->
+  <!-- add 24.07.2026 BekmansurovRR: личные шаблоны фильтров -->
   <select class="inp" id="archive-preset-select" title="Мои шаблоны">
     <option value="">Мои шаблоны</option>
   </select>
+  <button type="button" class="btn ghost" id="btn-save-preset" title="Сохранить текущие фильтры как шаблон">Сохранить шаблон</button>
+  <button type="button" class="btn ghost" id="btn-del-preset" title="Удалить выбранный шаблон">✕</button>
 
   <div class="refs-actions archive-excel-actions">
     <button class="refs-action-btn" id="btn-export-acts" type="button">
@@ -32,5 +34,8 @@
 
 <!-- add 24.07.2026 BekmansurovRR: все фильтры спрятаны в этот блок -->
 <div class="filters archive-filters-panel" id="archive-filters-panel" style="display:none"></div>
+
+<!-- add 24.07.2026 BekmansurovRR: сводка по применённому шаблону -->
+<div class="archive-filters-summary" id="archive-filters-summary" style="display:none"></div>
 
 <div class="card" id="acts-table-container"></div>

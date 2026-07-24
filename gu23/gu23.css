@@ -1110,6 +1110,16 @@ textarea.inp {
   border-radius: var(--r);
   padding: 12px 12px 3px;
 }
+/* add 24.07.2026 BekmansurovRR: сводка по применённому шаблону */
+.archive-filters-summary {
+  margin-bottom: 12px;
+  padding: 7px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  font-size: 12.5px;
+  color: var(--ink2);
+}
 
 /* Мультивыбор-фильтр (чекбокс-дропдаун) */
 .ms-filter {
