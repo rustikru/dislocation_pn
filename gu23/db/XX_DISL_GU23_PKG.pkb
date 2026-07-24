@@ -5143,7 +5143,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 params = l_row.params,
                 is_default = l_row.is_default,
                 last_updated_at = sysdate
-          where id = l_row.id;
+          where id = l_row.id
+            -- add 24.07.2026 BekmansurovRR: правим только свой фильтр
+            and user_id = l_row.user_id;
       end if;
       commit;
       return 'OK';
@@ -5155,11 +5157,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
    -- Удаление фильтра пользователя
    function gu23_filter_del (
-      p_id in number
+      p_id      in number,
+      p_user_id in number
    ) return varchar2 is
    begin
+      -- add 24.07.2026 BekmansurovRR: удаляем только свой фильтр
       delete xx_disl_gu23_filter
-       where id = p_id;
+       where id = p_id
+         and user_id = p_user_id;
       commit;
       return 'OK';
    exception

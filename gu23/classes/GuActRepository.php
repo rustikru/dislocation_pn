@@ -255,6 +255,9 @@ class GuActRepository
                 case 'gu23_filter_save':
                     $this->usersFilterSave();
                     break;
+                case 'gu23_filter_del':
+                    $this->usersFilterDel();
+                    break;
 
                 // --- роли и полномочия ---
                 case 'gu23_roles_users':        // пользователи с назначенными ролями 
@@ -1603,31 +1606,36 @@ class GuActRepository
     /* ----------------------------------------------------------------- */
     /* Фильтры пользователей                                             */
     /* ----------------------------------------------------------------- */
+    // Список личных фильтров текущего пользователя
     private function usersFilter(): void
     {
         $userId = (int) $this->auth->getUserId();
         $rows = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_notices(:p_user_id))',
+            'select * from table(xx_disl_gu23_pkg.gu23_users_filters(:p_user_id))',
             [':p_user_id' => $userId]
         );
         echo json_encode(['ok' => true, 'rows' => $rows]);
     }
 
-    // Сохранение фиьтра пользователя
+    // Сохранение фильтра пользователя
     private function usersFilterSave(): void
     {
-
-        $id = (int) filter_input(INPUT_POST, 'id');
+        // new = 0/пусто -> NULL, чтобы в пакете сработала ветка INSERT
+        $idRaw = filter_input(INPUT_POST, 'id');
+        $id = $idRaw ? (int) $idRaw : null;
         $filter_name = (string) filter_input(INPUT_POST, 'filter_name');
         $params = (string) filter_input(INPUT_POST, 'params');
-        $uid = $this->auth->getUserId();
+        $isDefault = strtoupper(trim((string) filter_input(INPUT_POST, 'is_default'))) === 'Y' ? 'Y' : 'N';
+        $uid = (int) $this->auth->getUserId();
         $sql = 'declare
                     v_d xx_disl_gu23_filter%rowtype;
                 begin
-                    v_d.id      := :id;
-                    v_d.user_id := :uid;
+                    v_d.id          := :id;
+                    v_d.user_id     := :uid;
                     v_d.filter_name := :filter_name;
-                    v_d.params := :params;
+                    v_d.params      := :params;
+                    v_d.is_default  := :is_default;
+                    v_d.created_by  := :uid;
                     :res := xx_etw.xx_disl_gu23_pkg.gu23_filter_save(v_d);
                 end;';
         $st = oci_parse($this->conn, $sql);
@@ -1637,8 +1645,27 @@ class GuActRepository
         oci_bind_by_name($st, ':uid', $uid);
         oci_bind_by_name($st, ':filter_name', $filter_name);
         oci_bind_by_name($st, ':params', $params);
+        oci_bind_by_name($st, ':is_default', $isDefault);
         oci_execute($st);
         $this->printPackageResult($res);
+    }
+
+    // Удаление фильтра пользователя (только своего)
+    private function usersFilterDel(): void
+    {
+        $id = (int) filter_input(INPUT_POST, 'id');
+        $uid = (int) $this->auth->getUserId();
+        if ($id <= 0) {
+            echo json_encode(['ok' => false, 'msg' => 'Не указан фильтр']);
+            return;
+        }
+        $res = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_filter_del(:id, :uid)',
+            [':id' => $id, ':uid' => $uid]
+        );
+        echo json_encode(str_starts_with((string) $res, 'OK')
+            ? ['ok' => true]
+            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     /** Переключить флаг active у причины. */

@@ -781,7 +781,8 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
    ) return varchar2;
    -- Удаление фильтра пользователя
    function gu23_filter_del (
-      p_id in number
+      p_id      in number,
+      p_user_id in number
    ) return varchar2;
 
    type t_gu23_filter_row is record (
