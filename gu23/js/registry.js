@@ -120,7 +120,8 @@ function showArchivePage(container) {
     })
 
     $wrap.append($btn, $menu)
-    $('#archive-filters').append($wrap)
+    // add 24.07.2026 BekmansurovRR: фильтры теперь внутри скрытой панели
+    $('#archive-filters-panel').append($wrap)
   }
 
   // Инициализация фильтров
@@ -190,7 +191,7 @@ function showArchivePage(container) {
     archiveFilter.page = 1
     loadArchiveData()
   })
-  $('#archive-filters').append($dateFrom, $dateTo)
+  $('#archive-filters-panel').append($dateFrom, $dateTo)
 
   // Доп. фильтры: «Приложение» — Все / Подписанный документ
   const $extraWrap = $('<div class="ms-filter"></div>')
@@ -224,7 +225,27 @@ function showArchivePage(container) {
     loadArchiveData()
   })
   $extraWrap.append($extraBtn, $extraMenu)
-  $('#archive-filters').append($extraWrap)
+  $('#archive-filters-panel').append($extraWrap)
+
+  // add 24.07.2026 BekmansurovRR
+  // Открытие/закрытие скрытой панели фильтров
+  $('#btn-toggle-filters').on('click', (e) => {
+    e.stopPropagation()
+    $('#archive-filters-panel').toggle()
+  })
+
+  // add 24.07.2026 BekmansurovRR
+  // Счётчик активных фильтров в кнопке «Фильтры (N)»
+  function showFilterCount() {
+    let count = 0
+    if (archiveFilter.type) count++
+    if (archiveFilter.status) count++
+    if (archiveFilter.dept) count++
+    if (archiveFilter.reason_categ) count++
+    if (archiveFilter.has_signed) count++
+    $('#btn-toggle-filters').text(count ? 'Фильтры (' + count + ')' : 'Фильтры')
+  }
+  showFilterCount()
 
   // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
   $('#btn-reset-filters').on('click', () => showArchive(container))
@@ -266,6 +287,8 @@ function showArchivePage(container) {
 
   // Загрузка таблицы
   function loadArchiveData() {
+    // add 24.07.2026 BekmansurovRR: держим счётчик «Фильтры (N)» в актуальном виде
+    showFilterCount()
     sendApiRequest('gu23_get_acts', archiveFilter).done((resp) => {
       const acts =
         resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []

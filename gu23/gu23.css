@@ -1103,6 +1103,13 @@ textarea.inp {
 .filters .ms-btn {
   line-height: 28px;
 }
+/* add 24.07.2026 BekmansurovRR: скрытая панель со всеми фильтрами */
+.archive-filters-panel {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 12px 12px 3px;
+}
 
 /* Мультивыбор-фильтр (чекбокс-дропдаун) */
 .ms-filter {
