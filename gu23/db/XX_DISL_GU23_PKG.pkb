@@ -970,7 +970,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                              || a.dept_id
                                              || ','
                                           ) > 0 )
-                                             and ( ( v_from is null
+                                             -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+                                             and ( v_q is not null
+                                              or ( ( v_from is null
                                              and v_to is null )
                                               or ( a.start_at is not null
                                              and ( v_from is null
@@ -995,7 +997,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                              v_to
                                           ) < v_to ) )
                                               or ( a.start_at is null
-                                             and a.end_at is null ) )
+                                             and a.end_at is null ) ) )
                                              and ( p_reason_categ is null
                                               or instr(
                                              ','
@@ -1120,7 +1122,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          || a.dept_id
          || ','
       ) > 0 )
-         and ( ( v_from is null
+           -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+         and ( v_q is not null
+          or ( ( v_from is null
          and v_to is null )
           or ( a.start_at is not null
          and ( v_from is null
@@ -1131,7 +1135,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          and ( v_from is null
           or a.end_at >= v_from )
          and ( v_to is null
-          or a.end_at < v_to ) ) )
+          or a.end_at < v_to ) ) ) )
          and ( nvl(
          p_has_signed,
          'N'
