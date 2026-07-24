@@ -3944,12 +3944,14 @@
          select gu.*
            from xx_disl_gu23_act gu
           where gu.status = 'active'
+            -- add 24.07.2026 BekmansurovRR
+            -- подписание последовательное: показываем уведомление только тому,
+            -- чья сейчас очередь (текущий подписант по маршруту), а не всем
+            -- у кого статус pending. Источник очереди — gu23_approval_next_signer
             and exists (
             select 1
-              from xx_disl_gu23_approval gua
-             where gua.act_id = gu.id
-               and gua.approver_id = p_user_id
-               and gua.status = 'pending'
+              from table ( gu23_approval_next_signer(gu.id) ) ns
+             where ns.approver_id = p_user_id
          )
       ) loop
          l_result.extend;
