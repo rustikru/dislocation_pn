@@ -20,15 +20,12 @@
    function fnc_mapping_dept (
       p_dept_name in varchar2
    ) return varchar2;
+   function html_escape (
+      p_text in varchar2
+   ) return varchar2;
 
+   
     /* ---- Отправить HTML-письмо ---- */
-   function gu23_correction_mail_html (
-      p_act_id    in number,
-      p_user_name in varchar2,
-      p_comment   in varchar2,
-      p_base_url  in varchar2 default null
-   ) return clob;
-
    procedure gu23_send_mail (
       p_to      in varchar2,
       p_subject in varchar2,
@@ -145,10 +142,11 @@
          image_path       varchar2(500),
          created_at       varchar2(20),
          is_read          varchar2(1),
-         -- add 23.07.2026 BekmansurovRR
-         -- признак "избранное" уведомление для пользователя
+        -- add 23.07.2026 BekmansurovRR
+        -- признак "избранное" уведомление для пользователя
          is_favorite      varchar2(1),
-         active           varchar2(1)
+         active           varchar2(1),
+         section_notif    varchar2(50) -- секция уведомления (table - реальное уведомление системы, virtual - временное уведомление, которые не хранится в таблицах)
    );
    type t_gu23_notice_tab is
       table of t_gu23_notice_row;
@@ -432,12 +430,7 @@
    ) return varchar2;
 
     -- ---- Согласование актов ----
-    -- add 24.07.2026 BekmansurovRR
-    -- закрытие акта начала простоя
-   procedure close_start_if_complete (
-      p_start_id in number,
-      p_user_id  in number default null
-   );
+
     -- Строка результата gu23_approval_get_signers
    type t_gu23_approval_signer_row is record (
          approver_id number,
@@ -515,6 +508,13 @@
    );
    type t_gu23_approval_tab is
       table of t_gu23_approval_row;
+   function gu23_correction_mail_html (
+      p_act_id    in number,
+      p_user_name in varchar2,
+      p_comment   in varchar2,
+      p_base_url  in varchar2 default null
+   ) return clob;
+
    function gu23_get_approvals (
       p_act_id in number
    ) return t_gu23_approval_tab
@@ -653,6 +653,10 @@
    ) return varchar2;
 
     -- ---- Уведомления ----
+   function gu23_notices_virtual (
+      p_user_id in number
+   ) return t_gu23_notice_tab;
+
    function gu23_notices (
       p_user_id in number
    ) return t_gu23_notice_tab

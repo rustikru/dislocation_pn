@@ -22,9 +22,14 @@
       'SERVER_HOST'
    );
    g_email_subject constant varchar2(240) := 'Дислокация.Уведомление "ГУ-23"';
-   function html_escape (
-      p_text in varchar2
-   ) return varchar2;
+   
+
+    -- add 24.07.2026 BekmansurovRR
+    -- закрытие акта начала простоя
+   procedure close_start_if_complete (
+      p_start_id in number,
+      p_user_id  in number default null
+   );
 
    procedure gu23_set_client_ip (
       p_ip in varchar2
@@ -3929,12 +3934,43 @@
     -- add 22.07.2026 BekmansurovRR
     -- Уведомления
     -- ----------------------------------------------------------------
+   -- Список актов для уведомления, которые требуется подписать в текущий момент.
+   function gu23_notices_virtual (
+      p_user_id in number
+   ) return t_gu23_notice_tab is
+      l_result t_gu23_notice_tab := t_gu23_notice_tab();
+   begin
+      for r in (
+         select gu.id
+           from xx_disl_gu23_act gu
+          where gu.status = 'active'
+            and exists (
+            select 1
+              from xx_disl_gu23_approval gua
+             where gua.act_id = gu.id
+               and gua.approver_id = p_user_id
+               and gua.status = 'pending'
+         )
+      ) loop
+         l_result.extend;
+         l_result(l_result.last).title := 'Подписание акта...';
+         l_result(l_result.last).body := 'Требуется подписать акт. Перейдите в раздел "Акты" для просмотра и подписания.';
+         l_result(l_result.last).notice_type := 'on_signed';
+         l_result(l_result.last).notice_type_name := 'На подписание';
+         l_result(l_result.last).section_notif := 'virtual';
+      end loop;
+
+      return l_result;
+   end gu23_notices_virtual;
+
    function gu23_notices (
       p_user_id in number
    ) return t_gu23_notice_tab
       pipelined
    is
-      l_row t_gu23_notice_row;
+      l_row             t_gu23_notice_row;
+      l_virtual_notices t_gu23_notice_tab;
+      l_idx             pls_integer;
    begin
       for r in (
          select n.id,
@@ -4002,8 +4038,21 @@
             -- отдаём признак избранного в результат
          l_row.is_favorite := r.is_favorite;
          l_row.active := 'Y';
+         l_row.section_notif := 'table';
          pipe row ( l_row );
       end loop;
+
+      -- add 24.07.2026 BekmansurovRR
+      -- формируем временные уведомления
+      l_virtual_notices := gu23_notices_virtual(p_user_id);
+      if l_virtual_notices is not null then
+         l_idx := l_virtual_notices.first;
+         while l_idx is not null loop
+            l_row := l_virtual_notices(l_idx);
+            pipe row ( l_row );
+            l_idx := l_virtual_notices.next(l_idx);
+         end loop;
+      end if;
 
       return;
    end gu23_notices;
@@ -5061,42 +5110,41 @@
          l_function,
          'x_to_email=>' || x_to_email
       );
-      insert into xx_disl_gu23_mail_test (
-         p_to,
-         p_subject,
-         p_body,
-         p_from
-      ) values
-         ( x_to_email,
-           x_subject,
-           x_msg,
-           x_sender );
-        /*
-        if UPPER (g_server_host) = 'M5000' and x_to_email is not null
-        then
-            if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
-            then
-                insert into xx_disl_gu23_mail_test (P_TO,
-                                                    P_SUBJECT,
-                                                    P_BODY,
-                                                    P_FROM)
-                     values (x_to_email,
-                             x_subject,
-                             x_msg,
-                             x_sender);
-            end if;
+      /*
+      if
+         upper(g_server_host) = 'M5000'
+         and x_to_email is not null
+      then
+         if trunc(sysdate) <= to_date ( '30.07.2026',
+         'DD.MM.YYYY' ) then
+            insert into xx_disl_gu23_mail_test (
+               p_to,
+               p_subject,
+               p_body,
+               p_from
+            ) values
+               ( x_to_email,
+                 x_subject,
+                 x_msg,
+                 x_sender );
+         end if;
 
-            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
-                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
-                                                 p_subject     => x_subject,
-                                                 p_text_clob   => x_msg);
-        else
-            apps.xx_mtf_send_mail_pkg.send_mail (
-                p_sender      => x_sender,                       --отправитель
-                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
-                p_subject     => x_subject || ' -> ' || x_to_email,
-                p_text_clob   => x_msg);
-        end if;*/
+         apps.xx_mtf_send_mail_pkg.send_mail(
+            p_sender    => x_sender, --отправитель
+            p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+            p_subject   => x_subject,
+            p_text_clob => x_msg
+         );
+      else
+         apps.xx_mtf_send_mail_pkg.send_mail(
+            p_sender    => x_sender,                       --отправитель
+            p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
+            p_subject   => x_subject
+                         || ' -> '
+                         || x_to_email,
+            p_text_clob => x_msg
+         );
+      end if;*/
 
       commit;
    end gu23_send_mail;
