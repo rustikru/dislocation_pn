@@ -2008,6 +2008,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       vs_org       varchar2(256);
       vs_stype     varchar2(16);
       l_sig        xx_disl_gu23_signer%rowtype;
+      -- add 24.07.2026 BekmansurovRR: используем процедуры insert_act/insert_act_row
+      l_act        xx_disl_gu23_act%rowtype;
+      l_arow       xx_disl_gu23_act_row%rowtype;
       v_dupnum     varchar2(64);
       v_has_start  number;
       v_cur_status varchar2(16);
@@ -2137,52 +2140,30 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       if v_isnew then
          v_number := g_next_number(v_dept_id);
          v_id := xx_disl_gu23_act_seq.nextval;
-         insert into xx_disl_gu23_act (
-            id,
-            act_number,
-            act_type,
-            status,
-            dept_id,
-            station_id,
-            st_from_id,
-            st_to_id,
-            cargo_ref,
-            reason,
-            circumstances,
-            start_at,
-            end_at,
-            dur_days,
-            dur_hours,
-            dur_total_h,
-            cal_days,
-            linked_start_id,
-            created_at,
-            created_by,
-            modified_at,
-            modified_by
-         ) values
-            ( v_id,
-              v_number,
-              p_data.p_type,
-              p_data.p_status,
-              v_dept_id,
-              v_station_id,
-              v_st_from_id,
-              v_st_to_id,
-              p_data.p_cargo_ref,
-              p_data.p_reason,
-              p_data.p_circumstances,
-              v_start,
-              v_end,
-              v_dd,
-              v_dh,
-              v_th,
-              v_cd,
-              p_data.p_linked_start_id,
-              sysdate,
-              p_data.p_user_id,
-              sysdate,
-              p_data.p_user_id );
+            -- add 24.07.2026 BekmansurovRR: вставка через процедуру insert_act
+         l_act.id := v_id;
+         l_act.act_number := v_number;
+         l_act.act_type := p_data.p_type;
+         l_act.status := p_data.p_status;
+         l_act.dept_id := v_dept_id;
+         l_act.station_id := v_station_id;
+         l_act.st_from_id := v_st_from_id;
+         l_act.st_to_id := v_st_to_id;
+         l_act.cargo_ref := p_data.p_cargo_ref;
+         l_act.reason := p_data.p_reason;
+         l_act.circumstances := p_data.p_circumstances;
+         l_act.start_at := v_start;
+         l_act.end_at := v_end;
+         l_act.dur_days := v_dd;
+         l_act.dur_hours := v_dh;
+         l_act.dur_total_h := v_th;
+         l_act.cal_days := v_cd;
+         l_act.linked_start_id := p_data.p_linked_start_id;
+         l_act.created_at := sysdate;
+         l_act.created_by := p_data.p_user_id;
+         l_act.modified_at := sysdate;
+         l_act.modified_by := p_data.p_user_id;
+         insert_act(l_act);
       else
             -- редактировать можно ТОЛЬКО Проект
          begin
@@ -2440,28 +2421,18 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             end if;
          end if;
 
-         insert into xx_disl_gu23_act_row (
-            id,
-            act_id,
-            wagon_no,
-            owner,
-            kind,
-            st_from,
-            st_to,
-            cargo,
-            weight,
-            waybill_no
-         ) values
-            ( xx_disl_gu23_act_row_seq.nextval,
-              v_id,
-              w.wagon_no,
-              vw_owner,
-              vw_kind,
-              vw_from,
-              vw_to,
-              vw_cargo,
-              vw_weight,
-              w.waybill_no );
+            -- add 24.07.2026 BekmansurovRR: вставка через процедуру insert_act_row
+         l_arow.id := xx_disl_gu23_act_row_seq.nextval;
+         l_arow.act_id := v_id;
+         l_arow.wagon_no := w.wagon_no;
+         l_arow.owner := vw_owner;
+         l_arow.kind := vw_kind;
+         l_arow.st_from := vw_from;
+         l_arow.st_to := vw_to;
+         l_arow.cargo := vw_cargo;
+         l_arow.weight := vw_weight;
+         l_arow.waybill_no := w.waybill_no;
+         insert_act_row(l_arow);
 
          v_wcnt := v_wcnt + 1;
       end loop;
