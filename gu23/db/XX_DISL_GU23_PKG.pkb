@@ -3964,7 +3964,10 @@
    end gu23_notices_virtual;
 
    function gu23_notices (
-      p_user_id in number
+      p_user_id in number,
+      -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё:
+      -- отключённые, вне срока, без учёта адресности)
+      p_all     in varchar2 default 'N'
    ) return t_gu23_notice_tab
       pipelined
    is
@@ -4012,7 +4015,8 @@
                 nvl(
                    nr.is_favorite,
                    'N'
-                ) is_favorite
+                ) is_favorite,
+                n.active
            from xx_disl_module_notif n
            left join xx_disl_general_ref nt
          on nt.ref_code = 'GU23_NOTICE_TYPE'
@@ -4022,10 +4026,15 @@
            left join xx_disl_module_notif_read nr
          on nr.notification_id = n.id
             and nr.user_id = p_user_id
-          where n.active = 'Y'
-            and n.module_code = 'GU23'
-            and sysdate between n.start_date and n.end_date
-            and ( not exists (
+          where n.module_code = 'GU23'
+            -- add 24.07.2026 BekmansurovRR: при p_all='Y' фильтры видимости
+            -- (активность / срок показа / адресность) не применяются
+            and ( p_all = 'Y'
+             or n.active = 'Y' )
+            and ( p_all = 'Y'
+             or sysdate between n.start_date and n.end_date )
+            and ( p_all = 'Y'
+             or not exists (
             select 1
               from xx_disl_module_notif_user nu
              where nu.notification_id = n.id
@@ -4050,7 +4059,7 @@
             -- add 23.07.2026 BekmansurovRR
             -- отдаём признак избранного в результат
          l_row.is_favorite := r.is_favorite;
-         l_row.active := 'Y';
+         l_row.active := r.active;
          l_row.section_notif := 'table';
          pipe row ( l_row );
       end loop;
@@ -4192,72 +4201,8 @@
          return format_error();
    end gu23_notice_read_all;
 
-   function gu23_notices_all (
-      p_user_id in number
-   ) return t_gu23_notice_tab
-      pipelined
-   is
-      l_row t_gu23_notice_row;
-   begin
-      for r in (
-         select n.id,
-                n.title,
-                n.body,
-                n.notice_type,
-                nvl(
-                   nt.name,
-                   n.notice_type
-                ) notice_type_name,
-                n.image_path,
-                to_char(
-                   n.created_at,
-                   c_dtf
-                ) created_at,
-                         -- add 23.07.2026 BekmansurovRR
-                         -- прочитано определяем по дате прочтения
-                case
-                   when nr.read_at is null then
-                      'N'
-                   else
-                      'Y'
-                end is_read,
-                         -- add 23.07.2026 BekmansurovRR
-                         -- признак "избранное" для пользователя
-                nvl(
-                   nr.is_favorite,
-                   'N'
-                ) is_favorite,
-                n.active
-           from xx_disl_module_notif n
-           left join xx_disl_general_ref nt
-         on nt.ref_code = 'GU23_NOTICE_TYPE'
-            and sysdate between nt.start_effect_date and nt.end_effect_date
-            and ( nt.code = n.notice_type
-             or to_char(nt.id) = n.notice_type )
-           left join xx_disl_module_notif_read nr
-         on nr.notification_id = n.id
-            and nr.user_id = p_user_id
-          where n.module_code = 'GU23'
-          order by n.created_at desc,
-                   n.id desc
-      ) loop
-         l_row.id := r.id;
-         l_row.title := r.title;
-         l_row.body := r.body;
-         l_row.notice_type := r.notice_type;
-         l_row.notice_type_name := r.notice_type_name;
-         l_row.image_path := r.image_path;
-         l_row.created_at := r.created_at;
-         l_row.is_read := r.is_read;
-            -- add 23.07.2026 BekmansurovRR
-            -- отдаём признак избранного в результат
-         l_row.is_favorite := r.is_favorite;
-         l_row.active := r.active;
-         pipe row ( l_row );
-      end loop;
-
-      return;
-   end gu23_notices_all;
+    -- add 24.07.2026 BekmansurovRR
+    -- gu23_notices_all удалён — используется единая gu23_notices(p_user_id, p_all => 'Y')
 
     -- add 22.07.2026 BekmansurovRR
     -- Сохраняем уведомление

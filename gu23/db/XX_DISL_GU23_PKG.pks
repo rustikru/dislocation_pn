@@ -658,7 +658,9 @@
    ) return t_gu23_notice_tab;
 
    function gu23_notices (
-      p_user_id in number
+      p_user_id in number,
+      -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё)
+      p_all     in varchar2 default 'N'
    ) return t_gu23_notice_tab
       pipelined;
 
@@ -675,10 +677,8 @@
       p_user_id in number
    ) return varchar2;
 
-   function gu23_notices_all (
-      p_user_id in number
-   ) return t_gu23_notice_tab
-      pipelined;
+   -- add 24.07.2026 BekmansurovRR: gu23_notices_all удалён,
+   -- используется gu23_notices(p_user_id, p_all => 'Y')
 
    function gu23_notice_save (
       p_id          in number,

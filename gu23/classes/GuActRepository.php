@@ -623,8 +623,9 @@ class GuActRepository
         }
 
         $userId = (int) $this->auth->getUserId();
+        // gu23_notices_all удалён — единая функция с флагом p_all => 'Y'
         $rows = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_notices_all(:p_user_id))',
+            "select * from table(xx_disl_gu23_pkg.gu23_notices(p_user_id => :p_user_id, p_all => 'Y'))",
             [':p_user_id' => $userId]
         );
         echo json_encode(['ok' => true, 'rows' => $rows]);
