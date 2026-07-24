@@ -3953,7 +3953,7 @@
          )
       ) loop
          l_result.extend;
-         l_result(l_result.last).title := 'Подписание акта...';
+         l_result(l_result.last).title := 'Подписание акта ' || r.act_number;
          l_result(l_result.last).body := 'Требуется подписать акт. Перейдите в раздел "Акты" для просмотра и подписания.';
          l_result(l_result.last).notice_type := 'on_signed';
          l_result(l_result.last).notice_type_name := 'На подписание';
