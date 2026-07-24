@@ -74,7 +74,9 @@ function showFormFields() {
   showReasonFields()
   showWagonBlock()
 }
-
+/**
+ * Отрисовка выбора открытого акта начала простоя для акта окончания
+ */
 function showEndActChoice() {
   const $place = $('#form-linked-start-place').empty()
   // Акт окончания простоя создается только на основе акта на начало простоя
@@ -220,7 +222,9 @@ function showMainFields() {
 function setDefaultStation() {
   if (activeDraft.id) return false
 
-  const deptCode = String(activeDraft.departmentCode || '').trim().toUpperCase()
+  const deptCode = String(activeDraft.departmentCode || '')
+    .trim()
+    .toUpperCase()
   if (
     defaultStationRules.departments.length > 0 &&
     !defaultStationRules.departments.includes(deptCode)
@@ -234,8 +238,9 @@ function setDefaultStation() {
 
   const station = (references.stationsList || []).find(
     (row) =>
-      String(row.NAME || '').trim().toUpperCase() ===
-      defaultStationRules.stationName.toUpperCase(),
+      String(row.NAME || '')
+        .trim()
+        .toUpperCase() === defaultStationRules.stationName.toUpperCase(),
   )
   if (!station) {
     return false
@@ -252,9 +257,9 @@ function showReasonFields() {
   const reasonItems = references.reasonsList.map((reason) => ({
     label: `${reason.NAME} (${reason.CATEG_NAME || 'Без категории'})`,
     value: reason.CODE,
-    name: reason.NAME,           // сохраняем только имя
+    name: reason.NAME, // сохраняем только имя
     code: reason.CODE,
-    categName: reason.CATEG_NAME  // Категория причины
+    categName: reason.CATEG_NAME, // Категория причины
   }))
   // Начальное значение для поля (только NAME)
   const reasonInitLabel = (() => {
@@ -278,7 +283,7 @@ function showReasonFields() {
       // При выборе сохраняем код и только имя
       activeDraft.reasonId = it.code
       activeDraft.reasonName = it.name
-      
+
       // Подставляем в поле только NAME
       $('#auto-reason').val(it.name)
     },
@@ -745,8 +750,7 @@ function loadWagonsDataFromDislocation() {
 
     // Автозаполнение «Груз», «Ст. отправления» и «Ст. назначения» из дислокации
     if (firstFound) {
-      if (firstFound.CARGO)
-        activeDraft.cargoReference = firstFound.CARGO //  груз
+      if (firstFound.CARGO) activeDraft.cargoReference = firstFound.CARGO //  груз
       if (firstFound.ST_FROM_CODE) {
         activeDraft.stationFromId = firstFound.ST_FROM_CODE // id станции отправления
         activeDraft.stationFromName = firstFound.ST_FROM // станции отправления
@@ -971,13 +975,15 @@ function showSignersFields() {
     .append(
       '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Подписанты</label>',
     )
+  // Получаем  подписантов для текущего типа акта
   const signerSlots = getSignerSlots(activeDraft.type)
   putSignersToSlots(signerSlots)
+  // Получаем список подписантов предприятия для текущего акта
   const ownFiltered = getOwnSignersForAct()
-
+  // Автоподстановка: для нового акта заполняем текущим пользователем
   fillFirstSigner(ownFiltered)
-
-  const manualSlots = [] // слоты в ручном режиме — для автокомплита ФИО/должности
+  // поля в ручном режиме — для автокомплита ФИО/должности
+  const manualSlots = []
   for (let i = 0; i < signerSlots.length; i++) {
     showSignerSlot($container, i, signerSlots[i], ownFiltered, manualSlots)
   }
