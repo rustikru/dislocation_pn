@@ -4072,7 +4072,9 @@
    function gu23_notice_count (
       p_user_id in number
    ) return number is
-      l_count number;
+      l_count           number;
+      l_virtual_notices t_gu23_notice_tab;
+      l_cnt             number;
    begin
       select count(*)
         into l_count
@@ -4099,7 +4101,14 @@
                                -- add 23.07.2026 BekmansurovRR
             and nr.read_at is not null
       );
-
+      -- add 24.07.2026 BekmansurovRR
+      -- формируем временные уведомления
+      l_virtual_notices := gu23_notices_virtual(p_user_id);
+      l_cnt := l_virtual_notices.count;
+      l_count := l_count + nvl(
+         l_cnt,
+         0
+      );
       return l_count;
    end gu23_notice_count;
 
@@ -4200,9 +4209,6 @@
          rollback;
          return format_error();
    end gu23_notice_read_all;
-
-    -- add 24.07.2026 BekmansurovRR
-    -- gu23_notices_all удалён — используется единая gu23_notices(p_user_id, p_all => 'Y')
 
     -- add 22.07.2026 BekmansurovRR
     -- Сохраняем уведомление
