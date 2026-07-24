@@ -340,7 +340,7 @@ function showArchivePage(container, options = {}) {
   }
 
   // Применить выбранный шаблон
-  function applyPreset(preset) {
+  function applyPreset(preset, options = {}) {
     let params = {}
     try {
       params = JSON.parse(preset.PARAMS || '{}')
@@ -362,7 +362,7 @@ function showArchivePage(container, options = {}) {
     updatePresetActions()
     buildFilters()
     showFilterCount()
-    loadArchiveData()
+    if (options.loadData !== false) loadArchiveData()
     showFilterSummary(preset.FILTER_NAME)
   }
 
@@ -374,7 +374,7 @@ function showArchivePage(container, options = {}) {
   }
 
   function loadPresets(options = {}) {
-    sendApiRequest('gu23_filter_all').done((resp) => {
+    return sendApiRequest('gu23_filter_all').done((resp) => {
       presetList = (resp && resp.rows) || []
       const $select = $('#archive-preset-select')
       $select.find('option:not(:first)').remove()
@@ -405,7 +405,9 @@ function showArchivePage(container, options = {}) {
         $select.val(selectedPresetId)
       } else if (options.applyDefault !== false && defaultPreset) {
         $select.val(defaultPreset.ID)
-        applyPreset(defaultPreset)
+        applyPreset(defaultPreset, {
+          loadData: options.loadDataAfter !== true,
+        })
       } else {
         selectedPresetId = ''
       }
@@ -781,7 +783,11 @@ function showArchivePage(container, options = {}) {
     })
   }
 
-  loadArchiveData()
-  // add 24.07.2026 BekmansurovRR: подгрузить личные шаблоны (и применить «по умолчанию»)
-  loadPresets({ applyDefault: options.applyDefaultPreset !== false })
+  // Сначала определяем итоговые параметры, включая личный шаблон по умолчанию,
+  // и только после этого один раз загружаем архив. При ошибке загрузки шаблонов
+  // таблица всё равно откроется с системными фильтрами.
+  loadPresets({
+    applyDefault: options.applyDefaultPreset !== false,
+    loadDataAfter: true,
+  }).always(loadArchiveData)
 }
