@@ -133,51 +133,57 @@ function noticeRowsPage() {
     const isFavorite = row.IS_FAVORITE === 'Y'
     const canEdit = hasPerm('MANAGE_REFS')
     const bodyText = shortNoticeText(row.BODY || '')
+    // add 24.07.2026 BekmansurovRR
+    // виртуальные записи (section_notif='virtual') нельзя читать/избранное/править
+    const isVirtual = row.SECTION_NOTIF === 'virtual'
     // add 23.07.2026 BekmansurovRR
     //  (избранное) слева,  (прочитано/не прочитано) справа
     const $item = $(`
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
-        <span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>
+        ${isVirtual ? '' : `<span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>`}
         <span class="notice-data">
           <span class="notice-head">
             <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</em>
             <span class="notice-date">${formatDateTime(row.CREATED_AT || '')}</span>
-            ${canEdit ? `<i>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</i>` : ''}
+            ${canEdit && !isVirtual ? `<i>${row.ACTIVE === 'Y' ? 'Активна' : 'Отключена'}</i>` : ''}
           </span>
           <strong class="notice-title">${escapeHtml(row.TITLE || '')}</strong>
           ${bodyText ? `<span class="notice-text">${escapeHtml(bodyText)}</span>` : ''}
           ${row.IMAGE_PATH ? '<span class="notice-image-note"><b>Есть фото...</b></span>' : ''}
         </span>
         <span class="notice-actions">
-          <span class="notice-mail ${isRead ? 'is-read' : 'is-unread'}" title="${isRead ? 'Прочитано (отметить непрочитанным)' : 'Не прочитано (отметить прочитанным)'}">${NOTICE_MAIL_SVG}</span>
-          ${canEdit ? '<span class="notice-edit" title="Изменить">✎</span>' : ''}
+          ${isVirtual ? '' : `<span class="notice-mail ${isRead ? 'is-read' : 'is-unread'}" title="${isRead ? 'Прочитано (отметить непрочитанным)' : 'Не прочитано (отметить прочитанным)'}">${NOTICE_MAIL_SVG}</span>`}
+          ${canEdit && !isVirtual ? '<span class="notice-edit" title="Изменить">✎</span>' : ''}
         </span>
       </button>
     `)
 
     $item.on('click', () => {
-      if ($item.hasClass('unread')) {
+      // add 24.07.2026 BekmansurovRR: виртуальные не помечаем прочитанными
+      if (!isVirtual && $item.hasClass('unread')) {
         noticeRead(row.ID, $item)
       }
       noticeView(row)
     })
 
     // add 23.07.2026 BekmansurovRR
-    $item.find('.notice-fav').on('click', (event) => {
-      event.stopPropagation()
-      noticeFavorite(row, $item.find('.notice-fav'))
-    })
+    // обработчики кнопок — только для обычных (не виртуальных) записей
+    if (!isVirtual) {
+      $item.find('.notice-fav').on('click', (event) => {
+        event.stopPropagation()
+        noticeFavorite(row, $item.find('.notice-fav'))
+      })
 
-    // add 23.07.2026 BekmansurovRR
-    $item.find('.notice-mail').on('click', (event) => {
-      event.stopPropagation()
-      noticeReadToggle(row, $item, $item.find('.notice-mail'))
-    })
+      $item.find('.notice-mail').on('click', (event) => {
+        event.stopPropagation()
+        noticeReadToggle(row, $item, $item.find('.notice-mail'))
+      })
 
-    $item.find('.notice-edit').on('click', (event) => {
-      event.stopPropagation()
-      noticeForm(row)
-    })
+      $item.find('.notice-edit').on('click', (event) => {
+        event.stopPropagation()
+        noticeForm(row)
+      })
+    }
 
     $list.append($item)
   })
