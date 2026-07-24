@@ -22,6 +22,13 @@
    ) return varchar2;
 
     /* ---- Отправить HTML-письмо ---- */
+   function gu23_correction_mail_html (
+      p_act_id    in number,
+      p_user_name in varchar2,
+      p_comment   in varchar2,
+      p_base_url  in varchar2 default null
+   ) return clob;
+
    procedure gu23_send_mail (
       p_to      in varchar2,
       p_subject in varchar2,
@@ -425,7 +432,12 @@
    ) return varchar2;
 
     -- ---- Согласование актов ----
-
+    -- add 24.07.2026 BekmansurovRR
+    -- закрытие акта начала простоя
+   procedure close_start_if_complete (
+      p_start_id in number,
+      p_user_id  in number default null
+   );
     -- Строка результата gu23_approval_get_signers
    type t_gu23_approval_signer_row is record (
          approver_id number,

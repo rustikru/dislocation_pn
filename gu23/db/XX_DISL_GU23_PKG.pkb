@@ -1,5 +1,4 @@
-﻿/* Formatted on 23.07.2026 22:13:30 (QP5 v5.417) */
-create or replace package body xx_etw.xx_disl_gu23_pkg as
+﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -26,20 +25,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
    function html_escape (
       p_text in varchar2
    ) return varchar2;
-
-   function gu23_correction_mail_html (
-      p_act_id    in number,
-      p_user_name in varchar2,
-      p_comment   in varchar2,
-      p_base_url  in varchar2 default null
-   ) return clob;
-
-    -- add 24.07.2026 BekmansurovRR
-    -- закрытие акта начала простоя 
-   procedure close_start_if_complete (
-      p_start_id in number,
-      p_user_id  in number default null
-   );
 
    procedure gu23_set_client_ip (
       p_ip in varchar2
@@ -970,7 +955,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                              || a.dept_id
                                              || ','
                                           ) > 0 )
-                                             -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+                                       -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
                                               or ( ( v_from is null
                                              and v_to is null )
@@ -1122,7 +1107,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          || a.dept_id
          || ','
       ) > 0 )
-           -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+               -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
           or ( ( v_from is null
          and v_to is null )
@@ -2254,7 +2239,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             delete from xx_disl_gu23_approval
              where act_id = v_id;
          end if;
-
       end if;
 
         -- разбираем вагоны
@@ -2988,8 +2972,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_start_id in number,
       p_user_id  in number default null
    ) is
-      v_cnt  number;   -- всего вагонов в акте начала (защита от пустого)
-      v_open number;   -- вагоны акта начала без подписанного акта окончания
+      v_cnt  number;    -- всего вагонов в акте начала (защита от пустого)
+      v_open number; -- вагоны акта начала без подписанного акта окончания
    begin
       if p_start_id is null then
          return;
@@ -4397,7 +4381,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
     -- add 23.07.2026 BekmansurovRR
     -- Ручная установка признака прочтения (иконка-конверт).
-    -- p_read = 'Y' — прочитано, иначе — не прочитано.
+    -- p_read = 'Y' ? прочитано, иначе ? не прочитано.
    function gu23_notice_read_set (
       p_user_id   in number,
       p_notice_id in number,
@@ -4869,13 +4853,16 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                 || html_escape(v_circ)
                 || '</b></td></tr></table></div>'
             -- rem 15.07.2026 (пока не отключили такую возможность, только через сайт)
-
-                || '<p style="margin:0 0 22px"><a href="'
-                || v_approve_url
-                || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
-                || '<a href="'
-                || v_reject_url
-                || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+                ||
+         case
+            when upper(g_server_host) != 'M5000' then
+               '<p style="margin:0 0 22px"><a href="'
+               || v_approve_url
+               || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+               || '<a href="'
+               || v_reject_url
+               || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+         end
                 || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
                 || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
                 || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'
@@ -5084,7 +5071,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
            x_subject,
            x_msg,
            x_sender );
-/*
+        /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
