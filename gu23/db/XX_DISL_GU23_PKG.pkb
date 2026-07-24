@@ -2012,7 +2012,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       vs_org       varchar2(256);
       vs_stype     varchar2(16);
       l_sig        xx_disl_gu23_signer%rowtype;
-      -- add 24.07.2026 BekmansurovRR: используем процедуры insert_act/insert_act_row
       l_act        xx_disl_gu23_act%rowtype;
       l_arow       xx_disl_gu23_act_row%rowtype;
       v_dupnum     varchar2(64);
@@ -2437,7 +2436,6 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_arow.weight := vw_weight;
          l_arow.waybill_no := w.waybill_no;
          insert_act_row(l_arow);
-
          v_wcnt := v_wcnt + 1;
       end loop;
 
