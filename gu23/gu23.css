@@ -1103,7 +1103,7 @@ textarea.inp {
 .filters .ms-btn {
   line-height: 28px;
 }
-/* add 24.07.2026 BekmansurovRR: скрытая панель со всеми фильтрами */
+/*  скрытая панель со всеми фильтрами */
 .archive-filters-panel {
   background: var(--surface2);
   border: 1px solid var(--line);
@@ -1130,13 +1130,14 @@ textarea.inp {
   height: 30px;
   font-size: 12.5px;
 }
+/*
 .archive-preset-toolbar .archive-preset-delete:not(:disabled) {
   margin-left: auto;
-}
+}*/
 .archive-filter-controls {
   margin-bottom: -9px;
 }
-/* add 24.07.2026 BekmansurovRR: сводка по применённому шаблону */
+/*  сводка по применённому шаблону */
 .archive-filters-summary {
   margin-bottom: 12px;
   padding: 7px 12px;
@@ -1245,7 +1246,7 @@ textarea.inp {
 }
 .searchbox .inp {
   padding-left: 12px;
-  /* add 24.07.2026 BekmansurovRR: поле поиска на всю ширину блока */
+  /*  поле поиска на всю ширину блока */
   width: 100%;
 }
 .searchbox::before {

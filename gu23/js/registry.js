@@ -38,7 +38,7 @@ function showArchivePage(container) {
 
   // add 24.07.2026 BekmansurovRR: личные шаблоны фильтров
   let presetList = [] // загруженные шаблоны пользователя
-  const filterLabelMap = {} // ключ -> { значение: подпись } для сводки
+  const filterLabelMap = {} //{ значение: подпись } для сводки
   const filterTitles = {
     type: 'Тип',
     status: 'Статус',
@@ -63,8 +63,6 @@ function showArchivePage(container) {
     return parts.length === 3 ? parts.reverse().join('-') : ''
   }
 
-  // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
-  // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
   const placeMenuNearButton = ($btn, $menu) => {
     const buttonRect = $btn[0].getBoundingClientRect()
     const menuWidth = $menu.outerWidth()
@@ -145,7 +143,7 @@ function showArchivePage(container) {
         .join(',')
       archiveFilter.page = 1
       refreshFilterButton()
-      // add 24.07.2026 BekmansurovRR: фильтр применяется только по кнопке
+      // add 24.07.2026 BekmansurovRR
       showFilterCount()
     })
 
@@ -164,114 +162,122 @@ function showArchivePage(container) {
     refreshFilterButton()
 
     $wrap.append($btn, $menu)
-    // add 24.07.2026 BekmansurovRR: фильтры теперь внутри скрытой панели
+    // фильтры внутри скрытой панели
     $('#archive-filter-controls').append($wrap)
   }
 
-  // add 24.07.2026 BekmansurovRR: собираем все фильтры в скрытую панель
-  // (вызывается заново при применении шаблона — чтобы виджеты отразили выбор)
+  // add 24.07.2026 BekmansurovRR: собираем все фильтры
   function buildFilters() {
     $('#archive-filter-controls').empty()
     addMultiChoiceFilter(
-    ['', 'start', 'end', 'other'],
-    ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
-    'type',
-  )
-  addMultiChoiceFilter(
-    ['', 'draft', 'active', 'on_correction', 'closed', 'annulled', 'signed', 'rejected'],
-    [
-      'Все статусы',
-      'Проект',
-      'Открыт',
-      'На корректировке',
-      'Закрыт',
-      'Аннулирован',
-      'Подписан',
-      'Отклонён',
-    ],
-    'status',
-  )
+      ['', 'start', 'end', 'other'],
+      ['Все типы', 'Начало простоя', 'Окончание', 'Прочий'],
+      'type',
+    )
+    addMultiChoiceFilter(
+      [
+        '',
+        'draft',
+        'active',
+        'on_correction',
+        'closed',
+        'annulled',
+        'signed',
+        'rejected',
+      ],
+      [
+        'Все статусы',
+        'Проект',
+        'Открыт',
+        'На корректировке',
+        'Закрыт',
+        'Аннулирован',
+        'Подписан',
+        'Отклонён',
+      ],
+      'status',
+    )
 
-  const departmentCodes = references.departmentsList.map((d) => d.CODE)
-  addMultiChoiceFilter(
-    [''].concat(references.departmentsList.map((d) => String(d.ID))),
-    ['Все цеха'].concat(departmentCodes),
-    'dept',
-  )
+    const departmentCodes = references.departmentsList.map((d) => d.CODE)
+    addMultiChoiceFilter(
+      [''].concat(references.departmentsList.map((d) => String(d.ID))),
+      ['Все цеха'].concat(departmentCodes),
+      'dept',
+    )
 
-  // add 21.07.2026 BekmansurovRR
-  // Категории причин
-  const categCodes = references.reasonCategories.map((d) => d.NAME)
-  addMultiChoiceFilter(
-    [''].concat(references.reasonCategories.map((d) => String(d.ID))),
-    ['Все категории'].concat(categCodes),
-    'reason_categ',
-  )
+    // add 21.07.2026 BekmansurovRR
+    // Категории причин
+    const categCodes = references.reasonCategories.map((d) => d.NAME)
+    addMultiChoiceFilter(
+      [''].concat(references.reasonCategories.map((d) => String(d.ID))),
+      ['Все категории'].concat(categCodes),
+      'reason_categ',
+    )
 
-  // закрытие выпадающих меню по клику вне
-  $(document)
-    .off('click.msfilter')
-    .on('click.msfilter', () => $('.ms-menu').hide())
+    // закрытие выпадающих меню по клику вне
+    $(document)
+      .off('click.msfilter')
+      .on('click.msfilter', () => $('.ms-menu').hide())
 
-  // Фильтр по периоду (дата начала или окончания). По умолчанию — текущий месяц.
-  const $dateFrom = $(
-    '<input type="date" class="inp" title="Дата с" value="' +
-      filterDateToInput(archiveFilter.date_from) +
-      '">',
-  )
-  const $dateTo = $(
-    '<input type="date" class="inp" title="Дата по" value="' +
-      filterDateToInput(archiveFilter.date_to) +
-      '">',
-  )
-  $dateFrom.on('change', (e) => {
-    archiveFilter.date_from = e.target.value
-      ? e.target.value.split('-').reverse().join('.')
-      : ''
-    archiveFilter.page = 1
-  })
-  $dateTo.on('change', (e) => {
-    archiveFilter.date_to = e.target.value
-      ? e.target.value.split('-').reverse().join('.')
-      : ''
-    archiveFilter.page = 1
-  })
-  $('#archive-filter-controls').append($dateFrom, $dateTo)
+    // Фильтр по периоду (дата начала или окончания). По умолчанию — текущий месяц.
+    const $dateFrom = $(
+      '<input type="date" class="inp" title="Дата с" value="' +
+        filterDateToInput(archiveFilter.date_from) +
+        '">',
+    )
+    const $dateTo = $(
+      '<input type="date" class="inp" title="Дата по" value="' +
+        filterDateToInput(archiveFilter.date_to) +
+        '">',
+    )
+    $dateFrom.on('change', (e) => {
+      archiveFilter.date_from = e.target.value
+        ? e.target.value.split('-').reverse().join('.')
+        : ''
+      archiveFilter.page = 1
+    })
+    $dateTo.on('change', (e) => {
+      archiveFilter.date_to = e.target.value
+        ? e.target.value.split('-').reverse().join('.')
+        : ''
+      archiveFilter.page = 1
+    })
+    $('#archive-filter-controls').append($dateFrom, $dateTo)
 
-  // Доп. фильтры: «Приложение» — Все / Подписанный документ
-  const $extraWrap = $('<div class="ms-filter"></div>')
-  const $extraBtn = $(
-    '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
-  )
-  const $extraMenu = $(
-    '<div class="ms-menu" style="padding:12px;min-width:240px"></div>',
-  )
-  $extraMenu.append(
-    '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Приложение</label>' +
-      '<select class="inp" id="filter-has-signed" style="width:100%">' +
-      '<option value="">Все</option>' +
-      '<option value="signed">Подписанный документ</option>' +
-      '</select>',
-  )
-  $extraMenu.on('click', (e) => e.stopPropagation())
-  $extraBtn.on('click', (e) => {
-    e.stopPropagation()
-    const willOpen = !$extraMenu.is(':visible')
-    $('.ms-menu').hide()
-    if (willOpen) {
-      $extraMenu.show()
-      placeMenuNearButton($extraBtn, $extraMenu)
-    }
-  })
-  $extraMenu.on('change', '#filter-has-signed', function () {
-    archiveFilter.has_signed = this.value === 'signed' ? 'Y' : ''
-    archiveFilter.page = 1
-    $extraBtn.toggleClass('has-value', !!archiveFilter.has_signed)
-    // add 24.07.2026 BekmansurovRR: фильтр применяется только по кнопке
-    showFilterCount()
-  })
-  $extraWrap.append($extraBtn, $extraMenu)
-  $('#archive-filter-controls').append($extraWrap)
+    // Доп. фильтры: «Приложение» — Все / Подписанный документ
+    const $extraWrap = $('<div class="ms-filter"></div>')
+    const $extraBtn = $(
+      '<button type="button" class="inp ms-btn" id="btn-extra-filters">Доп. фильтры</button>',
+    )
+    const $extraMenu = $(
+      '<div class="ms-menu" style="padding:12px;min-width:240px"></div>',
+    )
+    $extraMenu.append(
+      '<label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Приложение</label>' +
+        '<select class="inp" id="filter-has-signed" style="width:100%">' +
+        '<option value="">Все</option>' +
+        '<option value="signed">Подписанный документ</option>' +
+        '</select>',
+    )
+    $extraMenu.on('click', (e) => e.stopPropagation())
+    $extraBtn.on('click', (e) => {
+      e.stopPropagation()
+      const willOpen = !$extraMenu.is(':visible')
+      $('.ms-menu').hide()
+      if (willOpen) {
+        $extraMenu.show()
+        placeMenuNearButton($extraBtn, $extraMenu)
+      }
+    })
+    $extraMenu.on('change', '#filter-has-signed', function () {
+      archiveFilter.has_signed = this.value === 'signed' ? 'Y' : ''
+      archiveFilter.page = 1
+      $extraBtn.toggleClass('has-value', !!archiveFilter.has_signed)
+      // add 24.07.2026 BekmansurovRR: фильтр применяется только по кнопке
+      showFilterCount()
+    })
+    $extraWrap.append($extraBtn, $extraMenu)
+    $('#archive-filter-controls').append($extraWrap)
 
     // add 24.07.2026 BekmansurovRR: отразить доп. фильтр из состояния
     if (archiveFilter.has_signed === 'Y') {
@@ -282,14 +288,11 @@ function showArchivePage(container) {
 
   buildFilters()
 
-  // add 24.07.2026 BekmansurovRR
-  // Открытие/закрытие скрытой панели фильтров
   $('#btn-toggle-filters').on('click', (e) => {
     e.stopPropagation()
     $('#archive-filters-panel').toggle()
   })
 
-  // add 24.07.2026 BekmansurovRR
   // Счётчик активных фильтров в кнопке «Фильтры (N)»
   function showFilterCount() {
     let count = 0
@@ -302,7 +305,6 @@ function showArchivePage(container) {
   }
   showFilterCount()
 
-  // add 24.07.2026 BekmansurovRR
   // Сводка по применённому шаблону: «Цех: АКМ», «Статус (3)» и т.п.
   function showFilterSummary(presetName) {
     const parts = []
@@ -335,8 +337,7 @@ function showArchivePage(container) {
       .show()
   }
 
-  // add 24.07.2026 BekmansurovRR
-  // Применить выбранный шаблон: разложить params и перестроить фильтры
+  // Применить выбранный шаблон
   function applyPreset(preset) {
     let params = {}
     try {
@@ -394,7 +395,9 @@ function showArchivePage(container) {
           (preset) => preset.FILTER_NAME === options.selectName,
         )
       }
-      const defaultPreset = presetList.find((preset) => preset.IS_DEFAULT === 'Y')
+      const defaultPreset = presetList.find(
+        (preset) => preset.IS_DEFAULT === 'Y',
+      )
       if (presetToSelect) {
         selectedPresetId = String(presetToSelect.ID)
         $select.val(selectedPresetId)
@@ -446,7 +449,7 @@ function showArchivePage(container) {
   $('#btn-save-preset').on('click', () => {
     const content =
       '<div class="frow"><label>Название шаблона</label>' +
-      '<input class="inp" id="preset-name" placeholder="Напр. Цех АКМ, открытые"></div>' +
+      '<input class="inp" id="preset-name" placeholder="Название шаблона"></div>' +
       '<label class="ms-item" style="margin-top:6px">' +
       '<input type="checkbox" id="preset-default"><span>Сделать по умолчанию</span></label>'
     openModalWindow('Сохранить шаблон', content, [
@@ -493,14 +496,18 @@ function showArchivePage(container) {
       return
     }
     const preset = presetList.find((p) => String(p.ID) === String(id))
-    showConfirmBox('Удалить шаблон', (preset && preset.FILTER_NAME) || '', () => {
-      sendApiRequest('gu23_filter_del', { id: id }).done((r) => {
-        if (r && r.ok) {
-          showToast('Шаблон удалён', 'ok')
-          showArchive(container)
-        } else showToast((r && r.msg) || 'Ошибка', 'err')
-      })
-    })
+    showConfirmBox(
+      'Удалить шаблон',
+      (preset && preset.FILTER_NAME) || '',
+      () => {
+        sendApiRequest('gu23_filter_del', { id: id }).done((r) => {
+          if (r && r.ok) {
+            showToast('Шаблон удалён', 'ok')
+            showArchive(container)
+          } else showToast((r && r.msg) || 'Ошибка', 'err')
+        })
+      },
+    )
   })
 
   // Кнопка сброса (в шапке) — возвращает фильтры к значениям по умолчанию (текущий месяц)
