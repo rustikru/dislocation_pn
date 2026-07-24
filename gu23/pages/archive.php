@@ -25,6 +25,9 @@
   <!-- add 24.07.2026 BekmansurovRR: кнопка открытия скрытой панели фильтров -->
   <button type="button" class="inp ms-btn" id="btn-toggle-filters"
     style="margin-left:auto">Фильтры</button>
+
+  <!-- add 24.07.2026 BekmansurovRR: фильтры применяются только по этой кнопке -->
+  <button type="button" class="btn primary" id="btn-apply-filters">Применить фильтр</button>
 </div>
 
 <!-- add 24.07.2026 BekmansurovRR: все фильтры спрятаны в этот блок -->

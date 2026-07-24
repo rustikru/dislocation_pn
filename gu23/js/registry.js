@@ -30,7 +30,6 @@ function showArchivePage(container) {
     has_signed: '', // 'Y' = только с подписанным документом
     page: 1,
   }
-  let searchTimeout = null
 
   // Позиционируем меню под своей кнопкой (fixed): по левому краю кнопки,
   // со сдвигом влево, если не помещается в окно. Меню должно быть уже видимым (для замера ширины).
@@ -105,7 +104,8 @@ function showArchivePage(container) {
         .join(',')
       archiveFilter.page = 1
       refreshFilterButton()
-      loadArchiveData()
+      // add 24.07.2026 BekmansurovRR: фильтр применяется только по кнопке
+      showFilterCount()
     })
 
     $menu.on('click', (e) => e.stopPropagation())
@@ -182,14 +182,12 @@ function showArchivePage(container) {
       ? e.target.value.split('-').reverse().join('.')
       : ''
     archiveFilter.page = 1
-    loadArchiveData()
   })
   $dateTo.on('change', (e) => {
     archiveFilter.date_to = e.target.value
       ? e.target.value.split('-').reverse().join('.')
       : ''
     archiveFilter.page = 1
-    loadArchiveData()
   })
   $('#archive-filters-panel').append($dateFrom, $dateTo)
 
@@ -222,7 +220,8 @@ function showArchivePage(container) {
     archiveFilter.has_signed = this.value === 'signed' ? 'Y' : ''
     archiveFilter.page = 1
     $extraBtn.toggleClass('has-value', !!archiveFilter.has_signed)
-    loadArchiveData()
+    // add 24.07.2026 BekmansurovRR: фильтр применяется только по кнопке
+    showFilterCount()
   })
   $extraWrap.append($extraBtn, $extraMenu)
   $('#archive-filters-panel').append($extraWrap)
@@ -277,12 +276,21 @@ function showArchivePage(container) {
     $form.remove()
   })
 
-  // Поиск с задержкой
+  // add 24.07.2026 BekmansurovRR
+  // Поиск: набор текста не запускает загрузку — применяется по кнопке или Enter
   $('#search-input').on('input', function () {
     archiveFilter.q = $(this).val().trim()
     archiveFilter.page = 1
-    clearTimeout(searchTimeout)
-    searchTimeout = setTimeout(loadArchiveData, 250)
+  })
+  $('#search-input').on('keydown', function (e) {
+    if (e.key === 'Enter') loadArchiveData()
+  })
+
+  // add 24.07.2026 BekmansurovRR
+  // Применение фильтров только по кнопке «Применить фильтр»
+  $('#btn-apply-filters').on('click', () => {
+    archiveFilter.page = 1
+    loadArchiveData()
   })
 
   // Загрузка таблицы
