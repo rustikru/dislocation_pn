@@ -1,3 +1,6 @@
+/*
+  Карточка создания акта
+*/
 import { sendApiRequest } from './api.js'
 import {
   references,

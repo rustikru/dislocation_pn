@@ -1,3 +1,6 @@
+/*
+  Карточка акта (детализация)
+*/
 import { sendApiRequest } from './api.js'
 import { navigateTo } from './app.js'
 import { escapeHtml, formatDateTime, formatToInputDate } from './utils.js'
@@ -213,8 +216,7 @@ function showDetailsBlock(act) {
     act.STATUS !== 'draft' &&
     act.STATUS !== 'annulled' &&
     act.STATUS !== 'rejected'
-      ? wordButton +
-        pdfButton
+      ? wordButton + pdfButton
       : ''
   // Кнопки отчеты
   $('#card-report-buttons').html(downloadHtml)

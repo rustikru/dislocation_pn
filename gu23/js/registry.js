@@ -1,3 +1,6 @@
+/*
+  Страница архива акта
+*/
 import { sendApiRequest } from './api.js'
 import { references } from './state.js'
 import { navigateTo } from './app.js'
