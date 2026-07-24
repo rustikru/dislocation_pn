@@ -1328,10 +1328,16 @@ textarea.inp {
   stroke-width: 1.4px;
   stroke-linejoin: round;
 }
+.notice-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+}
 .notice-item {
   display: grid;
-  /* add 23.07.2026 BekmansurovRR: звезда | текст | действия(конверт+править) */
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  /* текст | действия(конверт+править) */
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -1342,17 +1348,20 @@ textarea.inp {
   padding: 8px 12px;
   color: var(--ink);
 }
-/* add 23.07.2026 BekmansurovRR: иконка "избранное" (звезда) слева */
+/* Иконка «избранное» вынесена из карточки перед её левой границей. */
 .notice-fav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: start;
   width: 28px;
   height: 28px;
-  margin-top: 1px;
+  margin-top: 8px;
   cursor: pointer;
   color: #c9ccd1;
+}
+.notice-fav-space {
+  width: 28px;
+  height: 28px;
 }
 .notice-fav svg {
   fill: none;

@@ -137,9 +137,13 @@ function noticeRowsPage() {
     // виртуальные записи (section_notif='virtual') нельзя читать/избранное/править
     const isVirtual = row.SECTION_NOTIF === 'virtual'
     // add 23.07.2026 BekmansurovRR
+    const $fav = isVirtual
+      ? $('<span class="notice-fav-space"></span>')
+      : $(
+          `<span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>`,
+        )
     const $item = $(`
       <button type="button" class="notice-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
-        ${isVirtual ? '' : `<span class="notice-fav ${isFavorite ? 'is-fav' : ''}" title="${isFavorite ? 'Убрать из избранного' : 'В избранное'}">${NOTICE_STAR_SVG}</span>`}
         <span class="notice-data">
           <span class="notice-head">
             <em class="notice-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</em>
@@ -156,6 +160,7 @@ function noticeRowsPage() {
         </span>
       </button>
     `)
+    const $row = $('<div class="notice-row"></div>').append($fav, $item)
 
     $item.on('click', () => {
       // add 24.07.2026 BekmansurovRR: виртуальные не помечаем прочитанными
@@ -168,9 +173,9 @@ function noticeRowsPage() {
     // add 23.07.2026 BekmansurovRR
     // обработчики кнопок — только для обычных (не виртуальных) записей
     if (!isVirtual) {
-      $item.find('.notice-fav').on('click', (event) => {
+      $fav.on('click', (event) => {
         event.stopPropagation()
-        noticeFavorite(row, $item.find('.notice-fav'))
+        noticeFavorite(row, $fav)
       })
 
       $item.find('.notice-mail').on('click', (event) => {
@@ -184,7 +189,7 @@ function noticeRowsPage() {
       })
     }
 
-    $list.append($item)
+    $list.append($row)
   })
 
   noticePages()
