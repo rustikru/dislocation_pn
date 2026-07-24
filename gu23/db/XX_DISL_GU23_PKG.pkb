@@ -3938,11 +3938,12 @@
    function gu23_notices_virtual (
       p_user_id in number
    ) return t_gu23_notice_tab is
-      l_result t_gu23_notice_tab := t_gu23_notice_tab();
+      l_result      t_gu23_notice_tab := t_gu23_notice_tab();
+      l_list_wagons varchar2(2000);
    begin
       for r in (
          select gu.*
-           from xx_disl_gu23_act gu
+           from xx_disl_gu23_act_v gu
           where gu.status = 'active'
             -- add 24.07.2026 BekmansurovRR
             -- подписание последовательное: показываем уведомление только тому,
@@ -3954,12 +3955,60 @@
              where ns.approver_id = p_user_id
          )
       ) loop
+         for wag in (
+            select *
+              from xx_disl_gu23_act_row
+             where act_id = r.id
+         ) loop
+            l_list_wagons := l_list_wagons
+                             || wag.wagon_no
+                             || ';';
+         end loop;
          l_result.extend;
-         l_result(l_result.last).title := 'Требуется подпись акта ' || r.act_number;
-         l_result(l_result.last).body := 'Требуется подписать акт. Перейдите в раздел "Акты" для просмотра и подписания.';
-         l_result(l_result.last).notice_type := 'on_signed';
-         l_result(l_result.last).notice_type_name := 'На подписание';
+         l_result(l_result.last).title := 'Требуется подпись акт ' || r.act_number;
+         l_result(l_result.last).body := 'Требуется подписать акт '
+                                         || r.act_number
+                                         || chr(10)
+                                         || 'Причина: '
+                                         || r.reason_name
+                                         || chr(10)
+                                         || 'Обстоятельства: '
+                                         || r.circumstances
+                                         || chr(10)
+                                         || 'Вагоны: '
+                                         || substr(
+            l_list_wagons,
+            1,
+            100
+         )
+                                         ||
+            case
+               when length(l_list_wagons) > 100 then
+                  '...'
+               else
+                  ''
+            end
+                                         || chr(10)
+                                         || 'Подробная информация доступна по ссылке: ';
+         begin
+            select code,
+                   name
+              into
+               l_result(l_result.last).notice_type,
+               l_result(l_result.last).notice_type_name
+              from table ( gu23_get_general_ref('GU23_NOTICE_TYPE') )
+             where code = 'on_signed';
+         exception
+            when others then
+               l_result(l_result.last).notice_type := 'on_signed';
+               l_result(l_result.last).notice_type_name := 'На подписание';
+         end;
+
          l_result(l_result.last).active := 'Y';
+         l_result(l_result.last).created_at := to_char(
+            sysdate,
+            c_dtf
+         );
          l_result(l_result.last).section_notif := 'virtual';
       end loop;
 
