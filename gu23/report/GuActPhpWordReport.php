@@ -67,7 +67,9 @@ class GuActPhpWordReport
         $doc = new TemplateProcessor($templatePath);
 
         $printSigners = $this->getPrintSigners($act, $signers);
-        $usePep = $this->canShowPepStamp($act, $approvals);
+        // ПЭП подписи, только для тех, кто подписал.
+        //$usePep = $this->canShowPepStamp($act, $approvals);
+        $usePep = [];
         $paperSigners = $usePep ? $this->getPaperSigners($printSigners) : $printSigners;
         $pepApprovals = $usePep ? $this->getPepApprovals($approvals, $printSigners) : [];
         $rzdSigners = $this->getRzdSigners($paperSigners);
