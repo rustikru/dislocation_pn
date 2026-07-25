@@ -8,7 +8,7 @@ $files = [
     $base . '/js/ui.js',
     $base . '/js/api.js',
     $base . '/js/nav.js',
-    $base . '/js/registry.js',
+    $base . '/js/archive.js',
     $base . '/js/wagonSearch.js',
     $base . '/js/form.js',
     $base . '/js/card.js',

@@ -2,13 +2,18 @@ import { sendApiRequest } from './api.js'
 import { applicationState, references } from './state.js'
 import { hasPerm } from './state.js'
 import { drawNav } from './nav.js'
-import { showArchive } from './registry.js'
+import { showArchive } from './archive.js'
 import { showForm } from './form.js'
 import { showCard } from './card.js'
 import { showWagonSearch } from './wagonSearch.js'
 import { showRefs } from './refs.js'
 import { showRoles } from './roles.js'
-import { showNotices, loadNoticeCount, prepareNoticePanel, showNoticeCount } from './notices.js'
+import {
+  showNotices,
+  loadNoticeCount,
+  prepareNoticePanel,
+  showNoticeCount,
+} from './notices.js'
 
 // Функция навигации
 export function navigateTo(pageName, selectedId = null) {
