@@ -305,7 +305,7 @@ function showSignersBlock(
           const isCurrentSigner =
             currentSignerId !== '' && String(s.USER_ID) === currentSignerId
           let pill = ''
-          // РЖД подписант? плашка
+          // РЖД подписант - плашка
           if (isRzd) {
             pill =
               '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:#f0f0f0;color:#888">РЖД</span>'
