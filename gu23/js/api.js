@@ -23,6 +23,15 @@ $(document).ready(() => {
       serverMessage = JSON.parse(responseBody).msg || ''
     } catch (e) {}
 
+    if (jqXHR.status === 401) {
+      showToast(
+        serverMessage ||
+          'Ваша сессия закончилась. Войдите в систему повторно.',
+        'err',
+      )
+      return
+    }
+
     let actionName = ''
     try {
       actionName = new URLSearchParams(settings.data).get('ajax_action') || ''

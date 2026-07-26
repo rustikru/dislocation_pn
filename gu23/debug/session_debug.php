@@ -1,5 +1,41 @@
 <?php
 session_start();
+
+$sessionParameterDescriptions = [
+  'session.name' => 'Имя cookie с идентификатором сессии',
+  'session.save_handler' => 'Механизм хранения данных сессии',
+  'session.save_path' => 'Каталог или адрес хранилища сессий',
+  'session.gc_maxlifetime' => 'Срок хранения неактивной сессии на сервере, секунд',
+  'session.gc_probability' => 'Вероятность запуска очистки: числитель',
+  'session.gc_divisor' => 'Вероятность запуска очистки: знаменатель',
+  'session.cookie_lifetime' => 'Срок жизни cookie, секунд; 0 — до закрытия браузера',
+  'session.cookie_path' => 'Путь действия cookie',
+  'session.cookie_domain' => 'Домен действия cookie',
+  'session.cookie_secure' => 'Передавать cookie только через HTTPS',
+  'session.cookie_httponly' => 'Запретить доступ к cookie из JavaScript',
+  'session.cookie_samesite' => 'Политика SameSite для cookie',
+  'session.use_cookies' => 'Использовать cookie для идентификатора сессии',
+  'session.use_only_cookies' => 'Не передавать идентификатор сессии через URL',
+  'session.use_strict_mode' => 'Не принимать неизвестные идентификаторы сессий',
+  'session.use_trans_sid' => 'Добавлять идентификатор сессии в URL',
+  'session.lazy_write' => 'Записывать сессию только при изменении данных',
+  'session.cache_limiter' => 'Управление HTTP-кешированием страниц',
+  'session.cache_expire' => 'Срок кеширования страниц, минут',
+  'session.sid_length' => 'Длина идентификатора сессии',
+];
+
+$sessionParameters = [];
+foreach ($sessionParameterDescriptions as $parameter => $description) {
+  $sessionParameters[$parameter] = [
+    'value' => ini_get($parameter),
+    'description' => $description,
+  ];
+}
+
+$sessionLifetime = (int) ini_get('session.gc_maxlifetime');
+$sessionLifetimeText = $sessionLifetime . ' сек. (' .
+  round($sessionLifetime / 60, 1) . ' мин. / ' .
+  round($sessionLifetime / 3600, 2) . ' ч.)';
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -89,6 +125,28 @@ session_start();
 </head>
 
 <body>
+
+  <h2>Параметры PHP-сессии</h2>
+  <table>
+    <tr>
+      <th>Параметр</th>
+      <th>Текущее значение</th>
+      <th>Назначение</th>
+    </tr>
+    <?php foreach ($sessionParameters as $parameter => $data): ?>
+      <tr>
+        <td><?= htmlspecialchars($parameter) ?></td>
+        <td>
+          <pre><?= htmlspecialchars((string) $data['value']) ?></pre>
+        </td>
+        <td><?= htmlspecialchars($data['description']) ?></td>
+      </tr>
+    <?php endforeach; ?>
+    <tr>
+      <td>Расчётное время хранения</td>
+      <td colspan="2"><strong><?= htmlspecialchars($sessionLifetimeText) ?></strong></td>
+    </tr>
+  </table>
 
   <h2>$_SESSION · <?= htmlspecialchars(session_id()) ?></h2>
 
