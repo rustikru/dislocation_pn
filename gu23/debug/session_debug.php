@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once dirname(__DIR__) . '/session_bootstrap.php';
 
 $sessionParameterDescriptions = [
   'session.name' => 'Имя cookie с идентификатором сессии',

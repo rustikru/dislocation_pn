@@ -1,6 +1,6 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/session_bootstrap.php';
 
 $action = $_POST['ajax_action'] ?? '';
 

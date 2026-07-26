@@ -5,7 +5,7 @@
  *
  *   GET /gu23/get_file.php?id=<file_id>[&inline=1]
  */
-session_start();
+require_once __DIR__ . '/session_bootstrap.php';
 include('../login.php');
 include('../connection.php');
 

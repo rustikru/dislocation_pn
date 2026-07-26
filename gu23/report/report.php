@@ -9,7 +9,7 @@
 
  */
 
-session_start();
+require_once dirname(__DIR__) . '/session_bootstrap.php';
 include('../../login.php');
 include('../../connection.php');
 
