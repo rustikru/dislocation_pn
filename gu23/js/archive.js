@@ -29,6 +29,8 @@ function showArchivePage(container, options = {}) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   monthStart.setDate(monthStart.getDate() - 7) // минус 1 неделя
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const defaultDateFrom = toFilterDate(monthStart)
+  const defaultDateTo = toFilterDate(monthEnd)
   // json массив Фильтров страницы
   const archiveFilter = {
     q: '',
@@ -36,8 +38,8 @@ function showArchivePage(container, options = {}) {
     status: '',
     dept: '',
     reason_categ: '',
-    date_from: toFilterDate(monthStart),
-    date_to: toFilterDate(monthEnd),
+    date_from: defaultDateFrom,
+    date_to: defaultDateTo,
     has_signed: '', // 'Y' = только с подписанным документом
     page: 1,
   }
@@ -59,8 +61,6 @@ function showArchivePage(container, options = {}) {
     status: archiveFilter.status,
     dept: archiveFilter.dept,
     reason_categ: archiveFilter.reason_categ,
-    date_from: archiveFilter.date_from,
-    date_to: archiveFilter.date_to,
     has_signed: archiveFilter.has_signed,
   })
 
@@ -356,8 +356,8 @@ function showArchivePage(container, options = {}) {
     archiveFilter.status = params.status || ''
     archiveFilter.dept = params.dept || ''
     archiveFilter.reason_categ = params.reason_categ || ''
-    archiveFilter.date_from = params.date_from || toFilterDate(monthStart)
-    archiveFilter.date_to = params.date_to || toFilterDate(monthEnd)
+    archiveFilter.date_from = defaultDateFrom
+    archiveFilter.date_to = defaultDateTo
     archiveFilter.has_signed = params.has_signed || ''
     archiveFilter.page = 1
     selectedPresetId = String(preset.ID)
