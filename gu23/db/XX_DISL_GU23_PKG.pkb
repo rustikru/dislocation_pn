@@ -5204,6 +5204,67 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       return;
    end;
 
+   -- Тип нового акта по умолчанию для пользователя.
+   function gu23_user_default_type (
+      p_user_id in number
+   ) return varchar2 is
+      l_act_type xx_disl_gu23_user_settings.default_act_type%type;
+   begin
+      select default_act_type
+        into l_act_type
+        from xx_disl_gu23_user_settings
+       where user_id = p_user_id;
+
+      return l_act_type;
+   exception
+      when no_data_found then
+         return 'start';
+   end;
+
+   function gu23_user_default_type_save (
+      p_user_id  in number,
+      p_act_type in varchar2
+   ) return varchar2 is
+      l_act_type xx_disl_gu23_user_settings.default_act_type%type :=
+         lower(trim(p_act_type));
+   begin
+      if p_user_id is null
+         or l_act_type is null
+         or l_act_type not in ( 'start','end','other' )
+      then
+         return format_error('Некорректный тип акта');
+      end if;
+
+      merge into xx_disl_gu23_user_settings t
+      using (
+         select p_user_id as user_id,
+                l_act_type as default_act_type
+           from dual
+      ) s
+      on ( t.user_id = s.user_id )
+      when matched then update
+         set t.default_act_type = s.default_act_type,
+             t.updated_at = sysdate
+      when not matched then insert (
+         user_id,
+         default_act_type,
+         created_at,
+         updated_at
+      ) values (
+         s.user_id,
+         s.default_act_type,
+         sysdate,
+         sysdate
+      );
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         rollback;
+         return format_error();
+   end;
+
     /* ------------------------------------------------------------------ */
     -- отправка письма
    procedure gu23_send_mail (

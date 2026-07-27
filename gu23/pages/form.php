@@ -3,7 +3,10 @@
   <div class="spacer"></div>
 </div>
 
-<div class="seg" id="type-switcher" style="margin-bottom:18px"></div>
+<div class="form-type-row">
+  <div class="seg" id="type-switcher"></div>
+  <button type="button" class="btn ghost" id="btn-default-act-type"></button>
+</div>
 
 <div class="card" id="form-card">
   <div class="cardpad" id="form-body">

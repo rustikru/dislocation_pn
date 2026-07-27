@@ -799,5 +799,15 @@ create or replace package xx_etw.xx_disl_gu23_pkg as
       p_user_id in number
    ) return t_gu23_filter_tab
       pipelined;
+
+   -- Тип нового акта по умолчанию для пользователя.
+   function gu23_user_default_type (
+      p_user_id in number
+   ) return varchar2;
+
+   function gu23_user_default_type_save (
+      p_user_id  in number,
+      p_act_type in varchar2
+   ) return varchar2;
 end xx_disl_gu23_pkg;
 /

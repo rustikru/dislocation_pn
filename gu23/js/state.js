@@ -20,6 +20,7 @@ export const applicationState = {
   isAdmin: false,
   userPerms: new Set(), // коды полномочий текущего пользователя
   noticeCount: 0,
+  defaultActType: 'start',
 }
 /** add 25.06.2026 BekmansurovRR */
 /** Проверить наличие полномочия у текущего пользователя */

@@ -4,6 +4,7 @@
 import { sendApiRequest } from './api.js'
 import {
   references,
+  applicationState,
   activeDraft,
   createNewDraft,
   setActiveDraft,
@@ -27,7 +28,7 @@ const defaultStationRules = {
 }
 
 export function showForm(container) {
-  if (!activeDraft) createNewDraft('start')
+  if (!activeDraft) createNewDraft(applicationState.defaultActType || 'start')
 
   //console.log('stationToName:', activeDraft.stationToName)
 
@@ -44,7 +45,11 @@ function showFormPage() {
 }
 // --- переключатель типа акта ---
 function showTypeSwitcher() {
-  if (activeDraft.id) return // При редактировании тип менять нельзя
+  if (activeDraft.id) {
+    $('.form-type-row').hide()
+    return // При редактировании тип менять нельзя
+  }
+  $('.form-type-row').show()
 
   const types = [
     { id: 'start', label: 'Начало простоя' },
@@ -66,6 +71,25 @@ function showTypeSwitcher() {
     .on('click', function () {
       createNewDraft($(this).data('type'))
       showForm($('#view')[0])
+    })
+
+  const isDefaultType = activeDraft.type === applicationState.defaultActType
+  $('#btn-default-act-type')
+    .text(isDefaultType ? 'Тип по умолчанию ✓' : 'Сделать типом по умолчанию')
+    .prop('disabled', isDefaultType)
+    .off('click')
+    .on('click', () => {
+      sendApiRequest('gu23_user_default_type_save', {
+        act_type: activeDraft.type,
+      }).done((response) => {
+        if (!response || response.ok !== true) {
+          showToast((response && response.msg) || 'Ошибка сохранения', 'err')
+          return
+        }
+        applicationState.defaultActType = activeDraft.type
+        showTypeSwitcher()
+        showToast('Тип акта сохранён по умолчанию', 'ok')
+      })
     })
 }
 // НААААААЧАААААЛООООООООО #2

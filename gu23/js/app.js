@@ -115,6 +115,11 @@ $(document).ready(() => {
 
     applicationState.isAdmin = !!(response && response.isAdmin) // Админ или нет
     applicationState.userPerms = new Set((response && response.perms) || []) // Разрешения пользователя
+    applicationState.defaultActType =
+      response &&
+      ['start', 'end', 'other'].includes(response.defaultActType)
+        ? response.defaultActType
+        : 'start'
 
     const start = window.GU23_START || {}
     if (start.page) {

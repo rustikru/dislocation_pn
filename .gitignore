@@ -8,7 +8,8 @@ db_config.local.php
 ldap_config.php
 gu23/request_data/
 gu23/act_data/
-gu23/db/
+gu23/db/*
+!gu23/db/xx_disl_gu23_user_settings.sql
 gu23/img/news/
 gu23/log/
 log/

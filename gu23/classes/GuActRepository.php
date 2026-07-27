@@ -258,6 +258,9 @@ class GuActRepository
                 case 'gu23_filter_del':
                     $this->usersFilterDel();        // Удаляем фильтры
                     break;
+                case 'gu23_user_default_type_save':
+                    $this->userDefaultTypeSave();    // Тип нового акта по умолчанию
+                    break;
 
                 // --- роли и полномочия ---
                 case 'gu23_roles_users':        // пользователи с назначенными ролями 
@@ -408,6 +411,14 @@ class GuActRepository
     private function getRefs(): void
     {
         $userId = $this->auth->getUserId();
+        $defaultActType = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_user_default_type(:uid)',
+            [':uid' => $userId],
+            10
+        );
+        if (!in_array($defaultActType, ['start', 'end', 'other'], true)) {
+            $defaultActType = 'start';
+        }
         $permRows = $this->selectRows(
             'SELECT * FROM TABLE(xx_disl_gu23_pkg.gu23_user_perms_get(:b1))',
             [':b1' => $userId]
@@ -428,6 +439,7 @@ class GuActRepository
             'signersManual' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_signer_manual())'),
             'perms' => $perms,
             'isAdmin' => $this->isGu23Admin() ? true : false,
+            'defaultActType' => $defaultActType,
         ]);
     }
 
@@ -1666,6 +1678,26 @@ class GuActRepository
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
+    }
+
+    /** Сохранить тип нового акта по умолчанию для текущего пользователя. */
+    private function userDefaultTypeSave(): void
+    {
+        $actType = strtolower(trim((string) filter_input(INPUT_POST, 'act_type')));
+        if (!in_array($actType, ['start', 'end', 'other'], true)) {
+            echo json_encode(['ok' => false, 'msg' => 'Некорректный тип акта']);
+            return;
+        }
+
+        $result = $this->callPackageFunction(
+            'xx_disl_gu23_pkg.gu23_user_default_type_save(:uid, :act_type)',
+            [':uid' => (int) $this->auth->getUserId(), ':act_type' => $actType],
+            4000
+        );
+        $parts = explode(self::US, (string) $result, 2);
+        echo json_encode(str_starts_with((string) $result, 'OK')
+            ? ['ok' => true, 'act_type' => $actType]
+            : ['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
     }
 
     /** Переключить флаг active у причины. */
