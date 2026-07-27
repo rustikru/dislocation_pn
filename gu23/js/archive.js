@@ -27,6 +27,7 @@ function showArchivePage(container, options = {}) {
     `${twoDigits(d.getDate())}.${twoDigits(d.getMonth() + 1)}.${d.getFullYear()}`
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  monthStart.setDate(monthStart.getDate() - 7) // минус 1 неделя
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
   // json массив Фильтров страницы
   const archiveFilter = {
