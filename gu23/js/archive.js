@@ -343,7 +343,7 @@ function showArchivePage(container, options = {}) {
       .show()
   }
 
-  // Применить выбранный шаблон
+  // Применяем выбранный шаблон
   function applyPreset(preset, options = {}) {
     let params = {}
     try {
