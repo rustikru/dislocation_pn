@@ -17,6 +17,8 @@ export function drawNav() {
     icon: 'archive.svg',
     label: 'Архив актов',
   })
+  //add 22.07.2026 BekmansurovRR
+  // страница Уведомлений для модуля ГУ-23
   navigationItems.push({
     page: 'notices',
     icon: 'notification.svg',

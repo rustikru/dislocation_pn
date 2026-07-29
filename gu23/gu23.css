@@ -1144,6 +1144,52 @@ textarea.inp {
 .archive-filter-controls {
   margin-bottom: -9px;
 }
+#archive-filters #btn-apply-filters {
+  height: 30px;
+  padding: 0 13px;
+  font-size: 12.5px;
+}
+.archive-quick-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: -3px 0 15px;
+}
+.archive-quick-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink2);
+  font-size: 12px;
+  font-weight: 500;
+}
+.archive-quick-filter::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+.archive-quick-filter:hover {
+  background: var(--surface2);
+  border-color: #c9ccd2;
+}
+.archive-quick-filter.active {
+  background: var(--signalsoft);
+  color: var(--signal2);
+  border-color: #cdd3dd;
+  font-weight: 600;
+}
+.archive-quick-filter.active::before {
+  background: var(--signal);
+  border-color: var(--signal);
+}
 /*  сводка по применённому шаблону */
 .archive-filters-summary {
   margin-bottom: 12px;

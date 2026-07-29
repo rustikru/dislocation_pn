@@ -41,6 +41,7 @@ function showArchivePage(container, options = {}) {
     date_from: defaultDateFrom,
     date_to: defaultDateTo,
     has_signed: '', // 'Y' = только с подписанным документом
+    requires_action: '', // 'Y' = текущий пользователь должен подписать акт
     page: 1,
   }
 
@@ -343,7 +344,7 @@ function showArchivePage(container, options = {}) {
       .show()
   }
 
-  // Применяем выбранный шаблон
+  // Применить выбранный шаблон
   function applyPreset(preset, options = {}) {
     let params = {}
     try {
@@ -359,9 +360,11 @@ function showArchivePage(container, options = {}) {
     archiveFilter.date_from = defaultDateFrom
     archiveFilter.date_to = defaultDateTo
     archiveFilter.has_signed = params.has_signed || ''
+    archiveFilter.requires_action = ''
     archiveFilter.page = 1
     selectedPresetId = String(preset.ID)
     $('#archive-preset-select').val(selectedPresetId)
+    $('#btn-awaiting-my-signature').removeClass('active')
     $('#search-input').val(archiveFilter.q)
     updatePresetActions()
     buildFilters()
@@ -545,6 +548,33 @@ function showArchivePage(container, options = {}) {
     showArchive(container, { applyDefaultPreset: false }),
   )
 
+  // Быстрый фильтр: активные акты, где сейчас очередь пользователя.
+  $('#btn-awaiting-my-signature').on('click', () => {
+    if (archiveFilter.requires_action === 'Y') {
+      showArchive(container, { applyDefaultPreset: false })
+      return
+    }
+
+    archiveFilter.q = ''
+    archiveFilter.type = ''
+    archiveFilter.status = ''
+    archiveFilter.dept = ''
+    archiveFilter.reason_categ = ''
+    archiveFilter.has_signed = ''
+    archiveFilter.requires_action = 'Y'
+    archiveFilter.page = 1
+    selectedPresetId = ''
+
+    $('#archive-preset-select').val('')
+    $('#search-input').val('')
+    $('#archive-filters-summary').hide().empty()
+    $('#btn-awaiting-my-signature').addClass('active')
+    updatePresetActions()
+    buildFilters()
+    showFilterCount()
+    loadArchiveData()
+  })
+
   $('#btn-export-acts').on('click', () => {
     const $form = $(`
       <form method="post" action="/gu23/data.php" style="display:none">
@@ -557,6 +587,7 @@ function showArchivePage(container, options = {}) {
         <input type="hidden" name="date_from">
         <input type="hidden" name="date_to">
         <input type="hidden" name="has_signed">
+        <input type="hidden" name="requires_action">
       </form>
     `)
     $form.find('[name="q"]').val(archiveFilter.q)
@@ -567,6 +598,9 @@ function showArchivePage(container, options = {}) {
     $form.find('[name="date_from"]').val(archiveFilter.date_from)
     $form.find('[name="date_to"]').val(archiveFilter.date_to)
     $form.find('[name="has_signed"]').val(archiveFilter.has_signed)
+    $form
+      .find('[name="requires_action"]')
+      .val(archiveFilter.requires_action)
     $('body').append($form)
     $form.trigger('submit')
     $form.remove()

@@ -24,6 +24,12 @@
   <button type="button" class="btn primary" id="btn-apply-filters">Применить фильтр</button>
 </div>
 
+<div class="archive-quick-filters">
+  <button type="button" class="archive-quick-filter" id="btn-awaiting-my-signature">
+    Ожидают моей подписи
+  </button>
+</div>
+
 <div class="archive-filters-panel" id="archive-filters-panel" style="display:none">
   <div class="archive-preset-toolbar">
     <label for="archive-preset-select">Шаблон фильтра</label>

@@ -91,7 +91,7 @@ class GuActExcelReport
     private function acts(array $filter): array
     {
         $total = (int) $this->db->value(
-            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action)',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
@@ -101,13 +101,15 @@ class GuActExcelReport
                 ':date_to' => $filter['date_to'] ?? null,
                 ':has_signed' => $filter['has_signed'] ?? null,
                 ':reason_categ' => $filter['reason_categ'] ?? null,
+                ':user_id' => $filter['user_id'] ?? null,
+                ':requires_action' => $filter['requires_action'] ?? null,
             ],
             40
         );
 
         $limit = max(1, $total);
         return $this->db->rows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action))',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
@@ -119,6 +121,8 @@ class GuActExcelReport
                 ':reason_categ' => $filter['reason_categ'] ?? null,
                 ':page' => 1,
                 ':page_size' => $limit,
+                ':user_id' => $filter['user_id'] ?? null,
+                ':requires_action' => $filter['requires_action'] ?? null,
             ]
         );
     }
@@ -284,6 +288,7 @@ class GuActExcelReport
             ['Дата с', $this->filterText($filter['date_from'] ?? '')],
             ['Дата по', $this->filterText($filter['date_to'] ?? '')],
             ['Подписанный файл', (($filter['has_signed'] ?? '') === 'Y') ? 'Да' : 'Все'],
+            ['Требует моей подписи', (($filter['requires_action'] ?? '') === 'Y') ? 'Да' : 'Нет'],
             //['Актов найдено', (string) count($acts)],
         ];
     }

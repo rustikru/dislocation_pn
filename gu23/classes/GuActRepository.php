@@ -458,12 +458,14 @@ class GuActRepository
         $dateFrom = filter_input(INPUT_POST, 'date_from') ?: null;
         $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
         $signedFile = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
+        $requiresAction = filter_input(INPUT_POST, 'requires_action') === 'Y' ? 'Y' : null;
+        $userId = (int) $this->auth->getUserId();
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
         // Общее количество
         $total = (int) $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action)',
             [
                 ':q' => $q,
                 ':type' => $type,
@@ -473,12 +475,14 @@ class GuActRepository
                 ':date_to' => $dateTo,
                 ':has_signed' => $signedFile,
                 ':reason_categ' => $reasonCateg,
+                ':user_id' => $userId,
+                ':requires_action' => $requiresAction,
             ],
             40
         );
 
         $acts = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action))',
             [
                 ':q' => $q,
                 ':type' => $type,
@@ -490,6 +494,8 @@ class GuActRepository
                 ':reason_categ' => $reasonCateg,
                 ':page' => $page,
                 ':page_size' => $limit,
+                ':user_id' => $userId,
+                ':requires_action' => $requiresAction,
             ]
         );
 
@@ -508,6 +514,8 @@ class GuActRepository
             'date_from' => filter_input(INPUT_POST, 'date_from') ?: null,
             'date_to' => filter_input(INPUT_POST, 'date_to') ?: null,
             'has_signed' => filter_input(INPUT_POST, 'has_signed') ?: null,
+            'requires_action' => filter_input(INPUT_POST, 'requires_action') === 'Y' ? 'Y' : null,
+            'user_id' => (int) $this->auth->getUserId(),
         ]);
     }
 

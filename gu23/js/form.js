@@ -963,12 +963,20 @@ const signerRules = {
     ],
     rzdLabel: 'Работник станции ОАО "РЖД"',
   },
-  default: {
+  /*default: {
     ownCount: 2,
     ownRequired: 2,
     rzdCount: 1,
     rzdRequired: 1,
     ownLabels: ['Работник предприятия', 'Работник предприятия'],
+    rzdLabel: 'Работник станции ОАО "РЖД"',
+  },*/
+  default: {
+    ownCount: 3,
+    ownRequired: 3,
+    rzdCount: 0,
+    rzdRequired: 0,
+    ownLabels: ['Работник предприятия', 'Работник предприятия', 'Работник предприятия'],
     rzdLabel: 'Работник станции ОАО "РЖД"',
   },
 }

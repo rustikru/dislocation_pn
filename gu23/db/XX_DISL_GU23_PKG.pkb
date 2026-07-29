@@ -1,5 +1,4 @@
-﻿/* Formatted on 24.07.2026 16:15:07 (QP5 v5.417) */
-create or replace package body xx_etw.xx_disl_gu23_pkg as
+﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -854,7 +853,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_has_signed   in varchar2,
       p_reason_categ in varchar2,
       p_page         in number,
-      p_page_size    in number
+      p_page_size    in number,
+      p_user_id      in number default null,
+      p_requires_action in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -967,6 +968,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                           ) > 0 )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
+                                              or nvl(p_requires_action, 'N') = 'Y'
                                               or ( ( v_from is null
                                              and v_to is null )
                                               or ( a.start_at is not null
@@ -1033,6 +1035,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
                                                                     || v_q
                                                                     || '%'
                                           ) )
+                                             and ( nvl(p_requires_action, 'N') <> 'Y'
+                                              or ( a.status = 'active'
+                                             and exists (
+                                            select 1
+                                              from table(gu23_approval_next_signer(a.id)) ns
+                                             where ns.approver_id = p_user_id
+                                          ) ) )
                                            order by a.created_at desc
                                        ) a
                                         where rownum <= v_end
@@ -1061,7 +1070,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_date_from    in varchar2,
       p_date_to      in varchar2,
       p_has_signed   in varchar2,
-      p_reason_categ in varchar2
+      p_reason_categ in varchar2,
+      p_user_id      in number default null,
+      p_requires_action in varchar2 default null
    ) return number is
       v_q    varchar2(4000) := lower(p_q);
       v_from date :=
@@ -1119,6 +1130,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       ) > 0 )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
+          or nvl(p_requires_action, 'N') = 'Y'
           or ( ( v_from is null
          and v_to is null )
           or ( a.start_at is not null
@@ -1158,7 +1170,14 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             and r.wagon_no like '%'
                                 || v_q
                                 || '%'
-      ) );
+      ) )
+         and ( nvl(p_requires_action, 'N') <> 'Y'
+          or ( a.status = 'active'
+         and exists (
+        select 1
+          from table(gu23_approval_next_signer(a.id)) ns
+         where ns.approver_id = p_user_id
+      ) ) );
 
       return v_cnt;
    end;
@@ -3952,8 +3971,8 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           where gu.status = 'active'
                        -- add 24.07.2026 BekmansurovRR
                        -- подписание последовательное: показываем уведомление только тому,
-                       -- чья сейчас очередь. 
-                       -- Кто следующий? — gu23_approval_next_signer
+                       -- чья сейчас очередь.
+                       -- Кто следующий? ? gu23_approval_next_signer
             and exists (
             select 1
               from table ( gu23_approval_next_signer(gu.id) ) ns
@@ -4033,7 +4052,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
 
    function gu23_notices (
       p_user_id in number,
-                           -- add 24.07.2026 BekmansurovRR: p_all='Y' — управленческий список (всё:
+                           -- add 24.07.2026 BekmansurovRR: p_all='Y' ? управленческий список (всё:
                            -- отключённые, вне срока, без учёта адресности)
       p_all     in varchar2 default 'N'
    ) return t_gu23_notice_tab
@@ -5102,10 +5121,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          p_base_url
       );
    end;
-   /*
-      add 24.07.2026 BekmansurovRR
-      Фильтры пользователей.
-   */
+
+    /*
+       add 24.07.2026 BekmansurovRR
+       Фильтры пользователей.
+    */
    function gu23_filter_save (
       p_data in xx_disl_gu23_filter%rowtype
    ) return varchar2 is
@@ -5125,12 +5145,12 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
             ( l_row.id,
               l_row.user_id,
               l_row.filter_name,
-              l_row.params, -- Данные(параметры) в формате json 
+              l_row.params,     -- Данные(параметры) в формате json
               l_row.created_by,
               l_row.is_default );
       else
          if l_row.is_default = 'Y' then
-            -- Сначала "удаляем" все записи по-умолчанию
+                -- Сначала "удаляем" все записи по-умолчанию
             update xx_disl_gu23_filter
                set
                is_default = 'N'
@@ -5146,6 +5166,7 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
           where id = l_row.id
             and user_id = l_row.user_id;
       end if;
+
       commit;
       return 'OK';
    exception
@@ -5154,16 +5175,17 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          return format_error();
    end;
 
-   -- Удаление фильтра пользователя
+    -- Удаление фильтра пользователя
    function gu23_filter_del (
       p_id      in number,
       p_user_id in number
    ) return varchar2 is
    begin
-      -- удаляем только свой фильтр
+        -- удаляем только свой фильтр
       delete xx_disl_gu23_filter
        where id = p_id
          and user_id = p_user_id;
+
       commit;
       return 'OK';
    exception
@@ -5201,10 +5223,11 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          l_row.is_default := r.is_default;
          pipe row ( l_row );
       end loop;
+
       return;
    end;
-
-   -- Тип нового акта по умолчанию для пользователя.
+    -- add 27.07.2026 BekmansurovRR
+    -- Тип нового акта по умолчанию для пользователя.
    function gu23_user_default_type (
       p_user_id in number
    ) return varchar2 is
@@ -5225,13 +5248,13 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       p_user_id  in number,
       p_act_type in varchar2
    ) return varchar2 is
-      l_act_type xx_disl_gu23_user_settings.default_act_type%type :=
-         lower(trim(p_act_type));
+      l_act_type xx_disl_gu23_user_settings.default_act_type%type := lower(trim(p_act_type));
    begin
       if p_user_id is null
-         or l_act_type is null
-         or l_act_type not in ( 'start','end','other' )
-      then
+      or l_act_type is null
+      or l_act_type not in ( 'start',
+                             'end',
+                             'other' ) then
          return format_error('Некорректный тип акта');
       end if;
 
@@ -5240,22 +5263,21 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
          select p_user_id as user_id,
                 l_act_type as default_act_type
            from dual
-      ) s
-      on ( t.user_id = s.user_id )
+      ) s on ( t.user_id = s.user_id )
       when matched then update
-         set t.default_act_type = s.default_act_type,
-             t.updated_at = sysdate
-      when not matched then insert (
+      set t.default_act_type = s.default_act_type,
+          t.updated_at = sysdate
+      when not matched then
+      insert (
          user_id,
          default_act_type,
          created_at,
-         updated_at
-      ) values (
-         s.user_id,
-         s.default_act_type,
-         sysdate,
-         sysdate
-      );
+         updated_at )
+      values
+         ( s.user_id,
+           s.default_act_type,
+           sysdate,
+           sysdate );
 
       commit;
       return 'OK';
@@ -5284,17 +5306,9 @@ create or replace package body xx_etw.xx_disl_gu23_pkg as
       x_to_email := p_to;
       x_subject := p_subject;
       x_msg := p_body;
-      log_new(
-         l_log_in,
-         l_function,
-         'g_server_host=>' || g_server_host
-      );
-      log_new(
-         l_log_in,
-         l_function,
-         'x_to_email=>' || x_to_email
-      );
-/*
+        --log_new (l_log_in, l_function, 'g_server_host=>' || g_server_host);
+        --log_new (l_log_in, l_function, 'x_to_email=>' || x_to_email);
+      /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
