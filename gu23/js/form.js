@@ -973,10 +973,14 @@ const signerRules = {
   },*/
   default: {
     ownCount: 3,
-    ownRequired: 3,
+    ownRequired: 2,
     rzdCount: 0,
     rzdRequired: 0,
-    ownLabels: ['Работник предприятия', 'Работник предприятия', 'Работник предприятия'],
+    ownLabels: [
+      'Работник предприятия',
+      'Работник предприятия',
+      'Работник предприятия',
+    ],
     rzdLabel: 'Работник станции ОАО "РЖД"',
   },
 }
