@@ -312,7 +312,7 @@ function showSignersList(items, total, page) {
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
             <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
-            ${active ? 'Активен' : 'Неактивен'}
+            ${active ? 'Активеный' : 'Неактивеный'}
           </span>
         </td>
       </tr>`
@@ -459,7 +459,10 @@ const DEFAULT_KIND_LABELS = {
 
 function actKindItems() {
   if (reasonKinds.length) {
-    return reasonKinds.map((row) => [String(row.CODE || row.ID || ''), row.NAME || ''])
+    return reasonKinds.map((row) => [
+      String(row.CODE || row.ID || ''),
+      row.NAME || '',
+    ])
   }
   return Object.entries(DEFAULT_KIND_LABELS)
 }
@@ -489,8 +492,8 @@ function showReasonsList(items, total, page) {
       .join('')
   const statusOptions = `
     <option value="" ${reasonStatus === '' ? 'selected' : ''}>Все</option>
-    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активен</option>
-    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивен</option>
+    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активеный</option>
+    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивеный</option>
   `
   const rows = items
     .map((r) => {
@@ -504,7 +507,7 @@ function showReasonsList(items, total, page) {
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
             <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
-            ${active ? 'Активн' : 'Неактивен'}
+            ${active ? 'Активный' : 'Неактивеный'}
           </span>
         </td>
       </tr>`

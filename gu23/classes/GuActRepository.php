@@ -1529,7 +1529,7 @@ class GuActRepository
         $num = 1;
         foreach ($rows as $row) {
             $kindCode = (string) ($row['ACT_KIND'] ?? '');
-            $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активен' : 'Неактивен';
+            $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активеный' : 'Неактивеный';
 
             $sheet->setCellValue('A' . $rowNumber, $num);
             $sheet->setCellValue('B' . $rowNumber, (string) ($row['ID'] ?? ''));
