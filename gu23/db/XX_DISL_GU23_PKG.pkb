@@ -580,31 +580,33 @@
    end insert_signer;
 
     -- ----------------------------------------------------------------
-    -- интеграционный API создания акта
+    -- API создания акта
     -- ----------------------------------------------------------------
    procedure api_gu23_create (
-      p_act           in     xx_disl_gu23_act%rowtype,
-      p_act_rows      in     t_api_gu23_act_row_tab,
-      p_signers       in     t_api_gu23_signer_tab,
-      p_out_act_id       out number,
-      p_out_status    in out varchar2,
-      p_out_message   in out varchar2
+      p_act         in xx_disl_gu23_act%rowtype,
+      p_act_rows    in t_api_gu23_act_row_tab,
+      p_signers     in t_api_gu23_signer_tab,
+      p_out_act_id  out number,
+      p_out_status  in out varchar2,
+      p_out_message in out varchar2
    ) is
-      l_act          xx_disl_gu23_act%rowtype;
-      l_act_row      xx_disl_gu23_act_row%rowtype;
-      l_signer       xx_disl_gu23_signer%rowtype;
-      l_hist         xx_disl_gu23_hist%rowtype;
-      l_idx          pls_integer;
-      l_check_idx    pls_integer;
-      l_count        number;
-      l_reason_id    number;
-      l_ord_no       number;
-      l_dur_days     number;
-      l_dur_hours    number;
-      l_dur_total_h  number;
-      l_cal_days     number;
+      l_act         xx_disl_gu23_act%rowtype;
+      l_act_row     xx_disl_gu23_act_row%rowtype;
+      l_signer      xx_disl_gu23_signer%rowtype;
+      l_hist        xx_disl_gu23_hist%rowtype;
+      l_idx         pls_integer;
+      l_check_idx   pls_integer;
+      l_count       number;
+      l_reason_id   number;
+      l_ord_no      number;
+      l_dur_days    number;
+      l_dur_hours   number;
+      l_dur_total_h number;
+      l_cal_days    number;
 
-      procedure set_error (p_message in varchar2) is
+      procedure set_error (
+         p_message in varchar2
+      ) is
       begin
          p_out_act_id := null;
          p_out_status := 'ERROR';
@@ -614,16 +616,16 @@
       p_out_act_id := null;
       p_out_status := null;
       p_out_message := null;
-
-      -- Первая версия API создаёт только проект. Поддержку active можно
-      -- добавить позднее без изменения сигнатуры, используя P_ACT.STATUS.
       if lower(trim(p_act.status)) <> 'draft' then
          set_error('API пока разрешает создание акта только в статусе draft');
          return;
       end if;
 
-      if p_act.act_type is not null
-         and lower(trim(p_act.act_type)) not in ('start', 'end', 'other')
+      if
+         p_act.act_type is not null
+         and lower(trim(p_act.act_type)) not in ( 'start',
+                                                  'end',
+                                                  'other' )
       then
          set_error('Неверный тип акта: ' || p_act.act_type);
          return;
@@ -631,15 +633,22 @@
 
       -- Для проекта даты необязательны, но переданная дата не может быть
       -- будущей. Проверяется дата и время, а не только календарный день.
-      if p_act.start_at is not null and p_act.start_at > sysdate then
+      if
+         p_act.start_at is not null
+         and p_act.start_at > sysdate
+      then
          set_error('Дата начала не может быть больше текущей даты');
          return;
       end if;
-      if p_act.end_at is not null and p_act.end_at > sysdate then
+      if
+         p_act.end_at is not null
+         and p_act.end_at > sysdate
+      then
          set_error('Дата окончания не может быть больше текущей даты');
          return;
       end if;
-      if p_act.start_at is not null
+      if
+         p_act.start_at is not null
          and p_act.end_at is not null
          and p_act.end_at < p_act.start_at
       then
@@ -647,15 +656,15 @@
          return;
       end if;
 
-      -- Для draft поля необязательны. Каждый фактически переданный ID
-      -- обязательно должен существовать в соответствующем справочнике.
+      -- Для draft поля необязательны. 
       if p_act.dept_id is not null then
          select count(*)
            into l_count
            from xx_disl_dept_v
           where id = p_act.dept_id;
          if l_count = 0 then
-            set_error('Цех с ID ' || p_act.dept_id || ' не найден');
+            set_error('Цех с ID '
+                      || p_act.dept_id || ' не найден');
             return;
          end if;
       end if;
@@ -698,7 +707,7 @@
 
       if trim(p_act.reason) is not null then
          begin
-            l_reason_id := to_number(trim(p_act.reason));
+            l_reason_id := to_number ( trim(p_act.reason) );
          exception
             when value_error then
                set_error('ID причины должен быть числом: ' || p_act.reason);
@@ -710,8 +719,9 @@
            from xx_disl_gu23_ref_reason
           where id = l_reason_id
             and active = 'Y'
-            and (p_act.act_type is null
-                 or act_kind in ('any', lower(trim(p_act.act_type))));
+            and ( p_act.act_type is null
+             or act_kind in ( 'any',
+                              lower(trim(p_act.act_type)) ) );
          if l_count = 0 then
             set_error('Активная причина с ID '
                       || l_reason_id || ' не найдена для указанного типа акта');
@@ -735,37 +745,46 @@
       -- Проверяем переданных подписантов до вставки шапки акта.
       l_idx := p_signers.first;
       while l_idx is not null loop
-         if p_signers(l_idx).stype is not null
-            and lower(trim(p_signers(l_idx).stype)) not in ('own', 'rzd')
+         if
+            p_signers(l_idx).stype is not null
+            and lower(trim(p_signers(l_idx).stype)) not in ( 'own',
+                                                             'rzd' )
          then
-            set_error('Подписант [' || l_idx
-                      || ']: допустимый STYPE — own, rzd или NULL');
+            set_error('Подписант ['
+                      || l_idx || ']: допустимый STYPE — own, rzd или NULL');
             return;
          end if;
 
-         l_ord_no := nvl(p_signers(l_idx).ord_no, l_idx);
-         if l_ord_no <= 0 or l_ord_no <> trunc(l_ord_no) then
-            set_error('Подписант [' || l_idx
-                      || ']: ORD_NO должен быть положительным целым числом');
+         l_ord_no := nvl(
+            p_signers(l_idx).ord_no,
+            l_idx
+         );
+         if l_ord_no <= 0
+         or l_ord_no <> trunc(l_ord_no) then
+            set_error('Подписант ['
+                      || l_idx || ']: ORD_NO должен быть положительным целым числом');
             return;
          end if;
 
          l_check_idx := p_signers.first;
          while l_check_idx is not null loop
-            if l_check_idx <> l_idx
-               and nvl(p_signers(l_check_idx).ord_no, l_check_idx) = l_ord_no
+            if
+               l_check_idx <> l_idx
+               and nvl(
+                  p_signers(l_check_idx).ord_no,
+                  l_check_idx
+               ) = l_ord_no
             then
                set_error('Повторяется позиция подписанта ORD_NO=' || l_ord_no);
                return;
             end if;
-            if l_check_idx < l_idx
+            if
+               l_check_idx < l_idx
                and p_signers(l_idx).signer_ref_id is not null
-               and p_signers(l_check_idx).signer_ref_id =
-                   p_signers(l_idx).signer_ref_id
+               and p_signers(l_check_idx).signer_ref_id = p_signers(l_idx).signer_ref_id
             then
                set_error('Подписант с ID '
-                         || p_signers(l_idx).signer_ref_id
-                         || ' передан более одного раза');
+                         || p_signers(l_idx).signer_ref_id || ' передан более одного раза');
                return;
             end if;
             l_check_idx := p_signers.next(l_check_idx);
@@ -785,22 +804,24 @@
                 where id = p_signers(l_idx).signer_ref_id
                   and active = 'Y';
             else
-               select (select count(*)
-                         from xx_disl_users_emp_v
-                        where id = p_signers(l_idx).signer_ref_id
-                          and open = 'Y')
-                      + (select count(*)
-                           from xx_disl_gu23_ref_signer
-                          where id = p_signers(l_idx).signer_ref_id
-                            and active = 'Y')
+               select (
+                  select count(*)
+                    from xx_disl_users_emp_v
+                   where id = p_signers(l_idx).signer_ref_id
+                     and open = 'Y'
+               ) + (
+                  select count(*)
+                    from xx_disl_gu23_ref_signer
+                   where id = p_signers(l_idx).signer_ref_id
+                     and active = 'Y'
+               )
                  into l_count
                  from dual;
             end if;
 
             if l_count = 0 then
                set_error('Подписант с ID '
-                         || p_signers(l_idx).signer_ref_id
-                         || ' не найден или неактивен');
+                         || p_signers(l_idx).signer_ref_id || ' не найден или неактивен');
                return;
             end if;
          end if;
@@ -808,14 +829,17 @@
          l_idx := p_signers.next(l_idx);
       end loop;
 
-      if p_act.act_type = 'end'
+      if
+         p_act.act_type = 'end'
          and p_act.start_at is not null
          and p_act.end_at is not null
       then
-         l_dur_total_h := round((p_act.end_at - p_act.start_at) * 24, 1);
+         l_dur_total_h := round(
+            (p_act.end_at - p_act.start_at) * 24,
+            1
+         );
          l_dur_days := trunc(p_act.end_at - p_act.start_at);
-         l_dur_hours :=
-            round(((p_act.end_at - p_act.start_at) - l_dur_days) * 24);
+         l_dur_hours := round(((p_act.end_at - p_act.start_at) - l_dur_days) * 24);
          l_cal_days := ceil(p_act.end_at - p_act.start_at);
       end if;
 
@@ -836,9 +860,11 @@
       l_act.cal_days := l_cal_days;
       l_act.created_at := sysdate;
       l_act.modified_at := sysdate;
-      l_act.modified_by := nvl(p_act.modified_by, p_act.created_by);
+      l_act.modified_by := nvl(
+         p_act.modified_by,
+         p_act.created_by
+      );
       insert_act(l_act);
-
       l_idx := p_act_rows.first;
       while l_idx is not null loop
          l_act_row := p_act_rows(l_idx);
@@ -853,7 +879,10 @@
          l_signer := p_signers(l_idx);
          l_signer.id := xx_disl_gu23_signer_seq.nextval;
          l_signer.act_id := l_act.id;
-         l_signer.ord_no := nvl(p_signers(l_idx).ord_no, l_idx);
+         l_signer.ord_no := nvl(
+            p_signers(l_idx).ord_no,
+            l_idx
+         );
          l_signer.stype := lower(trim(p_signers(l_idx).stype));
          insert_signer(l_signer);
          l_idx := p_signers.next(l_idx);
@@ -877,7 +906,11 @@
    exception
       when others then
          rollback;
-         set_error(substr(sqlerrm, 1, 4000));
+         set_error(substr(
+            sqlerrm,
+            1,
+            4000
+         ));
    end api_gu23_create;
 
     -- ----------------------------------------------------------------
@@ -1145,17 +1178,17 @@
     -- акты
     -- ----------------------------------------------------------------
    function gu23_get_acts (
-      p_q            in varchar2,
-      p_type         in varchar2,
-      p_status       in varchar2,
-      p_dept_id      in varchar2,
-      p_date_from    in varchar2,
-      p_date_to      in varchar2,
-      p_has_signed   in varchar2,
-      p_reason_categ in varchar2,
-      p_page         in number,
-      p_page_size    in number,
-      p_user_id      in number default null,
+      p_q               in varchar2,
+      p_type            in varchar2,
+      p_status          in varchar2,
+      p_dept_id         in varchar2,
+      p_date_from       in varchar2,
+      p_date_to         in varchar2,
+      p_has_signed      in varchar2,
+      p_reason_categ    in varchar2,
+      p_page            in number,
+      p_page_size       in number,
+      p_user_id         in number default null,
       p_requires_action in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
@@ -1269,7 +1302,10 @@
                                           ) > 0 )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
-                                              or nvl(p_requires_action, 'N') = 'Y'
+                                              or nvl(
+                                             p_requires_action,
+                                             'N'
+                                          ) = 'Y'
                                               or ( ( v_from is null
                                              and v_to is null )
                                               or ( a.start_at is not null
@@ -1336,12 +1372,15 @@
                                                                     || v_q
                                                                     || '%'
                                           ) )
-                                             and ( nvl(p_requires_action, 'N') <> 'Y'
+                                             and ( nvl(
+                                             p_requires_action,
+                                             'N'
+                                          ) <> 'Y'
                                               or ( a.status = 'active'
                                              and exists (
-                                            select 1
-                                              from table(gu23_approval_next_signer(a.id)) ns
-                                             where ns.approver_id = p_user_id
+                                             select 1
+                                               from table ( gu23_approval_next_signer(a.id) ) ns
+                                              where ns.approver_id = p_user_id
                                           ) ) )
                                            order by a.created_at desc
                                        ) a
@@ -1364,15 +1403,15 @@
 
     -- количество актов
    function gu23_count_acts (
-      p_q            in varchar2,
-      p_type         in varchar2,
-      p_status       in varchar2,
-      p_dept_id      in varchar2,
-      p_date_from    in varchar2,
-      p_date_to      in varchar2,
-      p_has_signed   in varchar2,
-      p_reason_categ in varchar2,
-      p_user_id      in number default null,
+      p_q               in varchar2,
+      p_type            in varchar2,
+      p_status          in varchar2,
+      p_dept_id         in varchar2,
+      p_date_from       in varchar2,
+      p_date_to         in varchar2,
+      p_has_signed      in varchar2,
+      p_reason_categ    in varchar2,
+      p_user_id         in number default null,
       p_requires_action in varchar2 default null
    ) return number is
       v_q    varchar2(4000) := lower(p_q);
@@ -1431,7 +1470,10 @@
       ) > 0 )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
-          or nvl(p_requires_action, 'N') = 'Y'
+          or nvl(
+         p_requires_action,
+         'N'
+      ) = 'Y'
           or ( ( v_from is null
          and v_to is null )
           or ( a.start_at is not null
@@ -1472,12 +1514,15 @@
                                 || v_q
                                 || '%'
       ) )
-         and ( nvl(p_requires_action, 'N') <> 'Y'
+         and ( nvl(
+         p_requires_action,
+         'N'
+      ) <> 'Y'
           or ( a.status = 'active'
          and exists (
-        select 1
-          from table(gu23_approval_next_signer(a.id)) ns
-         where ns.approver_id = p_user_id
+         select 1
+           from table ( gu23_approval_next_signer(a.id) ) ns
+          where ns.approver_id = p_user_id
       ) ) );
 
       return v_cnt;
