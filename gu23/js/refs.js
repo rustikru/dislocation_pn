@@ -93,6 +93,17 @@ function prepareRefsPage(container) {
     $form.remove()
   })
 
+  $(container).on('click.refs', '#btn-import-reasons', () => {
+    if (!hasPerm('MANAGE_REFS') || refsTab !== 'reasons') return
+    $('#reason-import-file').val('').trigger('click')
+  })
+
+  $(container).on('change.refs', '#reason-import-file', function () {
+    const file = this.files && this.files[0]
+    if (!file) return
+    importReasonsFile(file)
+  })
+
   $(container).on('change.refs', '.reason-filter', function () {
     reasonKind = $('#reason-filter-kind').val() || ''
     reasonCateg = $('#reason-filter-categ').val() || ''
@@ -139,6 +150,68 @@ function setActiveTab() {
     $(this).toggleClass('refs-tab-active', $(this).data('tab') === refsTab)
   })
   $('#btn-export-reasons').toggle(refsTab === 'reasons')
+  $('#btn-import-reasons').toggle(
+    refsTab === 'reasons' && hasPerm('MANAGE_REFS'),
+  )
+}
+
+function importReasonsFile(file) {
+  if (!/\.xlsx$/i.test(file.name || '')) {
+    showToast('Можно загрузить только файл XLSX', 'err')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('ajax_action', 'gu23_reasons_import')
+  formData.append('file', file)
+
+  $('#btn-import-reasons').prop('disabled', true)
+  $.ajax({
+    url: '/gu23/data.php',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    dataType: 'json',
+  })
+    .done((response) => {
+      if (!response || !response.ok) {
+        showToast(response?.msg || 'Ошибка импорта', 'err')
+        return
+      }
+
+      const message =
+        `Создано: ${response.created || 0}, ` +
+        `обновлено: ${response.updated || 0}, ` +
+        `ошибок: ${response.errors_count || 0}`
+      showToast(message, response.errors_count ? 'err' : 'ok')
+
+      if (response.report) {
+        downloadImportReport(
+          response.report,
+          response.report_name || 'gu23_reason_import.txt',
+        )
+      }
+      if ((response.processed || 0) > 0) reloadRefs()
+    })
+    .always(() => {
+      $('#btn-import-reasons').prop('disabled', false)
+      $('#reason-import-file').val('')
+    })
+}
+
+function downloadImportReport(text, fileName) {
+  const blob = new Blob(['\ufeff', text], {
+    type: 'text/plain;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function refsPageButtonsHtml(total, page) {
@@ -157,6 +230,67 @@ function refsPageButtonsHtml(total, page) {
   html += `<span class="muted" style="margin-left:6px;font-size:12px">Всего: ${total}</span>`
   html += '</div>'
   return html
+}
+
+function reasonsPageButtonsHtml(total, page) {
+  const pages = Math.ceil(total / refsPageSize)
+  if (pages <= 1)
+    return `<div class="reasons-pagination-total">Всего: ${total}</div>`
+
+  const pageNumbers = []
+  if (pages <= 7) {
+    for (let i = 1; i <= pages; i++) pageNumbers.push(i)
+  } else if (page <= 3) {
+    pageNumbers.push(1, 2, 3, 'ellipsis', pages)
+  } else if (page >= pages - 2) {
+    pageNumbers.push(1, 'ellipsis', pages - 2, pages - 1, pages)
+  } else {
+    pageNumbers.push(
+      1,
+      'ellipsis-left',
+      page - 1,
+      page,
+      page + 1,
+      'ellipsis-right',
+      pages,
+    )
+  }
+
+  const buttons = pageNumbers
+    .map((item) => {
+      if (String(item).startsWith('ellipsis')) {
+        return '<span class="reasons-page-ellipsis">…</span>'
+      }
+      return `
+        <button
+          type="button"
+          class="pager-btn page-btn ${item === page ? 'page-btn-active' : ''}"
+          data-page="${item}"
+          aria-label="Страница ${item}"
+          ${item === page ? 'aria-current="page"' : ''}
+        >${item}</button>`
+    })
+    .join('')
+
+  return `
+    <div class="reasons-pagination" aria-label="Страницы справочника причин">
+      <button
+        type="button"
+        class="pager-btn page-btn"
+        data-page="${page - 1}"
+        aria-label="Предыдущая страница"
+        ${page <= 1 ? 'disabled' : ''}
+      >‹</button>
+      ${buttons}
+      <button
+        type="button"
+        class="pager-btn page-btn"
+        data-page="${page + 1}"
+        aria-label="Следующая страница"
+        ${page >= pages ? 'disabled' : ''}
+      >›</button>
+    </div>
+  `
 }
 
 // ─────────────────────────────────────────────
@@ -405,7 +539,7 @@ function showReasonsList(items, total, page) {
         </table>
       </div>
     </div>
-    ${refsPageButtonsHtml(total, page)}
+    ${reasonsPageButtonsHtml(total, page)}
   `)
 
   $('#refs-body')

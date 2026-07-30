@@ -433,6 +433,30 @@ a {
   font-size: 12px;
 }
 
+.reasons-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+.reasons-page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 30px;
+  color: var(--ink);
+  font-size: 14px;
+}
+.reasons-pagination-total {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .approval-box {
   border-radius: 6px;
   padding: 8px 10px;

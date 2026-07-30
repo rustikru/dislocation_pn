@@ -21,6 +21,7 @@ if (!function_exists('mb_strlen')) {
 
 require_once __DIR__ . '/Gu23Logger.php';
 require_once __DIR__ . '/Gu23Db.php';
+require_once __DIR__ . '/Gu23ReasonImportRepository.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
 require_once __DIR__ . '/../report/GuActExcelReport.php';
@@ -234,6 +235,9 @@ class GuActRepository
                     break;
                 case 'gu23_reasons_excel':      // выгрузка причин в Excel
                     $this->downloadReasonsExcel();
+                    break;
+                case 'gu23_reasons_import':     // импорт причин из XLSX-шаблона
+                    $this->importReasonsExcel();
                     break;
                 case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
                     $this->refSignerSave();
@@ -1621,6 +1625,33 @@ class GuActRepository
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
+    }
+
+    /** Импортировать причины из утверждённого XLSX-шаблона. */
+    private function importReasonsExcel(): void
+    {
+        if (!$this->permGranted('MANAGE_REFS')) {
+            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
+            return;
+        }
+        if (empty($_FILES['file'])) {
+            echo json_encode(['ok' => false, 'msg' => 'Файл не выбран']);
+            return;
+        }
+
+        try {
+            $repository = new Gu23ReasonImportRepository($this->conn);
+            echo json_encode(
+                $repository->importUploadedFile($_FILES['file']),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+            );
+        } catch (\Throwable $e) {
+            Gu23Logger::exception($e, 'gu23_reasons_import');
+            echo json_encode([
+                'ok' => false,
+                'msg' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        }
     }
 
     /* ----------------------------------------------------------------- */

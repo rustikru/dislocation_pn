@@ -5036,6 +5036,102 @@
          return format_error();
    end;
 
+   function gu23_ref_reason_import (
+      p_id       in number,
+      p_name     in varchar2,
+      p_act_kind in varchar2,
+      p_categ    in number,
+      p_active   in varchar2
+   ) return varchar2 is
+      v_id       number;
+      v_count    number;
+      v_kind     varchar2(16) := nvl(lower(trim(p_act_kind)), 'any');
+      v_active   varchar2(1) := upper(trim(p_active));
+      v_name     varchar2(500) := trim(regexp_replace(p_name, '[[:space:]]+', ' '));
+   begin
+      if v_name is null then
+         return format_error('Не заполнено название причины');
+      end if;
+      if v_kind not in ('start', 'end', 'other', 'any') then
+         return format_error('Некорректный тип акта: ' || p_act_kind);
+      end if;
+      if v_active not in ('Y', 'N') then
+         return format_error('Некорректный статус причины: ' || p_active);
+      end if;
+
+      if p_categ is not null then
+         select count(*)
+           into v_count
+           from xx_disl_general_ref
+          where id = p_categ
+            and ref_code = 'CATEG_CAUSE'
+            and sysdate between start_effect_date and end_effect_date;
+         if v_count = 0 then
+            return format_error('Категория с ID ' || p_categ
+                                || ' не найдена или неактивна');
+         end if;
+      end if;
+
+      if p_id is not null and p_id > 0 then
+         select count(*)
+           into v_count
+           from xx_disl_gu23_ref_reason
+          where id = p_id;
+         if v_count = 0 then
+            return format_error('Причина с ID ' || p_id || ' не найдена');
+         end if;
+         v_id := p_id;
+      else
+         v_id := xx_disl_gu23_ref_reason_seq.nextval;
+      end if;
+
+      select count(*)
+        into v_count
+        from xx_disl_gu23_ref_reason
+       where upper(trim(regexp_replace(name, '[[:space:]]+', ' '))) =
+             upper(v_name)
+         and act_kind = v_kind
+         and nvl(categ, -1) = nvl(p_categ, -1)
+         and id <> v_id;
+      if v_count > 0 then
+         return format_error('Дубликат: причина с таким названием, типом акта'
+                             || ' и категорией уже существует');
+      end if;
+
+      if p_id is not null and p_id > 0 then
+         update xx_disl_gu23_ref_reason
+            set name = v_name,
+                act_kind = v_kind,
+                categ = p_categ,
+                active = v_active
+          where id = v_id;
+      else
+         insert into xx_disl_gu23_ref_reason (
+            id,
+            name,
+            act_kind,
+            categ,
+            active
+         ) values (
+            v_id,
+            v_name,
+            v_kind,
+            p_categ,
+            v_active
+         );
+      end if;
+
+      commit;
+      return 'OK' || c_us || v_id;
+   exception
+      when dup_val_on_index then
+         rollback;
+         return format_error('Дубликат: причина уже существует');
+      when others then
+         rollback;
+         return format_error();
+   end gu23_ref_reason_import;
+
    function gu23_ref_reason_toggle (
       p_id in number
    ) return varchar2 is

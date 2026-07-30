@@ -755,6 +755,13 @@ as
                                    p_categ      in number)
         return varchar2;
 
+    function gu23_ref_reason_import (p_id       in number,
+                                     p_name     in varchar2,
+                                     p_act_kind in varchar2,
+                                     p_categ    in number,
+                                     p_active   in varchar2)
+        return varchar2;
+
     function gu23_ref_reason_toggle (p_id in number)
         return varchar2;
 
