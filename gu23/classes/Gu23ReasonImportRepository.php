@@ -8,10 +8,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\RichText\RichText;
 
 /**
- * Импорт справочника причин из утверждённого XLSX-шаблона.
+ * Импорт справочника причин из XLSX-шаблона.
  *
- * PHP только разбирает файл и сопоставляет справочные значения. Создание и
- * обновление записей выполняет XX_DISL_GU23_PKG.
  */
 class Gu23ReasonImportRepository
 {
