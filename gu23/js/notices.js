@@ -11,6 +11,7 @@ import {
 let noticeRows = []
 let noticePage = 1
 let noticeTypeFilter = ''
+let noticeFormFiles = []
 const noticePageSize = 6
 const noticeTextLimit = 180
 
@@ -153,6 +154,7 @@ function noticeRowsPage() {
           <strong class="notice-title">${escapeHtml(row.TITLE || '')}</strong>
           ${bodyText ? `<span class="notice-text">${escapeHtml(bodyText)}</span>` : ''}
           ${row.IMAGE_PATH ? '<span class="notice-image-note"><b>Есть фото...</b></span>' : ''}
+          ${Number(row.FILE_COUNT || 0) > 0 ? `<span class="notice-image-note"><b>Приложений: ${Number(row.FILE_COUNT)}</b></span>` : ''}
         </span>
         <span class="notice-actions">
           ${isVirtual ? '' : `<span class="notice-mail ${isRead ? 'is-read' : 'is-unread'}" title="${isRead ? 'Прочитано (отметить непрочитанным)' : 'Не прочитано (отметить прочитанным)'}">${NOTICE_MAIL_SVG}</span>`}
@@ -274,6 +276,8 @@ function shortNoticeText(value) {
 }
 // Просмотр уведомления
 function noticeView(row) {
+  const isStoredNotice =
+    row.SECTION_NOTIF !== 'virtual' && Number(row.ID || 0) > 0
   const content = `
     <div class="notice-view">
       <div class="notice-view-info">
@@ -283,12 +287,39 @@ function noticeView(row) {
       </div>
       <div class="notice-view-text">${row.BODY || ''}</div>
       ${row.IMAGE_PATH ? `<img class="notice-view-image" src="${escapeHtml(row.IMAGE_PATH)}" alt="">` : ''}
+      ${
+        isStoredNotice
+          ? `<div class="notice-attachments notice-view-attachments">
+              <b>Приложения:</b>
+              <div class="notice-attachments-list muted">Загрузка…</div>
+            </div>`
+          : ''
+      }
     </div>
   `
 
   openModalWindow(row.TITLE || 'Уведомление', content, [
     { label: 'Закрыть', className: 'btn ghost', onClick: closeModalWindow },
   ])
+  if (!isStoredNotice) return
+
+  loadNoticeFiles(row.ID, (files) => {
+    const $list = $('.notice-view-attachments .notice-attachments-list')
+    if (!files.length) {
+      $('.notice-view-attachments').remove()
+      return
+    }
+    $list
+      .removeClass('muted')
+      .html(
+        files
+          .map(
+            (file) =>
+              `<a href="/gu23/get_file.php?source=notice&id=${encodeURIComponent(file.id)}">${escapeHtml(file.name || 'Файл')}</a>`,
+          )
+          .join(''),
+      )
+  })
 }
 // Список уведомлений для страницы
 function noticePages() {
@@ -422,6 +453,7 @@ function noticePanelList() {
 
     rows.forEach((row) => {
       const isRead = row.IS_READ === 'Y'
+      const isVirtual = row.SECTION_NOTIF === 'virtual'
       const $item = $(`
         <button type="button" class="notice-panel-item ${isRead ? '' : 'unread'}" data-id="${escapeHtml(row.ID || '')}">
           <span class="notice-panel-kind ${noticeTypeClass(row.NOTICE_TYPE)}">${noticeTypeName(row)}</span>
@@ -433,7 +465,7 @@ function noticePanelList() {
       $item.on('click', () => {
         $('#notice-panel').hide()
         noticeView(row)
-        if ($item.hasClass('unread')) {
+        if (!isVirtual && $item.hasClass('unread')) {
           noticeRead(row.ID, $item)
         }
       })
@@ -465,6 +497,7 @@ function noticeClear() {
 // Форма редактирования/создания записи
 function noticeForm(row) {
   const isNew = !row
+  noticeFormFiles = []
   const firstType = (references.noticeTypes || [])[0] || {}
   const type = String(
     row?.NOTICE_TYPE || firstType.CODE || firstType.ID || '',
@@ -486,11 +519,18 @@ function noticeForm(row) {
       <label>Картинка</label>
       <input type="hidden" class="nf-image-path" value="${escapeHtml(row?.IMAGE_PATH || '')}">
       <div class="notice-image-field">
-        <input type="text" class="inp nf-image-text" value="${escapeHtml(row?.IMAGE_PATH || '')}" placeholder="/gu23/img/news/example.png">
+        <input type="text" class="inp nf-image-text" value="${escapeHtml(row?.IMAGE_PATH || '')}" placeholder="/gu23/storage/notices/example.png">
         <input type="file" class="nf-image-file" accept="image/*" style="display:none">
         <button type="button" class="btn ghost sm nf-image-btn">Загрузить</button>
       </div>
       <div class="notice-image-preview">${row?.IMAGE_PATH ? `<img src="${escapeHtml(row.IMAGE_PATH)}" alt="">` : ''}</div>
+
+      <label>Приложения</label>
+      <div class="notice-image-field">
+        <input type="file" class="nf-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" multiple style="display:none">
+        <button type="button" class="btn ghost sm nf-file-btn">Добавить файлы</button>
+      </div>
+      <div class="notice-attachments nf-files-list"></div>
     </div>
   `
 
@@ -527,6 +567,29 @@ function noticeForm(row) {
   $('.nf-image-text').on('input', function () {
     $('.nf-image-path').val($(this).val().trim())
   })
+  $('.nf-file-btn').on('click', () => $('.nf-file-input').trigger('click'))
+  $('.nf-file-input').on('change', function () {
+    const files = Array.from(this.files || [])
+    files.forEach((file) => noticeFileUpload(file))
+    $(this).val('')
+  })
+  $('.nf-files-list').on('click', '.nf-file-remove', function () {
+    const index = Number($(this).data('index'))
+    if (!Number.isInteger(index)) return
+    noticeFormFiles.splice(index, 1)
+    renderNoticeFormFiles()
+  })
+
+  if (!isNew) {
+    $('.notice-modal .btn.primary').prop('disabled', true)
+    loadNoticeFiles(row.ID, (files) => {
+      noticeFormFiles = files
+      renderNoticeFormFiles()
+      $('.notice-modal .btn.primary').prop('disabled', false)
+    })
+  } else {
+    renderNoticeFormFiles()
+  }
 }
 // Сохранение записи
 function noticeSave(row) {
@@ -542,6 +605,7 @@ function noticeSave(row) {
     notice_type: $('.nf-type').val(),
     body: $('.nf-body').val().trim(),
     image_path: $('.nf-image-path').val().trim(),
+    files: JSON.stringify(noticeFormFiles),
   }).done((response) => {
     if (!response || response.ok !== true) {
       showToast((response && response.msg) || 'Ошибка сохранения', 'err')
@@ -598,6 +662,81 @@ function noticeImageUpload(file) {
       response.path ? `<img src="${escapeHtml(response.path)}" alt="">` : '',
     )
   })
+}
+
+function noticeFileUpload(file) {
+  const formData = new FormData()
+  formData.append('ajax_action', 'gu23_notice_file_upload')
+  formData.append('file', file)
+
+  $.ajax({
+    url: '/gu23/data.php',
+    type: 'POST',
+    dataType: 'json',
+    data: formData,
+    processData: false,
+    contentType: false,
+  }).done((response) => {
+    if (!response || response.ok !== true) {
+      showToast((response && response.msg) || 'Ошибка загрузки файла', 'err')
+      return
+    }
+
+    noticeFormFiles.push({
+      id: null,
+      path: response.path || '',
+      name: response.name || '',
+      mime: response.mime || '',
+    })
+    renderNoticeFormFiles()
+    showToast('Файл загружен', 'ok')
+  })
+}
+
+function loadNoticeFiles(noticeId, done) {
+  sendApiRequest('gu23_notice_files', { notice_id: noticeId }).done(
+    (response) => {
+      if (!response || response.ok !== true) {
+        showToast((response && response.msg) || 'Ошибка загрузки приложений', 'err')
+        done([])
+        return
+      }
+      done(
+        (response.files || []).map((file) => ({
+          id: file.ID,
+          path: file.FILE_PATH || '',
+          name: file.FILE_NAME || '',
+          mime: file.FILE_MIME || '',
+        })),
+      )
+    },
+  )
+}
+
+function renderNoticeFormFiles() {
+  const $list = $('.nf-files-list')
+  if (!$list.length) return
+  if (!noticeFormFiles.length) {
+    $list.html('<span class="muted">Файлы не добавлены</span>')
+    return
+  }
+
+  $list.html(`
+    <b>Приложения:</b>
+    ${noticeFormFiles
+      .map(
+        (file, index) => `
+          <span class="notice-attachment-row">
+            ${
+              file.id
+                ? `<a href="/gu23/get_file.php?source=notice&id=${encodeURIComponent(file.id)}">${escapeHtml(file.name || 'Файл')}</a>`
+                : `<span>${escapeHtml(file.name || 'Файл')}</span>`
+            }
+            <button type="button" class="nf-file-remove" data-index="${index}" title="Убрать файл">×</button>
+          </span>`,
+      )
+      .join('')}
+  `)
 }
 
 function noticeTypeName(row) {

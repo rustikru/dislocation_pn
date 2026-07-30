@@ -21,7 +21,8 @@ if (!function_exists('mb_strlen')) {
 
 require_once __DIR__ . '/Gu23Logger.php';
 require_once __DIR__ . '/Gu23Db.php';
-require_once __DIR__ . '/Gu23ReasonImportRepository.php';
+require_once __DIR__ . '/Gu23ReasonImport.php';
+require_once __DIR__ . '/Gu23NoticeRepository.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
 require_once __DIR__ . '/../report/GuActExcelReport.php';
@@ -134,7 +135,11 @@ class GuActRepository
                 @oci_execute($st);
             }
 
-            switch ($action) {
+            if (Gu23NoticeRepository::supports($action)) {
+                $noticeRepository = new Gu23NoticeRepository($this->conn, $this->auth);
+                $noticeRepository->runAction($action);
+            } else {
+                switch ($action) {
 
                 // : форма создания акта ---
                 case 'gu23_get_refs':           // справочники для формы (цеха, станции, подписанты, причины)
@@ -193,40 +198,6 @@ class GuActRepository
                     break;
                 case 'gu23_approve_in_app':     // решение по акту прямо со странички
                     $this->approveInApp();
-                    break;
-
-                // --- уведомления ---
-                case 'gu23_notices':            // список уведомлений
-                    $this->notices();
-                    break;
-                case 'gu23_notice_count':       // количество непрочитанных
-                    $this->noticeCount();
-                    break;
-                case 'gu23_notice_read':        // отметить уведомление прочитанным
-                    $this->noticeRead();
-                    break;
-                // add 23.07.2026 BekmansurovRR
-                case 'gu23_notice_read_set':    // установить/снять признак прочтения 
-                    $this->noticeReadSet();
-                    break;
-                // add 23.07.2026 BekmansurovRR
-                case 'gu23_notice_favorite':    // переключить признак "избранное"
-                    $this->noticeFavorite();
-                    break;
-                case 'gu23_notice_read_all':    // отметить все уведомления прочитанными
-                    $this->noticeReadAll();
-                    break;
-                case 'gu23_notices_all':        // список уведомлений для управления
-                    $this->noticesAll();
-                    break;
-                case 'gu23_notice_save':        // сохранить уведомления
-                    $this->noticeSave();
-                    break;
-                case 'gu23_notice_toggle':      // включить / отключить уведомления
-                    $this->noticeToggle();
-                    break;
-                case 'gu23_notice_image_upload': // загрузить картинку для уведомления
-                    $this->noticeImageUpload();
                     break;
 
                 // --- справочники (администрирование) ---
@@ -289,6 +260,7 @@ class GuActRepository
                 default:
                     http_response_code(400);
                     echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
+                }
             }
             // Логируем неуспешные ответы  — в gu23/log/
             $out = ob_get_clean();
@@ -521,251 +493,6 @@ class GuActRepository
             'requires_action' => filter_input(INPUT_POST, 'requires_action') === 'Y' ? 'Y' : null,
             'user_id' => (int) $this->auth->getUserId(),
         ]);
-    }
-
-    /* ----------------------------------------------------------------- */
-    /* Уведомления                                               */
-    /* ----------------------------------------------------------------- */
-
-    private function notices(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-        $rows = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_notices(:p_user_id))',
-            [':p_user_id' => $userId]
-        );
-
-        echo json_encode(['ok' => true, 'rows' => $rows]);
-    }
-
-    private function noticeCount(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-        $count = (int) $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_count(:p_user_id)',
-            [':p_user_id' => $userId],
-            20
-        );
-
-        echo json_encode(['ok' => true, 'count' => $count]);
-    }
-
-    private function noticeRead(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-        $id = (int) filter_input(INPUT_POST, 'id');
-
-        if ($id <= 0) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
-            return;
-        }
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_read(:p_user_id, :notice_id)',
-            [':p_user_id' => $userId, ':notice_id' => $id],
-            1000
-        );
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true]);
-            return;
-        }
-
-        $parts = explode(self::US, (string) $result);
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    // add 23.07.2026 BekmansurovRR
-    // Ручная установка признака прочтения (иконка-конверт: прочитано/не прочитано)
-    private function noticeReadSet(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-        $id = (int) filter_input(INPUT_POST, 'id');
-        $read = strtoupper(trim((string) filter_input(INPUT_POST, 'read'))) === 'Y' ? 'Y' : 'N';
-
-        if ($id <= 0) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
-            return;
-        }
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_read_set(:p_user_id, :notice_id, :p_read)',
-            [':p_user_id' => $userId, ':notice_id' => $id, ':p_read' => $read],
-            1000
-        );
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true, 'is_read' => $read]);
-            return;
-        }
-
-        $parts = explode(self::US, (string) $result);
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    // add 23.07.2026 BekmansurovRR
-    // Переключение признака "избранное" уведомления для пользователя
-    private function noticeFavorite(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-        $id = (int) filter_input(INPUT_POST, 'id');
-
-        if ($id <= 0) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
-            return;
-        }
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_favorite(:p_user_id, :notice_id)',
-            [':p_user_id' => $userId, ':notice_id' => $id],
-            1000
-        );
-
-        $parts = explode(self::US, (string) $result);
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true, 'favorite' => $parts[1] ?? 'N']);
-            return;
-        }
-
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    private function noticeReadAll(): void
-    {
-        $userId = (int) $this->auth->getUserId();
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_read_all(:p_user_id)',
-            [':p_user_id' => $userId],
-            1000
-        );
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true]);
-            return;
-        }
-
-        $parts = explode(self::US, (string) $result);
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    private function noticesAll(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-
-        $userId = (int) $this->auth->getUserId();
-        // gu23_notices_all удалён — единая функция с флагом p_all => 'Y'
-        $rows = $this->selectRows(
-            "select * from table(xx_disl_gu23_pkg.gu23_notices(p_user_id => :p_user_id, p_all => 'Y'))",
-            [':p_user_id' => $userId]
-        );
-        echo json_encode(['ok' => true, 'rows' => $rows]);
-    }
-
-    private function noticeSave(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-
-        $userId = (int) $this->auth->getUserId();
-        $id = (int) filter_input(INPUT_POST, 'id');
-        $title = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'title')));
-        $body = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'body')));
-        $noticeType = trim((string) filter_input(INPUT_POST, 'notice_type'));
-        $imagePath = $this->cleanTextForOracle(trim((string) filter_input(INPUT_POST, 'image_path')));
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_save(:p_id, :p_title, :p_body, :p_notice_type, :p_image_path, :p_user_id)',
-            [
-                ':p_id' => $id,
-                ':p_title' => $title,
-                ':p_body' => $body,
-                ':p_notice_type' => $noticeType,
-                ':p_image_path' => $imagePath,
-                ':p_user_id' => $userId,
-            ],
-            1000
-        );
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true]);
-            return;
-        }
-
-        $parts = explode(self::US, (string) $result);
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    private function noticeImageUpload(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-
-        if (empty($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
-            echo json_encode(['ok' => false, 'msg' => 'Файл не выбран']);
-            return;
-        }
-
-        $file = $_FILES['file'];
-        $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-        if (!in_array($ext, $allowed, true)) {
-            echo json_encode(['ok' => false, 'msg' => 'Можно загрузить только изображение']);
-            return;
-        }
-
-        $dir = dirname(__DIR__) . '/img/news';
-        if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
-            echo json_encode(['ok' => false, 'msg' => 'Не удалось создать папку для картинок']);
-            return;
-        }
-
-        $name = 'notice_' . date('Ymd_His') . '_' . mt_rand(1000, 9999) . '.' . $ext;
-        $path = $dir . '/' . $name;
-
-        if (!move_uploaded_file($file['tmp_name'], $path)) {
-            echo json_encode(['ok' => false, 'msg' => 'Не удалось сохранить файл']);
-            return;
-        }
-
-        echo json_encode(['ok' => true, 'path' => '/gu23/img/news/' . $name]);
-    }
-
-    private function noticeToggle(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-
-        $id = (int) filter_input(INPUT_POST, 'id');
-        if ($id <= 0) {
-            echo json_encode(['ok' => false, 'msg' => 'Не указана запись']);
-            return;
-        }
-
-        $result = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_notice_toggle(:p_notice_id)',
-            [':p_notice_id' => $id],
-            1000
-        );
-
-        if (str_starts_with((string) $result, 'OK')) {
-            echo json_encode(['ok' => true]);
-            return;
-        }
-
-        $parts = explode(self::US, (string) $result);
-        echo json_encode(['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
     }
 
     /** Карточка одного акта: реквизиты, вагоны, файлы, подписанты, история, статус согласования. */
@@ -1640,7 +1367,7 @@ class GuActRepository
         }
 
         try {
-            $repository = new Gu23ReasonImportRepository($this->conn);
+            $repository = new Gu23ReasonImport($this->conn);
             echo json_encode(
                 $repository->importUploadedFile($_FILES['file']),
                 JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE

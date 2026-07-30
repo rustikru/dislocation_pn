@@ -4430,6 +4430,11 @@
                    n.notice_type
                 ) notice_type_name,
                 n.image_path,
+                (
+                   select count(*)
+                     from xx_disl_module_notic_file nf
+                    where nf.notice_id = n.id
+                ) file_count,
                 to_char(
                    n.created_at,
                    c_dtf
@@ -4486,6 +4491,7 @@
          l_row.notice_type := r.notice_type;
          l_row.notice_type_name := r.notice_type_name;
          l_row.image_path := r.image_path;
+         l_row.file_count := r.file_count;
          l_row.created_at := r.created_at;
          l_row.is_read := r.is_read;
             -- add 23.07.2026 BekmansurovRR
@@ -4651,10 +4657,18 @@
       p_body        in varchar2,
       p_notice_type in varchar2,
       p_image_path  in varchar2,
+      p_files       in varchar2,
       p_user_id     in number
    ) return varchar2 is
       l_id          number;
       l_notice_type varchar2(30);
+      v_len         pls_integer;
+      v_from        pls_integer;
+      v_to          pls_integer;
+      v_rec         varchar2(32767);
+      v_file_path   varchar2(1000);
+      v_file_name   varchar2(512);
+      v_file_mime   varchar2(128);
    begin
       if trim(p_title) is null then
          return 'ERR'
@@ -4714,6 +4728,61 @@
             and module_code = 'GU23';
       end if;
 
+      delete from xx_disl_module_notic_file
+       where notice_id = l_id;
+
+      v_len := length(p_files);
+      v_from := 1;
+      while v_from <= v_len loop
+         v_to := instr(
+            p_files,
+            c_rs,
+            v_from
+         );
+         if v_to = 0 then
+            v_to := v_len + 1;
+         end if;
+         v_rec := substr(
+            p_files,
+            v_from,
+            v_to - v_from
+         );
+         v_from := v_to + 1;
+         v_file_path := trim(g_field(
+            v_rec,
+            1
+         ));
+         v_file_name := trim(g_field(
+            v_rec,
+            2
+         ));
+         v_file_mime := trim(g_field(
+            v_rec,
+            3
+         ));
+         if
+            v_file_path is not null
+            and v_file_name is not null
+         then
+            insert into xx_disl_module_notic_file (
+               id,
+               notice_id,
+               file_path,
+               file_name,
+               file_mime,
+               created_at,
+               created_by
+            ) values
+               ( xx_disl_module_notic_file_seq.nextval,
+                 l_id,
+                 v_file_path,
+                 v_file_name,
+                 v_file_mime,
+                 sysdate,
+                 p_user_id );
+         end if;
+      end loop;
+
       commit;
       return 'OK'
              || c_us
@@ -4723,6 +4792,70 @@
          rollback;
          return format_error();
    end gu23_notice_save;
+
+   function gu23_notice_files (
+      p_notice_id in number
+   ) return t_gu23_notice_file_tab
+      pipelined
+   is
+      l_row t_gu23_notice_file_row;
+   begin
+      for r in (
+         select id,
+                notice_id,
+                file_path,
+                file_name,
+                file_mime
+           from xx_disl_module_notic_file
+          where notice_id = p_notice_id
+          order by id
+      ) loop
+         l_row.id := r.id;
+         l_row.notice_id := r.notice_id;
+         l_row.file_path := r.file_path;
+         l_row.file_name := r.file_name;
+         l_row.file_mime := r.file_mime;
+         pipe row ( l_row );
+      end loop;
+      return;
+   end gu23_notice_files;
+
+   function gu23_notice_file_info (
+      p_file_id in number
+   ) return varchar2 is
+      v_path varchar2(1000);
+      v_name varchar2(512);
+      v_mime varchar2(128);
+   begin
+      select file_path,
+             file_name,
+             file_mime
+        into
+         v_path,
+         v_name,
+         v_mime
+        from xx_disl_module_notic_file f
+       where f.id = p_file_id
+         and exists (
+         select 1
+           from xx_disl_module_notif n
+          where n.id = f.notice_id
+            and n.module_code = 'GU23'
+      );
+
+      return 'OK'
+             || c_us
+             || v_path
+             || c_us
+             || v_name
+             || c_us
+             || v_mime;
+   exception
+      when no_data_found then
+         return null;
+      when others then
+         return format_error();
+   end gu23_notice_file_info;
 
    function gu23_notice_toggle (
       p_notice_id in number
@@ -5043,19 +5176,30 @@
       p_categ    in number,
       p_active   in varchar2
    ) return varchar2 is
-      v_id       number;
-      v_count    number;
-      v_kind     varchar2(16) := nvl(lower(trim(p_act_kind)), 'any');
-      v_active   varchar2(1) := upper(trim(p_active));
-      v_name     varchar2(500) := trim(regexp_replace(p_name, '[[:space:]]+', ' '));
+      v_id     number;
+      v_count  number;
+      v_kind   varchar2(16) := nvl(
+         lower(trim(p_act_kind)),
+         'any'
+      );
+      v_active varchar2(1) := upper(trim(p_active));
+      v_name   varchar2(500) := trim(regexp_replace(
+         p_name,
+         '[[:space:]]+',
+         ' '
+      ));
    begin
       if v_name is null then
          return format_error('Не заполнено название причины');
       end if;
-      if v_kind not in ('start', 'end', 'other', 'any') then
+      if v_kind not in ( 'start',
+                         'end',
+                         'other',
+                         'any' ) then
          return format_error('Некорректный тип акта: ' || p_act_kind);
       end if;
-      if v_active not in ('Y', 'N') then
+      if v_active not in ( 'Y',
+                           'N' ) then
          return format_error('Некорректный статус причины: ' || p_active);
       end if;
 
@@ -5067,18 +5211,22 @@
             and ref_code = 'CATEG_CAUSE'
             and sysdate between start_effect_date and end_effect_date;
          if v_count = 0 then
-            return format_error('Категория с ID ' || p_categ
-                                || ' не найдена или неактивна');
+            return format_error('Категория с ID '
+                                || p_categ || ' не найдена или неактивна');
          end if;
       end if;
 
-      if p_id is not null and p_id > 0 then
+      if
+         p_id is not null
+         and p_id > 0
+      then
          select count(*)
            into v_count
            from xx_disl_gu23_ref_reason
           where id = p_id;
          if v_count = 0 then
-            return format_error('Причина с ID ' || p_id || ' не найдена');
+            return format_error('Причина с ID '
+                                || p_id || ' не найдена');
          end if;
          v_id := p_id;
       else
@@ -5088,17 +5236,27 @@
       select count(*)
         into v_count
         from xx_disl_gu23_ref_reason
-       where upper(trim(regexp_replace(name, '[[:space:]]+', ' '))) =
-             upper(v_name)
+       where upper(trim(regexp_replace(
+            name,
+            '[[:space:]]+',
+            ' '
+         ))) = upper(v_name)
          and act_kind = v_kind
-         and nvl(categ, -1) = nvl(p_categ, -1)
+         and nvl(
+         categ,
+         -1
+      ) = nvl(
+         p_categ,
+         -1
+      )
          and id <> v_id;
       if v_count > 0 then
-         return format_error('Дубликат: причина с таким названием, типом акта'
-                             || ' и категорией уже существует');
+         return format_error('Дубликат: причина с таким названием, типом акта' || ' и категорией уже существует');
       end if;
-
-      if p_id is not null and p_id > 0 then
+      if
+         p_id is not null
+         and p_id > 0
+      then
          update xx_disl_gu23_ref_reason
             set name = v_name,
                 act_kind = v_kind,
@@ -5112,17 +5270,18 @@
             act_kind,
             categ,
             active
-         ) values (
-            v_id,
-            v_name,
-            v_kind,
-            p_categ,
-            v_active
-         );
+         ) values
+            ( v_id,
+              v_name,
+              v_kind,
+              p_categ,
+              v_active );
       end if;
 
       commit;
-      return 'OK' || c_us || v_id;
+      return 'OK'
+             || c_us
+             || v_id;
    exception
       when dup_val_on_index then
          rollback;

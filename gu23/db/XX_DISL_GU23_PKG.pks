@@ -153,6 +153,7 @@ as
         notice_type         varchar2 (30),
         notice_type_name    varchar2 (500),
         image_path          varchar2 (500),
+        file_count          number,
         created_at          varchar2 (20),
         is_read             varchar2 (1),
         -- add 23.07.2026 BekmansurovRR
@@ -163,6 +164,17 @@ as
     );
 
     type t_gu23_notice_tab is table of t_gu23_notice_row;
+
+    type t_gu23_notice_file_row is record
+    (
+        id          number,
+        notice_id   number,
+        file_path   varchar2 (1000),
+        file_name   varchar2 (512),
+        file_mime   varchar2 (128)
+    );
+
+    type t_gu23_notice_file_tab is table of t_gu23_notice_file_row;
 
     type xx_disl_gu23_wagon_row is record
     (
@@ -686,7 +698,15 @@ as
                                p_body          in varchar2,
                                p_notice_type   in varchar2,
                                p_image_path    in varchar2,
+                               p_files         in varchar2,
                                p_user_id       in number)
+        return varchar2;
+
+    function gu23_notice_files (p_notice_id in number)
+        return t_gu23_notice_file_tab
+        pipelined;
+
+    function gu23_notice_file_info (p_file_id in number)
         return varchar2;
 
     function gu23_notice_toggle (p_notice_id in number)

@@ -11,7 +11,7 @@ use PhpOffice\PhpSpreadsheet\RichText\RichText;
  * Импорт справочника причин из XLSX-шаблона.
  *
  */
-class Gu23ReasonImportRepository
+class Gu23ReasonImport
 {
     private const SHEET_NAME = 'Причины';
     private const HEADER_ROW = 1;

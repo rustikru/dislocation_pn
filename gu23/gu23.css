@@ -1670,6 +1670,47 @@ textarea.inp {
   border: 1px solid var(--line);
   border-radius: 6px;
 }
+.notice-attachments {
+  margin-top: 14px;
+}
+.notice-modal .nf-files-list {
+  grid-column: 2;
+  margin-top: 0;
+}
+.notice-attachments > b {
+  display: block;
+  margin-bottom: 6px;
+}
+.notice-attachments-list,
+.nf-files-list {
+  display: grid;
+  gap: 5px;
+}
+.notice-attachments-list a {
+  display: block;
+  width: fit-content;
+}
+.notice-attachment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.nf-file-remove {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+.nf-file-remove:hover {
+  color: var(--rej);
+}
 
 .notice-top {
   position: relative;
