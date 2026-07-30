@@ -580,6 +580,307 @@
    end insert_signer;
 
     -- ----------------------------------------------------------------
+    -- интеграционный API создания акта
+    -- ----------------------------------------------------------------
+   procedure api_gu23_create (
+      p_act           in     xx_disl_gu23_act%rowtype,
+      p_act_rows      in     t_api_gu23_act_row_tab,
+      p_signers       in     t_api_gu23_signer_tab,
+      p_out_act_id       out number,
+      p_out_status    in out varchar2,
+      p_out_message   in out varchar2
+   ) is
+      l_act          xx_disl_gu23_act%rowtype;
+      l_act_row      xx_disl_gu23_act_row%rowtype;
+      l_signer       xx_disl_gu23_signer%rowtype;
+      l_hist         xx_disl_gu23_hist%rowtype;
+      l_idx          pls_integer;
+      l_check_idx    pls_integer;
+      l_count        number;
+      l_reason_id    number;
+      l_ord_no       number;
+      l_dur_days     number;
+      l_dur_hours    number;
+      l_dur_total_h  number;
+      l_cal_days     number;
+
+      procedure set_error (p_message in varchar2) is
+      begin
+         p_out_act_id := null;
+         p_out_status := 'ERROR';
+         p_out_message := p_message;
+      end set_error;
+   begin
+      p_out_act_id := null;
+      p_out_status := null;
+      p_out_message := null;
+
+      -- Первая версия API создаёт только проект. Поддержку active можно
+      -- добавить позднее без изменения сигнатуры, используя P_ACT.STATUS.
+      if lower(trim(p_act.status)) <> 'draft' then
+         set_error('API пока разрешает создание акта только в статусе draft');
+         return;
+      end if;
+
+      if p_act.act_type is not null
+         and lower(trim(p_act.act_type)) not in ('start', 'end', 'other')
+      then
+         set_error('Неверный тип акта: ' || p_act.act_type);
+         return;
+      end if;
+
+      -- Для проекта даты необязательны, но переданная дата не может быть
+      -- будущей. Проверяется дата и время, а не только календарный день.
+      if p_act.start_at is not null and p_act.start_at > sysdate then
+         set_error('Дата начала не может быть больше текущей даты');
+         return;
+      end if;
+      if p_act.end_at is not null and p_act.end_at > sysdate then
+         set_error('Дата окончания не может быть больше текущей даты');
+         return;
+      end if;
+      if p_act.start_at is not null
+         and p_act.end_at is not null
+         and p_act.end_at < p_act.start_at
+      then
+         set_error('Дата окончания не может быть меньше даты начала');
+         return;
+      end if;
+
+      -- Для draft поля необязательны. Каждый фактически переданный ID
+      -- обязательно должен существовать в соответствующем справочнике.
+      if p_act.dept_id is not null then
+         select count(*)
+           into l_count
+           from xx_disl_dept_v
+          where id = p_act.dept_id;
+         if l_count = 0 then
+            set_error('Цех с ID ' || p_act.dept_id || ' не найден');
+            return;
+         end if;
+      end if;
+
+      if trim(p_act.station_id) is not null then
+         select count(*)
+           into l_count
+           from xx_disl_stations
+          where to_char(station_id) = trim(p_act.station_id);
+         if l_count = 0 then
+            set_error('Станция составления с ID '
+                      || p_act.station_id || ' не найдена');
+            return;
+         end if;
+      end if;
+
+      if trim(p_act.st_from_id) is not null then
+         select count(*)
+           into l_count
+           from xx_etw.xx_nsi_station_v
+          where to_char(e_st_code) = trim(p_act.st_from_id);
+         if l_count = 0 then
+            set_error('Станция отправления с ID '
+                      || p_act.st_from_id || ' не найдена');
+            return;
+         end if;
+      end if;
+
+      if trim(p_act.st_to_id) is not null then
+         select count(*)
+           into l_count
+           from xx_etw.xx_nsi_station_v
+          where to_char(e_st_code) = trim(p_act.st_to_id);
+         if l_count = 0 then
+            set_error('Станция назначения с ID '
+                      || p_act.st_to_id || ' не найдена');
+            return;
+         end if;
+      end if;
+
+      if trim(p_act.reason) is not null then
+         begin
+            l_reason_id := to_number(trim(p_act.reason));
+         exception
+            when value_error then
+               set_error('ID причины должен быть числом: ' || p_act.reason);
+               return;
+         end;
+
+         select count(*)
+           into l_count
+           from xx_disl_gu23_ref_reason
+          where id = l_reason_id
+            and active = 'Y'
+            and (p_act.act_type is null
+                 or act_kind in ('any', lower(trim(p_act.act_type))));
+         if l_count = 0 then
+            set_error('Активная причина с ID '
+                      || l_reason_id || ' не найдена для указанного типа акта');
+            return;
+         end if;
+      end if;
+
+      if p_act.linked_start_id is not null then
+         select count(*)
+           into l_count
+           from xx_disl_gu23_act
+          where id = p_act.linked_start_id
+            and act_type = 'start';
+         if l_count = 0 then
+            set_error('Связанный акт начала с ID '
+                      || p_act.linked_start_id || ' не найден');
+            return;
+         end if;
+      end if;
+
+      -- Проверяем переданных подписантов до вставки шапки акта.
+      l_idx := p_signers.first;
+      while l_idx is not null loop
+         if p_signers(l_idx).stype is not null
+            and lower(trim(p_signers(l_idx).stype)) not in ('own', 'rzd')
+         then
+            set_error('Подписант [' || l_idx
+                      || ']: допустимый STYPE — own, rzd или NULL');
+            return;
+         end if;
+
+         l_ord_no := nvl(p_signers(l_idx).ord_no, l_idx);
+         if l_ord_no <= 0 or l_ord_no <> trunc(l_ord_no) then
+            set_error('Подписант [' || l_idx
+                      || ']: ORD_NO должен быть положительным целым числом');
+            return;
+         end if;
+
+         l_check_idx := p_signers.first;
+         while l_check_idx is not null loop
+            if l_check_idx <> l_idx
+               and nvl(p_signers(l_check_idx).ord_no, l_check_idx) = l_ord_no
+            then
+               set_error('Повторяется позиция подписанта ORD_NO=' || l_ord_no);
+               return;
+            end if;
+            if l_check_idx < l_idx
+               and p_signers(l_idx).signer_ref_id is not null
+               and p_signers(l_check_idx).signer_ref_id =
+                   p_signers(l_idx).signer_ref_id
+            then
+               set_error('Подписант с ID '
+                         || p_signers(l_idx).signer_ref_id
+                         || ' передан более одного раза');
+               return;
+            end if;
+            l_check_idx := p_signers.next(l_check_idx);
+         end loop;
+
+         if p_signers(l_idx).signer_ref_id is not null then
+            if lower(trim(p_signers(l_idx).stype)) = 'own' then
+               select count(*)
+                 into l_count
+                 from xx_disl_users_emp_v
+                where id = p_signers(l_idx).signer_ref_id
+                  and open = 'Y';
+            elsif lower(trim(p_signers(l_idx).stype)) = 'rzd' then
+               select count(*)
+                 into l_count
+                 from xx_disl_gu23_ref_signer
+                where id = p_signers(l_idx).signer_ref_id
+                  and active = 'Y';
+            else
+               select (select count(*)
+                         from xx_disl_users_emp_v
+                        where id = p_signers(l_idx).signer_ref_id
+                          and open = 'Y')
+                      + (select count(*)
+                           from xx_disl_gu23_ref_signer
+                          where id = p_signers(l_idx).signer_ref_id
+                            and active = 'Y')
+                 into l_count
+                 from dual;
+            end if;
+
+            if l_count = 0 then
+               set_error('Подписант с ID '
+                         || p_signers(l_idx).signer_ref_id
+                         || ' не найден или неактивен');
+               return;
+            end if;
+         end if;
+
+         l_idx := p_signers.next(l_idx);
+      end loop;
+
+      if p_act.act_type = 'end'
+         and p_act.start_at is not null
+         and p_act.end_at is not null
+      then
+         l_dur_total_h := round((p_act.end_at - p_act.start_at) * 24, 1);
+         l_dur_days := trunc(p_act.end_at - p_act.start_at);
+         l_dur_hours :=
+            round(((p_act.end_at - p_act.start_at) - l_dur_days) * 24);
+         l_cal_days := ceil(p_act.end_at - p_act.start_at);
+      end if;
+
+      l_act := p_act;
+      l_act.id := xx_disl_gu23_act_seq.nextval;
+      l_act.act_number :=
+         case
+            when p_act.dept_id is not null then
+               g_next_number(p_act.dept_id)
+            else
+               null
+         end;
+      l_act.act_type := lower(trim(p_act.act_type));
+      l_act.status := 'draft';
+      l_act.dur_days := l_dur_days;
+      l_act.dur_hours := l_dur_hours;
+      l_act.dur_total_h := l_dur_total_h;
+      l_act.cal_days := l_cal_days;
+      l_act.created_at := sysdate;
+      l_act.modified_at := sysdate;
+      l_act.modified_by := nvl(p_act.modified_by, p_act.created_by);
+      insert_act(l_act);
+
+      l_idx := p_act_rows.first;
+      while l_idx is not null loop
+         l_act_row := p_act_rows(l_idx);
+         l_act_row.id := xx_disl_gu23_act_row_seq.nextval;
+         l_act_row.act_id := l_act.id;
+         insert_act_row(l_act_row);
+         l_idx := p_act_rows.next(l_idx);
+      end loop;
+
+      l_idx := p_signers.first;
+      while l_idx is not null loop
+         l_signer := p_signers(l_idx);
+         l_signer.id := xx_disl_gu23_signer_seq.nextval;
+         l_signer.act_id := l_act.id;
+         l_signer.ord_no := nvl(p_signers(l_idx).ord_no, l_idx);
+         l_signer.stype := lower(trim(p_signers(l_idx).stype));
+         insert_signer(l_signer);
+         l_idx := p_signers.next(l_idx);
+      end loop;
+
+      l_hist.id := xx_disl_gu23_hist_seq.nextval;
+      l_hist.act_id := l_act.id;
+      l_hist.ts := sysdate;
+      l_hist.usr := p_act.created_by;
+      l_hist.txt := 'Акт создан через API (Проект)';
+      log_act_history(
+         p_act_id  => l_hist.act_id,
+         p_user_id => l_hist.usr,
+         p_text    => l_hist.txt
+      );
+
+      commit;
+      p_out_act_id := l_act.id;
+      p_out_status := 'SUCCESS';
+      p_out_message := 'Акт ГУ-23 создан в статусе Проект';
+   exception
+      when others then
+         rollback;
+         set_error(substr(sqlerrm, 1, 4000));
+   end api_gu23_create;
+
+    -- ----------------------------------------------------------------
     -- справочники
     -- ----------------------------------------------------------------
     -- Цеха

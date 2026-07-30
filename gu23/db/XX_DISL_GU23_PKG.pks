@@ -183,6 +183,15 @@ as
 
     type xx_disl_gu23_wagon_tab is table of xx_disl_gu23_wagon_row;
 
+    -- Коллекции для интеграционного API создания акта ГУ-23.
+    -- ID и ACT_ID элементов коллекций API не использует: значения назначаются
+    -- внутри package.
+    type t_api_gu23_act_row_tab is table of xx_disl_gu23_act_row%rowtype
+        index by pls_integer;
+
+    type t_api_gu23_signer_tab is table of xx_disl_gu23_signer%rowtype
+        index by pls_integer;
+
     -- ---- Типы для параметров Сохранения акта ----
     type t_gu23_save_act is record
     (
@@ -248,6 +257,16 @@ as
     procedure insert_act_row (p_row in xx_disl_gu23_act_row%rowtype);
 
     procedure insert_signer (p_row in xx_disl_gu23_signer%rowtype);
+
+    -- Интеграционный API создания акта ГУ-23.
+    -- В текущей версии разрешено создание только в статусе draft.
+    procedure api_gu23_create (
+        p_act           in     xx_disl_gu23_act%rowtype,
+        p_act_rows      in     t_api_gu23_act_row_tab,
+        p_signers       in     t_api_gu23_signer_tab,
+        p_out_act_id       out number,
+        p_out_status    in out varchar2,
+        p_out_message   in out varchar2);
 
     -- ---- Справочники
     function gu23_get_ref_cex
