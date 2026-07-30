@@ -312,7 +312,7 @@ function showSignersList(items, total, page) {
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
             <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
-            ${active ? 'Активеный' : 'Неактивеный'}
+            ${active ? 'Активный' : 'Неактивный'}
           </span>
         </td>
       </tr>`
@@ -492,8 +492,8 @@ function showReasonsList(items, total, page) {
       .join('')
   const statusOptions = `
     <option value="" ${reasonStatus === '' ? 'selected' : ''}>Все</option>
-    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активеный</option>
-    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивеный</option>
+    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активный</option>
+    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивный</option>
   `
   const rows = items
     .map((r) => {
@@ -507,7 +507,7 @@ function showReasonsList(items, total, page) {
           <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
             background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
             <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
-            ${active ? 'Активный' : 'Неактивеный'}
+            ${active ? 'Активный' : 'Неактивный'}
           </span>
         </td>
       </tr>`
