@@ -8,7 +8,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\RichText\RichText;
 
 /**
- * Импорт справочника причин из XLSX-шаблона.
+ * 
+ * Импорт справочника причин из excel-шаблона.
+ * Актуальный шаблон находится в папке template_import
  *
  */
 class Gu23ReasonImport
