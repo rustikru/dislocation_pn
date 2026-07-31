@@ -1,12 +1,13 @@
 <?php
-
-require_once __DIR__ . '/Gu23Db.php';
-require_once __DIR__ . '/../lib/text_clean.php';
 /**
  * Gu23NoticeRepository.php
  * add 15.07.2026 BekmansurovRR
  * Репозиторий модуля "ГУ-23 · Страница "Уведомления"".
  */
+
+require_once __DIR__ . '/Gu23Db.php';
+require_once __DIR__ . '/../lib/text_clean.php';
+
 class Gu23NoticeRepository
 {
     private const RS = "\x1E";

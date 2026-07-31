@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Gu23ReasonImport.php
+ * 
+ * add 15.07.2026 BekmansurovRR
+ * Импорт справочника причин из excel-шаблона.
+ * Актуальный шаблон находится в папке template_import
+ */
+
 require_once __DIR__ . '/Gu23Db.php';
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
@@ -7,12 +15,6 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\RichText\RichText;
 
-/**
- * 
- * Импорт справочника причин из excel-шаблона.
- * Актуальный шаблон находится в папке template_import
- *
- */
 class Gu23ReasonImport
 {
     private const HEADER_ROW = 1;
