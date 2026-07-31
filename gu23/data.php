@@ -11,8 +11,6 @@ $auth = new AuthClass();
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Истёкшая сессия не должна выглядеть как отсутствие полномочий.
-// Проверяем авторизацию до обращения к репозиторию и проверки ролей.
 if (!$auth->isAuth()) {
     http_response_code(401);
     echo json_encode([
