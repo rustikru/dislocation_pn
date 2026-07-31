@@ -176,7 +176,7 @@ $sessionLifetimeText = $sessionLifetime . ' сек. (' .
   <?php endif; ?>
 
   <div class="destroy">
-    <a href="?destroy=1" onclick="return confirm('Уничтожить сессию?')">🗑 Уничтожить сессию</a>
+    <a href="?destroy=1" onclick="return confirm('Уничтожить сессию?')"> Уничтожить сессию</a>
   </div>
 
 
