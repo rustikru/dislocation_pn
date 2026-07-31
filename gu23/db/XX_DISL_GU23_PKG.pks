@@ -37,7 +37,7 @@ as
 
     type xx_disl_gu23_ref_row is record
     (
-        id            number,
+        id            varchar2 (150),
         code          varchar2 (512),
         name          varchar2 (512),
         categ_name    varchar2 (512)           -- add 21.07.2026 BekmansurovRR
@@ -741,7 +741,7 @@ as
 
     type t_gu23_ref_reason_row is record
     (
-        id            number,
+        id            varchar2 (150),
         name          varchar2 (512),
         act_kind      varchar2 (16),
         categ         number,
@@ -775,11 +775,10 @@ as
                                    p_categ      in number)
         return varchar2;
 
-    function gu23_ref_reason_import (p_id       in number,
-                                     p_name     in varchar2,
-                                     p_act_kind in varchar2,
-                                     p_categ    in number,
-                                     p_active   in varchar2)
+    function gu23_ref_reason_qa_save (p_short_code in varchar2,
+                                      p_name       in varchar2,
+                                      p_categ      in number,
+                                      p_is_new     in varchar2)
         return varchar2;
 
     function gu23_ref_reason_toggle (p_id in number)

@@ -10,10 +10,6 @@
 <div class="refs-tools">
   <input class="inp refs-search" id="refs-search" value="" placeholder="Поиск...">
   <div class="refs-actions">
-    <button class="refs-action-btn" id="btn-import-reasons" type="button" style="display:none">
-      <span>Импорт из Excel</span>
-    </button>
-    <input id="reason-import-file" type="file" accept=".xlsx" style="display:none">
     <button class="refs-action-btn" id="btn-add-ref" type="button">
       <span class="refs-plus">+</span>
       <span>Добавить запись</span>

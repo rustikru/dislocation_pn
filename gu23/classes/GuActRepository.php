@@ -21,7 +21,6 @@ if (!function_exists('mb_strlen')) {
 
 require_once __DIR__ . '/Gu23Logger.php';
 require_once __DIR__ . '/Gu23Db.php';
-require_once __DIR__ . '/Gu23ReasonImport.php';
 require_once __DIR__ . '/Gu23NoticeRepository.php';
 require_once __DIR__ . '/../lib/client_ip.php';
 require_once __DIR__ . '/../lib/text_clean.php';
@@ -206,9 +205,6 @@ class GuActRepository
                         break;
                     case 'gu23_reasons_excel':      // выгрузка причин в Excel
                         $this->downloadReasonsExcel();
-                        break;
-                    case 'gu23_reasons_import':     // импорт причин из XLSX-шаблона
-                        $this->importReasonsExcel();
                         break;
                     case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
                         $this->refSignerSave();
@@ -1116,9 +1112,7 @@ class GuActRepository
     {
         $tab = filter_input(INPUT_POST, 'tab') ?: 'signers';
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
-        $actKind = trim((string) (filter_input(INPUT_POST, 'act_kind') ?? ''));
         $categ = trim((string) (filter_input(INPUT_POST, 'categ') ?? ''));
-        $active = trim((string) (filter_input(INPUT_POST, 'active') ?? ''));
         $page = max(1, (int) (filter_input(INPUT_POST, 'page') ?? 1));
         $limit = 20;
 
@@ -1138,30 +1132,16 @@ class GuActRepository
             }
         } else {
             $all = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all())');
-            $actKinds = $this->actKindNames();
-            if ($actKind !== '') {
-                $all = array_values(array_filter($all, function ($r) use ($actKind) {
-                    return (string) ($r['ACT_KIND'] ?? '') === $actKind;
-                }));
-            }
             if ($categ !== '') {
                 $all = array_values(array_filter($all, function ($r) use ($categ) {
                     return (string) ($r['CATEG'] ?? '') === $categ;
                 }));
             }
-            if ($active !== '') {
-                $all = array_values(array_filter($all, function ($r) use ($active) {
-                    return (string) ($r['ACTIVE'] ?? '') === $active;
-                }));
-            }
             if ($search !== '') {
                 $pattern = '/' . preg_quote($search, '/') . '/iu';
-                $all = array_values(array_filter($all, function ($r) use ($pattern, $actKinds) {
-                    $kindCode = (string) ($r['ACT_KIND'] ?? '');
-                    $kindName = $actKinds[$kindCode] ?? $kindCode;
+                $all = array_values(array_filter($all, function ($r) use ($pattern) {
                     return preg_match($pattern, (string) ($r['NAME'] ?? ''))
-                        || preg_match($pattern, $kindCode)
-                        || preg_match($pattern, $kindName)
+                        || preg_match($pattern, (string) ($r['ID'] ?? ''))
                         || preg_match($pattern, (string) ($r['CATEG_NAME'] ?? ''));
                 }));
             }
@@ -1174,9 +1154,6 @@ class GuActRepository
             'categories' => $tab === 'reasons'
                 ? $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))")
                 : [],
-            'actKinds' => $tab === 'reasons'
-                ? $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_ACT_KIND'))")
-                : [],
             'total' => count($all),
             'page' => $page,
             'page_size' => $limit,
@@ -1187,36 +1164,20 @@ class GuActRepository
     private function downloadReasonsExcel(): void
     {
         $search = trim((string) (filter_input(INPUT_POST, 'search') ?? ''));
-        $actKind = trim((string) (filter_input(INPUT_POST, 'act_kind') ?? ''));
         $categ = trim((string) (filter_input(INPUT_POST, 'categ') ?? ''));
-        $activeFilter = trim((string) (filter_input(INPUT_POST, 'active') ?? ''));
 
         $rows = $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_ref_reasons_all()) order by NAME');
-        $kindNames = $this->actKindNames();
 
-        if ($actKind !== '') {
-            $rows = array_values(array_filter($rows, function ($row) use ($actKind) {
-                return (string) ($row['ACT_KIND'] ?? '') === $actKind;
-            }));
-        }
         if ($categ !== '') {
             $rows = array_values(array_filter($rows, function ($row) use ($categ) {
                 return (string) ($row['CATEG'] ?? '') === $categ;
             }));
         }
-        if ($activeFilter !== '') {
-            $rows = array_values(array_filter($rows, function ($row) use ($activeFilter) {
-                return (string) ($row['ACTIVE'] ?? '') === $activeFilter;
-            }));
-        }
         if ($search !== '') {
             $pattern = '/' . preg_quote($search, '/') . '/iu';
-            $rows = array_values(array_filter($rows, function ($row) use ($pattern, $kindNames) {
-                $kindCode = (string) ($row['ACT_KIND'] ?? '');
-                $kindName = $kindNames[$kindCode] ?? $kindCode;
+            $rows = array_values(array_filter($rows, function ($row) use ($pattern) {
                 return preg_match($pattern, (string) ($row['NAME'] ?? ''))
-                    || preg_match($pattern, $kindCode)
-                    || preg_match($pattern, $kindName)
+                    || preg_match($pattern, (string) ($row['ID'] ?? ''))
                     || preg_match($pattern, (string) ($row['CATEG_NAME'] ?? ''));
             }));
         }
@@ -1236,41 +1197,34 @@ class GuActRepository
         $sheet->setTitle('Причины');
 
         // Общий заголовок
-        $sheet->mergeCells('A1:F1');
+        $sheet->mergeCells('A1:D1');
         $sheet->setCellValue('A1', 'Справочник причин');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         // Заголовки колонок
         $sheet->setCellValue('A2', '№');
-        $sheet->setCellValue('B2', 'ID');
+        $sheet->setCellValue('B2', 'Код причины');
         $sheet->setCellValue('C2', 'Название');
-        $sheet->setCellValue('D2', 'Тип акта');
-        $sheet->setCellValue('E2', 'Категория');
-        $sheet->setCellValue('F2', 'Статус');
+        $sheet->setCellValue('D2', 'Категория');
 
         // Включение фильтра
-        $sheet->setAutoFilter('A2:F2');
+        $sheet->setAutoFilter('A2:D2');
 
         $rowNumber = 3;
         $num = 1;
         foreach ($rows as $row) {
-            $kindCode = (string) ($row['ACT_KIND'] ?? '');
-            $active = (string) ($row['ACTIVE'] ?? '') === 'Y' ? 'Активный' : 'Неактивный';
-
             $sheet->setCellValue('A' . $rowNumber, $num);
             $sheet->setCellValue('B' . $rowNumber, (string) ($row['ID'] ?? ''));
             $sheet->setCellValue('C' . $rowNumber, (string) ($row['NAME'] ?? ''));
-            $sheet->setCellValue('D' . $rowNumber, $kindNames[$kindCode] ?? $kindCode);
-            $sheet->setCellValue('E' . $rowNumber, (string) ($row['CATEG_NAME'] ?? ''));
-            $sheet->setCellValue('F' . $rowNumber, $active);
+            $sheet->setCellValue('D' . $rowNumber, (string) ($row['CATEG_NAME'] ?? ''));
             $rowNumber++;
             $num++;
         }
 
         // Стилизация
-        $sheet->getStyle('A2:F2')->getFont()->setBold(true);
-        $sheet->getStyle('A2:F' . max(2, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
+        $sheet->getStyle('A2:D2')->getFont()->setBold(true);
+        $sheet->getStyle('A2:D' . max(2, $rowNumber - 1))->getBorders()->getAllBorders()->setBorderStyle(
             \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
         );
 
@@ -1278,8 +1232,6 @@ class GuActRepository
         $sheet->getColumnDimension('B')->setAutoSize(true);
         $sheet->getColumnDimension('C')->setWidth(80);
         $sheet->getColumnDimension('D')->setAutoSize(true);
-        $sheet->getColumnDimension('E')->setAutoSize(true);
-        $sheet->getColumnDimension('F')->setAutoSize(true);
         $sheet->getStyle('C:C')->getAlignment()->setWrapText(true);
 
         // шрифт и выравнивание
@@ -1298,27 +1250,6 @@ class GuActRepository
         exit;
     }
 
-    private function actKindNames(): array
-    {
-        // На случай, если справочник пуст
-        $names = [
-            'start' => 'Начало',
-            'end' => 'Окончание',
-            'other' => 'Прочий',
-            'any' => 'Любой',
-        ];
-
-        $rows = $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_ACT_KIND'))");
-        foreach ($rows as $row) {
-            $code = (string) ($row['CODE'] ?? '');
-            if ($code !== '') {
-                $names[$code] = (string) ($row['NAME'] ?? $code);
-            }
-        }
-
-        return $names;
-    }
-
     /** Переключить флаг active у подписанта РЖД (Y → N или N → Y). */
     private function refSignerToggle(): void
     {
@@ -1333,52 +1264,30 @@ class GuActRepository
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
-    /** Создать новую или обновить существующую причину (id=0 — новая). */
+    /** Создать новую или обновить причину в QA_PLAN_CHAR_VALUE_LOOKUPS. */
     private function refReasonSave(): void
     {
         if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
         }
-        $id = (int) filter_input(INPUT_POST, 'id');
+        $shortCode = trim((string) filter_input(INPUT_POST, 'short_code'));
         $name = $this->cleanTextForOracle((string) filter_input(INPUT_POST, 'name'));
-        $actKind = (string) filter_input(INPUT_POST, 'act_kind');
         $categValue = filter_input(INPUT_POST, 'categ');
         $categ = ($categValue === null || $categValue === '') ? null : (int) $categValue;
+        $isNew = strtoupper(trim((string) filter_input(INPUT_POST, 'is_new'))) === 'Y' ? 'Y' : 'N';
         $res = $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_ref_reason_save(:id,:name,:kind,:categ)',
-            [':id' => $id, ':name' => $name, ':kind' => $actKind, ':categ' => $categ]
+            'xx_disl_gu23_pkg.gu23_ref_reason_qa_save(:p_short_code, :p_name, :p_categ, :p_is_new)',
+            [
+                ':p_short_code' => $shortCode,
+                ':p_name' => $name,
+                ':p_categ' => $categ,
+                ':p_is_new' => $isNew,
+            ]
         );
         echo json_encode(str_starts_with((string) $res, 'OK')
             ? ['ok' => true]
             : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
-    }
-
-    /** Импортировать причины из утверждённого XLSX-шаблона. */
-    private function importReasonsExcel(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-        if (empty($_FILES['file'])) {
-            echo json_encode(['ok' => false, 'msg' => 'Файл не выбран']);
-            return;
-        }
-
-        try {
-            $repository = new Gu23ReasonImport($this->conn);
-            echo json_encode(
-                $repository->importUploadedFile($_FILES['file']),
-                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
-            );
-        } catch (\Throwable $e) {
-            Gu23Logger::exception($e, 'gu23_reasons_import');
-            echo json_encode([
-                'ok' => false,
-                'msg' => $e->getMessage(),
-            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-        }
     }
 
     /* ----------------------------------------------------------------- */
