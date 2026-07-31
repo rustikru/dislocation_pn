@@ -3,7 +3,8 @@ require_once __DIR__ . '/../lib/text_clean.php';
 require_once __DIR__ . '/Gu23Db.php';
 
 /**
- * ApprovalRepository — для подписания актов ГУ-23
+ * ApprovalRepository.php
+ * Репозиторий для подписания актов ГУ-23
  */
 class ApprovalRepository
 {

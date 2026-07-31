@@ -51,7 +51,7 @@ class GuActRepository
         if ($auth->isAuthAdmin()) {
             return true;
         }
-        // DEV: если есть локальный конфиг — пропускаем без Oracle
+
         if (file_exists(dirname(__DIR__) . '/db_config.local.php')) {
             return true;
         }
@@ -141,125 +141,125 @@ class GuActRepository
             } else {
                 switch ($action) {
 
-                // : форма создания акта ---
-                case 'gu23_get_refs':           // справочники для формы (цеха, станции, подписанты, причины)
-                    $this->getRefs();
-                    break;
-                case 'gu23_get_acts':           // реестр актов с фильтрами
-                    $this->getActs();
-                    break;
-                case 'gu23_acts_excel':         // выгрузка архива актов в Excel
-                    $this->downloadActsExcel();
-                    break;
-                case 'gu23_get_act':            // карточка одного акта
-                    $this->getActCard();
-                    break;
-                case 'gu23_get_open_starts':    // открытые акты начала (для выбора в акте окончания)
-                    $this->getOpenStarts();
-                    break;
-                case 'gu23_get_by_wagon':       // акты по номеру вагона
-                    $this->getByWagon();
-                    break;
-                case 'gu23_get_wagon_info':     // данные вагонов из внешней дислокации
-                    $this->getWagonInfo();
-                    break;
-                case 'gu23_search_station':     // поиск станции (autocomplete, мин. 3 символа)
-                    $this->searchStation();
-                    break;
+                    // : форма создания акта ---
+                    case 'gu23_get_refs':           // справочники для формы (цеха, станции, подписанты, причины)
+                        $this->getRefs();
+                        break;
+                    case 'gu23_get_acts':           // реестр актов с фильтрами
+                        $this->getActs();
+                        break;
+                    case 'gu23_acts_excel':         // выгрузка архива актов в Excel
+                        $this->downloadActsExcel();
+                        break;
+                    case 'gu23_get_act':            // карточка одного акта
+                        $this->getActCard();
+                        break;
+                    case 'gu23_get_open_starts':    // открытые акты начала (для выбора в акте окончания)
+                        $this->getOpenStarts();
+                        break;
+                    case 'gu23_get_by_wagon':       // акты по номеру вагона
+                        $this->getByWagon();
+                        break;
+                    case 'gu23_get_wagon_info':     // данные вагонов из внешней дислокации
+                        $this->getWagonInfo();
+                        break;
+                    case 'gu23_search_station':     // поиск станции (autocomplete, мин. 3 символа)
+                        $this->searchStation();
+                        break;
 
-                // --- запись: акты ---
-                case 'gu23_save_act':           // создание / правка акта (вместе с вагонами и подписантами)
-                    $this->saveAct();
-                    break;
-                case 'gu23_del_act':            // удаление черновика
-                    $this->delAct();
-                    break;
-                case 'gu23_annul_act':          // аннулирование акта (с каскадом на связанный)
-                    $this->annulAct();
-                    break;
-                case 'gu23_close_act':          // закрытие акта типа 'end'
-                    $this->closeAct();
-                    break;
+                    // --- запись: акты ---
+                    case 'gu23_save_act':           // создание / правка акта (вместе с вагонами и подписантами)
+                        $this->saveAct();
+                        break;
+                    case 'gu23_del_act':            // удаление черновика
+                        $this->delAct();
+                        break;
+                    case 'gu23_annul_act':          // аннулирование акта (с каскадом на связанный)
+                        $this->annulAct();
+                        break;
+                    case 'gu23_close_act':          // закрытие акта типа 'end'
+                        $this->closeAct();
+                        break;
 
-                // --- файлы ---
-                case 'gu23_upload_file':        // загрузка вложения к акту
-                    $this->uploadFile();
-                    break;
-                case 'gu23_del_file':           // удаление вложения
-                    $this->delFile();
-                    break;
+                    // --- файлы ---
+                    case 'gu23_upload_file':        // загрузка вложения к акту
+                        $this->uploadFile();
+                        break;
+                    case 'gu23_del_file':           // удаление вложения
+                        $this->delFile();
+                        break;
 
-                // --- согласование ---
-                case 'gu23_send_approval':      // отправка запроса текущему подписанту по очереди
-                    $this->sendApproval();
-                    break;
-                case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
-                    $this->resendApproval();
-                    break;
-                case 'gu23_approve_in_app':     // решение по акту прямо со странички
-                    $this->approveInApp();
-                    break;
+                    // --- согласование ---
+                    case 'gu23_send_approval':      // отправка запроса текущему подписанту по очереди
+                        $this->sendApproval();
+                        break;
+                    case 'gu23_resend_approval':    // переотправка ссылки одному подписанту
+                        $this->resendApproval();
+                        break;
+                    case 'gu23_approve_in_app':     // решение по акту прямо со странички
+                        $this->approveInApp();
+                        break;
 
-                // --- справочники (администрирование) ---
-                case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском 
-                    $this->refsGetAll();
-                    break;
-                case 'gu23_reasons_excel':      // выгрузка причин в Excel
-                    $this->downloadReasonsExcel();
-                    break;
-                case 'gu23_reasons_import':     // импорт причин из XLSX-шаблона
-                    $this->importReasonsExcel();
-                    break;
-                case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
-                    $this->refSignerSave();
-                    break;
-                case 'gu23_ref_signer_toggle':  // включить / отключить подписанта РЖД
-                    $this->refSignerToggle();
-                    break;
-                case 'gu23_ref_reason_save':    // создать / обновить причину
-                    $this->refReasonSave();
-                    break;
-                case 'gu23_ref_reason_toggle':  // включить / отключить причину
-                    $this->refReasonToggle();
-                    break;
+                    // --- справочники (администрирование) ---
+                    case 'gu23_refs_get_all':       // список подписантов РЖД или причин с поиском 
+                        $this->refsGetAll();
+                        break;
+                    case 'gu23_reasons_excel':      // выгрузка причин в Excel
+                        $this->downloadReasonsExcel();
+                        break;
+                    case 'gu23_reasons_import':     // импорт причин из XLSX-шаблона
+                        $this->importReasonsExcel();
+                        break;
+                    case 'gu23_ref_signer_save':    // создать / обновить подписанта РЖД
+                        $this->refSignerSave();
+                        break;
+                    case 'gu23_ref_signer_toggle':  // включить / отключить подписанта РЖД
+                        $this->refSignerToggle();
+                        break;
+                    case 'gu23_ref_reason_save':    // создать / обновить причину
+                        $this->refReasonSave();
+                        break;
+                    case 'gu23_ref_reason_toggle':  // включить / отключить причину
+                        $this->refReasonToggle();
+                        break;
 
-                // Фильтры пользователей
-                case 'gu23_filter_all':
-                    $this->usersFilter();           // Все фильтры текущего пользователя
-                    break;
-                case 'gu23_filter_save':
-                    $this->usersFilterSave();       // Сохраняем фильтры
-                    break;
-                case 'gu23_filter_del':
-                    $this->usersFilterDel();        // Удаляем фильтры
-                    break;
-                case 'gu23_user_default_type_save':
-                    $this->userDefaultTypeSave();    // Тип нового акта по умолчанию
-                    break;
+                    // Фильтры пользователей
+                    case 'gu23_filter_all':
+                        $this->usersFilter();           // Все фильтры текущего пользователя
+                        break;
+                    case 'gu23_filter_save':
+                        $this->usersFilterSave();       // Сохраняем фильтры
+                        break;
+                    case 'gu23_filter_del':
+                        $this->usersFilterDel();        // Удаляем фильтры
+                        break;
+                    case 'gu23_user_default_type_save':
+                        $this->userDefaultTypeSave();    // Тип нового акта по умолчанию
+                        break;
 
-                // --- роли и полномочия ---
-                case 'gu23_roles_users':        // пользователи с назначенными ролями 
-                    $this->rolesUsers();
-                    break;
-                case 'gu23_role_assign':        // назначить роль пользователю
-                    $this->roleAssign();
-                    break;
-                case 'gu23_role_revoke':        // отозвать роль у пользователя
-                    $this->roleRevoke();
-                    break;
-                case 'gu23_role_perms':         // матрица полномочий всех ролей
-                    $this->rolePerms();
-                    break;
-                case 'gu23_perm_assign':        // добавить полномочие роли
-                    $this->permAssign();
-                    break;
-                case 'gu23_perm_revoke':        // убрать полномочие у роли
-                    $this->permRevoke();
-                    break;
+                    // --- роли и полномочия ---
+                    case 'gu23_roles_users':        // пользователи с назначенными ролями 
+                        $this->rolesUsers();
+                        break;
+                    case 'gu23_role_assign':        // назначить роль пользователю
+                        $this->roleAssign();
+                        break;
+                    case 'gu23_role_revoke':        // отозвать роль у пользователя
+                        $this->roleRevoke();
+                        break;
+                    case 'gu23_role_perms':         // матрица полномочий всех ролей
+                        $this->rolePerms();
+                        break;
+                    case 'gu23_perm_assign':        // добавить полномочие роли
+                        $this->permAssign();
+                        break;
+                    case 'gu23_perm_revoke':        // убрать полномочие у роли
+                        $this->permRevoke();
+                        break;
 
-                default:
-                    http_response_code(400);
-                    echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
+                    default:
+                        http_response_code(400);
+                        echo json_encode(['ok' => false, 'msg' => 'Неизвестное действие: ' . $action]);
                 }
             }
             // Логируем неуспешные ответы  — в gu23/log/

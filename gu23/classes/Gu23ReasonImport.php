@@ -15,7 +15,6 @@ use PhpOffice\PhpSpreadsheet\RichText\RichText;
  */
 class Gu23ReasonImport
 {
-    private const SHEET_NAME = 'Причины';
     private const HEADER_ROW = 1;
     private const FIRST_DATA_ROW = 2;
     private const MAX_DATA_ROW = 1000;
@@ -38,18 +37,16 @@ class Gu23ReasonImport
         $spreadsheet = $reader->load((string) $file['tmp_name']);
 
         try {
-            $sheet = $spreadsheet->getSheetByName(self::SHEET_NAME);
-            if ($sheet === null) {
-                throw new \RuntimeException(
-                    'В файле отсутствует лист «' . self::SHEET_NAME . '»'
-                );
+            if ($spreadsheet->getSheetCount() === 0) {
+                throw new \RuntimeException('В файле отсутствуют листы');
             }
+            $sheet = $spreadsheet->getSheet(0);
 
             $this->validateHeaders($sheet);
             $categories = $this->loadCategories();
             $rows = $this->readRows($sheet);
             if (!$rows) {
-                throw new \RuntimeException('На листе «Причины» нет данных для загрузки');
+                throw new \RuntimeException('На первом листе нет данных для загрузки');
             }
 
             return $this->processRows($rows, $categories);
