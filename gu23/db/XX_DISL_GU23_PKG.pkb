@@ -631,8 +631,8 @@
          return;
       end if;
 
-      -- Для проекта даты необязательны, но переданная дата не может быть
-      -- будущей. Проверяется дата и время, а не только календарный день.
+        -- Для проекта даты необязательны, но переданная дата не может быть
+        -- будущей. Проверяется дата и время, а не только календарный день.
       if
          p_act.start_at is not null
          and p_act.start_at > sysdate
@@ -640,6 +640,7 @@
          set_error('Дата начала не может быть больше текущей даты');
          return;
       end if;
+
       if
          p_act.end_at is not null
          and p_act.end_at > sysdate
@@ -647,6 +648,7 @@
          set_error('Дата окончания не может быть больше текущей даты');
          return;
       end if;
+
       if
          p_act.start_at is not null
          and p_act.end_at is not null
@@ -656,12 +658,13 @@
          return;
       end if;
 
-      -- Для draft поля необязательны. 
+        -- Для draft поля необязательны.
       if p_act.dept_id is not null then
          select count(*)
            into l_count
            from xx_disl_dept_v
           where id = p_act.dept_id;
+
          if l_count = 0 then
             set_error('Цех с ID '
                       || p_act.dept_id || ' не найден');
@@ -674,6 +677,7 @@
            into l_count
            from xx_disl_stations
           where to_char(station_id) = trim(p_act.station_id);
+
          if l_count = 0 then
             set_error('Станция составления с ID '
                       || p_act.station_id || ' не найдена');
@@ -686,6 +690,7 @@
            into l_count
            from xx_etw.xx_nsi_station_v
           where to_char(e_st_code) = trim(p_act.st_from_id);
+
          if l_count = 0 then
             set_error('Станция отправления с ID '
                       || p_act.st_from_id || ' не найдена');
@@ -698,6 +703,7 @@
            into l_count
            from xx_etw.xx_nsi_station_v
           where to_char(e_st_code) = trim(p_act.st_to_id);
+
          if l_count = 0 then
             set_error('Станция назначения с ID '
                       || p_act.st_to_id || ' не найдена');
@@ -722,6 +728,7 @@
             and ( p_act.act_type is null
              or act_kind in ( 'any',
                               lower(trim(p_act.act_type)) ) );
+
          if l_count = 0 then
             set_error('Активная причина с ID '
                       || l_reason_id || ' не найдена для указанного типа акта');
@@ -735,6 +742,7 @@
            from xx_disl_gu23_act
           where id = p_act.linked_start_id
             and act_type = 'start';
+
          if l_count = 0 then
             set_error('Связанный акт начала с ID '
                       || p_act.linked_start_id || ' не найден');
@@ -742,7 +750,7 @@
          end if;
       end if;
 
-      -- Проверяем переданных подписантов до вставки шапки акта.
+        -- Проверяем переданных подписантов до вставки шапки акта.
       l_idx := p_signers.first;
       while l_idx is not null loop
          if
@@ -751,7 +759,7 @@
                                                              'rzd' )
          then
             set_error('Подписант ['
-                      || l_idx || ']: допустимый STYPE — own, rzd или NULL');
+                      || l_idx || ']: допустимый STYPE ? own, rzd или NULL');
             return;
          end if;
 
@@ -778,6 +786,7 @@
                set_error('Повторяется позиция подписанта ORD_NO=' || l_ord_no);
                return;
             end if;
+
             if
                l_check_idx < l_idx
                and p_signers(l_idx).signer_ref_id is not null
@@ -787,6 +796,7 @@
                          || p_signers(l_idx).signer_ref_id || ' передан более одного раза');
                return;
             end if;
+
             l_check_idx := p_signers.next(l_check_idx);
          end loop;
 
@@ -4817,6 +4827,7 @@
          l_row.file_mime := r.file_mime;
          pipe row ( l_row );
       end loop;
+
       return;
    end gu23_notice_files;
 
@@ -5198,6 +5209,7 @@
                          'any' ) then
          return format_error('Некорректный тип акта: ' || p_act_kind);
       end if;
+
       if v_active not in ( 'Y',
                            'N' ) then
          return format_error('Некорректный статус причины: ' || p_active);
@@ -5210,6 +5222,7 @@
           where id = p_categ
             and ref_code = 'CATEG_CAUSE'
             and sysdate between start_effect_date and end_effect_date;
+
          if v_count = 0 then
             return format_error('Категория с ID '
                                 || p_categ || ' не найдена или неактивна');
@@ -5224,10 +5237,12 @@
            into v_count
            from xx_disl_gu23_ref_reason
           where id = p_id;
+
          if v_count = 0 then
             return format_error('Причина с ID '
                                 || p_id || ' не найдена');
          end if;
+
          v_id := p_id;
       else
          v_id := xx_disl_gu23_ref_reason_seq.nextval;
@@ -5241,15 +5256,10 @@
             '[[:space:]]+',
             ' '
          ))) = upper(v_name)
-         and act_kind = v_kind
-         and nvl(
-         categ,
-         -1
-      ) = nvl(
-         p_categ,
-         -1
-      )
+               --and act_kind = v_kind
+               --and NVL (categ, -1) = NVL (p_categ, -1)
          and id <> v_id;
+
       if v_count > 0 then
          return format_error('Дубликат: причина с таким названием, типом акта' || ' и категорией уже существует');
       end if;
@@ -5827,6 +5837,7 @@
 
       return;
    end;
+
     -- add 27.07.2026 BekmansurovRR
     -- Тип нового акта по умолчанию для пользователя.
    function gu23_user_default_type (
@@ -5907,9 +5918,10 @@
       x_to_email := p_to;
       x_subject := p_subject;
       x_msg := p_body;
+
         --log_new (l_log_in, l_function, 'g_server_host=>' || g_server_host);
         --log_new (l_log_in, l_function, 'x_to_email=>' || x_to_email);
-      /*
+/*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
