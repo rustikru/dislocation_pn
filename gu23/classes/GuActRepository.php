@@ -215,9 +215,6 @@ class GuActRepository
                     case 'gu23_ref_reason_save':    // создать / обновить причину
                         $this->refReasonSave();
                         break;
-                    case 'gu23_ref_reason_toggle':  // включить / отключить причину
-                        $this->refReasonToggle();
-                        break;
 
                     // Фильтры пользователей
                     case 'gu23_filter_all':
@@ -1373,20 +1370,6 @@ class GuActRepository
         echo json_encode(str_starts_with((string) $result, 'OK')
             ? ['ok' => true, 'act_type' => $actType]
             : ['ok' => false, 'msg' => $parts[1] ?? 'Ошибка']);
-    }
-
-    /** Переключить флаг active у причины. */
-    private function refReasonToggle(): void
-    {
-        if (!$this->permGranted('MANAGE_REFS')) {
-            echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
-            return;
-        }
-        $id = (int) filter_input(INPUT_POST, 'id');
-        $res = $this->callPackageFunction('xx_disl_gu23_pkg.gu23_ref_reason_toggle(:id)', [':id' => $id]);
-        echo json_encode(str_starts_with((string) $res, 'OK')
-            ? ['ok' => true]
-            : ['ok' => false, 'msg' => explode(self::US, (string) $res)[1] ?? 'Ошибка']);
     }
 
     /* ----------------------------------------------------------------- */

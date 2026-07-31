@@ -769,19 +769,10 @@ as
     function gu23_ref_signer_toggle (p_id in number)
         return varchar2;
 
-    function gu23_ref_reason_save (p_id         in number,
-                                   p_name       in varchar2,
-                                   p_act_kind   in varchar2,
-                                   p_categ      in number)
-        return varchar2;
-
     function gu23_ref_reason_qa_save (p_short_code in varchar2,
                                       p_name       in varchar2,
                                       p_categ      in number,
                                       p_is_new     in varchar2)
-        return varchar2;
-
-    function gu23_ref_reason_toggle (p_id in number)
         return varchar2;
 
     -- add 24.07.2026 BekmansurovRR

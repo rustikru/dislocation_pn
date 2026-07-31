@@ -5134,46 +5134,6 @@
          return format_error();
    end;
 
-   function gu23_ref_reason_save (
-      p_id       in number,
-      p_name     in varchar2,
-      p_act_kind in varchar2,
-      p_categ    in number
-   ) return varchar2 is
-   begin
-      if p_id > 0 then
-         update xx_disl_gu23_ref_reason
-            set name = p_name,
-                act_kind = p_act_kind,
-                categ = p_categ
-          where id = p_id;
-      else
-         insert into xx_disl_gu23_ref_reason (
-            id,
-            name,
-            act_kind,
-            categ,
-            active
-         ) values
-            ( xx_disl_gu23_ref_reason_seq.nextval,
-              p_name,
-              p_act_kind,
-              p_categ,
-              'Y' );
-      end if;
-
-      commit;
-      return 'OK';
-   exception
-      when dup_val_on_index then
-            -- причин уже назначена
-         rollback;
-         return format_error('Причина уже добавлена в справочник!');
-      when others then
-         rollback;
-         return format_error();
-   end;
-
    function gu23_ref_reason_qa_save (
       p_short_code in varchar2,
       p_name       in varchar2,
@@ -5274,28 +5234,6 @@
          return format_error();
    end gu23_ref_reason_qa_save;
 
-
-   function gu23_ref_reason_toggle (
-      p_id in number
-   ) return varchar2 is
-   begin
-      update xx_disl_gu23_ref_reason
-         set
-         active =
-            case
-               when active = 'Y' then
-                  'N'
-               else
-                  'Y'
-            end
-       where id = p_id;
-
-      commit;
-      return 'OK';
-   exception
-      when others then
-         return format_error();
-   end;
 
    function html_escape (
       p_text in varchar2
