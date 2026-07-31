@@ -18,12 +18,8 @@ const noticeTextLimit = 180
 // add 23.07.2026 BekmansurovRR
 // значение фильтра вкладок для показа только непрочитанных уведомлений
 const NOTICE_UNREAD_FILTER = '__unread__'
-
-// add 23.07.2026 BekmansurovRR
 // значение фильтра вкладок для показа только избранных уведомлений
 const NOTICE_FAVORITE_FILTER = '__favorite__'
-
-// add 23.07.2026 BekmansurovRR
 // Иконки для строки уведомления
 const NOTICE_STAR_SVG =
   '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2.6l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.1l6.1-.9z"/></svg>'
@@ -375,7 +371,7 @@ function noticeRead(id, $item) {
   })
 }
 // add 23.07.2026 BekmansurovRR
-// Переключение признака "избранное" (иконка-звезда)
+// Переключение признака "избранное"
 function noticeFavorite(row, $fav) {
   sendApiRequest('gu23_notice_favorite', { id: row.ID }).done((response) => {
     if (!response || response.ok !== true) {
@@ -401,7 +397,7 @@ function noticeFavorite(row, $fav) {
   })
 }
 // add 23.07.2026 BekmansurovRR
-// Ручное переключение признака прочтения (иконка-конверт)
+// Ручное переключение признака прочтения
 function noticeReadToggle(row, $item, $mail) {
   const makeRead = row.IS_READ !== 'Y'
   sendApiRequest('gu23_notice_read_set', {
@@ -697,7 +693,10 @@ function loadNoticeFiles(noticeId, done) {
   sendApiRequest('gu23_notice_files', { notice_id: noticeId }).done(
     (response) => {
       if (!response || response.ok !== true) {
-        showToast((response && response.msg) || 'Ошибка загрузки приложений', 'err')
+        showToast(
+          (response && response.msg) || 'Ошибка загрузки приложений',
+          'err',
+        )
         done([])
         return
       }
