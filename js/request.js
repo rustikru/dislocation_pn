@@ -98,7 +98,7 @@ $(document).ready(function() {
         .addClass('request-button request-titlebar-add-button')
         .attr('title','Добавить заявку')
         .append('<span class="request-button-icon request-titlebar-add-icon"></span>')
-        .click(function(){
+        .on('click', function(){
             create_request_window(l_this);
         })
         .appendTo(this.request_titlebar);
@@ -110,7 +110,7 @@ $(document).ready(function() {
         .addClass('request-button request-titlebar-turn-button')
         .attr('title','Скрыть список заявок')
         .append('<span class="request-button-icon request-titlebar-turn-icon"></span>')
-        .click(function(){
+        .on('click', function(){
             toggle_request_content(l_this);
         })
         .appendTo(this.request_titlebar);
@@ -151,7 +151,7 @@ $(document).ready(function() {
             .addClass('request-button request-item-view-btn')
             .attr('title','Открыть заявку')
             .append('<span class="request-button-icon request-item-view-btn-icon"></span>')
-            .click(function(){
+            .on('click', function(){
                 create_request_window(l_this,l_request_item);
             })
             .appendTo(l_request_item);
@@ -595,10 +595,10 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
     }
     
     /*обработка обязательных полей на изменение*/
-    md_content.deadline_date_in_input.blur(function(){
+    md_content.deadline_date_in_input.on('blur', function(){
         disable_save_btn();
     });
-    md_content.deadline_date_out_input.blur(function(){
+    md_content.deadline_date_out_input.on('blur', function(){
         var l_deadline_in = string_to_date(md_content.deadline_date_in_input.val());
         var l_deadline_out = string_to_date(md_content.deadline_date_out_input.val());
         
@@ -628,7 +628,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
         }
         disable_save_btn();
     });
-    md_content.task_select.change(function(){
+    md_content.task_select.on('change', function(){
         disable_save_btn();
     });
     
@@ -684,7 +684,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
     
     /*p_cars - для заполнения формы при открытии заявки*/
     /*p_cars_add - для заполнения формы при вызове из другой формы*/
-    md_content.cars_add_button.click(function(e,p_cars,p_cars_add){
+    md_content.cars_add_button.on('click', function(e,p_cars,p_cars_add){
         var l_cars_item = $('<div>')
             .addClass('criteria-item cars-item-width helper-clearfix')
             .appendTo(md_content.list_of_cars_item);
@@ -749,7 +749,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                 .append('<span class="request-button-icon '+(l_car_descr.complete=='0'?'complete-button-icon-blue':'complete-button-icon-green')+'"></span>')
                 .appendTo(l_car_descr);
 
-            l_car_descr.complete_btn.click(function(){
+            l_car_descr.complete_btn.on('click', function(){
                 function save_complete_flag_ajax(p_user_id,p_criteria_id,p_car_number,p_complete){
                     var res = null;
                     $.ajax({
@@ -846,7 +846,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                 .append('<span class="request-button-icon '+(l_car_descr.close=='0'?'close-button-icon-blue':'close-button-icon-green')+'"></span>')
                 .appendTo(l_car_descr);
             
-            l_car_descr.close_btn.click(function(){
+            l_car_descr.close_btn.on('click', function(){
                 function save_close_flag_ajax(p_user_id,p_criteria_id,p_car_number,p_close,p_close_comment){
                     var res = null;
                     $.ajax({
@@ -1018,7 +1018,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                 .attr('title','Удалить вагон')
                 .append('<span class="request-button-icon delete-button-icon"></span>')
                 .appendTo(l_car_descr)
-                .click(function(){
+                .on('click', function(){
                     l_car_descr.remove();
                     delete l_cars_item.list_of_cars_mas[l_car_descr.pos];
                 });
@@ -1033,7 +1033,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
             .append('<span class="request-button-icon"></span>')
             .appendTo(l_cars_item);
 
-        l_cars_item.complete_btn.click(function(){
+        l_cars_item.complete_btn.on('click', function(){
             function save_complete_flag_ajax(p_user_id,p_criteria_id,p_complete){
                  var res = null;
                  $.ajax({
@@ -1116,7 +1116,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
             .append('<span class="request-button-icon"></span>')
             .appendTo(l_cars_item);
         
-        l_cars_item.close_btn.click(function(){
+        l_cars_item.close_btn.on('click', function(){
             function save_close_flag_ajax(p_user_id,p_criteria_id,p_close,p_close_comment){
                  var res = null;
                  $.ajax({
@@ -1288,7 +1288,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
             .appendTo(l_cars_item);
         l_cars_item.cars_count = $('<input>',{'class':'criteria-item-cars-count text ui-widget-content ui-corner-all required','maxlength':'3'})
             .appendTo(div10);
-        l_cars_item.cars_count.keypress(function (e){
+        l_cars_item.cars_count.on('keypress', function (e){
             // Разрешаем: backspace, delete, влево, вправо
             if (e.keyCode === 8 || e.keyCode === 46 || e.keyCode === 37 || e.keyCode === 39) {
                 return;
@@ -1303,7 +1303,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
             }
         }); 
         
-        l_cars_item.cars_count.blur(function(){
+        l_cars_item.cars_count.on('blur', function(){
             disable_save_btn();
         });
         /***************** Кол-во *****************/
@@ -1336,7 +1336,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
         //init_date_time_input(l_cars_item.date_in);
         init_date_time_input(l_cars_item.date_out);
         
-        l_cars_item.date_out.blur(function(){
+        l_cars_item.date_out.on('blur', function(){
             
             if (l_cars_item.date_out.val() != '' && !l_cars_item.date_out.hasClass('red_bckg_color')){
                 var l_deadline_in = string_to_date(md_content.deadline_date_in_input.val());
@@ -1404,7 +1404,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
         $('<span>',{'text':'Номера вагонов',css:{'margin-right':'0.5em'}}).appendTo(div9_1);
         var l_car_number = $('<input>',{'maxlength':'8','class':'cars-item-input ui-widget-content ui-corner-all'})
             .appendTo(div9_1);
-        l_car_number.keypress(function (e){
+        l_car_number.on('keypress', function (e){
             // Разрешаем: backspace, delete, влево, вправо
             if (e.keyCode === 8 || e.keyCode === 46 || e.keyCode === 37 || e.keyCode === 39) {
                 return;
@@ -1418,7 +1418,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                 return false;
             }
         }); 
-        l_car_number.keyup(function (e){        
+        l_car_number.on('keyup', function (e){        
             if (check_car_number($(this).val())){                
                 $(this).addClass('true-car-number');
             } else{
@@ -1472,7 +1472,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
 
         l_cars_item.list_of_cars_mas = [];
 
-        l_cars_item.add_car_btn.click(function(){
+        l_cars_item.add_car_btn.on('click', function(){
             if (l_car_number.hasClass('true-car-number')) {                             
                 function get_info(p_car_number,p_info_type){
                     var res;
@@ -1519,7 +1519,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
             .append('<span class="request-button-icon delete-button-icon"></span>')
             .appendTo(l_cars_item);
     
-        l_cars_item.remove_btn.click(function(){
+        l_cars_item.remove_btn.on('click', function(){
             l_cars_item.remove();
             delete md_content.list_of_cars_item_mas[l_cars_item.pos];
             disable_save_btn();
@@ -1762,7 +1762,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                         }
                     };
 
-                    md_lvl_2_content.status_select.change(function(){
+                    md_lvl_2_content.status_select.on('change', function(){
                         if ($(this).val()=='D'){
                             md_lvl_2_content.status_descr_input.removeClass('required');
                         }else{
@@ -1771,7 +1771,7 @@ function create_request_window(p_document,p_request_item,p_task,p_cars_req_win){
                         md_lvl_2_content.check_data(); 
                     });
                     
-                    md_lvl_2_content.status_descr_input.keyup(function(){
+                    md_lvl_2_content.status_descr_input.on('keyup', function(){
                         md_lvl_2_content.check_data();
                     });
                     

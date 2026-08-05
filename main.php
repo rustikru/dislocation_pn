@@ -30,12 +30,14 @@ if ($auth->isAuth() && $auth->getStationId() !== null) {
 		<!-- <link rel="stylesheet" href="css/jquery.datetimepicker.css" type="text/css"> -->
 		<link rel="stylesheet" href="css/jquery.select.css" type="text/css">
 		<link rel="stylesheet" href="css/request_window.css?ver=0" type="text/css">
-		<link type="text/css" href="jquery/jquery-ui.min.css" rel="Stylesheet" />
+		<link type="text/css" href="jquery/3.7/jquery-ui.min.css" rel="Stylesheet" />
+		<link type="text/css" href="jquery/3.7/jquery-ui-legacy-theme-overrides.css" rel="Stylesheet" />
 		<link type="text/css" href="css/tooltip.css" rel="Stylesheet" />
 
 		<!--<link rel="stylesheet" href="css/main_new_theme.css?ver=14" type="text/css">-->
-		<script src="jquery/jquery-1.11.3.min.js" type="text/javascript"></script>
-		<script src="jquery/jquery-ui.js" type="text/javascript"></script>
+		<script src="jquery/3.7/jquery-3.7.1.js" type="text/javascript"></script>
+		<script src="jquery/3.7/jquery-migrate-3.4.1.js" type="text/javascript"></script>
+		<script src="jquery/3.7/jquery-ui.min.js" type="text/javascript"></script>
 		<script src="js/tree.js"></script>
 		<script src="js/general_function.js?ver=1"></script> <!-- Контекстная менюшка -->
 		<script src="js/jquery.select.js"></script>

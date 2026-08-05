@@ -117,7 +117,7 @@ function get_selected_option_text_mas(p_select){
 var g_need_return_focus = true;
 function init_date_time_input(p_input){
     p_input.attr('placeholder','ддммгг ччмм');
-    p_input.blur(function(){        
+    p_input.on('blur', function(){        
         var old_time = p_input.val();
         
         var pattern_1 = /(\d{2})(\d{2})(\d{4}) (\d{2})(\d{2})/;
@@ -163,7 +163,7 @@ function init_date_time_input(p_input){
 
 function init_date_time_input_short(p_input){
     p_input.attr('placeholder','ддммгг');
-    p_input.blur(function(){        
+    p_input.on('blur', function(){        
         var old_time = p_input.val();
         
         var pattern_1 = /(\d{2})(\d{2})(\d{4})/;
@@ -214,7 +214,7 @@ function init_date_time_input_add(p_input,p_compare_date){
     var l_compare_date = new Date(p_compare_date.toString().replace(pattern,'$3-$2-$1T$4:$5:00'));
     
     p_input.attr('placeholder','ддммгг ччмм');
-    p_input.blur(function(){        
+    p_input.on('blur', function(){        
         var old_time = p_input.val();
         
         var pattern_1 = /(\d{2})(\d{2})(\d{4}) (\d{2})(\d{2})/;
@@ -264,7 +264,7 @@ function init_date_time_input_btw(p_input,p_compare_date_from,p_compare_date_to)
     var l_compare_date_to = new Date(p_compare_date_to.toString().replace(pattern,'$3-$2-$1T$4:$5:00'));
     
     p_input.attr('placeholder','ддммгг ччмм');
-    p_input.blur(function(){        
+    p_input.on('blur', function(){        
         var old_time = p_input.val();
         
         var pattern_1 = /(\d{2})(\d{2})(\d{4}) (\d{2})(\d{2})/;
@@ -325,12 +325,30 @@ function get_server_current_time(){
     return server_current_time;
 }
 
+function format_date_ddmmyyyy_hhmm(p_date){
+        var dd = String(p_date.getDate()).padStart(2, '0');
+        var mm = String(p_date.getMonth() + 1).padStart(2, '0');
+        var yyyy = p_date.getFullYear();
+        var hh = String(p_date.getHours()).padStart(2, '0');
+        var mi = String(p_date.getMinutes()).padStart(2, '0');
+
+        return dd + '.' + mm + '.' + yyyy + ' ' + hh + ':' + mi;
+}
+
+function format_date_ddmmyyyy(p_date){
+        var dd = String(p_date.getDate()).padStart(2, '0');
+        var mm = String(p_date.getMonth() + 1).padStart(2, '0');
+        var yyyy = p_date.getFullYear();
+
+        return dd + '.' + mm + '.' + yyyy;
+}
+
 function add_day_to_date(p_date,p_day){
         var pattern = /(\d{2})\.(\d{2})\.(\d{4}) (\d{2})\:(\d{2})/;
         var l_date = new Date(p_date.replace(pattern,'$3-$2-$1T$4:$5:00'));
         l_date.setDate(l_date.getDate() + p_day);
 
-        return l_date.toLocaleFormat("%d.%m.%Y %H:%M");
+        return format_date_ddmmyyyy_hhmm(l_date);
 }
 
 function add_hours_to_date(p_date,p_hour){
@@ -338,7 +356,7 @@ function add_hours_to_date(p_date,p_hour){
         var l_date = new Date(p_date.replace(pattern,'$3-$2-$1T$4:$5:00'));
         l_date.setMilliseconds(p_hour * 60 * 60 * 1000);
 
-        return l_date.toLocaleFormat("%d.%m.%Y %H:%M");
+        return format_date_ddmmyyyy_hhmm(l_date);
 }
 
 function add_day_to_date_trunc(p_date,p_day){
@@ -347,7 +365,7 @@ function add_day_to_date_trunc(p_date,p_day){
         l_date.setDate(l_date.getDate() + p_day);
         l_date.setHours(0, 0, 0, 0);
 
-        return l_date.toLocaleFormat("%d.%m.%Y %H:%M");
+        return format_date_ddmmyyyy_hhmm(l_date);
 }
 /*Дата с конкретным временем*/
 function add_date_set_hh_mm(p_date,p_day, p_hh, p_mm){
@@ -356,14 +374,14 @@ function add_date_set_hh_mm(p_date,p_day, p_hh, p_mm){
         l_date.setDate(l_date.getDate() + p_day);
         l_date.setHours(p_hh, p_mm, 0, 0);
 
-        return l_date.toLocaleFormat("%d.%m.%Y %H:%M");
+        return format_date_ddmmyyyy_hhmm(l_date);
 }
 
 /*режим дату с формата dd.mm.yyyy hh24:mi до dd.mm.yyyy*/
 function trunc_date(p_date){
         var pattern = /(\d{2})\.(\d{2})\.(\d{4}) (\d{2})\:(\d{2})/;
         var l_date = new Date(p_date.replace(pattern,'$3-$2-$1T$4:$5:00'));
-        return l_date.toLocaleFormat("%d.%m.%Y");
+        return format_date_ddmmyyyy(l_date);
 }
 
 function limit_input_only_numbers(p_input) {
@@ -422,7 +440,7 @@ function check_open_period(p_oper_id,p_date){
                ,ajax_action: 'check_open_period'
         },
         success: function (data) {
-            l_result = '1';
+            l_result = data;
         },
         error: function (data) {
             l_result = '0';

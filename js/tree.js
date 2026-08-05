@@ -103,7 +103,7 @@ function toggleNode(node) {
 }
 
 $(document).ready(function() {
-    $('#add_btn_turn').click(function(){
+    $('#add_btn_turn').on('click', function(){
         var l_add_btn_content = $('#add_btn_content');
         if (l_add_btn_content.is(":visible")){
             l_add_btn_content.hide();
@@ -113,14 +113,14 @@ $(document).ready(function() {
     });
     
     /*нажатие Enter в поле поиска вагона*/
-    $('#inputFind').keypress(function(e){
+    $('#inputFind').on('keypress', function(e){
         if(e.keyCode===13){
             selectFindElements();
         }
     });
     
     /*клик по дереву*/
-    $('#currentCarstree,#comingCarsTree').click(function(event) {       
+    $('#currentCarstree,#comingCarsTree').on('click', function(event) {       
         var target = $(event.target);
         var parent_target = target.parent();
         
@@ -131,14 +131,11 @@ $(document).ready(function() {
     });
     
     start_loading_animation();
-    $.when(
-        tree('currentCarstree', null, 'Y'),
-        tree('comingCarsTree', null, 'N')
-    ).always(function() {
-        stop_loading_animation();
-    });
+    tree('currentCarstree', null,'Y'); 
+    tree('comingCarsTree', null,'N');
+    stop_loading_animation();
     
-    $('#selectStation').change(function(event) {
+    $('#selectStation').on('change', function(event) {
         start_loading_animation();
         if ($(this).val()===user_station_id){
             $('#received_into_station_btn').show();
@@ -164,34 +161,32 @@ $(document).ready(function() {
         $('#currentCarstree > li, #comingCarsTree > li').removeClass('tree_ExpandClosed');
         $('#currentCarstree > li > ul *, #comingCarsTree > li > ul *').remove();
         $('#currentCarstree > li, #comingCarsTree > li').attr('data-id',$(this).val());
+        //$('#currentCarstree > li > div.tree_Content').text($('option:selected', $(this)).text());
+        tree('currentCarstree', null,'Y');
+        tree('comingCarsTree', null,'N');
         $('table.addInfoTable tbody').empty();
         $('#notification_btn').attr('disabled',false);
-        $.when(
-            tree('currentCarstree', null, 'Y'),
-            tree('comingCarsTree', null, 'N')
-        ).always(function() {
-            stop_loading_animation();
-        });
+        stop_loading_animation();
     });
     
-    $('#refreshComingRailcar').click(function(event) {
+    $('#refreshComingRailcar').on('click', function(event) {
         start_loading_animation();
         $('#comingCarsTree > li').addClass('tree_ExpandOpen');
         $('#comingCarsTree > li').removeClass('tree_ExpandClosed');
         $('#comingCarsTree > li > ul *').remove();
-        tree('comingCarsTree', null, 'N').always(function() {
-            stop_loading_animation();
-        });
-    });
 
-    $('#refreshRailcar').click(function(event) {
+        tree('comingCarsTree', null,'N');
+        stop_loading_animation();
+    });
+    
+    $('#refreshRailcar').on('click', function(event) {
         start_loading_animation();
         $('#currentCarstree > li').addClass('tree_ExpandOpen');
         $('#currentCarstree > li').removeClass('tree_ExpandClosed');
         $('#currentCarstree > li > ul *').remove();
-        tree('currentCarstree', null, 'Y').always(function() {
-            stop_loading_animation();
-        });
+
+        tree('currentCarstree', null,'Y');
+        stop_loading_animation();
     });
 });
 
@@ -399,17 +394,25 @@ function tree(p_ul_id, mode,p_flag) {
         
         showLoading(false);
     }
-    return $.ajax({
+	//console.log('station_id:'+l_ul.children('li').attr('data-id'));
+    $.ajax({
         url: 'data.php',
         type: 'POST',
-        dataType: 'text',
-        data: { station_id: l_ul.children('li').attr('data-id'),
-                flag_come: p_flag,
-                ajax_action: 'get_tree_station' },
-        success: function(data) {
+        dataType: "text",
+        async: false,
+        data: { station_id: l_ul.children('li').attr('data-id')
+               ,flag_come: p_flag
+               ,ajax_action: 'get_tree_station'
+              },
+        success: function(data){
+            //alert(data);
+			
+			
             l_tree = JSON.parse(data);
+			//console.log(l_tree);
             load(l_ul.children('li'));
             l_tree = [];
+            
         }
     });
 }
