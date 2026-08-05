@@ -179,7 +179,7 @@ $(document).ready(function() {
         .css({'margin-left':'0.5em','margin-right':'0.5em','margin-top':'0.5em'})
         .append($('<span>').addClass('button-text button-text-size-3').text('Добавить контроль'))
         .appendTo(this.tab5_section)
-        .click(function(){
+        .on('click', function(){
             open_fuel_standart_window(l_this);
         });
     
@@ -197,7 +197,7 @@ $(document).ready(function() {
         .addClass('button')
         .css({'margin-left':'0.5em'})
         .append($('<span>').addClass('button-text button-text-size-2').text('Поиск'))
-        .click(function(){
+        .on('click', function(){
             l_this.refresh_fuel_standart(false);
             create_info_modal_dialog_new('Оповещение','Поиск завершен!');
         });
@@ -205,7 +205,7 @@ $(document).ready(function() {
         .addClass('button')
         .css({'margin-left':'0.5em'})
         .append($('<span>').addClass('button-text button-text-size-2').text('Очистить'))
-        .click(function(){
+        .on('click', function(){
             l_this.tab5_date_filter.val('');
 			l_this.tab5_date_to_filter.val('');
             l_this.tab5_base_type_select_filter.val('');
@@ -289,7 +289,7 @@ $(document).ready(function() {
         l_fuel_standart.start_date = $('<td>').appendTo(l_fuel_standart).text((p_fuel_standart.START_DATE===null?'':p_fuel_standart.START_DATE));
         l_fuel_standart.end_date = $('<td>').appendTo(l_fuel_standart).text((p_fuel_standart.END_DATE===null?'':p_fuel_standart.END_DATE));
         
-        l_fuel_standart.car_number.click(function(){open_fuel_standart_window(l_this,l_fuel_standart);});
+        l_fuel_standart.car_number.on('click', function(){open_fuel_standart_window(l_this,l_fuel_standart);});
         
         return l_fuel_standart;
     };
@@ -506,9 +506,9 @@ function open_fuel_standart_window(p_document,p_fuel_standart){
 		
     }
     
-    md_content.color_select.change(function(){disable_save_btn();});
-    md_content.base_num_input.blur(function(){disable_save_btn();});
-    md_content.loco_select.change(function(){disable_save_btn();});
+    md_content.color_select.on('change', function(){disable_save_btn();});
+    md_content.base_num_input.on('blur', function(){disable_save_btn();});
+    md_content.loco_select.on('change', function(){disable_save_btn();});
     
     md_content.dialog({
         resizable:false,
