@@ -141,6 +141,7 @@ class GuActPhpWordReport
             $values = [
                 "WAGON_IDX#$num" => (string) $num,
                 "WAGON_NO#$num" => $wagon['WAGON_NO'] ?? '',
+                "WAGON_CONT_NO#$num" => $wagon['WAGON_CONT_NO'] ?? '',
                 "WAGON_WAYBILL_NO#$num" => $wagon['WAYBILL_NO'] ?? '',
                 "WAGON_KIND#$num" => $wagon['KIND'] ?? '',
                 "WAGON_CARGO#$num" => $wagon['CARGO'] ?? '',

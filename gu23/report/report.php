@@ -52,7 +52,15 @@ try {
     }
 
     $act     = $actRows[0];
-    $wagons  = $db->rows('select * from table(xx_disl_gu23_pkg.gu23_get_rows(:b1))', [':b1' => $actId]);
+    $wagons = $db->rows(
+        'select w.*,
+                xx_disl_gu23_pkg.get_cont_for_car(
+                    w.wagon_no,
+                    w.waybill_no
+                ) wagon_cont_no
+           from table(xx_disl_gu23_pkg.gu23_get_rows(:b1)) w',
+        [':b1' => $actId]
+    );
     $signers = $db->rows('select * from table(xx_disl_gu23_pkg.gu23_get_signers(:b1))', [':b1' => $actId]);
     $approvals = $db->rows('select * from table(xx_disl_gu23_pkg.gu23_get_approvals(:b1))', [':b1' => $actId]);
 

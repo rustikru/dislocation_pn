@@ -1429,6 +1429,17 @@ function validateForm(checkSigners) {
 // Проверка основных полей формы
 function checkMainFields(errors) {
   if (!activeDraft.departmentCode) errors.push('Не указан цех')
+  const departmentCode = String(activeDraft.departmentCode || '')
+    .trim()
+    .toUpperCase()
+  if (
+    !['ЖДЦ', 'УПРАВЛЕНИЕ'].includes(departmentCode) &&
+    activeDraft.wagons.length > 1
+  ) {
+    errors.push(
+      'Для выбранного цеха акт можно отправить на согласование только с одним вагоном',
+    )
+  }
   if (!activeDraft.reasonId) errors.push('Не указана причина составления')
   if (!String(activeDraft.circumstances).trim())
     errors.push('Не заполнены обстоятельства')

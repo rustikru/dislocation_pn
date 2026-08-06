@@ -1,4 +1,5 @@
-﻿create or replace package body xx_etw.xx_disl_gu23_pkg as
+﻿/* Formatted on 06.08.2026 8:00:43 (QP5 v5.417) */
+create or replace package body xx_etw.xx_disl_gu23_pkg as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
      PURPOSE:   Акты: составление актов (форма ГУ-23)
@@ -1855,7 +1856,43 @@
 
       return;
    end;
-
+    -- возвращаем список контейнеров для платформы 
+   function get_cont_for_car (
+      p_car_number in varchar2,
+      p_inv_number in varchar2
+   ) return varchar2 is
+      l_cont_str varchar2(4000);
+   begin
+      select
+         listagg(eicont.cont_number,
+                 ';') within group(
+          order by eicont.cont_number)
+        into l_cont_str
+        from xx_etw.etw_invoice ei,
+             xx_etw.etw_inv_car ecar,
+             xx_etw.etw_inv_cont eicont
+       where 1 = 1
+         and ei.front_end_id = (
+         select max(x.front_end_id)
+           from xx_etw.etw_invoice x
+          where x.inv_number = p_inv_number
+      )
+         and ei.front_end_id = ecar.front_end_id
+         and eicont.cont_number is not null
+         and ecar.car_number = p_car_number
+         and ecar.front_end_id = eicont.front_end_id
+         and nvl(
+         ecar.car_order,
+         eicont.cont_car_order
+      ) = nvl(
+         eicont.cont_car_order,
+         ecar.car_order
+      );
+      return l_cont_str;
+   exception
+      when others then
+         return '';
+   end;
     -- ----------------------------------------------------------------
     -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
     -- ----------------------------------------------------------------
@@ -2199,9 +2236,9 @@
          and ( created_by = p_user_id
           or gu23_is_admin(p_user_id) = 'Y'
           or gu23_is_act_signer(
-            p_act_id,
-            p_user_id
-          ) = 'Y' );
+         p_act_id,
+         p_user_id
+      ) = 'Y' );
 
       return
          case
@@ -2223,7 +2260,7 @@
    begin
       select count(*)
         into v_cnt
-       from xx_disl_gu23_act
+        from xx_disl_gu23_act
        where id = p_act_id
          and status <> 'annulled'
          and ( created_by = p_user_id
@@ -2354,6 +2391,7 @@
       v_isnew      boolean;
       v_ord        number := 0;
       v_wcnt       number := 0;
+      v_check_wcnt number := 0;
       vw_owner     varchar2(128);
       vw_kind      varchar2(128);
       vw_from      varchar2(128);
@@ -2418,6 +2456,22 @@
          when no_data_found then
             return format_error('Цех не найден: ' || p_data.p_dept);
       end;
+
+      -- Для всех цехов, кроме ЖДЦ и Управления, на согласование
+      -- разрешено отправлять акт только с одним вагоном.
+      if
+         p_data.p_status = 'active'
+         and upper(trim(p_data.p_dept)) not in ( 'ЖДЦ',
+                                                 'УПРАВЛЕНИЕ' )
+      then
+         select count(*)
+           into v_check_wcnt
+           from table ( parse_wagon_clob(p_data.p_wagons) );
+
+         if v_check_wcnt > 1 then
+            return format_error('Для выбранного цеха акт можно отправить на согласование только с одним вагоном');
+         end if;
+      end if;
 
       v_station_id := nullif(
          trim(p_data.p_station),
@@ -5905,7 +5959,7 @@
 
         --log_new (l_log_in, l_function, 'g_server_host=>' || g_server_host);
         --log_new (l_log_in, l_function, 'x_to_email=>' || x_to_email);
-         /*
+      /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')
