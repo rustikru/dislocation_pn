@@ -53,7 +53,6 @@ function showCardView(data) {
     data.files,
     !!data.canChangeFiles,
     !!data.canDeleteFiles,
-    !!data.isAdmin,
   )
   showHistoryBlock(data.history)
 }
@@ -431,7 +430,6 @@ function showAttachmentsBlock(
   files,
   canChangeFiles,
   canDeleteFiles,
-  userIsAdmin,
 ) {
   const accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.sig,.p7s'
 
@@ -457,8 +455,7 @@ function showAttachmentsBlock(
     const rows = items
       .map((file) => {
         const isImage = /(png|jpe?g|gif|bmp|webp)$/i.test(file.FILE_EXT || '')
-        const isSignedFile = file.FILE_CATEGORY === 'signed'
-        const canDeleteFile = canDeleteFiles && (!isSignedFile || userIsAdmin)
+        const canDeleteFile = canDeleteFiles
         return `
         <div style="display:flex;gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
           ${isImage ? `<img src="get_file.php?inline=1&id=${file.ID}" class="img-preview" data-id="${file.ID}" style="width:34px;height:34px;object-fit:cover;border-radius:4px;cursor:pointer">` : ''}

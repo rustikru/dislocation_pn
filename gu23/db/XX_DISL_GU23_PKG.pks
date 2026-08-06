@@ -433,9 +433,11 @@ as
     function gu23_act_type (p_act_id in number)
         return varchar2;
 
+    -- Добавлять вложения может создатель, администратор или участник маршрута подписания.
     function gu23_can_change_files (p_act_id in number, p_user_id in number)
         return varchar2;
 
+    -- Удалять вложения может создатель акта (первый подписант/исполнитель) или администратор.
     function gu23_can_delete_files (p_act_id in number, p_user_id in number)
         return varchar2;
 

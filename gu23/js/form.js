@@ -241,7 +241,12 @@ function showMainFields() {
       activeDraft.cargoReference = it.value
     },
     function () {
-      activeDraft.cargoReference = $('#auto-cargo').val()
+      activeDraft.cargoReference = ''
+    },
+    {
+      requireSelection: true,
+      selected: !!activeDraft.cargoReference,
+      message: 'Выберите груз из выпадающего списка',
     },
   )
 }
@@ -316,6 +321,11 @@ function showReasonFields() {
     },
     function () {
       activeDraft.reasonId = ''
+    },
+    {
+      requireSelection: true,
+      selected: !!activeDraft.reasonId,
+      message: 'Выберите причину из выпадающего списка',
     },
   )
 
@@ -470,8 +480,48 @@ function applySelectedStartAct(id, filterNums = null) {
 /**
  * Автокомпликт (для «Груз», «Причина»).
  */
-function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
+function setListSelectionState($inp, selected, message, showError = true) {
+  const hasText = String($inp.val() || '').trim() !== ''
+  const invalid = showError && hasText && !selected
+
+  $inp
+    .addClass('list-selection-required')
+    .toggleClass('list-selection-invalid', invalid)
+    .attr('aria-invalid', invalid ? 'true' : 'false')
+    .data('list-selection-selected', selected === true)
+    .data('list-selection-message', message || 'Выберите значение из списка')
+
+  let $hint = $inp.siblings('.list-selection-hint')
+  if (!$hint.length) {
+    $hint = $('<div class="list-selection-hint"></div>').insertAfter($inp)
+  }
+  $hint.text(invalid ? message || 'Выберите значение из списка' : '')
+}
+
+function prepareListAutocomplete(
+  $inp,
+  $dropdown,
+  items,
+  onSelect,
+  onInput,
+  options = {},
+) {
   let activeIdx = -1
+  const requireSelection = options.requireSelection === true
+
+  $inp.attr({
+    autocomplete: 'on',
+  })
+  $inp.removeAttr('data-1p-ignore data-lpignore')
+
+  if (requireSelection) {
+    setListSelectionState(
+      $inp,
+      options.selected === true,
+      options.message,
+      false,
+    )
+  }
 
   function setActive(idx) {
     const $items = $dropdown.find('.ac-item')
@@ -486,13 +536,15 @@ function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
 
   function showMatches(searchText) {
     const searchTextLower = (searchText || '').trim().toLowerCase()
-    const matches = searchTextLower
-      ? items.filter(
-          (it) => it.label.toLowerCase().indexOf(searchTextLower) !== -1,
-        )
-      : items
     $dropdown.empty()
     activeIdx = -1
+    if (!searchTextLower) {
+      $dropdown.hide()
+      return
+    }
+    const matches = items.filter(
+      (it) => it.label.toLowerCase().indexOf(searchTextLower) !== -1,
+    )
     if (!matches.length) {
       $dropdown.hide()
       return
@@ -505,6 +557,9 @@ function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
         e.preventDefault()
         $inp.val(it.label)
         onSelect(it)
+        if (requireSelection) {
+          setListSelectionState($inp, true, options.message)
+        }
         $dropdown.hide()
         activeIdx = -1
       })
@@ -517,10 +572,20 @@ function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
   }
 
   $inp.on('focus', function () {
-    showMatches($(this).val())
+    if (requireSelection) {
+      setListSelectionState(
+        $inp,
+        $inp.data('list-selection-selected') === true,
+        options.message,
+        false,
+      )
+    }
   })
   $inp.on('input', function () {
     if (onInput) onInput()
+    if (requireSelection) {
+      setListSelectionState($inp, false, options.message, false)
+    }
     showMatches($(this).val())
   })
   $inp.on('keydown', function (e) {
@@ -544,14 +609,48 @@ function prepareListAutocomplete($inp, $dropdown, items, onSelect, onInput) {
     setTimeout(() => {
       $dropdown.hide()
       activeIdx = -1
+      if (requireSelection) {
+        setListSelectionState(
+          $inp,
+          $inp.data('list-selection-selected') === true,
+          options.message,
+        )
+      }
     }, 200),
   )
 }
 
 // Подбор станции через gu23_search_station.
-function prepareStationAutocomplete($inp, $dropdown, onSelect, onClear) {
+function prepareStationAutocomplete(
+  $inp,
+  $dropdown,
+  onSelect,
+  onClear,
+  options = {},
+) {
   let timer = null
   let activeIdx = -1
+
+  $inp.attr({
+    autocomplete: 'on',
+  })
+  $inp.removeAttr('data-1p-ignore data-lpignore')
+
+  setListSelectionState(
+    $inp,
+    options.selected === true,
+    options.message,
+    false,
+  )
+
+  $inp.on('focus', function () {
+    setListSelectionState(
+      $inp,
+      $inp.data('list-selection-selected') === true,
+      options.message,
+      false,
+    )
+  })
 
   function setActive(idx) {
     const $items = $dropdown.find('.ac-item')
@@ -566,17 +665,19 @@ function prepareStationAutocomplete($inp, $dropdown, onSelect, onClear) {
   function selectItem($item) {
     $inp.val($item.data('name'))
     onSelect($item.data('code'), $item.data('name'))
+    setListSelectionState($inp, true, options.message)
     $dropdown.hide()
     activeIdx = -1
   }
 
   $inp.on('input', function () {
     const value = $(this).val().trim()
+    onClear()
+    setListSelectionState($inp, false, options.message, false)
     clearTimeout(timer)
     activeIdx = -1
     if (value.length < 3) {
       $dropdown.hide().empty()
-      if (!value) onClear()
       return
     }
 
@@ -626,6 +727,11 @@ function prepareStationAutocomplete($inp, $dropdown, onSelect, onClear) {
     setTimeout(() => {
       $dropdown.hide()
       activeIdx = -1
+      setListSelectionState(
+        $inp,
+        $inp.data('list-selection-selected') === true,
+        options.message,
+      )
     }, 200),
   )
 }
@@ -643,6 +749,10 @@ function prepareStationFields() {
       activeDraft.stationToId = ''
       activeDraft.stationToName = ''
     },
+    {
+      selected: !!activeDraft.stationToId,
+      message: 'Выберите станцию назначения из выпадающего списка',
+    },
   )
   prepareStationAutocomplete(
     $('#auto-stationFrom'),
@@ -654,6 +764,10 @@ function prepareStationFields() {
     () => {
       activeDraft.stationFromId = ''
       activeDraft.stationFromName = ''
+    },
+    {
+      selected: !!activeDraft.stationFromId,
+      message: 'Выберите станцию отправления из выпадающего списка',
     },
   )
 }
@@ -1411,6 +1525,22 @@ function saveActToServer(status, skipWarning = false) {
 }
 // Проверка ошибок перед сохранением
 function getSaveErrors(status) {
+  $('.list-selection-required').each(function () {
+    const $field = $(this)
+    setListSelectionState(
+      $field,
+      $field.data('list-selection-selected') === true,
+      $field.data('list-selection-message'),
+    )
+  })
+  const $invalidListField = $('.list-selection-invalid').first()
+  if ($invalidListField.length) {
+    $invalidListField.trigger('focus')
+    return [
+      $invalidListField.data('list-selection-message') ||
+        'Выберите значение из выпадающего списка',
+    ]
+  }
   if (status === 'active') return validateForm(true)
   return activeDraft.departmentCode ? [] : ['Не указан цех']
 }

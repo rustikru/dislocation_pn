@@ -329,7 +329,7 @@ class GuActRepository
         return dirname(__DIR__) . '/' . ltrim($path, '/\\');
     }
 
-    /** Файлы прикреплять к любому акту, кроме аннулированного. */
+    /** Вложения добавляют создатель, администратор и участники маршрута подписания. */
     private function canChangeFiles(int $actId, int $userId): bool
     {
         if ($actId <= 0 || $userId <= 0) {
@@ -345,7 +345,7 @@ class GuActRepository
         return $result === 'Y';
     }
 
-    /** В закрытых актах удалять файлы может только администратор. */
+    /** Вложения удаляет создатель акта (первый подписант/исполнитель) или администратор. */
     private function canDeleteFiles(int $actId, int $userId): bool
     {
         if ($actId <= 0 || $userId <= 0) {
@@ -878,16 +878,10 @@ class GuActRepository
         $fileInfo = explode(self::US, $info);
         $actId = (int) ($fileInfo[0] ?? 0);
         $path = $this->getFileDiskPath((string) ($fileInfo[1] ?? ''));
-        $category = (string) ($fileInfo[2] ?? 'general');
 
         $uid = $this->auth->getUserId();
-        $isAdmin = $this->isGu23Admin();
         if (!$this->canDeleteFiles($actId, (int) $uid)) {
             echo json_encode(['ok' => false, 'msg' => 'Нет прав на удаление файлов']);
-            return;
-        }
-        if ($category === 'signed' && !$isAdmin) {
-            echo json_encode(['ok' => false, 'msg' => 'Подписанные файлы может удалять только администратор']);
             return;
         }
 

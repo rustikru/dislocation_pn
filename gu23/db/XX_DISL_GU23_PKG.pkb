@@ -2197,7 +2197,11 @@
        where id = p_act_id
          and status <> 'annulled'
          and ( created_by = p_user_id
-          or gu23_is_admin(p_user_id) = 'Y' );
+          or gu23_is_admin(p_user_id) = 'Y'
+          or gu23_is_act_signer(
+            p_act_id,
+            p_user_id
+          ) = 'Y' );
 
       return
          case
@@ -2219,16 +2223,11 @@
    begin
       select count(*)
         into v_cnt
-        from xx_disl_gu23_act
+       from xx_disl_gu23_act
        where id = p_act_id
          and status <> 'annulled'
-         and ( ( status in ( 'closed',
-                             'signed' )
-         and gu23_is_admin(p_user_id) = 'Y' )
-          or ( status not in ( 'closed',
-                               'signed' )
          and ( created_by = p_user_id
-          or gu23_is_admin(p_user_id) = 'Y' ) ) );
+          or gu23_is_admin(p_user_id) = 'Y' );
 
       return
          case
@@ -2296,20 +2295,14 @@
    function gu23_del_file (
       p_data in t_gu23_del_file
    ) return varchar2 is
-      v_act      number;
-      v_name     varchar2(512);
-      v_category varchar2(16);
+      v_act  number;
+      v_name varchar2(512);
    begin
       select act_id,
-             file_name,
-             nvl(
-                file_category,
-                'general'
-             )
+             file_name
         into
          v_act,
-         v_name,
-         v_category
+         v_name
         from xx_disl_gu23_file
        where id = p_data.p_file_id;
 
@@ -2320,15 +2313,6 @@
          return 'ERR'
                 || c_us
                 || 'Нет прав на удаление файлов';
-      end if;
-
-      if
-         v_category = 'signed'
-         and gu23_is_admin(p_data.p_user_id) <> 'Y'
-      then
-         return 'ERR'
-                || c_us
-                || 'Подписанные файлы может удалять только администратор';
       end if;
 
       delete from xx_disl_gu23_file
