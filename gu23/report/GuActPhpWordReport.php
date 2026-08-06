@@ -67,6 +67,7 @@ class GuActPhpWordReport
         $doc = new TemplateProcessor($templatePath);
 
         $printSigners = $this->getPrintSigners($act, $signers);
+        // rem 20.07.2026 Пока отключил, т.к юристы не потвердили законность вывода
         // ПЭП подписи, только для тех, кто подписал.
         //$usePep = $this->canShowPepStamp($act, $approvals);
         $usePep = [];

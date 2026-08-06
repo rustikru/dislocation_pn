@@ -37,7 +37,7 @@ as
 
     type xx_disl_gu23_ref_row is record
     (
-        id            varchar2 (150),
+        id            number,
         code          varchar2 (512),
         name          varchar2 (512),
         categ_name    varchar2 (512)           -- add 21.07.2026 BekmansurovRR
@@ -167,11 +167,11 @@ as
 
     type t_gu23_notice_file_row is record
     (
-        id          number,
-        notice_id   number,
-        file_path   varchar2 (1000),
-        file_name   varchar2 (512),
-        file_mime   varchar2 (128)
+        id           number,
+        notice_id    number,
+        file_path    varchar2 (1000),
+        file_name    varchar2 (512),
+        file_mime    varchar2 (128)
     );
 
     type t_gu23_notice_file_tab is table of t_gu23_notice_file_row;
@@ -272,13 +272,12 @@ as
 
     -- Интеграционный API создания акта ГУ-23.
     -- В текущей версии разрешено создание только в статусе draft.
-    procedure api_gu23_create (
-        p_act           in     xx_disl_gu23_act%rowtype,
-        p_act_rows      in     t_api_gu23_act_row_tab,
-        p_signers       in     t_api_gu23_signer_tab,
-        p_out_act_id       out number,
-        p_out_status    in out varchar2,
-        p_out_message   in out varchar2);
+    procedure api_gu23_create (p_act           in     xx_disl_gu23_act%rowtype,
+                               p_act_rows      in     t_api_gu23_act_row_tab,
+                               p_signers       in     t_api_gu23_signer_tab,
+                               p_out_act_id       out number,
+                               p_out_status    in out varchar2,
+                               p_out_message   in out varchar2);
 
     -- ---- Справочники
     function gu23_get_ref_cex
@@ -327,32 +326,32 @@ as
         pipelined;
 
     -- ---- Акты ----
-    function gu23_get_acts (p_q              in varchar2,
-                            p_type           in varchar2,
-                            p_status         in varchar2,
-                            p_dept_id        in varchar2,
-                            p_date_from      in varchar2,
-                            p_date_to        in varchar2,
-                            p_has_signed     in varchar2,
-                            p_reason_categ   in varchar2,
-                            p_page           in number,
-                            p_page_size      in number,
-                            p_user_id        in number default null,
-                            p_requires_action in varchar2 default null)
+    function gu23_get_acts (p_q                 in varchar2,
+                            p_type              in varchar2,
+                            p_status            in varchar2,
+                            p_dept_id           in varchar2,
+                            p_date_from         in varchar2,
+                            p_date_to           in varchar2,
+                            p_has_signed        in varchar2,
+                            p_reason_categ      in varchar2,
+                            p_page              in number,
+                            p_page_size         in number,
+                            p_user_id           in number default null,
+                            p_requires_action   in varchar2 default null)
         return xx_disl_gu23_act_tab
         pipelined;
 
     -- количество актов под те же фильтры
-    function gu23_count_acts (p_q              in varchar2,
-                              p_type           in varchar2,
-                              p_status         in varchar2,
-                              p_dept_id        in varchar2,
-                              p_date_from      in varchar2,
-                              p_date_to        in varchar2,
-                              p_has_signed     in varchar2,
-                              p_reason_categ   in varchar2,
-                              p_user_id        in number default null,
-                              p_requires_action in varchar2 default null)
+    function gu23_count_acts (p_q                 in varchar2,
+                              p_type              in varchar2,
+                              p_status            in varchar2,
+                              p_dept_id           in varchar2,
+                              p_date_from         in varchar2,
+                              p_date_to           in varchar2,
+                              p_has_signed        in varchar2,
+                              p_reason_categ      in varchar2,
+                              p_user_id           in number default null,
+                              p_requires_action   in varchar2 default null)
         return number;
 
     function gu23_get_act (p_id in number)
@@ -741,7 +740,7 @@ as
 
     type t_gu23_ref_reason_row is record
     (
-        id            varchar2 (150),
+        id            number,
         name          varchar2 (512),
         act_kind      varchar2 (16),
         categ         number,
@@ -769,10 +768,20 @@ as
     function gu23_ref_signer_toggle (p_id in number)
         return varchar2;
 
-    function gu23_ref_reason_qa_save (p_short_code in varchar2,
-                                      p_name       in varchar2,
-                                      p_categ      in number,
-                                      p_is_new     in varchar2)
+    function gu23_ref_reason_save (p_id         in number,
+                                   p_name       in varchar2,
+                                   p_act_kind   in varchar2,
+                                   p_categ      in number)
+        return varchar2;
+
+    function gu23_ref_reason_import (p_id         in number,
+                                     p_name       in varchar2,
+                                     p_act_kind   in varchar2,
+                                     p_categ      in number,
+                                     p_active     in varchar2)
+        return varchar2;
+
+    function gu23_ref_reason_toggle (p_id in number)
         return varchar2;
 
     -- add 24.07.2026 BekmansurovRR

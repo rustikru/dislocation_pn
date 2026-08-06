@@ -282,16 +282,16 @@ function showReasonFields() {
   // Причина и обстоятельства
   // Формируем список с расширенными данными
   const reasonItems = references.reasonsList.map((reason) => ({
-    label: `${reason.CODE || ''} — ${reason.NAME || ''} (${reason.CATEG_NAME || 'Без категории'})`,
+    label: `${reason.NAME} (${reason.CATEG_NAME || 'Без категории'})`,
     value: reason.CODE,
     name: reason.NAME, // сохраняем только имя
     code: reason.CODE,
     categName: reason.CATEG_NAME, // Категория причины
   }))
-  // Начальное значение для поля — только описание причины
+  // Начальное значение для поля (только NAME)
   const reasonInitLabel = (() => {
     const reason = references.reasonsList.find(
-      (reason) => String(reason.CODE) === String(activeDraft.reasonId),
+      (reason) => reason.CODE === activeDraft.reasonId,
     )
     return reason ? reason.NAME : activeDraft.reasonName || ''
   })()
@@ -311,6 +311,7 @@ function showReasonFields() {
       activeDraft.reasonId = it.code
       activeDraft.reasonName = it.name
 
+      // Подставляем в поле только NAME
       $('#auto-reason').val(it.name)
     },
     function () {

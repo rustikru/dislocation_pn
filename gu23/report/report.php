@@ -35,7 +35,7 @@ require_once __DIR__ . '/../classes/GuActRepository.php';
 require_once __DIR__ . '/../classes/Gu23Db.php';
 require_once __DIR__ . '/GuActPhpWordReport.php';
 
-// Доступ к модулю ГУ-23 (а не только факт авторизации)
+// Доступ к модулю ГУ-23
 if (!GuActRepository::canAccess($conn1, $auth)) {
     http_response_code(403);
     exit('Нет доступа к модулю ГУ-23');

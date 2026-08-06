@@ -13,7 +13,10 @@ let refsSearch = ''
 let refsPage = 1
 let currentItems = []
 let reasonCategories = []
+let reasonKinds = []
+let reasonKind = ''
 let reasonCateg = ''
+let reasonStatus = ''
 let searchTimer = null
 
 const REFS_PAGE_SIZE = 20 //
@@ -24,7 +27,10 @@ export function showRefs(container) {
   refsPage = 1
   currentItems = []
   reasonCategories = []
+  reasonKinds = []
+  reasonKind = ''
   reasonCateg = ''
+  reasonStatus = ''
 
   $(container).load('pages/refs.php', () => {
     prepareRefsPage(container)
@@ -44,7 +50,9 @@ function prepareRefsPage(container) {
     refsTab = tab
     refsSearch = ''
     refsPage = 1
+    reasonKind = ''
     reasonCateg = ''
+    reasonStatus = ''
     $('#refs-search').val('')
     setActiveTab()
     loadRefsTab()
@@ -71,18 +79,35 @@ function prepareRefsPage(container) {
       <form method="post" action="/gu23/data.php" style="display:none">
         <input type="hidden" name="ajax_action" value="gu23_reasons_excel">
         <input type="hidden" name="search">
+        <input type="hidden" name="act_kind">
         <input type="hidden" name="categ">
+        <input type="hidden" name="active">
       </form>
     `)
     $form.find('[name="search"]').val(refsSearch)
+    $form.find('[name="act_kind"]').val(reasonKind)
     $form.find('[name="categ"]').val(reasonCateg)
+    $form.find('[name="active"]').val(reasonStatus)
     $('body').append($form)
     $form.trigger('submit')
     $form.remove()
   })
 
+  $(container).on('click.refs', '#btn-import-reasons', () => {
+    if (!hasPerm('MANAGE_REFS') || refsTab !== 'reasons') return
+    $('#reason-import-file').val('').trigger('click')
+  })
+
+  $(container).on('change.refs', '#reason-import-file', function () {
+    const file = this.files && this.files[0]
+    if (!file) return
+    importReasonsFile(file)
+  })
+
   $(container).on('change.refs', '.reason-filter', function () {
+    reasonKind = $('#reason-filter-kind').val() || ''
     reasonCateg = $('#reason-filter-categ').val() || ''
+    reasonStatus = $('#reason-filter-status').val() || ''
     refsPage = 1
     loadRefsTab()
   })
@@ -95,7 +120,9 @@ function loadRefsTab() {
   sendApiRequest('gu23_refs_get_all', {
     tab: refsTab,
     search: refsSearch,
+    act_kind: refsTab === 'reasons' ? reasonKind : '',
     categ: refsTab === 'reasons' ? reasonCateg : '',
+    active: refsTab === 'reasons' ? reasonStatus : '',
     page: refsPage,
   }).done((data) => {
     if (!data || !data.ok) {
@@ -106,6 +133,7 @@ function loadRefsTab() {
     }
     currentItems = data.items || []
     reasonCategories = data.categories || []
+    reasonKinds = data.actKinds || []
     refsPageSize = data.page_size || REFS_PAGE_SIZE
     if (refsTab === 'signers')
       showSignersList(currentItems, data.total, data.page)
@@ -122,6 +150,68 @@ function setActiveTab() {
     $(this).toggleClass('refs-tab-active', $(this).data('tab') === refsTab)
   })
   $('#btn-export-reasons').toggle(refsTab === 'reasons')
+  $('#btn-import-reasons').toggle(
+    refsTab === 'reasons' && hasPerm('MANAGE_REFS'),
+  )
+}
+
+function importReasonsFile(file) {
+  if (!/\.xlsx$/i.test(file.name || '')) {
+    showToast('Можно загрузить только файл XLSX', 'err')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('ajax_action', 'gu23_reasons_import')
+  formData.append('file', file)
+
+  $('#btn-import-reasons').prop('disabled', true)
+  $.ajax({
+    url: '/gu23/data.php',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    dataType: 'json',
+  })
+    .done((response) => {
+      if (!response || !response.ok) {
+        showToast(response?.msg || 'Ошибка импорта', 'err')
+        return
+      }
+
+      const message =
+        `Создано: ${response.created || 0}, ` +
+        `обновлено: ${response.updated || 0}, ` +
+        `ошибок: ${response.errors_count || 0}`
+      showToast(message, response.errors_count ? 'err' : 'ok')
+
+      if (response.report) {
+        downloadImportReport(
+          response.report,
+          response.report_name || 'gu23_reason_import.txt',
+        )
+      }
+      if ((response.processed || 0) > 0) reloadRefs()
+    })
+    .always(() => {
+      $('#btn-import-reasons').prop('disabled', false)
+      $('#reason-import-file').val('')
+    })
+}
+
+function downloadImportReport(text, fileName) {
+  const blob = new Blob(['\ufeff', text], {
+    type: 'text/plain;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function refsPageButtonsHtml(total, page) {
@@ -360,8 +450,38 @@ function showSignerForm(signer) {
 // Причины составления
 // ─────────────────────────────────────────────
 
+const DEFAULT_KIND_LABELS = {
+  start: 'Начало',
+  end: 'Окончание',
+  other: 'Прочий',
+  any: 'Любой',
+}
+
+function actKindItems() {
+  if (reasonKinds.length) {
+    return reasonKinds.map((row) => [
+      String(row.CODE || row.ID || ''),
+      row.NAME || '',
+    ])
+  }
+  return Object.entries(DEFAULT_KIND_LABELS)
+}
+
+function actKindLabel(code) {
+  const item = actKindItems().find(([kindCode]) => kindCode === code)
+  return item ? item[1] : code
+}
+
 function showReasonsList(items, total, page) {
   const canEditRefs = hasPerm('MANAGE_REFS')
+  const kindOptions =
+    '<option value="">Все</option>' +
+    actKindItems()
+      .map(
+        ([kindCode, label]) =>
+          `<option value="${kindCode}" ${reasonKind === kindCode ? 'selected' : ''}>${label}</option>`,
+      )
+      .join('')
   const categoryOptions =
     '<option value="">Все</option>' +
     reasonCategories
@@ -370,15 +490,28 @@ function showReasonsList(items, total, page) {
           `<option value="${category.ID}" ${String(reasonCateg) === String(category.ID) ? 'selected' : ''}>${escapeHtml(category.NAME || '')}</option>`,
       )
       .join('')
+  const statusOptions = `
+    <option value="" ${reasonStatus === '' ? 'selected' : ''}>Все</option>
+    <option value="Y" ${reasonStatus === 'Y' ? 'selected' : ''}>Активный</option>
+    <option value="N" ${reasonStatus === 'N' ? 'selected' : ''}>Неактивный</option>
+  `
   const rows = items
-    .map(
-      (reason) => `
-        <tr data-id="${escapeHtml(reason.ID || '')}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
-          <td style="padding:5px 8px" class="muted">${escapeHtml(reason.ID || '')}</td>
-          <td style="padding:5px 8px">${escapeHtml(reason.NAME || '')}</td>
-          <td style="padding:5px 8px" class="muted">${escapeHtml(reason.CATEG_NAME || '—')}</td>
-        </tr>`,
-    )
+    .map((r) => {
+      const active = r.ACTIVE === 'Y'
+      return `
+      <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
+        <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
+        <td style="padding:5px 8px" class="muted">${actKindLabel(r.ACT_KIND || '')}</td>
+        <td style="padding:5px 8px" class="muted">${escapeHtml(r.CATEG_NAME || '—')}</td>
+        <td style="padding:5px 8px">
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
+            background:${active ? '#d1f0db' : '#f0f0f0'};color:${active ? '#2d7a47' : '#888'}">
+            <span style="background:${active ? '#2d7a47' : '#aaa'}"></span>
+            ${active ? 'Активный' : 'Неактивный'}
+          </span>
+        </td>
+      </tr>`
+    })
     .join('')
 
   $('#refs-body').html(`
@@ -387,19 +520,25 @@ function showReasonsList(items, total, page) {
         <table class="tbl" style="width:100%;font-size:13px">
           <thead>
             <tr style="font-size:12px">
-              <th style="padding:5px 8px">Код причины</th>
               <th style="padding:5px 8px">Название</th>
+              <th style="padding:5px 8px">Тип акта</th>
               <th style="padding:5px 8px">Категория</th>
+              <th style="padding:5px 8px">Статус</th>
             </tr>
             <tr>
               <th style="padding:3px 8px"></th>
-              <th style="padding:3px 8px"></th>
+              <th style="padding:3px 8px">
+                <select class="inp reason-filter" id="reason-filter-kind" style="font-size:12px;padding:3px 7px;min-width:120px;height:30px">${kindOptions}</select>
+              </th>
               <th style="padding:3px 8px">
                 <select class="inp reason-filter" id="reason-filter-categ" style="font-size:12px;padding:3px 7px;min-width:140px;height:30px">${categoryOptions}</select>
               </th>
+              <th style="padding:3px 8px">
+                <select class="inp reason-filter" id="reason-filter-status" style="font-size:12px;padding:3px 7px;min-width:110px;height:30px">${statusOptions}</select>
+              </th>
             </tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted" style="padding:4px 8px;font-size:12px;line-height:18px">Нет записей</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="4" class="muted" style="padding:4px 8px;font-size:12px;line-height:18px">Нет записей</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -410,8 +549,8 @@ function showReasonsList(items, total, page) {
     .off('click', 'tbody tr')
     .on('click', 'tbody tr', function () {
       if (!canEditRefs) return
-      const id = String($(this).attr('data-id') || '')
-      const reason = currentItems.find((item) => String(item.ID) === id)
+      const id = $(this).data('id')
+      const reason = currentItems.find((r) => String(r.ID) === String(id))
       if (reason) showReasonForm(reason)
     })
 
@@ -428,6 +567,12 @@ function showReasonsList(items, total, page) {
 function showReasonForm(reason) {
   if (!hasPerm('MANAGE_REFS')) return
   const isNew = !reason
+  const kindOptions = actKindItems()
+    .map(
+      ([kindCode, label]) =>
+        `<option value="${kindCode}" ${reason?.ACT_KIND === kindCode ? 'selected' : ''}>${label}</option>`,
+    )
+    .join('')
   const categoryOptions =
     '<option value="">—</option>' +
     reasonCategories
@@ -440,12 +585,12 @@ function showReasonForm(reason) {
   const content = `
     <div class="ref-form">
       <div class="frow">
-        <label>Код причины <span class="req">*</span></label>
-        <input class="inp rf-short-code" value="${escapeHtml(reason?.ID || '')}" ${isNew ? '' : 'readonly'} placeholder="Код причины">
-      </div>
-      <div class="frow">
         <label>Название <span class="req">*</span></label>
         <input class="inp rf-name" value="${escapeHtml(reason?.NAME || '')}" placeholder="Название причины...">
+      </div>
+      <div class="frow">
+        <label>Тип акта</label>
+        <select class="inp rf-kind">${kindOptions}</select>
       </div>
       <div class="frow">
         <label>Категория</label>
@@ -455,40 +600,61 @@ function showReasonForm(reason) {
   `
 
   const saveReason = () => {
-    const shortCode = $('.rf-short-code').val().trim()
     const name = $('.rf-name').val().trim()
-    if (!shortCode) {
-      showToast('Код причины обязателен', 'err')
-      return
-    }
     if (!name) {
       showToast('Название обязательно', 'err')
       return
     }
     sendApiRequest('gu23_ref_reason_save', {
-      short_code: shortCode,
+      id: reason?.ID || 0,
       name,
+      act_kind: $('.rf-kind').val(),
       categ: $('.rf-categ').val(),
-      is_new: isNew ? 'Y' : 'N',
-    }).done((response) => {
-      if (response && response.ok) {
+    }).done((r) => {
+      if (r && r.ok) {
         closeModalWindow()
         showToast(isNew ? 'Причина добавлена' : 'Изменения сохранены', 'ok')
         reloadRefs()
       } else {
-        showToast((response && response.msg) || 'Ошибка', 'err')
+        showToast((r && r.msg) || 'Ошибка', 'err')
       }
     })
   }
 
+  const toggleReason = () => {
+    const msg =
+      reason?.ACTIVE === 'Y' ? 'Отключить причину?' : 'Активировать причину?'
+    showConfirmBox('Изменить статус', msg, () => {
+      sendApiRequest('gu23_ref_reason_toggle', { id: reason.ID }).done((r) => {
+        if (r && r.ok) {
+          closeModalWindow()
+          reloadRefs()
+        } else showToast((r && r.msg) || 'Ошибка', 'err')
+      })
+    })
+  }
+
+  const buttons = [
+    { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
+  ]
+  if (!isNew) {
+    buttons.push({
+      label: reason?.ACTIVE === 'Y' ? 'Отключить' : 'Активировать',
+      className: 'btn ghost',
+      onClick: toggleReason,
+    })
+  }
+  buttons.push({
+    label: 'Сохранить',
+    className: 'btn primary',
+    onClick: saveReason,
+  })
+
   openModalWindow(
     isNew ? 'Новая причина' : 'Причина составления',
     content,
-    [
-      { label: 'Отмена', className: 'btn ghost', onClick: closeModalWindow },
-      { label: 'Сохранить', className: 'btn primary', onClick: saveReason },
-    ],
+    buttons,
     'notice-modal',
   )
-  $(isNew ? '.rf-short-code' : '.rf-name').focus()
+  $('.rf-name').focus()
 }

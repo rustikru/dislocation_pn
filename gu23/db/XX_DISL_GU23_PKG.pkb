@@ -597,7 +597,7 @@
       l_idx         pls_integer;
       l_check_idx   pls_integer;
       l_count       number;
-      l_reason_id   varchar2(150);
+      l_reason_id   number;
       l_ord_no      number;
       l_dur_days    number;
       l_dur_hours   number;
@@ -712,11 +712,17 @@
       end if;
 
       if trim(p_act.reason) is not null then
-         l_reason_id := trim(p_act.reason);
+         begin
+            l_reason_id := to_number ( trim(p_act.reason) );
+         exception
+            when value_error then
+               set_error('ID причины должен быть числом: ' || p_act.reason);
+               return;
+         end;
 
          select count(*)
            into l_count
-           from xx_disl_gu23_ref_reason_v
+           from xx_disl_gu23_ref_reason
           where id = l_reason_id
             and active = 'Y'
             and ( p_act.act_type is null
@@ -724,7 +730,7 @@
                               lower(trim(p_act.act_type)) ) );
 
          if l_count = 0 then
-            set_error('Активная причина с кодом '
+            set_error('Активная причина с ID '
                       || l_reason_id || ' не найдена для указанного типа акта');
             return;
          end if;
@@ -962,7 +968,7 @@
           order by name
       ) loop
          l_row.id := ( r.id );
-         l_row.code := r.id;
+         l_row.code := to_char(r.id);
          l_row.name := r.name;
          l_row.categ_name := r.categ_name;
          pipe row ( l_row );
@@ -5134,29 +5140,79 @@
          return format_error();
    end;
 
-   function gu23_ref_reason_qa_save (
-      p_short_code in varchar2,
-      p_name       in varchar2,
-      p_categ      in number,
-      p_is_new     in varchar2
+   function gu23_ref_reason_save (
+      p_id       in number,
+      p_name     in varchar2,
+      p_act_kind in varchar2,
+      p_categ    in number
    ) return varchar2 is
-      c_plan_id    constant number := 1980;
-      c_char_id    constant number := 2900;
-      v_short_code varchar2(150) := trim(p_short_code);
-      v_name       varchar2(150) := trim(regexp_replace(p_name, '[[:space:]]+', ' '));
-      v_count      number;
    begin
-      if v_short_code is null then
-         return format_error('Укажите код причины');
+      if p_id > 0 then
+         update xx_disl_gu23_ref_reason
+            set name = p_name,
+                act_kind = p_act_kind,
+                categ = p_categ
+          where id = p_id;
+      else
+         insert into xx_disl_gu23_ref_reason (
+            id,
+            name,
+            act_kind,
+            categ,
+            active
+         ) values
+            ( xx_disl_gu23_ref_reason_seq.nextval,
+              p_name,
+              p_act_kind,
+              p_categ,
+              'Y' );
       end if;
-      if length(v_short_code) > 150 then
-         return format_error('Код причины длиннее 150 символов');
-      end if;
+
+      commit;
+      return 'OK';
+   exception
+      when dup_val_on_index then
+            -- причин уже назначена
+         rollback;
+         return format_error('Причина уже добавлена в справочник!');
+      when others then
+         rollback;
+         return format_error();
+   end;
+
+   function gu23_ref_reason_import (
+      p_id       in number,
+      p_name     in varchar2,
+      p_act_kind in varchar2,
+      p_categ    in number,
+      p_active   in varchar2
+   ) return varchar2 is
+      v_id     number;
+      v_count  number;
+      v_kind   varchar2(16) := nvl(
+         lower(trim(p_act_kind)),
+         'any'
+      );
+      v_active varchar2(1) := upper(trim(p_active));
+      v_name   varchar2(500) := trim(regexp_replace(
+         p_name,
+         '[[:space:]]+',
+         ' '
+      ));
+   begin
       if v_name is null then
-         return format_error('Укажите название причины');
+         return format_error('Не заполнено название причины');
       end if;
-      if length(v_name) > 150 then
-         return format_error('Название причины длиннее 150 символов');
+      if v_kind not in ( 'start',
+                         'end',
+                         'other',
+                         'any' ) then
+         return format_error('Некорректный тип акта: ' || p_act_kind);
+      end if;
+
+      if v_active not in ( 'Y',
+                           'N' ) then
+         return format_error('Некорректный статус причины: ' || p_active);
       end if;
 
       if p_categ is not null then
@@ -5168,72 +5224,104 @@
             and sysdate between start_effect_date and end_effect_date;
 
          if v_count = 0 then
-            return format_error('Категория с ID ' || p_categ || ' не найдена или неактивна');
+            return format_error('Категория с ID '
+                                || p_categ || ' не найдена или неактивна');
          end if;
+      end if;
+
+      if
+         p_id is not null
+         and p_id > 0
+      then
+         select count(*)
+           into v_count
+           from xx_disl_gu23_ref_reason
+          where id = p_id;
+
+         if v_count = 0 then
+            return format_error('Причина с ID '
+                                || p_id || ' не найдена');
+         end if;
+
+         v_id := p_id;
+      else
+         v_id := xx_disl_gu23_ref_reason_seq.nextval;
       end if;
 
       select count(*)
         into v_count
-        from xx_etw.qa_plan_char_value_lookups
-       where plan_id = c_plan_id
-         and char_id = c_char_id
-         and short_code = v_short_code;
+        from xx_disl_gu23_ref_reason
+       where upper(trim(regexp_replace(
+            name,
+            '[[:space:]]+',
+            ' '
+         ))) = upper(v_name)
+               --and act_kind = v_kind
+               --and NVL (categ, -1) = NVL (p_categ, -1)
+         and id <> v_id;
 
-      if upper(trim(p_is_new)) = 'Y' then
-         if v_count > 0 then
-            return format_error('Причина с кодом ' || v_short_code || ' уже существует');
-         end if;
-
-         insert into xx_etw.qa_plan_char_value_lookups (
-            plan_id,
-            char_id,
-            short_code,
-            attribute1,
-            last_update_date,
-            last_updated_by,
-            creation_date,
-            created_by,
-            last_update_login,
-            description
-         ) values (
-            c_plan_id,
-            c_char_id,
-            v_short_code,
-            case when p_categ is null then null else to_char(p_categ) end,
-            sysdate,
-            -1,
-            sysdate,
-            -1,
-            -1,
-            v_name
-         );
+      if v_count > 0 then
+         return format_error('Дубликат: причина с таким названием, типом акта' || ' и категорией уже существует');
+      end if;
+      if
+         p_id is not null
+         and p_id > 0
+      then
+         update xx_disl_gu23_ref_reason
+            set name = v_name,
+                act_kind = v_kind,
+                categ = p_categ,
+                active = v_active
+          where id = v_id;
       else
-         if v_count = 0 then
-            return format_error('Причина с кодом ' || v_short_code || ' не найдена');
-         end if;
-
-         update xx_etw.qa_plan_char_value_lookups
-            set description = v_name,
-                attribute1 = case when p_categ is null then null else to_char(p_categ) end,
-                last_update_date = sysdate,
-                last_updated_by = -1,
-                last_update_login = -1
-          where plan_id = c_plan_id
-            and char_id = c_char_id
-            and short_code = v_short_code;
+         insert into xx_disl_gu23_ref_reason (
+            id,
+            name,
+            act_kind,
+            categ,
+            active
+         ) values
+            ( v_id,
+              v_name,
+              v_kind,
+              p_categ,
+              v_active );
       end if;
 
       commit;
-      return 'OK' || c_us || v_short_code;
+      return 'OK'
+             || c_us
+             || v_id;
    exception
       when dup_val_on_index then
          rollback;
-         return format_error('Причина с таким кодом уже существует');
+         return format_error('Дубликат: причина уже существует');
       when others then
          rollback;
          return format_error();
-   end gu23_ref_reason_qa_save;
+   end gu23_ref_reason_import;
 
+   function gu23_ref_reason_toggle (
+      p_id in number
+   ) return varchar2 is
+   begin
+      update xx_disl_gu23_ref_reason
+         set
+         active =
+            case
+               when active = 'Y' then
+                  'N'
+               else
+                  'Y'
+            end
+       where id = p_id;
+
+      commit;
+      return 'OK';
+   exception
+      when others then
+         return format_error();
+   end;
 
    function html_escape (
       p_text in varchar2
@@ -5833,7 +5921,7 @@
 
         --log_new (l_log_in, l_function, 'g_server_host=>' || g_server_host);
         --log_new (l_log_in, l_function, 'x_to_email=>' || x_to_email);
-/*
+         /*
         if UPPER (g_server_host) = 'M5000' and x_to_email is not null
         then
             if TRUNC (SYSDATE) <= TO_DATE ('30.07.2026', 'DD.MM.YYYY')

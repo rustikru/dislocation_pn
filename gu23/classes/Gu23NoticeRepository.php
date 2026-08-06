@@ -1,9 +1,4 @@
 <?php
-/**
- * Gu23NoticeRepository.php
- * add 15.07.2026 BekmansurovRR
- * Репозиторий модуля "ГУ-23 · Страница "Уведомления"".
- */
 
 require_once __DIR__ . '/Gu23Db.php';
 require_once __DIR__ . '/../lib/text_clean.php';
@@ -81,8 +76,7 @@ class Gu23NoticeRepository
     private function noticeReadSet(): void
     {
         $id = $this->noticeId();
-        if ($id === null)
-            return;
+        if ($id === null) return;
         $read = strtoupper(trim((string) filter_input(INPUT_POST, 'read'))) === 'Y' ? 'Y' : 'N';
         $result = $this->db->value(
             'xx_disl_gu23_pkg.gu23_notice_read_set(:p_user_id, :p_notice_id, :p_read_flag)',
@@ -103,8 +97,7 @@ class Gu23NoticeRepository
     private function noticeFavorite(): void
     {
         $id = $this->noticeId();
-        if ($id === null)
-            return;
+        if ($id === null) return;
         $result = $this->db->value(
             'xx_disl_gu23_pkg.gu23_notice_favorite(:p_user_id, :p_notice_id)',
             [':p_user_id' => (int) $this->auth->getUserId(), ':p_notice_id' => $id],
@@ -130,8 +123,7 @@ class Gu23NoticeRepository
 
     private function noticesAll(): void
     {
-        if (!$this->manageRefsAllowed())
-            return;
+        if (!$this->manageRefsAllowed()) return;
         $rows = $this->db->rows(
             "select * from table(xx_disl_gu23_pkg.gu23_notices(p_user_id => :p_user_id, p_all => 'Y'))",
             [':p_user_id' => (int) $this->auth->getUserId()]
@@ -141,11 +133,9 @@ class Gu23NoticeRepository
 
     private function noticeSave(): void
     {
-        if (!$this->manageRefsAllowed())
-            return;
+        if (!$this->manageRefsAllowed()) return;
         $files = json_decode((string) filter_input(INPUT_POST, 'files'), true);
-        if (!is_array($files))
-            $files = [];
+        if (!is_array($files)) $files = [];
 
         $result = $this->db->value(
             'xx_disl_gu23_pkg.gu23_notice_save(:p_id, :p_title, :p_body, :p_notice_type, :p_image_path, :p_files, :p_user_id)',
@@ -165,11 +155,9 @@ class Gu23NoticeRepository
 
     private function noticeToggle(): void
     {
-        if (!$this->manageRefsAllowed())
-            return;
+        if (!$this->manageRefsAllowed()) return;
         $id = $this->noticeId();
-        if ($id === null)
-            return;
+        if ($id === null) return;
         $result = $this->db->value(
             'xx_disl_gu23_pkg.gu23_notice_toggle(:p_notice_id)',
             [':p_notice_id' => $id],
@@ -197,8 +185,7 @@ class Gu23NoticeRepository
 
     private function noticeImageUpload(): void
     {
-        if (!$this->manageRefsAllowed() || !$this->hasUpload())
-            return;
+        if (!$this->manageRefsAllowed() || !$this->hasUpload()) return;
         $file = $_FILES['file'];
         $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
         if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
@@ -220,8 +207,7 @@ class Gu23NoticeRepository
 
     private function noticeFileUpload(): void
     {
-        if (!$this->manageRefsAllowed() || !$this->hasUpload())
-            return;
+        if (!$this->manageRefsAllowed() || !$this->hasUpload()) return;
         $file = $_FILES['file'];
         if ((int) ($file['size'] ?? 0) > 20 * 1024 * 1024) {
             $this->error('Размер файла превышает 20 МБ');
@@ -236,8 +222,7 @@ class Gu23NoticeRepository
         $mime = 'application/octet-stream';
         if (class_exists('finfo')) {
             $detected = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
-            if (is_string($detected) && $detected !== '')
-                $mime = $detected;
+            if (is_string($detected) && $detected !== '') $mime = $detected;
         }
         $dir = dirname(__DIR__) . '/storage/notices/files';
         if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
@@ -261,8 +246,7 @@ class Gu23NoticeRepository
     private function userNoticeAction(string $function): void
     {
         $id = $this->noticeId();
-        if ($id === null)
-            return;
+        if ($id === null) return;
         $result = $this->db->value(
             $function,
             [':p_user_id' => (int) $this->auth->getUserId(), ':p_notice_id' => $id],
@@ -296,22 +280,17 @@ class Gu23NoticeRepository
 
     private function manageRefsAllowed(): bool
     {
-        if ($this->auth->isAuthAdmin())
-            return true;
+        if ($this->auth->isAuthAdmin()) return true;
         // Сохраняем существующее поведение локальной среды разработки.
-        if (file_exists(dirname(__DIR__) . '/db_config.local.php'))
-            return true;
+        if (file_exists(dirname(__DIR__) . '/db_config.local.php')) return true;
         $uid = $this->auth->getUserId();
         if ($uid) {
             try {
-                if (
-                    $this->db->value(
-                        'xx_disl_gu23_pkg.gu23_has_perm(:p_user_id, :p_perm_code)',
-                        [':p_user_id' => $uid, ':p_perm_code' => 'MANAGE_REFS'],
-                        2
-                    ) === 'Y'
-                )
-                    return true;
+                if ($this->db->value(
+                    'xx_disl_gu23_pkg.gu23_has_perm(:p_user_id, :p_perm_code)',
+                    [':p_user_id' => $uid, ':p_perm_code' => 'MANAGE_REFS'],
+                    2
+                ) === 'Y') return true;
             } catch (\RuntimeException $e) {
             }
         }
