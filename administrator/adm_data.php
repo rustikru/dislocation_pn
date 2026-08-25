@@ -110,6 +110,42 @@ if ($ajaxAction === 'change_parent_for_railway') {
     exit;
 }
 
+if ($ajaxAction === 'get_employee_1c_id') {
+    $oracleParams = [
+        'value' => trim((string) ($_POST['value'] ?? '')),
+    ];
+
+    try {
+        if ($oracleParams['value'] === '') {
+            echo json_encode([], JSON_UNESCAPED_UNICODE);
+        } else {
+            $employees = $database->fetchAll(
+                'select id, name from table(xx_dislocation.get_employee_1c_id(:value))',
+                $oracleParams
+            );
+            echo json_encode(array_map(static function (array $employee): array {
+                return [
+                    'label' => $employee['NAME'] . ' (' . $employee['ID'] . ')',
+                    'value' => $employee['ID'],
+                    'name' => $employee['NAME'],
+                ];
+            }, $employees), JSON_UNESCAPED_UNICODE);
+        }
+    } catch (Throwable $exception) {
+        $logger->error(
+            $ajaxAction,
+            $exception->getMessage(),
+            $exception->getCode(),
+            ['parameters' => $oracleParams]
+        );
+        http_response_code(500);
+        echo json_encode(['error' => 'Ошибка выполнения операции'], JSON_UNESCAPED_UNICODE);
+    } finally {
+        $database->close();
+    }
+    exit;
+}
+
 if ($ajaxAction === 'add_user') {
     $oracleParams = [
         'login' => $_POST['login'] ?? null,
@@ -123,13 +159,14 @@ if ($ajaxAction === 'add_user') {
         'stations' => $_POST['stations'] ?? null,
         'credentials' => $_POST['credentials'] ?? null,
         'user_email' => $_POST['user_email'] ?? null,
+        'card_id' => $_POST['card_id'] ?? null,
     ];
 
     try {
         $result = $database->callFunction(
             'begin :result := xx_dislocation.add_user('
                 . ':login, :full_name, :enterprise, :division, :change_pwd, :open, '
-                . ':phone_num, :default_station, :stations, :credentials, :user_email); end;',
+                . ':phone_num, :default_station, :stations, :credentials, :user_email, :card_id); end;',
             $oracleParams,
             ['length' => 1000000]
         );
@@ -164,13 +201,14 @@ if ($ajaxAction === 'change_user') {
         'stations' => $_POST['stations'] ?? null,
         'credentials' => $_POST['credentials'] ?? null,
         'user_email' => $_POST['user_email'] ?? null,
+        'card_id' => $_POST['card_id'] ?? null,
     ];
 
     try {
         $result = $database->callFunction(
             'begin :result := xx_dislocation.change_user('
                 . ':user_id, :login, :full_name, :enterprise, :division, :change_pwd, :open, '
-                . ':phone_num, :default_station, :stations, :credentials, :user_email); end;',
+                . ':phone_num, :default_station, :stations, :credentials, :user_email, :card_id); end;',
             $oracleParams,
             ['length' => 1000000]
         );

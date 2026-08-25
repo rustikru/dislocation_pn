@@ -1,872 +1,828 @@
-п»ї/* Formatted on 06.08.2026 8:00:28 (QP5 v5.417) */
-create or replace package xx_etw.xx_disl_gu23_pkg as
+CREATE OR REPLACE package XX_ETW.xx_disl_gu23_pkg
+as
     /******************************************************************************
     NAME:  xx_etw.xx_disl_gu23_pkg
-    PURPOSE:   РђРєС‚С‹: СЃРѕСЃС‚Р°РІР»РµРЅРёРµ Р°РєС‚РѕРІ (С„РѕСЂРјР° Р“РЈ-23)
+    PURPOSE:   Акты: составление актов (форма ГУ-23)
     REVISIONS:
     Ver        Date        Author           Description
     ---------  ----------  ---------------  ------------------------------------
     1.0        23.06.2026  BekmansurovRR    1. Created this package.
-    1.1        23.06.2026  BekmansurovRR    2. РќРѕРІС‹Рµ РїРѕР»СЏ Р°РєС‚Р°: st_from, st_to,
-                                              waybill_no, cargo_ref; СЂР°Р·РґРµР»СЊРЅС‹Рµ
-                                              СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№ Рё РїРѕРґРїРёСЃР°РЅС‚РѕРІ;
-                                              СЃРїСЂР°РІРѕС‡РЅРёРє РіСЂСѓР·РѕРІ.
+    1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
+                                              waybill_no, cargo_ref; раздельные
+                                              справочники станций и подписантов;
+                                              справочник грузов.
  ******************************************************************************/
 
-    /* ---- РЈСЃС‚Р°РЅРѕРІРёС‚СЊ IP РєР»РёРµРЅС‚Р° ---- */
-   procedure gu23_set_client_ip (
-      p_ip in varchar2
-   );
+    /* ---- Установить IP клиента ---- */
+    procedure gu23_set_client_ip (p_ip in varchar2);
 
-   function gu23_act_link (
-      p_base_url in varchar2,
-      p_path     in varchar2
-   ) return varchar2;
+    function gu23_act_link (p_base_url in varchar2, p_path in varchar2)
+        return varchar2;
 
-   function fnc_mapping_dept (
-      p_dept_name in varchar2
-   ) return varchar2;
+    function fnc_mapping_dept (p_dept_name in varchar2)
+        return varchar2;
 
-   function html_escape (
-      p_text in varchar2
-   ) return varchar2;
+    function html_escape (p_text in varchar2)
+        return varchar2;
 
 
-    /* ---- РћС‚РїСЂР°РІРёС‚СЊ HTML-РїРёСЃСЊРјРѕ ---- */
-   procedure gu23_send_mail (
-      p_to      in varchar2,
-      p_subject in varchar2,
-      p_body    in clob,
-      p_from    in varchar2 default 'noreply@test.ru'
-   );
+    /* ---- Отправить HTML-письмо ---- */
+    procedure gu23_send_mail (
+        p_to        in varchar2,
+        p_subject   in varchar2,
+        p_body      in clob,
+        p_from      in varchar2 default 'noreply@test.ru');
 
-    /* ************* Begin РўРёРїС‹ ************************* */
+    /* ************* Begin Типы ************************* */
 
-   type xx_disl_gu23_ref_row is record (
-         id         number,
-         code       varchar2(512),
-         name       varchar2(512),
-         categ_name varchar2(512)           -- add 21.07.2026 BekmansurovRR
-   );
-   type xx_disl_gu23_ref_tab is
-      table of xx_disl_gu23_ref_row;
-   type xx_disl_gu23_signer_row is record (
-         id            number,
-         signer_ref_id number,                      -- ref ID РёР· СЃРїСЂР°РІРѕС‡РЅРёРєР°
-         fio           varchar2(256),
-         post          varchar2(256),
-         org           varchar2(256),
-         unit          varchar2(256),
-         stype         varchar2(128),
-         ord_no        number,
-         user_id       number        -- ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РµСЃР»Рё ref-РїРѕРґРїРёСЃР°РЅС‚)
-   );
-   type xx_disl_gu23_signer_tab is
-      table of xx_disl_gu23_signer_row;
-   type t_gu23_act_row is record (
-         id                  number,
-         act_number          varchar2(64),
-         act_start_number    varchar2(64),
-         act_type            varchar2(16),
-         status              varchar2(16),
-         dept_id             number,                              -- ID С†РµС…Р°
-         dept                varchar2(32),    -- РєРѕРґ С†РµС…Р° (РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ)
-         station_id          varchar2(150),           -- ID СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
-         station             varchar2(128),   -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
-         st_from_id          varchar2(150),           -- ID СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
-         st_from             varchar2(128),   -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
-         st_to_id            varchar2(150),            -- ID СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
-         st_to               varchar2(128),    -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ (РЅР°Р·РІР°РЅРёРµ)
-         cargo_ref           varchar2(256),                         -- РіСЂСѓР·
-         reason_id           varchar2(512),
-         reason_name         varchar2(1000),
-         categ_name          varchar2(1000), -- add 21.07.2026 BekmansurovRR
-         circumstances       varchar2(4000),
-         start_at            varchar2(20),
-         end_at              varchar2(20),
-         dur_days            number,
-         dur_hours           number,
-         dur_total_h         number,
-         cal_days            number,
-         linked_start_id     number,
-         linked_start_number varchar2(64),
-         wagon_cnt           number,
-         file_cnt            number,
-         annul_reason        varchar2(1000),
-         created_at          varchar2(20),
-         created_by          varchar2(256),
-         modified_at         varchar2(20),
-         content_version     number,
-         rn                  number
-   );
-   type xx_disl_gu23_act_tab is
-      table of t_gu23_act_row;
-   type xx_disl_gu23_row is record (
-         id            number,
-         act_id        number,
-         wagon_no      varchar2(16),
-         owner         varchar2(128),
-         kind          varchar2(128),
-         st_from       varchar2(128),
-         st_to         varchar2(128),
-         cargo         varchar2(256),
-         weight        varchar2(32),
-         waybill_no    varchar2(64),
-         act_start_num varchar2(256),
-         dur_total_h   number
-   );
-   type xx_disl_gu23_row_tab is
-      table of xx_disl_gu23_row;
-   type xx_disl_gu23_file_row is record (
-         id            number,
-         act_id        number,
-         file_name     varchar2(512),
-         file_ext      varchar2(32),
-         mime_type     varchar2(128),
-         real_path     varchar2(1024),
-         created_at    varchar2(20),
-         created_by    varchar2(256),
-         file_category varchar2(16)
-   );
-   type xx_disl_gu23_file_tab is
-      table of xx_disl_gu23_file_row;
-   type xx_disl_gu23_hist_row is record (
-         id     number,
-         act_id number,
-         ts     varchar2(20),
-         usr    varchar2(256),
-         txt    varchar2(1000),
-         ip     varchar2(64)
-   );
-   type xx_disl_gu23_hist_tab is
-      table of xx_disl_gu23_hist_row;
-   type t_gu23_notice_row is record (
-         id               number,
-         title            varchar2(300),
-         body             varchar2(4000),
-         notice_type      varchar2(30),
-         notice_type_name varchar2(500),
-         image_path       varchar2(500),
-         file_count       number,
-         created_at       varchar2(20),
-         is_read          varchar2(1),
+    type xx_disl_gu23_ref_row is record
+    (
+        id            number,
+        code          varchar2 (512),
+        name          varchar2 (512),
+        categ_name    varchar2 (512)           -- add 21.07.2026 BekmansurovRR
+    );
+
+    type xx_disl_gu23_ref_tab is table of xx_disl_gu23_ref_row;
+
+    type xx_disl_gu23_signer_row is record
+    (
+        id               number,
+        signer_ref_id    number,                      -- ref ID из справочника
+        fio              varchar2 (256),
+        POST             varchar2 (256),
+        org              varchar2 (256),
+        unit             varchar2 (256),
+        stype            varchar2 (128),
+        ord_no           number,
+        user_id          number        -- ID пользователя (если ref-подписант)
+    );
+
+    type xx_disl_gu23_signer_tab is table of xx_disl_gu23_signer_row;
+
+    type t_gu23_act_row is record
+    (
+        id                     number,
+        act_number             varchar2 (64),
+        act_start_number       varchar2 (64),
+        act_type               varchar2 (16),
+        status                 varchar2 (16),
+        dept_id                number,                              -- ID цеха
+        dept                   varchar2 (32),    -- код цеха (для отображения)
+        station_id             varchar2 (150),           -- ID ст. составления
+        station                varchar2 (128),   -- ст. составления (название)
+        st_from_id             varchar2 (150),           -- ID ст. отправления
+        st_from                varchar2 (128),   -- ст. отправления (название)
+        st_to_id               varchar2 (150),            -- ID ст. назначения
+        st_to                  varchar2 (128),    -- ст. назначения (название)
+        cargo_ref              varchar2 (256),                         -- груз
+        reason_id              varchar2 (512),
+        reason_name            varchar2 (1000),
+        categ_name             varchar2 (1000), -- add 21.07.2026 BekmansurovRR
+        circumstances          varchar2 (4000),
+        start_at               varchar2 (20),
+        end_at                 varchar2 (20),
+        dur_days               number,
+        dur_hours              number,
+        dur_total_h            number,
+        cal_days               number,
+        linked_start_id        number,
+        linked_start_number    varchar2 (64),
+        wagon_cnt              number,
+        file_cnt               number,
+        annul_reason           varchar2 (1000),
+        created_at             varchar2 (20),
+        created_by             varchar2 (256),
+        modified_at            varchar2 (20),
+        content_version        number,
+        rn                     number
+    );
+
+    type xx_disl_gu23_act_tab is table of t_gu23_act_row;
+
+    type xx_disl_gu23_row is record
+    (
+        id               number,
+        act_id           number,
+        wagon_no         varchar2 (16),
+        owner            varchar2 (128),
+        kind             varchar2 (128),
+        st_from          varchar2 (128),
+        st_to            varchar2 (128),
+        cargo            varchar2 (256),
+        weight           varchar2 (32),
+        waybill_no       varchar2 (64),
+        act_start_num    varchar2 (256),
+        dur_total_h      number
+    );
+
+    type xx_disl_gu23_row_tab is table of xx_disl_gu23_row;
+
+    type xx_disl_gu23_file_row is record
+    (
+        id               number,
+        act_id           number,
+        file_name        varchar2 (512),
+        file_ext         varchar2 (32),
+        mime_type        varchar2 (128),
+        real_path        varchar2 (1024),
+        created_at       varchar2 (20),
+        created_by       varchar2 (256),
+        file_category    varchar2 (16)
+    );
+
+    type xx_disl_gu23_file_tab is table of xx_disl_gu23_file_row;
+
+    type xx_disl_gu23_hist_row is record
+    (
+        id        number,
+        act_id    number,
+        ts        varchar2 (20),
+        usr       varchar2 (256),
+        txt       varchar2 (1000),
+        ip        varchar2 (64)
+    );
+
+    type xx_disl_gu23_hist_tab is table of xx_disl_gu23_hist_row;
+
+    type t_gu23_notice_row is record
+    (
+        id                  number,
+        title               varchar2 (300),
+        body                varchar2 (4000),
+        notice_type         varchar2 (30),
+        notice_type_name    varchar2 (500),
+        image_path          varchar2 (500),
+        file_count          number,
+        created_at          varchar2 (20),
+        is_read             varchar2 (1),
         -- add 23.07.2026 BekmansurovRR
-        -- РїСЂРёР·РЅР°Рє "РёР·Р±СЂР°РЅРЅРѕРµ" СѓРІРµРґРѕРјР»РµРЅРёРµ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-         is_favorite      varchar2(1),
-         active           varchar2(1),
-         section_notif    varchar2(50) -- СЃРµРєС†РёСЏ СѓРІРµРґРѕРјР»РµРЅРёСЏ (table - СЂРµР°Р»СЊРЅРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ СЃРёСЃС‚РµРјС‹, virtual - РІСЂРµРјРµРЅРЅРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ, РєРѕС‚РѕСЂС‹Рµ РЅРµ С…СЂР°РЅРёС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Р°С…)
-   );
-   type t_gu23_notice_tab is
-      table of t_gu23_notice_row;
-   type t_gu23_notice_file_row is record (
-         id        number,
-         notice_id number,
-         file_path varchar2(1000),
-         file_name varchar2(512),
-         file_mime varchar2(128)
-   );
-   type t_gu23_notice_file_tab is
-      table of t_gu23_notice_file_row;
-   type xx_disl_gu23_wagon_row is record (
-         wagon_no     varchar2(16),
-         owner        varchar2(128),
-         kind         varchar2(128),
-         st_from      varchar2(128),
-         st_from_code varchar2(128),
-         st_to        varchar2(128),
-         st_to_code   varchar2(128),
-         cargo        varchar2(256),
-         weight       varchar2(32),
-         waybill_no   varchar2(64),
-         found        number,
-         dup_act      varchar2(64), -- РЅРѕРјРµСЂ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµРіРѕ Р°РєС‚Р° РЅР°С‡Р°Р»Р°, Р·Р°РЅСЏРІС€РµРіРѕ РІР°РіРѕРЅ/РЅР°РєР»Р°РґРЅСѓСЋ (null = СЃРІРѕР±РѕРґРµРЅ)
-         dup_by       varchar2(16) -- РїРѕ С‡РµРјСѓ СЃРѕРІРїР°РґРµРЅРёРµ: 'wagon' (РІ РїСЂРµРґРµР»Р°С… РјРµСЃСЏС†Р°) РёР»Рё 'waybill' (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃ.)
-   );
-   type xx_disl_gu23_wagon_tab is
-      table of xx_disl_gu23_wagon_row;
+        -- признак "избранное" уведомление для пользователя
+        is_favorite         varchar2 (1),
+        active              varchar2 (1),
+        section_notif       varchar2 (50) -- секция уведомления (table - реальное уведомление системы, virtual - временное уведомление, которые не хранится в таблицах)
+    );
 
-    -- РљРѕР»Р»РµРєС†РёРё РґР»СЏ РёРЅС‚РµРіСЂР°С†РёРѕРЅРЅРѕРіРѕ API СЃРѕР·РґР°РЅРёСЏ Р°РєС‚Р° Р“РЈ-23.
-    -- ID Рё ACT_ID СЌР»РµРјРµРЅС‚РѕРІ РєРѕР»Р»РµРєС†РёР№ API РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚: Р·РЅР°С‡РµРЅРёСЏ РЅР°Р·РЅР°С‡Р°СЋС‚СЃСЏ
-    -- РІРЅСѓС‚СЂРё package.
-   type t_api_gu23_act_row_tab is
-      table of xx_disl_gu23_act_row%rowtype index by pls_integer;
-   type t_api_gu23_signer_tab is
-      table of xx_disl_gu23_signer%rowtype index by pls_integer;
+    type t_gu23_notice_tab is table of t_gu23_notice_row;
 
-    -- ---- РўРёРїС‹ РґР»СЏ РїР°СЂР°РјРµС‚СЂРѕРІ РЎРѕС…СЂР°РЅРµРЅРёСЏ Р°РєС‚Р° ----
-   type t_gu23_save_act is record (
-         p_user_id         number,
-         p_id              number,                         -- 0/NULL = РЅРѕРІС‹Р№
-         p_type            varchar2(16),             -- start / end / other
-         p_status          varchar2(16),                  -- draft / active
-         p_dept            varchar2(32),                        -- РєРѕРґ С†РµС…Р°
-         p_station         varchar2(128),             -- ID СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
-         p_st_from         varchar2(128),             -- ID СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
-         p_st_to           varchar2(128),              -- ID СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
-         p_waybill_no      varchar2(64), -- в„– РЅР°РєР»Р°РґРЅРѕР№ (С‚РѕР»СЊРєРѕ РґР»СЏ РїРѕРёСЃРєР° Р”РёСЃР»РѕРєР°С†РёРё, РЅРµ С…СЂР°РЅРёС‚СЃСЏ РЅР° СЃС‚СЂРѕРєР°С… Р°РєС‚Р°)
-         p_cargo_ref       varchar2(256),
-         p_reason          varchar2(512),
-         p_circumstances   varchar2(4000),
-         p_start_at        varchar2(20),   -- 'YYYY-MM-DD HH24:MI' РёР»Рё NULL
-         p_end_at          varchar2(20),
-         p_linked_start_id number,
-         p_wagons          clob, -- CHR(30): Р·Р°РїРёСЃРё; CHR(31): РїРѕР»СЏ: no,owner,kind,from,to,cargo,weight
-         p_signers         clob, -- CHR(30): Р·Р°РїРёСЃРё; CHR(31): РїРѕР»СЏ: ref_id,fio,post,org
-         p_force           varchar2(1) -- 'Y' = СЂР°Р·СЂРµС€РёС‚СЊ РґСѓР±Р»СЊ РѕС‚РєСЂС‹С‚РѕРіРѕ РїСЂРѕСЃС‚РѕСЏ
-   );
-   type t_gu23_add_file is record (
-         p_act_id   number,
-         p_file_id  number,
-         p_name     varchar2(512),
-         p_ext      varchar2(32),
-         p_mime     varchar2(128),
-         p_path     varchar2(1024),
-         p_user_id  number,
-         p_category varchar2(16)
-   );
-   type t_gu23_annul_act is record (
-         p_id      number,
-         p_user_id number,
-         p_reason  varchar2(1000)
-   );
-   type t_gu23_del_act is record (
-         p_id      number,
-         p_user_id number
-   );
-   type t_gu23_del_file is record (
-         p_file_id number,
-         p_user_id number
-   );
+    type t_gu23_notice_file_row is record
+    (
+        id           number,
+        notice_id    number,
+        file_path    varchar2 (1000),
+        file_name    varchar2 (512),
+        file_mime    varchar2 (128)
+    );
 
-    /* ************* end РўРёРїС‹ ************************* */
-   function fnc_boolean_num (
-      p_bool in boolean
-   ) return number;
+    type t_gu23_notice_file_tab is table of t_gu23_notice_file_row;
 
-   procedure insert_act (
-      p_row in xx_disl_gu23_act%rowtype
-   );
+    type xx_disl_gu23_wagon_row is record
+    (
+        wagon_no        varchar2 (16),
+        owner           varchar2 (128),
+        kind            varchar2 (128),
+        st_from         varchar2 (128),
+        st_from_code    varchar2 (128),
+        st_to           varchar2 (128),
+        st_to_code      varchar2 (128),
+        cargo           varchar2 (256),
+        weight          varchar2 (32),
+        waybill_no      varchar2 (64),
+        FOUND           number,
+        dup_act         varchar2 (64), -- номер уже существующего акта начала, занявшего вагон/накладную (null = свободен)
+        dup_by          varchar2 (16) -- по чему совпадение: 'wagon' (в пределах месяца) или 'waybill' (в пределах 3 мес.)
+    );
 
-   procedure update_act (
-      p_row in xx_disl_gu23_act%rowtype
-   );
+    type xx_disl_gu23_wagon_tab is table of xx_disl_gu23_wagon_row;
 
-   procedure insert_act_row (
-      p_row in xx_disl_gu23_act_row%rowtype
-   );
+    -- Коллекции для интеграционного API создания акта ГУ-23.
+    -- ID и ACT_ID элементов коллекций API не использует: значения назначаются
+    -- внутри package.
+    type t_api_gu23_act_row_tab is table of xx_disl_gu23_act_row%rowtype
+        index by pls_integer;
 
-   procedure insert_signer (
-      p_row in xx_disl_gu23_signer%rowtype
-   );
+    type t_api_gu23_signer_tab is table of xx_disl_gu23_signer%rowtype
+        index by pls_integer;
 
-    -- РРЅС‚РµРіСЂР°С†РёРѕРЅРЅС‹Р№ API СЃРѕР·РґР°РЅРёСЏ Р°РєС‚Р° Р“РЈ-23.
-    -- Р’ С‚РµРєСѓС‰РµР№ РІРµСЂСЃРёРё СЂР°Р·СЂРµС€РµРЅРѕ СЃРѕР·РґР°РЅРёРµ С‚РѕР»СЊРєРѕ РІ СЃС‚Р°С‚СѓСЃРµ draft.
-   procedure api_gu23_create (
-      p_act         in xx_disl_gu23_act%rowtype,
-      p_act_rows    in t_api_gu23_act_row_tab,
-      p_signers     in t_api_gu23_signer_tab,
-      p_out_act_id  out number,
-      p_out_status  in out varchar2,
-      p_out_message in out varchar2
-   );
+    -- ---- Типы для параметров Сохранения акта ----
+    type t_gu23_save_act is record
+    (
+        p_user_id            number,
+        p_id                 number,                         -- 0/NULL = новый
+        p_type               varchar2 (16),             -- start / end / other
+        p_status             varchar2 (16),                  -- draft / active
+        p_dept               varchar2 (32),                        -- код цеха
+        p_station            varchar2 (128),             -- ID ст. составления
+        p_st_from            varchar2 (128),             -- ID ст. отправления
+        p_st_to              varchar2 (128),              -- ID ст. назначения
+        p_waybill_no         varchar2 (64), -- № накладной (только для поиска Дислокации, не хранится на строках акта)
+        p_cargo_ref          varchar2 (256),
+        p_reason             varchar2 (512),
+        p_circumstances      varchar2 (4000),
+        p_start_at           varchar2 (20),   -- 'YYYY-MM-DD HH24:MI' или NULL
+        p_end_at             varchar2 (20),
+        p_linked_start_id    number,
+        p_wagons             clob, -- CHR(30): записи; CHR(31): поля: no,owner,kind,from,to,cargo,weight
+        p_signers            clob, -- CHR(30): записи; CHR(31): поля: ref_id,fio,post,org
+        p_force              varchar2 (1) -- 'Y' = разрешить дубль открытого простоя
+    );
 
-    -- ---- РЎРїСЂР°РІРѕС‡РЅРёРєРё
-   function gu23_get_ref_cex return xx_disl_gu23_ref_tab
-      pipelined;
+    type t_gu23_add_file is record
+    (
+        p_act_id      number,
+        p_file_id     number,
+        p_name        varchar2 (512),
+        p_ext         varchar2 (32),
+        p_mime        varchar2 (128),
+        p_path        varchar2 (1024),
+        p_user_id     number,
+        p_category    varchar2 (16)
+    );
 
-   function gu23_get_ref_reason (
-      p_kind in varchar2 default null
-   ) return xx_disl_gu23_ref_tab
-      pipelined;
+    type t_gu23_annul_act is record
+    (
+        p_id         number,
+        p_user_id    number,
+        p_reason     varchar2 (1000)
+    );
 
-   function gu23_get_general_ref (
-      p_ref_code in varchar2
-   ) return xx_disl_gu23_ref_tab
-      pipelined;
+    type t_gu23_del_act is record
+    (
+        p_id         number,
+        p_user_id    number
+    );
 
-    -- ---- РЎРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№
-   function gu23_get_ref_station_compile return xx_disl_gu23_ref_tab                         -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
-      pipelined;
+    type t_gu23_del_file is record
+    (
+        p_file_id    number,
+        p_user_id    number
+    );
 
-   function gu23_get_ref_st_from return xx_disl_gu23_ref_tab                         -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
-      pipelined;
+    /* ************* end Типы ************************* */
+    function fnc_boolean_num (p_bool in boolean)
+        return number;
 
-   function gu23_get_ref_st_to return xx_disl_gu23_ref_tab                          -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
-      pipelined;
+    procedure insert_act (p_row in xx_disl_gu23_act%rowtype);
 
-   function gu23_get_ref_cargo return xx_disl_gu23_ref_tab
-      pipelined;
+    procedure update_act (p_row in xx_disl_gu23_act%rowtype);
 
-    -- РЎРїСЂР°РІРѕС‡РЅРёРєРё РїРѕРґРїРёСЃР°РЅС‚РѕРІ
-    -- СЂР°Р±РѕС‚РЅРёРєРё РїСЂРµРґРїСЂРёСЏС‚РёСЏ; p_dept ? РєРѕРґ С†РµС…Р° РґР»СЏ С„РёР»СЊС‚СЂР°С†РёРё (null = РІСЃРµ)
-   function gu23_get_ref_signer_own (
-      p_dept_id in varchar2 default null
-   ) return xx_disl_gu23_signer_tab
-      pipelined;
+    procedure insert_act_row (p_row in xx_disl_gu23_act_row%rowtype);
 
-    -- СЂР°Р±РѕС‚РЅРёРєРё СЃС‚Р°РЅС†РёРё РћРђРћ ?Р Р–Р”?
-   function gu23_get_ref_signer_rzd return xx_disl_gu23_signer_tab
-      pipelined;
+    procedure insert_signer (p_row in xx_disl_gu23_signer%rowtype);
 
-    -- СЂР°РЅРµРµ РІРІРµРґС‘РЅРЅС‹Рµ РІСЂСѓС‡РЅСѓСЋ РїРѕРґРїРёСЃР°РЅС‚С‹ (РґР»СЏ РїРѕРґСЃРєР°Р·РѕРє РІ СЂРµР¶РёРјРµ ?Р’СЂСѓС‡РЅСѓСЋ?)
-   function gu23_get_ref_signer_manual return xx_disl_gu23_signer_tab
-      pipelined;
+    -- Интеграционный API создания акта ГУ-23.
+    -- В текущей версии разрешено создание только в статусе draft.
+    procedure api_gu23_create (p_act           in     xx_disl_gu23_act%rowtype,
+                               p_act_rows      in     t_api_gu23_act_row_tab,
+                               p_signers       in     t_api_gu23_signer_tab,
+                               p_out_act_id       out number,
+                               p_out_status    in out varchar2,
+                               p_out_message   in out varchar2);
 
-    -- ---- РђРєС‚С‹ ----
-   function gu23_get_acts (
-      p_q               in varchar2,
-      p_type            in varchar2,
-      p_status          in varchar2,
-      p_dept_id         in varchar2,
-      p_date_from       in varchar2,
-      p_date_to         in varchar2,
-      p_has_signed      in varchar2,
-      p_reason_categ    in varchar2,
-      p_page            in number,
-      p_page_size       in number,
-      p_user_id         in number default null,
-      p_requires_action in varchar2 default null
-   ) return xx_disl_gu23_act_tab
-      pipelined;
+    -- ---- Справочники
+    function gu23_get_ref_cex
+        return xx_disl_gu23_ref_tab
+        pipelined;
 
-    -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р°РєС‚РѕРІ РїРѕРґ С‚Рµ Р¶Рµ С„РёР»СЊС‚СЂС‹
-   function gu23_count_acts (
-      p_q               in varchar2,
-      p_type            in varchar2,
-      p_status          in varchar2,
-      p_dept_id         in varchar2,
-      p_date_from       in varchar2,
-      p_date_to         in varchar2,
-      p_has_signed      in varchar2,
-      p_reason_categ    in varchar2,
-      p_user_id         in number default null,
-      p_requires_action in varchar2 default null
-   ) return number;
+    function gu23_get_ref_reason (p_kind in varchar2 default null)
+        return xx_disl_gu23_ref_tab
+        pipelined;
 
-   function gu23_get_act (
-      p_id in number
-   ) return xx_disl_gu23_act_tab
-      pipelined;
+    function gu23_get_general_ref (p_ref_code in varchar2)
+        return xx_disl_gu23_ref_tab
+        pipelined;
 
-   function gu23_get_rows (
-      p_act_id in number
-   ) return xx_disl_gu23_row_tab
-      pipelined;
+    -- ---- Справочники станций
+    function gu23_get_ref_station_compile
+        return xx_disl_gu23_ref_tab                         -- ст. составления
+        pipelined;
 
-   function gu23_get_files (
-      p_act_id in number
-   ) return xx_disl_gu23_file_tab
-      pipelined;
+    function gu23_get_ref_st_from
+        return xx_disl_gu23_ref_tab                         -- ст. отправления
+        pipelined;
 
-   function gu23_file_info (
-      p_file_id in number
-   ) return varchar2;
+    function gu23_get_ref_st_to
+        return xx_disl_gu23_ref_tab                          -- ст. назначения
+        pipelined;
 
-   function gu23_get_signers (
-      p_act_id in number
-   ) return xx_disl_gu23_signer_tab
-      pipelined;
+    function gu23_get_ref_cargo
+        return xx_disl_gu23_ref_tab
+        pipelined;
 
-   function gu23_get_hist (
-      p_act_id in number
-   ) return xx_disl_gu23_hist_tab
-      pipelined;
+    -- Справочники подписантов
+    -- работники предприятия; p_dept ? код цеха для фильтрации (null = все)
+    function gu23_get_ref_signer_own (p_dept_id in varchar2 default null)
+        return xx_disl_gu23_signer_tab
+        pipelined;
 
-    -- РѕС‚РєСЂС‹С‚С‹Рµ Р°РєС‚С‹ РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ (Р±РµР· СЃРІСЏР·Рё СЃ Р°РєС‚Р°РјРё РѕРєРѕРЅС‡Р°РЅРёСЏ)
-   function gu23_get_open_starts return xx_disl_gu23_act_tab
-      pipelined;
+    -- работники станции ОАО ?РЖД?
+    function gu23_get_ref_signer_rzd
+        return xx_disl_gu23_signer_tab
+        pipelined;
 
-    -- РµС‰С‘ РѕС‚РєСЂС‹С‚С‹Рµ (РЅРµ Р·Р°РєСЂС‹С‚С‹Рµ РґРµР№СЃС‚РІСѓСЋС‰РёРј РѕРєРѕРЅС‡Р°РЅРёРµРј) РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р°
-   function gu23_get_open_rows (
-      p_start_id in number
-   ) return xx_disl_gu23_row_tab
-      pipelined;
+    -- ранее введённые вручную подписанты (для подсказок в режиме ?Вручную?)
+    function gu23_get_ref_signer_manual
+        return xx_disl_gu23_signer_tab
+        pipelined;
 
-    -- РІСЃРµ Р°РєС‚С‹ РїРѕ РЅРѕРјРµСЂСѓ РІР°РіРѕРЅР° (РїРѕРёСЃРє РїРѕ РІР°РіРѕРЅСѓ)
-   function gu23_get_by_wagon (
-      p_wagon in varchar2
-   ) return xx_disl_gu23_act_tab
-      pipelined;
+    -- ---- Акты ----
+    function gu23_get_acts (p_q                 in varchar2,
+                            p_type              in varchar2,
+                            p_status            in varchar2,
+                            p_dept_id           in varchar2,
+                            p_date_from         in varchar2,
+                            p_date_to           in varchar2,
+                            p_has_signed        in varchar2,
+                            p_reason_categ      in varchar2,
+                            p_page              in number,
+                            p_page_size         in number,
+                            p_user_id           in number default null,
+                            p_requires_action   in varchar2 default null)
+        return xx_disl_gu23_act_tab
+        pipelined;
 
-    -- ---- РџРѕРёСЃРє СЃС‚Р°РЅС†РёР№ (РґР»СЏ autocomplete, РјРёРЅ 3 СЃРёРјРІРѕР»Р°) ----
-   function gu23_search_station (
-      p_q in varchar2
-   ) return xx_disl_gu23_ref_tab
-      pipelined;
+    -- количество актов под те же фильтры
+    function gu23_count_acts (p_q                 in varchar2,
+                              p_type              in varchar2,
+                              p_status            in varchar2,
+                              p_dept_id           in varchar2,
+                              p_date_from         in varchar2,
+                              p_date_to           in varchar2,
+                              p_has_signed        in varchar2,
+                              p_reason_categ      in varchar2,
+                              p_user_id           in number default null,
+                              p_requires_action   in varchar2 default null)
+        return number;
 
-    -- РЎС‚СЂРѕРєР°, СЂР°Р·РѕР±СЂР°РЅРЅР°СЏ РёР· CLOB-РїР°С‡РєРё РІР°РіРѕРЅРѕРІ (RS/US-С„РѕСЂРјР°С‚)
-   type t_wagon_clob_row is record (
-         wagon_no   varchar2(16),
-         owner      varchar2(128),
-         kind       varchar2(128),
-         st_from    varchar2(128),
-         st_to      varchar2(128),
-         cargo      varchar2(256),
-         weight     varchar2(32),
-         waybill_no varchar2(64)
-   );
-   type t_wagon_clob_tab is
-      table of t_wagon_clob_row;
-   function parse_wagon_clob (
-      p_clob in clob
-   ) return t_wagon_clob_tab
-      pipelined;
-    -- РІРѕР·РІСЂР°С‰Р°РµРј СЃРїРёСЃРѕРє РєРѕРЅС‚РµР№РЅРµСЂРѕРІ РґР»СЏ РїР»Р°С‚С„РѕСЂРјС‹ 
-   function get_cont_for_car (
-      p_car_number in varchar2,
-      p_inv_number in varchar2
-   ) return varchar2;
-    -- РїРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕ РІР°РіРѕРЅР°Рј РёР· РґРёСЃР»РѕРєР°С†РёРё ----
-   function gu23_get_wagon_info (
-      p_wagons       in clob,
-      p_waybill_no   in varchar2 default null,
-      p_dest_station in varchar2 default null,
-      p_cargo_name   in varchar2 default null,
-      p_act_type     in varchar2 default null
-   ) return xx_disl_gu23_wagon_tab
-      pipelined;
+    function gu23_get_act (p_id in number)
+        return xx_disl_gu23_act_tab
+        pipelined;
 
-    -- ---- Р—Р°РїРёСЃСЊ ----
-    -- РїРѕР»СѓС‡РёС‚СЊ id РґР»СЏ РЅРѕРІРѕРіРѕ С„Р°Р№Р»Р°
-   function gu23_new_file_id return number;
+    function gu23_get_rows (p_act_id in number)
+        return xx_disl_gu23_row_tab
+        pipelined;
 
-   function gu23_act_type (
-      p_act_id in number
-   ) return varchar2;
+    function gu23_get_files (p_act_id in number)
+        return xx_disl_gu23_file_tab
+        pipelined;
 
-    -- Р”РѕР±Р°РІР»СЏС‚СЊ РІР»РѕР¶РµРЅРёСЏ РјРѕР¶РµС‚ СЃРѕР·РґР°С‚РµР»СЊ, Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РёР»Рё СѓС‡Р°СЃС‚РЅРёРє РјР°СЂС€СЂСѓС‚Р° РїРѕРґРїРёСЃР°РЅРёСЏ.
-   function gu23_can_change_files (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2;
+    function gu23_file_info (p_file_id in number)
+        return varchar2;
 
-    -- РЈРґР°Р»СЏС‚СЊ РІР»РѕР¶РµРЅРёСЏ РјРѕР¶РµС‚ СЃРѕР·РґР°С‚РµР»СЊ Р°РєС‚Р° (РїРµСЂРІС‹Р№ РїРѕРґРїРёСЃР°РЅС‚/РёСЃРїРѕР»РЅРёС‚РµР»СЊ) РёР»Рё Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ.
-   function gu23_can_delete_files (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2;
+    function gu23_get_signers (p_act_id in number)
+        return xx_disl_gu23_signer_tab
+        pipelined;
 
-   function gu23_add_file (
-      p_data in t_gu23_add_file
-   ) return varchar2;
+    function gu23_get_hist (p_act_id in number)
+        return xx_disl_gu23_hist_tab
+        pipelined;
 
-   function gu23_del_file (
-      p_data in t_gu23_del_file
-   ) return varchar2;
+    -- открытые акты начала простоя (без связи с актами окончания)
+    function gu23_get_open_starts
+        return xx_disl_gu23_act_tab
+        pipelined;
 
-    -- РЎРѕС…СЂР°РЅРµРЅРёРµ Р°РєС‚Р° (СЃРѕР·РґР°РЅРёРµ/РїСЂР°РІРєР° РџСЂРѕРµРєС‚Р°) РІРјРµСЃС‚Рµ СЃРѕ СЃС‚СЂРѕРєР°РјРё Рё РїРѕРґРїРёСЃР°РЅС‚Р°РјРё.
-    -- Р’РѕР·РІСЂР°С‰Р°РµС‚: 'OK'||CHR(31)||id||CHR(31)||number   Р»РёР±Рѕ  'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_save_act (
-      p_data in t_gu23_save_act
-   ) return varchar2;
+    -- ещё открытые (не закрытые действующим окончанием) вагоны акта начала
+    function gu23_get_open_rows (p_start_id in number)
+        return xx_disl_gu23_row_tab
+        pipelined;
 
-   function gu23_del_act (
-      p_data in t_gu23_del_act
-   ) return varchar2;
+    -- все акты по номеру вагона (поиск по вагону)
+    function gu23_get_by_wagon (p_wagon in varchar2)
+        return xx_disl_gu23_act_tab
+        pipelined;
 
-   function gu23_annul_act (
-      p_data in t_gu23_annul_act
-   ) return varchar2;
+    -- ---- Поиск станций (для autocomplete, мин 3 символа) ----
+    function gu23_search_station (p_q in varchar2)
+        return xx_disl_gu23_ref_tab
+        pipelined;
 
-    -- Р—Р°РєСЂС‹С‚СЊ Р°РєС‚ (С‚РѕР»СЊРєРѕ С‚РёРї 'end', С‚РѕР»СЊРєРѕ Р°РєС‚РёРІРЅС‹Р№)
-    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_close_act (
-      p_id      in number,
-      p_user_id in number
-   ) return varchar2;
+    -- Строка, разобранная из CLOB-пачки вагонов (RS/US-формат)
+    type t_wagon_clob_row is record
+    (
+        wagon_no      varchar2 (16),
+        owner         varchar2 (128),
+        kind          varchar2 (128),
+        st_from       varchar2 (128),
+        st_to         varchar2 (128),
+        cargo         varchar2 (256),
+        weight        varchar2 (32),
+        waybill_no    varchar2 (64)
+    );
 
-    -- ---- РЎРѕРіР»Р°СЃРѕРІР°РЅРёРµ Р°РєС‚РѕРІ ----
+    type t_wagon_clob_tab is table of t_wagon_clob_row;
 
-    -- РЎС‚СЂРѕРєР° СЂРµР·СѓР»СЊС‚Р°С‚Р° gu23_approval_get_signers
-   type t_gu23_approval_signer_row is record (
-         approver_id number,
-         full_name   varchar2(256),
-         email       varchar2(256)
-   );
-   type t_gu23_approval_signer_tab is
-      table of t_gu23_approval_signer_row;
+    function parse_wagon_clob (p_clob in clob)
+        return t_wagon_clob_tab
+        pipelined;
 
-    -- РџРѕРґРїРёСЃР°РЅС‚С‹ Р°РєС‚Р°, Сѓ РєРѕС‚РѕСЂС‹С… РµСЃС‚СЊ user_id РІ СЃРїСЂР°РІРѕС‡РЅРёРєРµ (email-СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ)
-   function gu23_approval_get_signers (
-      p_act_id in number
-   ) return t_gu23_approval_signer_tab
-      pipelined;
+    -- возвращаем список контейнеров для платформы
+    function get_cont_for_car (p_car_number   in varchar2,
+                               p_inv_number   in varchar2)
+        return varchar2;
 
-    -- РЎР»РµРґСѓСЋС‰РёР№ РїРѕРґРїРёСЃР°РЅС‚ РїРѕ РїРѕСЂСЏРґРєСѓ.
-    -- Р•СЃР»Рё Р°РєС‚ СѓР¶Рµ РѕС‚РєР»РѕРЅС‘РЅ РёР»Рё РІСЃРµ РїРѕРґРїРёСЃР°Р»Рё, СЃС‚СЂРѕРє РЅРµ РІРѕР·РІСЂР°С‰Р°РµС‚.
-   function gu23_approval_next_signer (
-      p_act_id in number
-   ) return t_gu23_approval_signer_tab
-      pipelined;
+    -- получить данные по вагонам из дислокации ----
+    function gu23_get_wagon_info (p_wagons         in clob,
+                                  p_waybill_no     in varchar2 default null,
+                                  p_dest_station   in varchar2 default null,
+                                  p_cargo_name     in varchar2 default null,
+                                  p_act_type       in varchar2 default null)
+        return xx_disl_gu23_wagon_tab
+        pipelined;
 
-    -- РЎРѕР·РґР°С‚СЊ Р·Р°РїРёСЃРё СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РґР»СЏ РІСЃРµС… РїРѕРґС…РѕРґСЏС‰РёС… РїРѕРґРїРёСЃР°РЅС‚РѕРІ.
-    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ С‡РёСЃР»Рѕ СЃРѕР·РґР°РЅРЅС‹С… Р·Р°РїРёСЃРµР№ РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚.
-   function gu23_approval_init (
-      p_act_id       in number,
-      p_requested_by in number
-   ) return varchar2;
+    -- ---- Запись ----
+    -- получить id для нового файла
+    function gu23_new_file_id
+        return number;
 
-   function gu23_approval_by_token (
-      p_token in varchar2
-   ) return varchar2;
+    function gu23_act_type (p_act_id in number)
+        return varchar2;
 
-    -- РЎС‚Р°С‚СѓСЃ СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РїРѕ act_id + approver_id (РґР»СЏ reject-СЃСЃС‹Р»РѕРє СЃ РґСЂСѓРіРёРј sig)
-   function gu23_approval_get_status (
-      p_act_id      in number,
-      p_approver_id in number
-   ) return varchar2;
+    -- Добавлять вложения может создатель, администратор или участник маршрута подписания.
+    function gu23_can_change_files (p_act_id in number, p_user_id in number)
+        return varchar2;
 
-    -- РЎРѕР·РґР°С‚СЊ Р·Р°РїСЂРѕСЃ РЅР° СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_approval_request (
-      p_act_id       in number,
-      p_approver_id  in number,
-      p_requested_by in number,
-      p_token_sig    in varchar2
-   ) return varchar2;
+    -- Удалять вложения может создатель акта (первый подписант/исполнитель) или администратор.
+    function gu23_can_delete_files (p_act_id in number, p_user_id in number)
+        return varchar2;
 
-    -- РЎРѕС…СЂР°РЅРёС‚СЊ СЂРµС€РµРЅРёРµ СЃРѕРіР»Р°СЃСѓСЋС‰РµРіРѕ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_approval_save_decision (
-      p_act_id      in number,
-      p_approver_id in number,
-      p_status      in varchar2,
-      p_comment     in varchar2,
-      p_token_sig   in varchar2,
-      p_signer_ip   in varchar2 default null,
-      p_base_url    in varchar2 default null
-   ) return varchar2;
+    function gu23_add_file (p_data in t_gu23_add_file)
+        return varchar2;
 
-    -- РўРµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РѕРґРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РїРѕ Р°РєС‚Сѓ
-    -- Р’РѕР·РІСЂР°С‰Р°РµС‚: 'none' | 'pending' | 'approved' | 'rejected'
-   function gu23_approval_my_status (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2;
+    function gu23_del_file (p_data in t_gu23_del_file)
+        return varchar2;
 
-    -- Р’СЃРµ Р·Р°РїРёСЃРё СЃРѕРіР»Р°СЃРѕРІР°РЅРёСЏ РїРѕ Р°РєС‚Сѓ (РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ СЃС‚Р°С‚СѓСЃРѕРІ РІ РєР°СЂС‚РѕС‡РєРµ)
-   type t_gu23_approval_row is record (
-         approver_id    number,
-         full_name      varchar2(256),
-         status         varchar2(16),
-         decided_at     varchar2(20),
-         comment_txt    varchar2(1000),
-         signed_version number,
-         signer_ip      varchar2(64)
-   );
-   type t_gu23_approval_tab is
-      table of t_gu23_approval_row;
-   function gu23_correction_mail_html (
-      p_act_id    in number,
-      p_user_name in varchar2,
-      p_comment   in varchar2,
-      p_base_url  in varchar2 default null
-   ) return clob;
+    -- Сохранение акта (создание/правка Проекта) вместе со строками и подписантами.
+    -- Возвращает: 'OK'||CHR(31)||id||CHR(31)||number   либо  'ERR'||CHR(31)||текст
+    function gu23_save_act (p_data in t_gu23_save_act)
+        return varchar2;
 
-   function gu23_get_approvals (
-      p_act_id in number
-   ) return t_gu23_approval_tab
-      pipelined;
+    function gu23_del_act (p_data in t_gu23_del_act)
+        return varchar2;
 
-   function gu23_is_act_signer (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2;
+    function gu23_annul_act (p_data in t_gu23_annul_act)
+        return varchar2;
 
-   function gu23_can_edit_draft (
-      p_act_id  in number,
-      p_user_id in number
-   ) return varchar2;
+    -- Закрыть акт (только тип 'end', только активный)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_close_act (p_id in number, p_user_id in number)
+        return varchar2;
 
-   function gu23_set_approval_token (
-      p_act_id      in number,
-      p_approver_id in number,
-      p_token_sig   in varchar2
-   ) return varchar2;
+    -- ---- Согласование актов ----
 
-   function gu23_send_next_approval_mail (
-      p_act_id   in number,
-      p_base_url in varchar2 default null
-   ) return varchar2;
+    -- Строка результата gu23_approval_get_signers
+    type t_gu23_approval_signer_row is record
+    (
+        approver_id    number,
+        full_name      varchar2 (256),
+        email          varchar2 (256)
+    );
 
-   function gu23_send_approval_mail (
-      p_act_id      in number,
-      p_approver_id in number,
-      p_base_url    in varchar2 default null
-   ) return varchar2;
+    type t_gu23_approval_signer_tab is table of t_gu23_approval_signer_row;
 
-    -- РџРѕРґРїРёСЃР°С‚СЊ Р°РєС‚ РЅР°РїСЂСЏРјСѓСЋ (Р±РµР· email-СЃСЃС‹Р»РєРё, РёР· РёРЅС‚РµСЂС„РµР№СЃР°)
-    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_direct_decision (
-      p_act_id    in number,
-      p_user_id   in number,
-      p_status    in varchar2,
-      p_comment   in varchar2,
-      p_signer_ip in varchar2 default null,
-      p_base_url  in varchar2 default null
-   ) return varchar2;
+    -- Подписанты акта, у которых есть user_id в справочнике (email-согласование)
+    function gu23_approval_get_signers (p_act_id in number)
+        return t_gu23_approval_signer_tab
+        pipelined;
+
+    -- Следующий подписант по порядку.
+    -- Если акт уже отклонён или все подписали, строк не возвращает.
+    function gu23_approval_next_signer (p_act_id in number)
+        return t_gu23_approval_signer_tab
+        pipelined;
+
+    -- Создать записи согласования для всех подходящих подписантов.
+    -- Возвращает число созданных записей или 'ERR'||CHR(31)||текст.
+    function gu23_approval_init (p_act_id         in number,
+                                 p_requested_by   in number)
+        return varchar2;
+
+    function gu23_approval_by_token (p_token in varchar2)
+        return varchar2;
+
+    -- Статус согласования по act_id + approver_id (для reject-ссылок с другим sig)
+    function gu23_approval_get_status (p_act_id        in number,
+                                       p_approver_id   in number)
+        return varchar2;
+
+    -- Создать запрос на согласование; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_approval_request (p_act_id         in number,
+                                    p_approver_id    in number,
+                                    p_requested_by   in number,
+                                    p_token_sig      in varchar2)
+        return varchar2;
+
+    -- Сохранить решение согласующего; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_approval_save_decision (
+        p_act_id        in number,
+        p_approver_id   in number,
+        p_status        in varchar2,
+        p_comment       in varchar2,
+        p_token_sig     in varchar2,
+        p_signer_ip     in varchar2 default null,
+        p_base_url      in varchar2 default null)
+        return varchar2;
+
+    -- Текущий статус согласования одного пользователя по акту
+    -- Возвращает: 'none' | 'pending' | 'approved' | 'rejected'
+    function gu23_approval_my_status (p_act_id    in number,
+                                      p_user_id   in number)
+        return varchar2;
+
+    -- Все записи согласования по акту (для отображения статусов в карточке)
+    type t_gu23_approval_row is record
+    (
+        approver_id       number,
+        full_name         varchar2 (256),
+        status            varchar2 (16),
+        decided_at        varchar2 (20),
+        comment_txt       varchar2 (1000),
+        signed_version    number,
+        signer_ip         varchar2 (64)
+    );
+
+    type t_gu23_approval_tab is table of t_gu23_approval_row;
+
+    function gu23_correction_mail_html (
+        p_act_id      in number,
+        p_user_name   in varchar2,
+        p_comment     in varchar2,
+        p_base_url    in varchar2 default null)
+        return clob;
+
+    function gu23_get_approvals (p_act_id in number)
+        return t_gu23_approval_tab
+        pipelined;
+
+    function gu23_is_act_signer (p_act_id in number, p_user_id in number)
+        return varchar2;
+
+    function gu23_can_edit_draft (p_act_id in number, p_user_id in number)
+        return varchar2;
+
+    function gu23_set_approval_token (p_act_id        in number,
+                                      p_approver_id   in number,
+                                      p_token_sig     in varchar2)
+        return varchar2;
+
+    function gu23_send_next_approval_mail (
+        p_act_id     in number,
+        p_base_url   in varchar2 default null)
+        return varchar2;
+
+    function gu23_send_approval_mail (
+        p_act_id        in number,
+        p_approver_id   in number,
+        p_base_url      in varchar2 default null)
+        return varchar2;
+
+    -- Подписать акт напрямую (без email-ссылки, из интерфейса)
+    -- Возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_direct_decision (p_act_id      in number,
+                                   p_user_id     in number,
+                                   p_status      in varchar2,
+                                   p_comment     in varchar2,
+                                   p_signer_ip   in varchar2 default null,
+                                   p_base_url    in varchar2 default null)
+        return varchar2;
 
     -- add 24.07.2026 BekmansurovRR
-    -- Р·Р°РєСЂС‹С‚РёРµ Р°РєС‚Р° РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ
-   procedure close_start_if_complete (
-      p_start_id in number,
-      p_user_id  in number default null
-   );
+    -- закрытие акта начала простоя
+    procedure close_start_if_complete (p_start_id   in number,
+                                       p_user_id    in number default null);
 
-    -- ---- Р РѕР»Рё Рё РґРѕСЃС‚СѓРї ----
+    -- ---- Роли и доступ ----
 
-    -- Р•СЃС‚СЊ Р»Рё Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ С…РѕС‚СЏ Р±С‹ РѕРґРЅР° СЂРѕР»СЊ РІ РјРѕРґСѓР»Рµ Р“РЈ-23 ('Y'/'N')
-   function gu23_can_access (
-      p_user_id in number
-   ) return varchar2;
+    -- Есть ли у пользователя хотя бы одна роль в модуле ГУ-23 ('Y'/'N')
+    function gu23_can_access (p_user_id in number)
+        return varchar2;
 
-    -- РЇРІР»СЏРµС‚СЃСЏ Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРј Р“РЈ-23 (СЂРѕР»СЊ GU23_ADMIN) ('Y'/'N')
-   function gu23_is_admin (
-      p_user_id in number
-   ) return varchar2;
+    -- Является ли пользователь администратором ГУ-23 (роль GU23_ADMIN) ('Y'/'N')
+    function gu23_is_admin (p_user_id in number)
+        return varchar2;
 
-   type t_gu23_role_row is record (
-         role_id   number,
-         role_code varchar2(50),
-         role_name varchar2(100)
-   );
-   type t_gu23_role_tab is
-      table of t_gu23_role_row;
+    type t_gu23_role_row is record
+    (
+        role_id      number,
+        role_code    varchar2 (50),
+        role_name    varchar2 (100)
+    );
 
-    -- РЎРїСЂР°РІРѕС‡РЅРёРє РІСЃРµС… СЂРѕР»РµР№
-   function gu23_roles_get_all return t_gu23_role_tab
-      pipelined;
+    type t_gu23_role_tab is table of t_gu23_role_row;
 
-   type t_gu23_user_role_row is record (
-         user_id   number,
-         login     varchar2(100),
-         full_name varchar2(256),
-         role_id   number,
-         role_code varchar2(50),
-         role_name varchar2(100)
-   );
-   type t_gu23_user_role_tab is
-      table of t_gu23_user_role_row;
+    -- Справочник всех ролей
+    function gu23_roles_get_all
+        return t_gu23_role_tab
+        pipelined;
 
-    -- РџРѕР»СЊР·РѕРІР°С‚РµР»Рё СЃ РёС… СЂРѕР»СЏРјРё (РѕРґРЅР° СЃС‚СЂРѕРєР° РЅР° РїР°СЂСѓ user+role; РЅРµС‚ СЂРѕР»Рё ? role_* null)
-   function gu23_users_roles_get (
-      p_search in varchar2 default null
-   ) return t_gu23_user_role_tab
-      pipelined;
+    type t_gu23_user_role_row is record
+    (
+        user_id      number,
+        login        varchar2 (100),
+        full_name    varchar2 (256),
+        role_id      number,
+        role_code    varchar2 (50),
+        role_name    varchar2 (100)
+    );
 
-    -- РќР°Р·РЅР°С‡РёС‚СЊ СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_role_assign (
-      p_user_id in number,
-      p_role_id in number
-   ) return varchar2;
+    type t_gu23_user_role_tab is table of t_gu23_user_role_row;
 
-    -- РћС‚РѕР·РІР°С‚СЊ СЂРѕР»СЊ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_role_revoke (
-      p_user_id in number,
-      p_role_id in number
-   ) return varchar2;
+    -- Пользователи с их ролями (одна строка на пару user+role; нет роли ? role_* null)
+    function gu23_users_roles_get (p_search in varchar2 default null)
+        return t_gu23_user_role_tab
+        pipelined;
 
-    -- РџСЂРѕРІРµСЂРёС‚СЊ РЅР°Р»РёС‡РёРµ РїРѕР»РЅРѕРјРѕС‡РёСЏ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ ('Y'/'N')
-   function gu23_has_perm (
-      p_user_id   in number,
-      p_perm_code in varchar2
-   ) return varchar2;
+    -- Назначить роль пользователю; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_role_assign (p_user_id in number, p_role_id in number)
+        return varchar2;
 
-    -- РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РєРѕРґС‹ РїРѕР»РЅРѕРјРѕС‡РёР№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (pipelined)
-   type t_gu23_perm_code_tab is
-      table of varchar2(50);
-   function gu23_user_perms_get (
-      p_user_id in number
-   ) return t_gu23_perm_code_tab
-      pipelined;
+    -- Отозвать роль у пользователя; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_role_revoke (p_user_id in number, p_role_id in number)
+        return varchar2;
 
-    -- РњР°С‚СЂРёС†Р° СЂРѕР»СЊ ? РїРѕР»РЅРѕРјРѕС‡РёРµ (РІСЃРµ СЃС‚СЂРѕРєРё perm_id ? role_id)
-   type t_gu23_role_perm_row is record (
-         perm_id   number,
-         perm_code varchar2(50),
-         descr     varchar2(200),
-         role_id   number,
-         role_code varchar2(50),
-         role_name varchar2(100),
-         has_perm  varchar2(1)
-   );
-   type t_gu23_role_perm_tab is
-      table of t_gu23_role_perm_row;
-   function gu23_role_perms_get return t_gu23_role_perm_tab
-      pipelined;
+    -- Проверить наличие полномочия у пользователя ('Y'/'N')
+    function gu23_has_perm (p_user_id in number, p_perm_code in varchar2)
+        return varchar2;
 
-    -- РќР°Р·РЅР°С‡РёС‚СЊ РїРѕР»РЅРѕРјРѕС‡РёРµ СЂРѕР»Рё; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_perm_assign (
-      p_role_id in number,
-      p_perm_id in number
-   ) return varchar2;
+    -- Получить все коды полномочий пользователя (pipelined)
+    type t_gu23_perm_code_tab is table of varchar2 (50);
 
-    -- РћС‚РѕР·РІР°С‚СЊ РїРѕР»РЅРѕРјРѕС‡РёРµ Сѓ СЂРѕР»Рё; РІРѕР·РІСЂР°С‰Р°РµС‚ 'OK' РёР»Рё 'ERR'||CHR(31)||С‚РµРєСЃС‚
-   function gu23_perm_revoke (
-      p_role_id in number,
-      p_perm_id in number
-   ) return varchar2;
+    function gu23_user_perms_get (p_user_id in number)
+        return t_gu23_perm_code_tab
+        pipelined;
 
-    -- ---- РЈРІРµРґРѕРјР»РµРЅРёСЏ ----
-   function gu23_notices_virtual (
-      p_user_id in number
-   ) return t_gu23_notice_tab;
+    -- Матрица роль ? полномочие (все строки perm_id ? role_id)
+    type t_gu23_role_perm_row is record
+    (
+        perm_id      number,
+        perm_code    varchar2 (50),
+        descr        varchar2 (200),
+        role_id      number,
+        role_code    varchar2 (50),
+        role_name    varchar2 (100),
+        has_perm     varchar2 (1)
+    );
 
-   function gu23_notices (
-      p_user_id in number,
-                           -- add 24.07.2026 BekmansurovRR: p_all='Y' ? СѓРїСЂР°РІР»РµРЅС‡РµСЃРєРёР№ СЃРїРёСЃРѕРє (РІСЃС‘)
-      p_all     in varchar2 default 'N'
-   ) return t_gu23_notice_tab
-      pipelined;
+    type t_gu23_role_perm_tab is table of t_gu23_role_perm_row;
 
-   function gu23_notice_count (
-      p_user_id in number
-   ) return number;
+    function gu23_role_perms_get
+        return t_gu23_role_perm_tab
+        pipelined;
 
-   function gu23_notice_read (
-      p_user_id   in number,
-      p_notice_id in number
-   ) return varchar2;
+    -- Назначить полномочие роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_perm_assign (p_role_id in number, p_perm_id in number)
+        return varchar2;
 
-   function gu23_notice_read_all (
-      p_user_id in number
-   ) return varchar2;
+    -- Отозвать полномочие у роли; возвращает 'OK' или 'ERR'||CHR(31)||текст
+    function gu23_perm_revoke (p_role_id in number, p_perm_id in number)
+        return varchar2;
 
-    -- add 24.07.2026 BekmansurovRR: gu23_notices_all СѓРґР°Р»С‘РЅ,
-    -- РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ gu23_notices(p_user_id, p_all => 'Y')
+    -- ---- Уведомления ----
+    function gu23_notices_virtual (p_user_id in number)
+        return t_gu23_notice_tab;
 
-   function gu23_notice_save (
-      p_id          in number,
-      p_title       in varchar2,
-      p_body        in varchar2,
-      p_notice_type in varchar2,
-      p_image_path  in varchar2,
-      p_files       in varchar2,
-      p_user_id     in number
-   ) return varchar2;
+    function gu23_notices (p_user_id   in number,
+                           -- add 24.07.2026 BekmansurovRR: p_all='Y' ? управленческий список (всё)
+                           p_all       in varchar2 default 'N')
+        return t_gu23_notice_tab
+        pipelined;
 
-   function gu23_notice_files (
-      p_notice_id in number
-   ) return t_gu23_notice_file_tab
-      pipelined;
+    function gu23_notice_count (p_user_id in number)
+        return number;
 
-   function gu23_notice_file_info (
-      p_file_id in number
-   ) return varchar2;
+    function gu23_notice_read (p_user_id in number, p_notice_id in number)
+        return varchar2;
 
-   function gu23_notice_toggle (
-      p_notice_id in number
-   ) return varchar2;
+    function gu23_notice_read_all (p_user_id in number)
+        return varchar2;
+
+    -- add 24.07.2026 BekmansurovRR: gu23_notices_all удалён,
+    -- используется gu23_notices(p_user_id, p_all => 'Y')
+
+    function gu23_notice_save (p_id            in number,
+                               p_title         in varchar2,
+                               p_body          in varchar2,
+                               p_notice_type   in varchar2,
+                               p_image_path    in varchar2,
+                               p_files         in varchar2,
+                               p_user_id       in number)
+        return varchar2;
+
+    function gu23_notice_files (p_notice_id in number)
+        return t_gu23_notice_file_tab
+        pipelined;
+
+    function gu23_notice_file_info (p_file_id in number)
+        return varchar2;
+
+    function gu23_notice_toggle (p_notice_id in number)
+        return varchar2;
 
     -- add 23.07.2026 BekmansurovRR
-    -- РїРµСЂРµРєР»СЋС‡РµРЅРёРµ РїСЂРёР·РЅР°РєР° "РёР·Р±СЂР°РЅРЅРѕРµ" СѓРІРµРґРѕРјР»РµРЅРёСЏ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-   function gu23_notice_favorite (
-      p_user_id   in number,
-      p_notice_id in number
-   ) return varchar2;
+    -- переключение признака "избранное" уведомления для пользователя
+    function gu23_notice_favorite (p_user_id     in number,
+                                   p_notice_id   in number)
+        return varchar2;
 
     -- add 23.07.2026 BekmansurovRR
-    -- СЂСѓС‡РЅР°СЏ СѓСЃС‚Р°РЅРѕРІРєР° РїСЂРёР·РЅР°РєР° РїСЂРѕС‡С‚РµРЅРёСЏ (РёРєРѕРЅРєР°-РєРѕРЅРІРµСЂС‚: РїСЂРѕС‡РёС‚Р°РЅРѕ/РЅРµ РїСЂРѕС‡РёС‚Р°РЅРѕ)
-   function gu23_notice_read_set (
-      p_user_id   in number,
-      p_notice_id in number,
-      p_read      in varchar2
-   ) return varchar2;
+    -- ручная установка признака прочтения (иконка-конверт: прочитано/не прочитано)
+    function gu23_notice_read_set (p_user_id     in number,
+                                   p_notice_id   in number,
+                                   p_read        in varchar2)
+        return varchar2;
 
-    -- ---- РђРґРјРёРЅРёСЃС‚СЂРёСЂРѕРІР°РЅРёРµ СЃРїСЂР°РІРѕС‡РЅРёРєРѕРІ ----
+    -- ---- Администрирование справочников ----
 
-   type t_gu23_ref_signer_row is record (
-         id     number,
-         fio    varchar2(256),
-         post   varchar2(256),
-         org    varchar2(256),
-         unit   varchar2(256),
-         active char(1)
-   );
-   type t_gu23_ref_signer_tab is
-      table of t_gu23_ref_signer_row;
-   type t_gu23_ref_reason_row is record (
-         id         number,
-         name       varchar2(512),
-         act_kind   varchar2(16),
-         categ      number,
-         categ_name varchar2(500),
-         active     char(1)
-   );
-   type t_gu23_ref_reason_tab is
-      table of t_gu23_ref_reason_row;
-   function gu23_ref_signers_all return t_gu23_ref_signer_tab
-      pipelined;
+    type t_gu23_ref_signer_row is record
+    (
+        id        number,
+        fio       varchar2 (256),
+        POST      varchar2 (256),
+        org       varchar2 (256),
+        unit      varchar2 (256),
+        active    char (1)
+    );
 
-   function gu23_ref_reasons_all return t_gu23_ref_reason_tab
-      pipelined;
+    type t_gu23_ref_signer_tab is table of t_gu23_ref_signer_row;
 
-   function gu23_ref_signer_save (
-      p_id   in number,
-      p_fio  in varchar2,
-      p_post in varchar2,
-      p_org  in varchar2,
-      p_unit in varchar2
-   ) return varchar2;
+    type t_gu23_ref_reason_row is record
+    (
+        id            number,
+        name          varchar2 (512),
+        act_kind      varchar2 (16),
+        categ         number,
+        categ_name    varchar2 (500),
+        active        char (1)
+    );
 
-   function gu23_ref_signer_toggle (
-      p_id in number
-   ) return varchar2;
+    type t_gu23_ref_reason_tab is table of t_gu23_ref_reason_row;
 
-   function gu23_ref_reason_save (
-      p_id       in number,
-      p_name     in varchar2,
-      p_act_kind in varchar2,
-      p_categ    in number
-   ) return varchar2;
+    function gu23_ref_signers_all
+        return t_gu23_ref_signer_tab
+        pipelined;
 
-   function gu23_ref_reason_import (
-      p_id       in number,
-      p_name     in varchar2,
-      p_act_kind in varchar2,
-      p_categ    in number,
-      p_active   in varchar2
-   ) return varchar2;
+    function gu23_ref_reasons_all
+        return t_gu23_ref_reason_tab
+        pipelined;
 
-   function gu23_ref_reason_toggle (
-      p_id in number
-   ) return varchar2;
+    function gu23_ref_signer_save (p_id     in number,
+                                   p_fio    in varchar2,
+                                   p_post   in varchar2,
+                                   p_org    in varchar2,
+                                   p_unit   in varchar2)
+        return varchar2;
+
+    function gu23_ref_signer_toggle (p_id in number)
+        return varchar2;
+
+    function gu23_ref_reason_save (p_id         in number,
+                                   p_name       in varchar2,
+                                   p_act_kind   in varchar2,
+                                   p_categ      in number)
+        return varchar2;
+
+    function gu23_ref_reason_import (p_id         in number,
+                                     p_name       in varchar2,
+                                     p_act_kind   in varchar2,
+                                     p_categ      in number,
+                                     p_active     in varchar2)
+        return varchar2;
+
+    function gu23_ref_reason_toggle (p_id in number)
+        return varchar2;
 
     -- add 24.07.2026 BekmansurovRR
-    -- ---- Р›РёС‡РЅС‹Рµ Р¤РёР»СЊС‚СЂС‹ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№----
-    -- РЎРѕС…СЂР°РЅРµРЅРёРµ С„РёР»СЊС‚СЂР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-   function gu23_filter_save (
-      p_data in xx_disl_gu23_filter%rowtype
-   ) return varchar2;
+    -- ---- Личные Фильтры пользователей----
+    -- Сохранение фильтра пользователя
+    function gu23_filter_save (p_data in xx_disl_gu23_filter%rowtype)
+        return varchar2;
 
-    -- РЈРґР°Р»РµРЅРёРµ С„РёР»СЊС‚СЂР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-   function gu23_filter_del (
-      p_id      in number,
-      p_user_id in number
-   ) return varchar2;
+    -- Удаление фильтра пользователя
+    function gu23_filter_del (p_id in number, p_user_id in number)
+        return varchar2;
 
-   type t_gu23_filter_row is record (
-         id          number,
-         user_id     number,
-         filter_name varchar2(128),
-         params      clob,
-         is_default  varchar2(1)
-   );
-   type t_gu23_filter_tab is
-      table of t_gu23_filter_row;
+    type t_gu23_filter_row is record
+    (
+        id             number,
+        user_id        number,
+        filter_name    varchar2 (128),
+        params         clob,
+        is_default     varchar2 (1)
+    );
 
-    -- Р’С‹РІРѕРґ С„РёР»СЊС‚СЂР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-   function gu23_users_filters (
-      p_user_id in number
-   ) return t_gu23_filter_tab
-      pipelined;
+    type t_gu23_filter_tab is table of t_gu23_filter_row;
 
-    -- РўРёРї РЅРѕРІРѕРіРѕ Р°РєС‚Р° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.
-   function gu23_user_default_type (
-      p_user_id in number
-   ) return varchar2;
+    -- Вывод фильтра пользователя
+    function gu23_users_filters (p_user_id in number)
+        return t_gu23_filter_tab
+        pipelined;
 
-   function gu23_user_default_type_save (
-      p_user_id  in number,
-      p_act_type in varchar2
-   ) return varchar2;
+    -- Тип нового акта по умолчанию для пользователя.
+    function gu23_user_default_type (p_user_id in number)
+        return varchar2;
+
+    function gu23_user_default_type_save (p_user_id    in number,
+                                          p_act_type   in varchar2)
+        return varchar2;
 end xx_disl_gu23_pkg;
 /

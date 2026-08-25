@@ -41,6 +41,8 @@ $(document).ready(function () {
   tab2.section.change_pwd = $('select#user_change_pwd')
   tab2.section.open = $('select#user_open')
   tab2.section.phone_num = $('input#user_phone_num')
+  tab2.section.card_id = $('input#user_card_id')
+  tab2.section.card_name = $('input#user_card_name')
   tab2.section.default_station = $('select#user_default_station')
   tab2.section.stations = $('div#user_stations')
   tab2.section.credentials = $('div#user_credentials')
@@ -48,6 +50,28 @@ $(document).ready(function () {
   tab2.section.add_new_user_btn = $('button#add_new_user_btn')
   tab2.section.save_new_user_btn = $('button#save_new_user_btn').hide()
   tab2.section.change_user_btn = $('button#change_user_btn').hide()
+
+  tab2.section.card_id.autocomplete({
+    minLength: 1,
+    delay: 300,
+    source: function (request, response) {
+      $.ajax({
+        url: 'adm_data.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { ajax_action: 'get_employee_1c_id', value: request.term },
+        success: function (data) {
+          response(data || [])
+        },
+        error: function () { response([]) },
+      })
+    },
+    select: function (event, ui) {
+      tab2.section.card_id.val(ui.item.value)
+      tab2.section.card_name.val(ui.item.name)
+      return false
+    },
+  })
 
   tab2.section.add_new_user_btn.click(function (event) {
     tab2.section.save_new_user_btn.show()
@@ -61,6 +85,8 @@ $(document).ready(function () {
     tab2.section.change_pwd.val('Y')
     tab2.section.open.val('Y')
     tab2.section.phone_num.val('')
+    tab2.section.card_id.val('')
+    tab2.section.card_name.val('')
     tab2.section.default_station.val('')
     tab2.section.stations.find('input').prop('checked', false)
     tab2.section.credentials.find('input').prop('checked', false)
@@ -89,6 +115,7 @@ $(document).ready(function () {
           stations: params.stations,
           credentials: params.credentials,
           user_email: params.user_email,
+          card_id: params.card_id,
           ajax_action: 'add_user',
         },
         success: function (data) {
@@ -124,6 +151,7 @@ $(document).ready(function () {
       stations: l_stations,
       credentials: l_credentials,
       user_email: tab2.section.user_email.val(),
+      card_id: tab2.section.card_id.val(),
     }
     var l_user_id = add_user_ajax(params)
     if (l_user_id != 0) {
@@ -171,6 +199,7 @@ $(document).ready(function () {
           stations: params.stations,
           credentials: params.credentials,
           user_email: params.user_email,
+          card_id: params.card_id,
           ajax_action: 'change_user',
         },
         success: function (data) {
@@ -206,6 +235,7 @@ $(document).ready(function () {
       stations: l_stations,
       credentials: l_credentials,
       user_email: tab2.section.user_email.val(),
+      card_id: tab2.section.card_id.val(),
     }
 
     var l_user_id = change_user_ajax(params)
@@ -261,6 +291,17 @@ $(document).ready(function () {
             tab2.section.change_pwd.val(item.FLAG_CHANGE_PWD)
             tab2.section.open.val(item.OPEN)
             tab2.section.phone_num.val(item.PHONE_NUM)
+            tab2.section.card_id.val(item.CARD_ID)
+            tab2.section.card_name.val('')
+            if (item.CARD_ID) {
+              $.ajax({
+                url: 'adm_data.php', type: 'POST', dataType: 'json',
+                data: { ajax_action: 'get_employee_1c_id', value: item.CARD_ID },
+                success: function (employees) {
+                  if (employees && employees.length) tab2.section.card_name.val(employees[0].name)
+                },
+              })
+            }
             tab2.section.default_station.val(item.USER_DEFAULT_STATION)
 
             tab2.section.stations.find('input').prop('checked', false)

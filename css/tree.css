@@ -159,7 +159,8 @@ ul.tree_Container li:last-child{
 }
 
 .tree_selectedFind {
-    background:  yellow;
+    /* Search highlight must override wagon status colors set via inline styles. */
+    background: yellow !important;
 }
 
 .deleteImage{
@@ -206,5 +207,4 @@ ul.tree_Container li:last-child{
 .wrong_number > div.tree_Content{
     background-color: darkorange;
 }
-
 

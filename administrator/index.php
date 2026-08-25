@@ -195,6 +195,13 @@ if (!$auth->isAuthAdmin()) {
                                         <input id="user_phone_num" maxlength="20" style="width:10em"
                                             class="text ui-widget-content ui-corner-all">
                                     </div>
+                                    <div>
+                                        <label>Ссылка работника 1С</label>
+                                        <input id="user_card_id" maxlength="100"
+                                            class="text ui-widget-content ui-corner-all">
+                                        <input id="user_card_name" readonly tabindex="-1"
+                                            class="text ui-widget-content ui-corner-all">
+                                    </div>
                                 </div>
                             </div>
                             <div id="user_stations" style="display: table" class="border">
