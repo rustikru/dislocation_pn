@@ -37,6 +37,7 @@ function showArchivePage(container, options = {}) {
     type: '',
     status: '',
     dept: '',
+    org_id: '',
     reason_categ: '',
     date_from: defaultDateFrom,
     date_to: defaultDateTo,
@@ -52,6 +53,7 @@ function showArchivePage(container, options = {}) {
     type: 'Тип',
     status: 'Статус',
     dept: 'Цех',
+    org_id: 'Организация',
     reason_categ: 'Категория',
   }
   let selectedPresetId = ''
@@ -61,6 +63,7 @@ function showArchivePage(container, options = {}) {
     type: archiveFilter.type,
     status: archiveFilter.status,
     dept: archiveFilter.dept,
+    org_id: archiveFilter.org_id,
     reason_categ: archiveFilter.reason_categ,
     has_signed: archiveFilter.has_signed,
   })
@@ -212,6 +215,14 @@ function showArchivePage(container, options = {}) {
       'dept',
     )
 
+    addMultiChoiceFilter(
+      [''].concat(references.organizationsList.map((row) => String(row.ID))),
+      ['Все организации'].concat(
+        references.organizationsList.map((row) => row.NAME),
+      ),
+      'org_id',
+    )
+
     // add 21.07.2026 BekmansurovRR
     // Категории причин
     const categCodes = references.reasonCategories.map((d) => d.NAME)
@@ -306,6 +317,7 @@ function showArchivePage(container, options = {}) {
     if (archiveFilter.type) count++
     if (archiveFilter.status) count++
     if (archiveFilter.dept) count++
+    if (archiveFilter.org_id) count++
     if (archiveFilter.reason_categ) count++
     if (archiveFilter.has_signed) count++
     $('#btn-toggle-filters').text(count ? 'Фильтры (' + count + ')' : 'Фильтры')
@@ -315,7 +327,7 @@ function showArchivePage(container, options = {}) {
   // Сводка по применённому шаблону: «Цех: АКМ», «Статус (3)» и т.п.
   function showFilterSummary(presetName) {
     const parts = []
-    ;['type', 'status', 'dept', 'reason_categ'].forEach((key) => {
+    ;['type', 'status', 'dept', 'org_id', 'reason_categ'].forEach((key) => {
       const values = String(archiveFilter[key] || '')
         .split(',')
         .filter(Boolean)
@@ -356,6 +368,8 @@ function showArchivePage(container, options = {}) {
     archiveFilter.type = params.type || ''
     archiveFilter.status = params.status || ''
     archiveFilter.dept = params.dept || ''
+    // Старые шаблоны не содержат org_id: для них применяется «Все организации».
+    archiveFilter.org_id = params.org_id || ''
     archiveFilter.reason_categ = params.reason_categ || ''
     archiveFilter.date_from = defaultDateFrom
     archiveFilter.date_to = defaultDateTo
@@ -559,6 +573,7 @@ function showArchivePage(container, options = {}) {
     archiveFilter.type = ''
     archiveFilter.status = ''
     archiveFilter.dept = ''
+    archiveFilter.org_id = ''
     archiveFilter.reason_categ = ''
     archiveFilter.has_signed = ''
     archiveFilter.requires_action = 'Y'
@@ -583,6 +598,7 @@ function showArchivePage(container, options = {}) {
         <input type="hidden" name="type">
         <input type="hidden" name="status">
         <input type="hidden" name="dept">
+        <input type="hidden" name="org_id">
         <input type="hidden" name="reason_categ">
         <input type="hidden" name="date_from">
         <input type="hidden" name="date_to">
@@ -594,6 +610,7 @@ function showArchivePage(container, options = {}) {
     $form.find('[name="type"]').val(archiveFilter.type)
     $form.find('[name="status"]').val(archiveFilter.status)
     $form.find('[name="dept"]').val(archiveFilter.dept)
+    $form.find('[name="org_id"]').val(archiveFilter.org_id)
     $form.find('[name="reason_categ"]').val(archiveFilter.reason_categ)
     $form.find('[name="date_from"]').val(archiveFilter.date_from)
     $form.find('[name="date_to"]').val(archiveFilter.date_to)

@@ -91,12 +91,13 @@ class GuActExcelReport
     private function acts(array $filter): array
     {
         $total = (int) $this->db->value(
-            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id)',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
                 ':status' => $filter['status'] ?? null,
                 ':dept' => $filter['dept'] ?? null,
+                ':org_id' => $filter['org_id'] ?? null,
                 ':date_from' => $filter['date_from'] ?? null,
                 ':date_to' => $filter['date_to'] ?? null,
                 ':has_signed' => $filter['has_signed'] ?? null,
@@ -109,12 +110,13 @@ class GuActExcelReport
 
         $limit = max(1, $total);
         return $this->db->rows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id))',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
                 ':status' => $filter['status'] ?? null,
                 ':dept' => $filter['dept'] ?? null,
+                ':org_id' => $filter['org_id'] ?? null,
                 ':date_from' => $filter['date_from'] ?? null,
                 ':date_to' => $filter['date_to'] ?? null,
                 ':has_signed' => $filter['has_signed'] ?? null,
@@ -284,6 +286,7 @@ class GuActExcelReport
             ['Тип акта', $this->filterList($filter['type'] ?? '', 'actType')],
             ['Статус', $this->filterList($filter['status'] ?? '', 'actStatus')],
             ['Цех', $this->filterNames($filter['dept'] ?? '', $this->deptNames())],
+            ['Организация', $this->filterNames($filter['org_id'] ?? '', $this->organizationNames())],
             ['Категория причины', $this->filterNames($filter['reason_categ'] ?? '', $this->reasonCategoryNames())],
             ['Дата с', $this->filterText($filter['date_from'] ?? '')],
             ['Дата по', $this->filterText($filter['date_to'] ?? '')],
@@ -408,6 +411,19 @@ class GuActExcelReport
             }
             if ($name !== '') {
                 $names[$name] = $name;
+            }
+        }
+        return $names;
+    }
+
+    private function organizationNames(): array
+    {
+        $rows = $this->db->rows('select id, name from xx_disl_gu23_org_v order by name');
+        $names = [];
+        foreach ($rows as $row) {
+            $id = trim((string) ($row['ID'] ?? ''));
+            if ($id !== '') {
+                $names[$id] = trim((string) ($row['NAME'] ?? ''));
             }
         }
         return $names;

@@ -101,6 +101,7 @@ $(document).ready(() => {
   sendApiRequest('gu23_get_refs').done((response) => {
     // Загружаем глобальные справочники данными
     references.departmentsList = (response && response.cexes) || [] // Цеха
+    references.organizationsList = (response && response.organizations) || []
     references.reasonsList = (response && response.reasons) || [] // Причины
     references.stationsList = (response && response.stations) || [] // Станции
     references.stationsFromList = (response && response.stations_from) || [] // Станции отправления

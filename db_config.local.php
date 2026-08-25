@@ -36,12 +36,12 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 if (empty($_SESSION['is_auth'])) {
     $_SESSION['is_auth'] = true;
-    $_SESSION['is_auth_admin'] = false;
-    //$_SESSION['login'] = 'BEKMANSUROVRR';
-    //$_SESSION['user_id'] = 281;
-    $_SESSION['login'] = 'BOYKOAD';
-    $_SESSION['user_id'] = 247;
-    $_SESSION['full_name'] = 'BOYKOAD';
+    $_SESSION['is_auth_admin'] = true;
+    $_SESSION['login'] = 'user1';
+    $_SESSION['user_id'] = 1;
+    // $_SESSION['login'] = 'BOYKOAD';
+    //$_SESSION['user_id'] = 247;
+    $_SESSION['full_name'] = 'user1';
     $_SESSION['enterprise'] = 'МТФ';
     $_SESSION['flag_change_pwd'] = 'N';
     $_SESSION['administrator'] = 'N';

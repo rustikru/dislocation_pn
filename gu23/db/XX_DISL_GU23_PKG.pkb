@@ -448,7 +448,21 @@
    procedure insert_act (
       p_row in xx_disl_gu23_act%rowtype
    ) is
+      v_org_id xx_disl_gu23_act.org_id%type := 2;
    begin
+      begin
+         select nvl(
+                   enterprise,
+                   2
+                )
+           into v_org_id
+           from xx_disl_users
+          where id = p_row.created_by;
+      exception
+         when no_data_found then
+            v_org_id := 2;
+      end;
+
       insert into xx_disl_gu23_act (
          id,
          act_number,
@@ -470,6 +484,7 @@
          linked_start_id,
          created_at,
          created_by,
+         org_id,
          modified_at,
          modified_by
       ) values
@@ -493,6 +508,7 @@
            p_row.linked_start_id,
            p_row.created_at,
            p_row.created_by,
+           v_org_id,
            p_row.modified_at,
            p_row.modified_by );
    end insert_act;
@@ -1199,7 +1215,8 @@
       p_page            in number,
       p_page_size       in number,
       p_user_id         in number default null,
-      p_requires_action in varchar2 default null
+      p_requires_action in varchar2 default null,
+      p_org_id          in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -1309,6 +1326,11 @@
                                              ','
                                              || a.dept_id
                                              || ','
+                                          ) > 0 )
+                                             and ( p_org_id is null
+                                              or instr(
+                                             ',' || p_org_id || ',',
+                                             ',' || a.org_id || ','
                                           ) > 0 )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
@@ -1422,7 +1444,8 @@
       p_has_signed      in varchar2,
       p_reason_categ    in varchar2,
       p_user_id         in number default null,
-      p_requires_action in varchar2 default null
+      p_requires_action in varchar2 default null,
+      p_org_id          in varchar2 default null
    ) return number is
       v_q    varchar2(4000) := lower(p_q);
       v_from date :=
@@ -1477,6 +1500,11 @@
          ','
          || a.dept_id
          || ','
+      ) > 0 )
+         and ( p_org_id is null
+          or instr(
+         ',' || p_org_id || ',',
+         ',' || a.org_id || ','
       ) > 0 )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null

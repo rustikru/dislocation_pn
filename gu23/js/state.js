@@ -1,6 +1,7 @@
 // Глобальные справочники
 export const references = {
   departmentsList: [], //  цех
+  organizationsList: [], // организации для фильтра архива
   reasonsList: [], //  причины
   stationsList: [], //  станции
   stationsFromList: [], //  stations_from

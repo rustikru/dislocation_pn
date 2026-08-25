@@ -12,6 +12,9 @@ gu23/db/*
 !gu23/db/xx_disl_gu23_user_settings.sql
 !gu23/db/2026-07-30_notice_attachments.sql
 !gu23/db/2026-07-31_qa_reason_view.sql
+!gu23/db/2026-08-25_gu23_act_org_id.sql
+!gu23/db/2026-08-25_gu23_org_view.sql
+!gu23/db/2026-08-25_gu23_act_view_org.sql
 gu23/img/news/
 gu23/storage/notices/
 gu23/log/

@@ -337,7 +337,8 @@ as
                             p_page              in number,
                             p_page_size         in number,
                             p_user_id           in number default null,
-                            p_requires_action   in varchar2 default null)
+                            p_requires_action   in varchar2 default null,
+                            p_org_id            in varchar2 default null)
         return xx_disl_gu23_act_tab
         pipelined;
 
@@ -351,7 +352,8 @@ as
                               p_has_signed        in varchar2,
                               p_reason_categ      in varchar2,
                               p_user_id           in number default null,
-                              p_requires_action   in varchar2 default null)
+                              p_requires_action   in varchar2 default null,
+                              p_org_id            in varchar2 default null)
         return number;
 
     function gu23_get_act (p_id in number)
