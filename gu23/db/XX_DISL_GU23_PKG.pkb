@@ -1,27 +1,27 @@
-CREATE OR REPLACE package body XX_ETW.xx_disl_gu23_pkg
+п»їCREATE OR REPLACE package body XX_ETW.xx_disl_gu23_pkg
 as
     /***************************************************************************************************************************
      NAME:  xx_etw.xx_disl_gu23_pkg
-     PURPOSE:   Акты: составление актов (форма ГУ-23)
+     PURPOSE:   РђРєС‚С‹: СЃРѕСЃС‚Р°РІР»РµРЅРёРµ Р°РєС‚РѕРІ (С„РѕСЂРјР° Р“РЈ-23)
      REVISIONS:
      Ver        Date        Author           Description
      ---------  ----------  ---------------  ------------------------------------
      1.0        23.06.2026  BekmansurovRR    1. Created this package.
-     1.1        23.06.2026  BekmansurovRR    2. Новые поля акта: st_from, st_to,
+     1.1        23.06.2026  BekmansurovRR    2. РќРѕРІС‹Рµ РїРѕР»СЏ Р°РєС‚Р°: st_from, st_to,
                                                waybill_no, cargo_ref;
-                                               раздельные справочники станций и подписантов;
-                                               справочник грузов.
-     1.2        25.06.2026   BekmansurovRR   1. Добавлена рассылка писем и уведомлений подписантам.
+                                               СЂР°Р·РґРµР»СЊРЅС‹Рµ СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚Р°РЅС†РёР№ Рё РїРѕРґРїРёСЃР°РЅС‚РѕРІ;
+                                               СЃРїСЂР°РІРѕС‡РЅРёРє РіСЂСѓР·РѕРІ.
+     1.2        25.06.2026   BekmansurovRR   1. Р”РѕР±Р°РІР»РµРЅР° СЂР°СЃСЃС‹Р»РєР° РїРёСЃРµРј Рё СѓРІРµРґРѕРјР»РµРЅРёР№ РїРѕРґРїРёСЃР°РЅС‚Р°Рј.
   **********************************************************************************************************************************/
     c_package         constant varchar2 (30) := 'xx_disl_gu23_pkg';
     c_dtf             constant varchar2 (30) := 'YYYY-MM-DD HH24:MI:SS';
-    c_us              constant char (1) := CHR (31);      -- разделитель полей
-    c_rs              constant char (1) := CHR (30);    -- разделитель записей
-    g_client_ip                varchar2 (64) := null; -- IP клиента текущего запроса
+    c_us              constant char (1) := CHR (31);      -- СЂР°Р·РґРµР»РёС‚РµР»СЊ РїРѕР»РµР№
+    c_rs              constant char (1) := CHR (30);    -- СЂР°Р·РґРµР»РёС‚РµР»СЊ Р·Р°РїРёСЃРµР№
+    g_client_ip                varchar2 (64) := null; -- IP РєР»РёРµРЅС‚Р° С‚РµРєСѓС‰РµРіРѕ Р·Р°РїСЂРѕСЃР°
     g_server_host              varchar2 (240)
                                    := SYS_CONTEXT ('USERENV', 'SERVER_HOST');
     g_email_subject   constant varchar2 (240)
-                                   := 'Дислокация.Уведомление "ГУ-23"' ;
+                                   := 'Р”РёСЃР»РѕРєР°С†РёСЏ.РЈРІРµРґРѕРјР»РµРЅРёРµ "Р“РЈ-23"' ;
     g_base_url        constant varchar2 (500)
                                    := 'https://dislocation.mf.metafrax.ru' ;
 
@@ -66,12 +66,12 @@ as
                      NVL (p_ip, g_client_ip));
     end;
 
-    -- Возврат ответа для php или другим системам
+    -- Р’РѕР·РІСЂР°С‚ РѕС‚РІРµС‚Р° РґР»СЏ php РёР»Рё РґСЂСѓРіРёРј СЃРёСЃС‚РµРјР°Рј
     function format_error (p_msg in varchar2 default null)
         return varchar2
     is
     begin
-        -- Если передали свой текст, отдаем его, иначе отдаем системный sqlerrm
+        -- Р•СЃР»Рё РїРµСЂРµРґР°Р»Рё СЃРІРѕР№ С‚РµРєСЃС‚, РѕС‚РґР°РµРј РµРіРѕ, РёРЅР°С‡Рµ РѕС‚РґР°РµРј СЃРёСЃС‚РµРјРЅС‹Р№ sqlerrm
         return 'ERR' || c_us || NVL (p_msg, SQLERRM);
     end format_error;
 
@@ -133,29 +133,29 @@ as
         v_end_pos     number;
         v_result      varchar2 (1000);
     begin
-        -- Находим позицию последней открывающей скобки
+        -- РќР°С…РѕРґРёРј РїРѕР·РёС†РёСЋ РїРѕСЃР»РµРґРЅРµР№ РѕС‚РєСЂС‹РІР°СЋС‰РµР№ СЃРєРѕР±РєРё
         v_start_pos := INSTR (p_string, '(', -1);
 
-        -- Если скобки не найдены, возвращаем NULL
+        -- Р•СЃР»Рё СЃРєРѕР±РєРё РЅРµ РЅР°Р№РґРµРЅС‹, РІРѕР·РІСЂР°С‰Р°РµРј NULL
         if v_start_pos = 0
         then
             return null;
         end if;
 
-        -- Находим позицию соответствующей закрывающей скобки после последней открывающей
+        -- РќР°С…РѕРґРёРј РїРѕР·РёС†РёСЋ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РµР№ Р·Р°РєСЂС‹РІР°СЋС‰РµР№ СЃРєРѕР±РєРё РїРѕСЃР»Рµ РїРѕСЃР»РµРґРЅРµР№ РѕС‚РєСЂС‹РІР°СЋС‰РµР№
         v_end_pos := INSTR (p_string, ')', v_start_pos);
 
-        -- Если закрывающая скобка не найдена, возвращаем NULL
+        -- Р•СЃР»Рё Р·Р°РєСЂС‹РІР°СЋС‰Р°СЏ СЃРєРѕР±РєР° РЅРµ РЅР°Р№РґРµРЅР°, РІРѕР·РІСЂР°С‰Р°РµРј NULL
         if v_end_pos = 0
         then
             return null;
         end if;
 
-        -- Извлекаем текст между скобками (исключая сами скобки)
+        -- РР·РІР»РµРєР°РµРј С‚РµРєСЃС‚ РјРµР¶РґСѓ СЃРєРѕР±РєР°РјРё (РёСЃРєР»СЋС‡Р°СЏ СЃР°РјРё СЃРєРѕР±РєРё)
         v_result :=
             SUBSTR (p_string, v_start_pos + 1, v_end_pos - v_start_pos - 1);
 
-        -- Удаляем лишние пробелы в начале и конце
+        -- РЈРґР°Р»СЏРµРј Р»РёС€РЅРёРµ РїСЂРѕР±РµР»С‹ РІ РЅР°С‡Р°Р»Рµ Рё РєРѕРЅС†Рµ
         v_result := TRIM (v_result);
         return v_result;
     end get_last_bracket_text;
@@ -169,18 +169,18 @@ as
         l_value := p_dept_name;
         l_text_brack := get_last_bracket_text (l_value);
 
-        if LOWER (l_value) like '%акм%'
+        if LOWER (l_value) like '%Р°РєРј%'
         then
-            l_value := 'АКМ';
-        elsif LOWER (l_value) like '%метанол%'
+            l_value := 'РђРљРњ';
+        elsif LOWER (l_value) like '%РјРµС‚Р°РЅРѕР»%'
         then
-            l_value := 'Метанол';
-        elsif LOWER (l_value) like '%формалин%'
+            l_value := 'РњРµС‚Р°РЅРѕР»';
+        elsif LOWER (l_value) like '%С„РѕСЂРјР°Р»РёРЅ%'
         then
-            l_value := 'Формалин';
-        elsif LOWER (l_value) like '%помс%'
+            l_value := 'Р¤РѕСЂРјР°Р»РёРЅ';
+        elsif LOWER (l_value) like '%РїРѕРјСЃ%'
         then
-            l_value := 'Помс';
+            l_value := 'РџРѕРјСЃ';
         else
             l_value := (NVL (l_text_brack, l_value));
         end if;
@@ -188,7 +188,7 @@ as
         return UPPER (l_value);
     end;
 
-    -- n-е поле строки, разделители CHR(31)
+    -- n-Рµ РїРѕР»Рµ СЃС‚СЂРѕРєРё, СЂР°Р·РґРµР»РёС‚РµР»Рё CHR(31)
     function g_field (p_line in varchar2, p_idx in pls_integer)
         return varchar2
     is
@@ -234,7 +234,7 @@ as
                         'YYYY-MM-DD HH24:MI');
     end;
 
-    -- Разбирает CLOB в таблицу строк вагонов
+    -- Р Р°Р·Р±РёСЂР°РµС‚ CLOB РІ С‚Р°Р±Р»РёС†Сѓ СЃС‚СЂРѕРє РІР°РіРѕРЅРѕРІ
     function parse_wagon_clob (p_clob in clob)
         return t_wagon_clob_tab
         pipelined
@@ -274,8 +274,8 @@ as
         return;
     end parse_wagon_clob;
 
-    --rem 06.07.2026 BekmansurovRR следующий уникальный номер акта ГУ23-ЦЕХ-ГОД-000001
-    --add 06.07.2026 BekmansurovRR следующий уникальный номер акта ГУ23-ГОД-000001
+    --rem 06.07.2026 BekmansurovRR СЃР»РµРґСѓСЋС‰РёР№ СѓРЅРёРєР°Р»СЊРЅС‹Р№ РЅРѕРјРµСЂ Р°РєС‚Р° Р“РЈ23-Р¦Р•РҐ-Р“РћР”-000001
+    --add 06.07.2026 BekmansurovRR СЃР»РµРґСѓСЋС‰РёР№ СѓРЅРёРєР°Р»СЊРЅС‹Р№ РЅРѕРјРµСЂ Р°РєС‚Р° Р“РЈ23-Р“РћР”-000001
     function g_next_number (p_dept_id in number)
         return varchar2
     is
@@ -284,7 +284,7 @@ as
         v_dept_code   varchar2 (32);
         v_dept_id     number;
     begin
-        --v_dept_id := p_dept_id; --rem 06.07.2026 BekmansurovRR Номер акта не в разрезе цеха
+        --v_dept_id := p_dept_id; --rem 06.07.2026 BekmansurovRR РќРѕРјРµСЂ Р°РєС‚Р° РЅРµ РІ СЂР°Р·СЂРµР·Рµ С†РµС…Р°
         /*
         select code
           into v_dept_code
@@ -313,11 +313,11 @@ as
                          v_cnt);
         end if;
 
-        return 'ГУ23-' --|| v_dept_code || '-'  --rem 06.07.2026 BekmansurovRR
+        return 'Р“РЈ23-' --|| v_dept_code || '-'  --rem 06.07.2026 BekmansurovRR
                        || v_yr || '-' || LPAD (v_cnt, 6, '0');
     end;
 
-    -- строка акта в RECORD
+    -- СЃС‚СЂРѕРєР° Р°РєС‚Р° РІ RECORD
     function g_act_row (a in xx_disl_gu23_act_v%rowtype)
         return t_gu23_act_row
     is
@@ -361,7 +361,7 @@ as
 
 
     -- ----------------------------------------------------------------
-    -- сохранение данных в таблицы (общий API)
+    -- СЃРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… РІ С‚Р°Р±Р»РёС†С‹ (РѕР±С‰РёР№ API)
     -- ----------------------------------------------------------------
     procedure insert_act (p_row in xx_disl_gu23_act%rowtype)
     is
@@ -412,7 +412,7 @@ as
                      p_row.modified_by);
     end insert_act;
 
-    -- Обновление акта
+    -- РћР±РЅРѕРІР»РµРЅРёРµ Р°РєС‚Р°
     procedure update_act (p_row in xx_disl_gu23_act%rowtype)
     is
     begin
@@ -439,7 +439,7 @@ as
          where id = p_row.id;
     end update_act;
 
-    -- Строки акта
+    -- РЎС‚СЂРѕРєРё Р°РєС‚Р°
     procedure insert_act_row (p_row in xx_disl_gu23_act_row%rowtype)
     is
     begin
@@ -465,7 +465,7 @@ as
                      p_row.waybill_no);
     end insert_act_row;
 
-    -- Подписанты акта
+    -- РџРѕРґРїРёСЃР°РЅС‚С‹ Р°РєС‚Р°
     procedure insert_signer (p_row in xx_disl_gu23_signer%rowtype)
     is
     begin
@@ -489,7 +489,7 @@ as
     end insert_signer;
 
     -- ----------------------------------------------------------------
-    -- API создания акта
+    -- API СЃРѕР·РґР°РЅРёСЏ Р°РєС‚Р°
     -- ----------------------------------------------------------------
     procedure api_gu23_create (p_act           in     xx_disl_gu23_act%rowtype,
                                p_act_rows      in     t_api_gu23_act_row_tab,
@@ -527,28 +527,28 @@ as
         if LOWER (TRIM (p_act.status)) <> 'draft'
         then
             set_error (
-                'API пока разрешает создание акта только в статусе draft');
+                'API РїРѕРєР° СЂР°Р·СЂРµС€Р°РµС‚ СЃРѕР·РґР°РЅРёРµ Р°РєС‚Р° С‚РѕР»СЊРєРѕ РІ СЃС‚Р°С‚СѓСЃРµ draft');
             return;
         end if;
 
         if     p_act.act_type is not null
            and LOWER (TRIM (p_act.act_type)) not in ('start', 'end', 'other')
         then
-            set_error ('Неверный тип акта: ' || p_act.act_type);
+            set_error ('РќРµРІРµСЂРЅС‹Р№ С‚РёРї Р°РєС‚Р°: ' || p_act.act_type);
             return;
         end if;
 
-        -- Для проекта даты необязательны, но переданная дата не может быть
-        -- будущей. Проверяется дата и время, а не только календарный день.
+        -- Р”Р»СЏ РїСЂРѕРµРєС‚Р° РґР°С‚С‹ РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅС‹, РЅРѕ РїРµСЂРµРґР°РЅРЅР°СЏ РґР°С‚Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ
+        -- Р±СѓРґСѓС‰РµР№. РџСЂРѕРІРµСЂСЏРµС‚СЃСЏ РґР°С‚Р° Рё РІСЂРµРјСЏ, Р° РЅРµ С‚РѕР»СЊРєРѕ РєР°Р»РµРЅРґР°СЂРЅС‹Р№ РґРµРЅСЊ.
         if p_act.start_at is not null and p_act.start_at > SYSDATE
         then
-            set_error ('Дата начала не может быть больше текущей даты');
+            set_error ('Р”Р°С‚Р° РЅР°С‡Р°Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµР№ РґР°С‚С‹');
             return;
         end if;
 
         if p_act.end_at is not null and p_act.end_at > SYSDATE
         then
-            set_error ('Дата окончания не может быть больше текущей даты');
+            set_error ('Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµР№ РґР°С‚С‹');
             return;
         end if;
 
@@ -556,11 +556,11 @@ as
            and p_act.end_at is not null
            and p_act.end_at < p_act.start_at
         then
-            set_error ('Дата окончания не может быть меньше даты начала');
+            set_error ('Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РјРµРЅСЊС€Рµ РґР°С‚С‹ РЅР°С‡Р°Р»Р°');
             return;
         end if;
 
-        -- Для draft поля необязательны.
+        -- Р”Р»СЏ draft РїРѕР»СЏ РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅС‹.
         if p_act.dept_id is not null
         then
             select COUNT (*)
@@ -570,7 +570,7 @@ as
 
             if l_count = 0
             then
-                set_error ('Цех с ID ' || p_act.dept_id || ' не найден');
+                set_error ('Р¦РµС… СЃ ID ' || p_act.dept_id || ' РЅРµ РЅР°Р№РґРµРЅ');
                 return;
             end if;
         end if;
@@ -585,9 +585,9 @@ as
             if l_count = 0
             then
                 set_error (
-                       'Станция составления с ID '
+                       'РЎС‚Р°РЅС†РёСЏ СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ СЃ ID '
                     || p_act.station_id
-                    || ' не найдена');
+                    || ' РЅРµ РЅР°Р№РґРµРЅР°');
                 return;
             end if;
         end if;
@@ -602,9 +602,9 @@ as
             if l_count = 0
             then
                 set_error (
-                       'Станция отправления с ID '
+                       'РЎС‚Р°РЅС†РёСЏ РѕС‚РїСЂР°РІР»РµРЅРёСЏ СЃ ID '
                     || p_act.st_from_id
-                    || ' не найдена');
+                    || ' РЅРµ РЅР°Р№РґРµРЅР°');
                 return;
             end if;
         end if;
@@ -619,9 +619,9 @@ as
             if l_count = 0
             then
                 set_error (
-                       'Станция назначения с ID '
+                       'РЎС‚Р°РЅС†РёСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ СЃ ID '
                     || p_act.st_to_id
-                    || ' не найдена');
+                    || ' РЅРµ РЅР°Р№РґРµРЅР°');
                 return;
             end if;
         end if;
@@ -634,7 +634,7 @@ as
                 when VALUE_ERROR
                 then
                     set_error (
-                        'ID причины должен быть числом: ' || p_act.reason);
+                        'ID РїСЂРёС‡РёРЅС‹ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ С‡РёСЃР»РѕРј: ' || p_act.reason);
                     return;
             end;
 
@@ -649,9 +649,9 @@ as
             if l_count = 0
             then
                 set_error (
-                       'Активная причина с ID '
+                       'РђРєС‚РёРІРЅР°СЏ РїСЂРёС‡РёРЅР° СЃ ID '
                     || l_reason_id
-                    || ' не найдена для указанного типа акта');
+                    || ' РЅРµ РЅР°Р№РґРµРЅР° РґР»СЏ СѓРєР°Р·Р°РЅРЅРѕРіРѕ С‚РёРїР° Р°РєС‚Р°');
                 return;
             end if;
         end if;
@@ -666,14 +666,14 @@ as
             if l_count = 0
             then
                 set_error (
-                       'Связанный акт начала с ID '
+                       'РЎРІСЏР·Р°РЅРЅС‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р° СЃ ID '
                     || p_act.linked_start_id
-                    || ' не найден');
+                    || ' РЅРµ РЅР°Р№РґРµРЅ');
                 return;
             end if;
         end if;
 
-        -- Проверяем переданных подписантов до вставки шапки акта.
+        -- РџСЂРѕРІРµСЂСЏРµРј РїРµСЂРµРґР°РЅРЅС‹С… РїРѕРґРїРёСЃР°РЅС‚РѕРІ РґРѕ РІСЃС‚Р°РІРєРё С€Р°РїРєРё Р°РєС‚Р°.
         l_idx := p_signers.FIRST;
 
         while l_idx is not null
@@ -683,9 +683,9 @@ as
                        ('own', 'rzd')
             then
                 set_error (
-                       'Подписант ['
+                       'РџРѕРґРїРёСЃР°РЅС‚ ['
                     || l_idx
-                    || ']: допустимый STYPE ? own, rzd или NULL');
+                    || ']: РґРѕРїСѓСЃС‚РёРјС‹Р№ STYPE ? own, rzd РёР»Рё NULL');
                 return;
             end if;
 
@@ -694,9 +694,9 @@ as
             if l_ord_no <= 0 or l_ord_no <> TRUNC (l_ord_no)
             then
                 set_error (
-                       'Подписант ['
+                       'РџРѕРґРїРёСЃР°РЅС‚ ['
                     || l_idx
-                    || ']: ORD_NO должен быть положительным целым числом');
+                    || ']: ORD_NO РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј С†РµР»С‹Рј С‡РёСЃР»РѕРј');
                 return;
             end if;
 
@@ -709,7 +709,7 @@ as
                        l_ord_no
                 then
                     set_error (
-                        'Повторяется позиция подписанта ORD_NO=' || l_ord_no);
+                        'РџРѕРІС‚РѕСЂСЏРµС‚СЃСЏ РїРѕР·РёС†РёСЏ РїРѕРґРїРёСЃР°РЅС‚Р° ORD_NO=' || l_ord_no);
                     return;
                 end if;
 
@@ -719,9 +719,9 @@ as
                        p_signers (l_idx).signer_ref_id
                 then
                     set_error (
-                           'Подписант с ID '
+                           'РџРѕРґРїРёСЃР°РЅС‚ СЃ ID '
                         || p_signers (l_idx).signer_ref_id
-                        || ' передан более одного раза');
+                        || ' РїРµСЂРµРґР°РЅ Р±РѕР»РµРµ РѕРґРЅРѕРіРѕ СЂР°Р·Р°');
                     return;
                 end if;
 
@@ -760,9 +760,9 @@ as
                 if l_count = 0
                 then
                     set_error (
-                           'Подписант с ID '
+                           'РџРѕРґРїРёСЃР°РЅС‚ СЃ ID '
                         || p_signers (l_idx).signer_ref_id
-                        || ' не найден или неактивен');
+                        || ' РЅРµ РЅР°Р№РґРµРЅ РёР»Рё РЅРµР°РєС‚РёРІРµРЅ');
                     return;
                 end if;
             end if;
@@ -829,7 +829,7 @@ as
         l_hist.act_id := l_act.id;
         l_hist.ts := SYSDATE;
         l_hist.usr := p_act.created_by;
-        l_hist.txt := 'Акт создан через API (Проект)';
+        l_hist.txt := 'РђРєС‚ СЃРѕР·РґР°РЅ С‡РµСЂРµР· API (РџСЂРѕРµРєС‚)';
         log_act_history (p_act_id    => l_hist.act_id,
                          p_user_id   => l_hist.usr,
                          p_text      => l_hist.txt);
@@ -837,7 +837,7 @@ as
         commit;
         p_out_act_id := l_act.id;
         p_out_status := 'SUCCESS';
-        p_out_message := 'Акт ГУ-23 создан в статусе Проект';
+        p_out_message := 'РђРєС‚ Р“РЈ-23 СЃРѕР·РґР°РЅ РІ СЃС‚Р°С‚СѓСЃРµ РџСЂРѕРµРєС‚';
     exception
         when others
         then
@@ -846,9 +846,9 @@ as
     end api_gu23_create;
 
     -- ----------------------------------------------------------------
-    -- справочники
+    -- СЃРїСЂР°РІРѕС‡РЅРёРєРё
     -- ----------------------------------------------------------------
-    -- Цеха
+    -- Р¦РµС…Р°
     function gu23_get_ref_cex
         return xx_disl_gu23_ref_tab
         pipelined
@@ -868,7 +868,7 @@ as
         return;
     end;
 
-    -- Причины
+    -- РџСЂРёС‡РёРЅС‹
     function gu23_get_ref_reason (p_kind in varchar2 default null)
         return xx_disl_gu23_ref_tab
         pipelined
@@ -893,7 +893,7 @@ as
     end;
 
     -- add 15.06.2026
-    -- Общий справочник (построен по аналогии, как коды поиска)
+    -- РћР±С‰РёР№ СЃРїСЂР°РІРѕС‡РЅРёРє (РїРѕСЃС‚СЂРѕРµРЅ РїРѕ Р°РЅР°Р»РѕРіРёРё, РєР°Рє РєРѕРґС‹ РїРѕРёСЃРєР°)
     function gu23_get_general_ref (p_ref_code in varchar2)
         return xx_disl_gu23_ref_tab
         pipelined
@@ -917,7 +917,7 @@ as
         return;
     end;
 
-    -- ст. составления
+    -- СЃС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ
     function gu23_get_ref_station_compile
         return xx_disl_gu23_ref_tab
         pipelined
@@ -936,7 +936,7 @@ as
         return;
     end;
 
-    -- ст. отправления
+    -- СЃС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ
     function gu23_get_ref_st_from
         return xx_disl_gu23_ref_tab
         pipelined
@@ -945,7 +945,7 @@ as
     begin
         for r in (  select e_st_code as st_code, st_name as name
                       from xx_etw.xx_nsi_station_v
-                     where st_name like 'УГЛЕУ%'
+                     where st_name like 'РЈР“Р›Р•РЈ%'
                   order by name)
         loop
             l_row.code := r.st_code;
@@ -956,7 +956,7 @@ as
         return;
     end;
 
-    -- ст. назначения
+    -- СЃС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ
     function gu23_get_ref_st_to
         return xx_disl_gu23_ref_tab
         pipelined
@@ -975,7 +975,7 @@ as
         return;
     end;
 
-    -- Груз
+    -- Р“СЂСѓР·
     function gu23_get_ref_cargo
         return xx_disl_gu23_ref_tab
         pipelined
@@ -994,7 +994,7 @@ as
         return;
     end;
 
-    -- подписанты - работники предприятия
+    -- РїРѕРґРїРёСЃР°РЅС‚С‹ - СЂР°Р±РѕС‚РЅРёРєРё РїСЂРµРґРїСЂРёСЏС‚РёСЏ
     function gu23_get_ref_signer_own (p_dept_id in varchar2 default null)
         return xx_disl_gu23_signer_tab
         pipelined
@@ -1005,7 +1005,7 @@ as
                       from xx_disl_users_emp_v du
                      where 1 = 1 and du.open = 'Y'
                   --and  prv.THEME like '%'||p_dept||'%'
-                  --and prv.THEME like '%ЖДЦ%'
+                  --and prv.THEME like '%Р–Р”Р¦%'
                   order by fio)
         loop
             l_row.id := r.id;
@@ -1021,7 +1021,7 @@ as
         return;
     end;
 
-    -- подписанты - работники станции ОАО РЖД и другие, которые подписывают "ручками", а не через форму
+    -- РїРѕРґРїРёСЃР°РЅС‚С‹ - СЂР°Р±РѕС‚РЅРёРєРё СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р” Рё РґСЂСѓРіРёРµ, РєРѕС‚РѕСЂС‹Рµ РїРѕРґРїРёСЃС‹РІР°СЋС‚ "СЂСѓС‡РєР°РјРё", Р° РЅРµ С‡РµСЂРµР· С„РѕСЂРјСѓ
     function gu23_get_ref_signer_rzd
         return xx_disl_gu23_signer_tab
         pipelined
@@ -1035,7 +1035,7 @@ as
                            unit,
                            stype
                       from xx_disl_gu23_ref_signer
-                     where active = 'Y' and stype = 'Работник станции ОАО РЖД'
+                     where active = 'Y' and stype = 'Р Р°Р±РѕС‚РЅРёРє СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р”'
                   order by fio)
         loop
             l_row.id := r.id;
@@ -1051,9 +1051,9 @@ as
         return;
     end;
 
-    -- Ранее введённые ВРУЧНУЮ подписанты (signer_ref_id is null)
-    -- уникальные ФИО/должность/организация из истории актов.
-    -- Чтобы заново не вводить
+    -- Р Р°РЅРµРµ РІРІРµРґС‘РЅРЅС‹Рµ Р’Р РЈР§РќРЈР® РїРѕРґРїРёСЃР°РЅС‚С‹ (signer_ref_id is null)
+    -- СѓРЅРёРєР°Р»СЊРЅС‹Рµ Р¤РРћ/РґРѕР»Р¶РЅРѕСЃС‚СЊ/РѕСЂРіР°РЅРёР·Р°С†РёСЏ РёР· РёСЃС‚РѕСЂРёРё Р°РєС‚РѕРІ.
+    -- Р§С‚РѕР±С‹ Р·Р°РЅРѕРІРѕ РЅРµ РІРІРѕРґРёС‚СЊ
     function gu23_get_ref_signer_manual
         return xx_disl_gu23_signer_tab
         pipelined
@@ -1082,7 +1082,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- акты
+    -- Р°РєС‚С‹
     -- ----------------------------------------------------------------
     function gu23_get_acts (p_q                 in varchar2,
                             p_type              in varchar2,
@@ -1168,7 +1168,7 @@ as
                                             or INSTR (',' || p_dept_id || ',',
                                                       ',' || a.dept_id || ',') >
                                                0)
-                                       -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+                                       -- add 24.07.2026 BekmansurovRR: РїСЂРё РїРѕРёСЃРєРµ (v_q) РїРµСЂРёРѕРґ РёРіРЅРѕСЂРёСЂСѓРµРј
                                        and (   v_q is not null
                                             or NVL (p_requires_action, 'N') = 'Y'
                                             or (   (    v_from is null
@@ -1249,7 +1249,7 @@ as
         return;
     end;
 
-    -- количество актов
+    -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р°РєС‚РѕРІ
     function gu23_count_acts (p_q                 in varchar2,
                               p_type              in varchar2,
                               p_status            in varchar2,
@@ -1294,7 +1294,7 @@ as
                     or INSTR (',' || p_dept_id || ',',
                               ',' || a.dept_id || ',') >
                        0)
-               -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
+               -- add 24.07.2026 BekmansurovRR: РїСЂРё РїРѕРёСЃРєРµ (v_q) РїРµСЂРёРѕРґ РёРіРЅРѕСЂРёСЂСѓРµРј
                and (   v_q is not null
                     or NVL (p_requires_action, 'N') = 'Y'
                     or (   (v_from is null and v_to is null)
@@ -1331,7 +1331,7 @@ as
         return v_cnt;
     end;
 
-    -- Акт
+    -- РђРєС‚
     function gu23_get_act (p_id in number)
         return xx_disl_gu23_act_tab
         pipelined
@@ -1348,7 +1348,7 @@ as
         return;
     end;
 
-    -- Строки акта (вагоны)
+    -- РЎС‚СЂРѕРєРё Р°РєС‚Р° (РІР°РіРѕРЅС‹)
     function gu23_get_rows (p_act_id in number)
         return xx_disl_gu23_row_tab
         pipelined
@@ -1388,7 +1388,7 @@ as
         return;
     end;
 
-    -- Файлы
+    -- Р¤Р°Р№Р»С‹
     function gu23_get_files (p_act_id in number)
         return xx_disl_gu23_file_tab
         pipelined
@@ -1415,7 +1415,7 @@ as
         return;
     end;
 
-    -- Информация по файлу
+    -- РРЅС„РѕСЂРјР°С†РёСЏ РїРѕ С„Р°Р№Р»Сѓ
     function gu23_file_info (p_file_id in number)
         return varchar2
     is
@@ -1453,7 +1453,7 @@ as
             return null;
     end;
 
-    -- Подписанты
+    -- РџРѕРґРїРёСЃР°РЅС‚С‹
     function gu23_get_signers (p_act_id in number)
         return xx_disl_gu23_signer_tab
         pipelined
@@ -1488,7 +1488,7 @@ as
         return;
     end;
 
-    -- История изменений по акту
+    -- РСЃС‚РѕСЂРёСЏ РёР·РјРµРЅРµРЅРёР№ РїРѕ Р°РєС‚Сѓ
     function gu23_get_hist (p_act_id in number)
         return xx_disl_gu23_hist_tab
         pipelined
@@ -1512,7 +1512,7 @@ as
         return;
     end;
 
-    -- Открытые акты (акт на начало)
+    -- РћС‚РєСЂС‹С‚С‹Рµ Р°РєС‚С‹ (Р°РєС‚ РЅР° РЅР°С‡Р°Р»Рѕ)
     function gu23_get_open_starts
         return xx_disl_gu23_act_tab
         pipelined
@@ -1524,7 +1524,7 @@ as
                    where     a.act_type = 'start'
                          and a.status in (                         --'active',
                                           'signed')
-                         -- остался хотя бы один незакрытый вагон
+                         -- РѕСЃС‚Р°Р»СЃСЏ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РЅРµР·Р°РєСЂС‹С‚С‹Р№ РІР°РіРѕРЅ
                          and exists
                                  (select 1
                                     from xx_disl_gu23_act_row sr
@@ -1535,13 +1535,13 @@ as
                                                          xx_disl_gu23_act_row
                                                          er
                                                    where     er.act_id = e.id
-                                                         and e.act_type = 'end' -- Тип акта "Окончание простоя"
+                                                         and e.act_type = 'end' -- РўРёРї Р°РєС‚Р° "РћРєРѕРЅС‡Р°РЅРёРµ РїСЂРѕСЃС‚РѕСЏ"
                                                          and e.status in
-                                                                 ('active', -- Активный
-                                                                  'signed', -- Подписан
-                                                                  'closed' -- Закрыт
+                                                                 ('active', -- РђРєС‚РёРІРЅС‹Р№
+                                                                  'signed', -- РџРѕРґРїРёСЃР°РЅ
+                                                                  'closed' -- Р—Р°РєСЂС‹С‚
                                                                           )
-                                                         -- Дочерний акт(связанный акт)
+                                                         -- Р”РѕС‡РµСЂРЅРёР№ Р°РєС‚(СЃРІСЏР·Р°РЅРЅС‹Р№ Р°РєС‚)
                                                          and e.linked_start_id =
                                                              a.id
                                                          and er.wagon_no =
@@ -1554,7 +1554,7 @@ as
         return;
     end;
 
-    -- открытые вагоны акта начала (не закрытые действующим актом окончания)
+    -- РѕС‚РєСЂС‹С‚С‹Рµ РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р° (РЅРµ Р·Р°РєСЂС‹С‚С‹Рµ РґРµР№СЃС‚РІСѓСЋС‰РёРј Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ)
     function gu23_get_open_rows (p_start_id in number)
         return xx_disl_gu23_row_tab
         pipelined
@@ -1572,7 +1572,7 @@ as
                                    where     er.act_id = e.id
                                          and e.act_type = 'end'
                                          and e.status in
-                                                 ('active', 'signed', 'closed') -- занят; rejected/annulled/draft ? свободен
+                                                 ('active', 'signed', 'closed') -- Р·Р°РЅСЏС‚; rejected/annulled/draft ? СЃРІРѕР±РѕРґРµРЅ
                                          and e.linked_start_id = p_start_id
                                          and er.wagon_no = sr.wagon_no)
                 order by sr.id)
@@ -1593,7 +1593,7 @@ as
         return;
     end;
 
-    -- поиск по вагону (в каких актах)
+    -- РїРѕРёСЃРє РїРѕ РІР°РіРѕРЅСѓ (РІ РєР°РєРёС… Р°РєС‚Р°С…)
     function gu23_get_by_wagon (p_wagon in varchar2)
         return xx_disl_gu23_act_tab
         pipelined
@@ -1614,7 +1614,7 @@ as
         return;
     end;
 
-    -- возвращаем список контейнеров для платформы
+    -- РІРѕР·РІСЂР°С‰Р°РµРј СЃРїРёСЃРѕРє РєРѕРЅС‚РµР№РЅРµСЂРѕРІ РґР»СЏ РїР»Р°С‚С„РѕСЂРјС‹
     function get_cont_for_car (p_car_number   in varchar2,
                                p_inv_number   in varchar2)
         return varchar2
@@ -1646,7 +1646,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- Данные из дислокации (внешняя дислокация или по накладные из ЭТРАНа)
+    -- Р”Р°РЅРЅС‹Рµ РёР· РґРёСЃР»РѕРєР°С†РёРё (РІРЅРµС€РЅСЏСЏ РґРёСЃР»РѕРєР°С†РёСЏ РёР»Рё РїРѕ РЅР°РєР»Р°РґРЅС‹Рµ РёР· Р­РўР РђРќР°)
     -- ----------------------------------------------------------------
     function gu23_get_wagon_info (p_wagons         in clob,
                                   p_waybill_no     in varchar2 default null,
@@ -1663,18 +1663,18 @@ as
         v_no         varchar2 (32);
         l_row        xx_disl_gu23_wagon_row;
 
-        -- Курсор данных
-        cursor c_dislocation (v_w_no           varchar2,              -- вагон
-                              v_waybill_no     varchar2,          -- накладная
-                              v_dest_station   varchar2, -- станция назначения
-                              v_cargo_name     varchar2                -- груз
+        -- РљСѓСЂСЃРѕСЂ РґР°РЅРЅС‹С…
+        cursor c_dislocation (v_w_no           varchar2,              -- РІР°РіРѕРЅ
+                              v_waybill_no     varchar2,          -- РЅР°РєР»Р°РґРЅР°СЏ
+                              v_dest_station   varchar2, -- СЃС‚Р°РЅС†РёСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ
+                              v_cargo_name     varchar2                -- РіСЂСѓР·
                                                        )
         is
             select NVL (
                        ecar.car_number,
                        REGEXP_REPLACE (eis.spc_custom_text,
                                        '[^[[:digit:]]]*'))
-                       as wagon_no,                                   -- вагон
+                       as wagon_no,                                   -- РІР°РіРѕРЅ
                    (select SUM (ef.car_weight_net)
                       from xx_etw.etw_inv_car ef
                      where     ef.front_end_id = ei.front_end_id
@@ -1687,19 +1687,19 @@ as
                    ecar.car_type_name
                        as wagon_type_code,
                    ei.inv_number
-                       as waybill_no,                             -- накладная
+                       as waybill_no,                             -- РЅР°РєР»Р°РґРЅР°СЏ
                    eif.freight_name
-                       as cargo_name,                                  -- груз
+                       as cargo_name,                                  -- РіСЂСѓР·
                    (ecar.car_owner_name)
-                       as owner,                                 -- собственнк
+                       as owner,                                 -- СЃРѕР±СЃС‚РІРµРЅРЅРє
                    inv_from_station_code
                        as st_from_code,
                    inv_to_station_code
                        as st_to_code,
                    UPPER (TRIM (inv_to_station_name))
-                       as dest_station,                  -- станция назначения
+                       as dest_station,                  -- СЃС‚Р°РЅС†РёСЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ
                    UPPER (TRIM (inv_from_station_name))
-                       as depart_station                -- станция отправления
+                       as depart_station                -- СЃС‚Р°РЅС†РёСЏ РѕС‚РїСЂР°РІР»РµРЅРёСЏ
               from xx_etw.etw_invoice             ei,
                    xx_etw.etw_inv_car             ecar,
                    xx_etw.etw_clm_otpr            eco,
@@ -1710,7 +1710,7 @@ as
                       from etw_inv_spc
                      where    spc_transp_clause_id = 975
                            or (    spc_transp_clause_id = 993
-                               and UPPER (spc_custom_text) like '%ПЛАТФОРМА%'))
+                               and UPPER (spc_custom_text) like '%РџР›РђРўР¤РћР РњРђ%'))
                    eis
              where     ei.inv_claim_id = eco.claim_id(+)
                    and ei.inv_otpr_num = eco.otpr_nom(+)
@@ -1734,21 +1734,21 @@ as
                    and ei.front_end_id = eis.front_end_id(+)
                    and ei.front_end_id = src.front_end_id(+)
                    and ei.front_end_id = eif.front_end_id(+)
-                   and ei.invoice_state_id in (31,     --Накладная предъявлена
-                                               44, --Работа с документом окончена (44)
-                                               439, -- Согласование уведомления
-                                               1116 -- Приемосдатчиком принято
-                                               ,38  -- Получатель уведомлен
-                                               ,42  -- Раскредитован
+                   and ei.invoice_state_id in (31,     --РќР°РєР»Р°РґРЅР°СЏ РїСЂРµРґСЉСЏРІР»РµРЅР°
+                                               44, --Р Р°Р±РѕС‚Р° СЃ РґРѕРєСѓРјРµРЅС‚РѕРј РѕРєРѕРЅС‡РµРЅР° (44)
+                                               439, -- РЎРѕРіР»Р°СЃРѕРІР°РЅРёРµ СѓРІРµРґРѕРјР»РµРЅРёСЏ
+                                               1116 -- РџСЂРёРµРјРѕСЃРґР°С‚С‡РёРєРѕРј РїСЂРёРЅСЏС‚Рѕ
+                                               ,38  -- РџРѕР»СѓС‡Р°С‚РµР»СЊ СѓРІРµРґРѕРјР»РµРЅ
+                                               ,42  -- Р Р°СЃРєСЂРµРґРёС‚РѕРІР°РЅ
 
 
                                                    )
                    and ei.inv_date_create >
                        TO_DATE ('01.01.2026', 'dd.mm.rrrr')
-                   and ei.inv_recip_name <> 'ОАО "Метафракс"';
+                   and ei.inv_recip_name <> 'РћРђРћ "РњРµС‚Р°С„СЂР°РєСЃ"';
 
-        -- Проставляет l_row.dup_act/dup_by, если по вагону (в пределах месяца)
-        -- или накладной (в пределах 3 месяцев) уже есть занятый акт начала.
+        -- РџСЂРѕСЃС‚Р°РІР»СЏРµС‚ l_row.dup_act/dup_by, РµСЃР»Рё РїРѕ РІР°РіРѕРЅСѓ (РІ РїСЂРµРґРµР»Р°С… РјРµСЃСЏС†Р°)
+        -- РёР»Рё РЅР°РєР»Р°РґРЅРѕР№ (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ) СѓР¶Рµ РµСЃС‚СЊ Р·Р°РЅСЏС‚С‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р°.
         procedure set_dup_flag
         is
         begin
@@ -1760,7 +1760,7 @@ as
                 return;
             end if;
 
-            -- по вагону в пределах текущего месяца
+            -- РїРѕ РІР°РіРѕРЅСѓ РІ РїСЂРµРґРµР»Р°С… С‚РµРєСѓС‰РµРіРѕ РјРµСЃСЏС†Р°
             begin
                 select a.act_number
                   into l_row.dup_act
@@ -1779,7 +1779,7 @@ as
                     l_row.dup_act := null;
             end;
 
-            -- по накладной в пределах 3 месяцев
+            -- РїРѕ РЅР°РєР»Р°РґРЅРѕР№ РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ
             if l_row.dup_act is null and l_row.waybill_no is not null
             then
                 begin
@@ -1812,7 +1812,7 @@ as
         --log_new(l_function,'v_len='||v_len);
         --log_new(l_function,'v_len='||v_len);
         ---------------------------------------------------------------------
-        -- Отправили Список вагонов
+        -- РћС‚РїСЂР°РІРёР»Рё РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ
         ---------------------------------------------------------------------
         /*log_new(l_function,'p_waybill_no='||p_waybill_no);
         log_new(l_function,'p_dest_station='||p_dest_station);
@@ -1841,7 +1841,7 @@ as
                 end if;
 
                 -- log_new(l_function,'v_no='||v_no);
-                -- Инициализируем дефолтные значения для текущего вагона
+                -- РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РґРµС„РѕР»С‚РЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ С‚РµРєСѓС‰РµРіРѕ РІР°РіРѕРЅР°
                 l_row.wagon_no := v_no;
                 l_row.FOUND := 0;
                 l_row.owner := null;
@@ -1860,7 +1860,7 @@ as
                 --log_new (l_function, 'p_dest_station=' || p_dest_station);
                 --log_new (l_function, 'v_no=' || v_no);
 
-                -- Ищем данные по конкретному вагону
+                -- РС‰РµРј РґР°РЅРЅС‹Рµ РїРѕ РєРѕРЅРєСЂРµС‚РЅРѕРјСѓ РІР°РіРѕРЅСѓ
                 for d in c_dislocation (v_no,
                                         p_waybill_no,
                                         p_dest_station,
@@ -1882,11 +1882,11 @@ as
                 pipe row (l_row);
             end loop;
         ---------------------------------------------------------------------
-        -- Список вагонов ПУСТОЙ (ищем только по станции/накладной/грузу)
+        -- РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ РџРЈРЎРўРћР™ (РёС‰РµРј С‚РѕР»СЊРєРѕ РїРѕ СЃС‚Р°РЅС†РёРё/РЅР°РєР»Р°РґРЅРѕР№/РіСЂСѓР·Сѓ)
         ---------------------------------------------------------------------
         elsif p_dest_station is not null or p_waybill_no is not null
         then
-            --log_new(l_function,'Список вагонов ПУСТОЙ (ищем только по станции/накладной)');
+            --log_new(l_function,'РЎРїРёСЃРѕРє РІР°РіРѕРЅРѕРІ РџРЈРЎРўРћР™ (РёС‰РµРј С‚РѕР»СЊРєРѕ РїРѕ СЃС‚Р°РЅС†РёРё/РЅР°РєР»Р°РґРЅРѕР№)');
             for d in c_dislocation (null,
                                     p_waybill_no,
                                     p_dest_station,
@@ -1914,7 +1914,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- файлы (id)
+    -- С„Р°Р№Р»С‹ (id)
     -- ----------------------------------------------------------------
     function gu23_new_file_id
         return number
@@ -1983,14 +1983,14 @@ as
             return 'N';
     end;
 
-    -- Добавление файла
+    -- Р”РѕР±Р°РІР»РµРЅРёРµ С„Р°Р№Р»Р°
     function gu23_add_file (p_data in t_gu23_add_file)
         return varchar2
     is
     begin
         if gu23_can_change_files (p_data.p_act_id, p_data.p_user_id) <> 'Y'
         then
-            return 'ERR' || c_us || 'Нет прав на прикрепление файлов';
+            return 'ERR' || c_us || 'РќРµС‚ РїСЂР°РІ РЅР° РїСЂРёРєСЂРµРїР»РµРЅРёРµ С„Р°Р№Р»РѕРІ';
         end if;
 
         insert into xx_disl_gu23_file (id,
@@ -2014,7 +2014,7 @@ as
 
         log_act_history (p_act_id    => p_data.p_act_id,
                          p_user_id   => p_data.p_user_id,
-                         p_text      => 'Прикреплён файл: ' || p_data.p_name);
+                         p_text      => 'РџСЂРёРєСЂРµРїР»С‘РЅ С„Р°Р№Р»: ' || p_data.p_name);
         commit;
         return 'done';
     exception
@@ -2037,7 +2037,7 @@ as
 
         if gu23_can_delete_files (v_act, p_data.p_user_id) <> 'Y'
         then
-            return 'ERR' || c_us || 'Нет прав на удаление файлов';
+            return 'ERR' || c_us || 'РќРµС‚ РїСЂР°РІ РЅР° СѓРґР°Р»РµРЅРёРµ С„Р°Р№Р»РѕРІ';
         end if;
 
         delete from xx_disl_gu23_file
@@ -2045,7 +2045,7 @@ as
 
         log_act_history (p_act_id    => v_act,
                          p_user_id   => p_data.p_user_id,
-                         p_text      => 'Удалён файл: ' || v_name);
+                         p_text      => 'РЈРґР°Р»С‘РЅ С„Р°Р№Р»: ' || v_name);
         commit;
         return 'done';
     exception
@@ -2056,7 +2056,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- сохранение акта
+    -- СЃРѕС…СЂР°РЅРµРЅРёРµ Р°РєС‚Р°
     -- ----------------------------------------------------------------
     function gu23_save_act (p_data in t_gu23_save_act)
         return varchar2
@@ -2115,19 +2115,19 @@ as
         v_start := g_to_date (p_data.p_start_at);
         v_end := g_to_date (p_data.p_end_at);
 
-        -- тип акта
+        -- С‚РёРї Р°РєС‚Р°
         if p_data.p_type not in ('start', 'end', 'other')
         then
-            return format_error ('Неверный тип акта');
+            return format_error ('РќРµРІРµСЂРЅС‹Р№ С‚РёРї Р°РєС‚Р°');
         end if;
 
-        -- цех
+        -- С†РµС…
         if NVL (p_data.p_dept, 'X') = 'X'
         then
-            return format_error ('Не указан цех');
+            return format_error ('РќРµ СѓРєР°Р·Р°РЅ С†РµС…');
         end if;
 
-        -- получаем id цеха по коду
+        -- РїРѕР»СѓС‡Р°РµРј id С†РµС…Р° РїРѕ РєРѕРґСѓ
         begin
             select id
               into v_dept_id
@@ -2136,13 +2136,13 @@ as
         exception
             when NO_DATA_FOUND
             then
-                return format_error ('Цех не найден: ' || p_data.p_dept);
+                return format_error ('Р¦РµС… РЅРµ РЅР°Р№РґРµРЅ: ' || p_data.p_dept);
         end;
 
-        -- Для всех цехов, кроме ЖДЦ и Управления, на согласование
-        -- разрешено отправлять акт только с одним вагоном.
+        -- Р”Р»СЏ РІСЃРµС… С†РµС…РѕРІ, РєСЂРѕРјРµ Р–Р”Р¦ Рё РЈРїСЂР°РІР»РµРЅРёСЏ, РЅР° СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ
+        -- СЂР°Р·СЂРµС€РµРЅРѕ РѕС‚РїСЂР°РІР»СЏС‚СЊ Р°РєС‚ С‚РѕР»СЊРєРѕ СЃ РѕРґРЅРёРј РІР°РіРѕРЅРѕРј.
         if     p_data.p_status = 'active'
-           and UPPER (TRIM (p_data.p_dept)) not in ('ЖДЦ', 'УПРАВЛЕНИЕ')
+           and UPPER (TRIM (p_data.p_dept)) not in ('Р–Р”Р¦', 'РЈРџР РђР’Р›Р•РќРР•')
         then
             select COUNT (*)
               into v_check_wcnt
@@ -2151,7 +2151,7 @@ as
             if v_check_wcnt > 1
             then
                 return format_error (
-                           'Для выбранного цеха акт можно отправить на согласование только с одним вагоном');
+                           'Р”Р»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ С†РµС…Р° Р°РєС‚ РјРѕР¶РЅРѕ РѕС‚РїСЂР°РІРёС‚СЊ РЅР° СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ С‚РѕР»СЊРєРѕ СЃ РѕРґРЅРёРј РІР°РіРѕРЅРѕРј');
             end if;
         end if;
 
@@ -2159,28 +2159,28 @@ as
         v_st_from_id := NULLIF (TRIM (p_data.p_st_from), '');
         v_st_to_id := NULLIF (TRIM (p_data.p_st_to), '');
 
-        -- проверки дат для акта "Начало простоя"
+        -- РїСЂРѕРІРµСЂРєРё РґР°С‚ РґР»СЏ Р°РєС‚Р° "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ"
         if     p_data.p_type = 'start'
            and p_data.p_status = 'active'
            and v_start is null
         then
-            return format_error ('Не указана дата начала простоя');
+            return format_error ('РќРµ СѓРєР°Р·Р°РЅР° РґР°С‚Р° РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ');
         end if;
 
-        -- проверки дат и связей для акта "Окончание простоя"
+        -- РїСЂРѕРІРµСЂРєРё РґР°С‚ Рё СЃРІСЏР·РµР№ РґР»СЏ Р°РєС‚Р° "РћРєРѕРЅС‡Р°РЅРёРµ РїСЂРѕСЃС‚РѕСЏ"
         if p_data.p_type = 'end' and p_data.p_status = 'active'
         then
             if p_data.p_linked_start_id is null
             then
-                return format_error ('Не выбран открытый акт начала простоя');
+                return format_error ('РќРµ РІС‹Р±СЂР°РЅ РѕС‚РєСЂС‹С‚С‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ');
             end if;
 
             if v_end is null
             then
-                return format_error ('Не указана дата окончания простоя');
+                return format_error ('РќРµ СѓРєР°Р·Р°РЅР° РґР°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРѕСЃС‚РѕСЏ');
             end if;
 
-            -- если дата начала не передана, извлекаем из БД
+            -- РµСЃР»Рё РґР°С‚Р° РЅР°С‡Р°Р»Р° РЅРµ РїРµСЂРµРґР°РЅР°, РёР·РІР»РµРєР°РµРј РёР· Р‘Р”
             if v_start is null
             then
                 begin
@@ -2198,17 +2198,17 @@ as
             if v_start is not null and v_end < v_start
             then
                 return format_error (
-                           'Дата окончания не может быть меньше даты начала');
+                           'Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РјРµРЅСЊС€Рµ РґР°С‚С‹ РЅР°С‡Р°Р»Р°');
             end if;
 
             if v_end > SYSDATE
             then
                 return format_error (
-                           'Дата окончания не может быть больше текущей даты (в будущем)');
+                           'Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµР№ РґР°С‚С‹ (РІ Р±СѓРґСѓС‰РµРј)');
             end if;
         end if;
 
-        -- расчёт длительности (только для акта окончания)
+        -- СЂР°СЃС‡С‘С‚ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё (С‚РѕР»СЊРєРѕ РґР»СЏ Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ)
         if     p_data.p_type = 'end'
            and v_start is not null
            and v_end is not null
@@ -2219,12 +2219,12 @@ as
             v_cd := CEIL (v_end - v_start);
         end if;
 
-        -- INSERT или UPDATE шапки акта
+        -- INSERT РёР»Рё UPDATE С€Р°РїРєРё Р°РєС‚Р°
         if v_isnew
         then
             v_number := g_next_number (v_dept_id);
             v_id := xx_disl_gu23_act_seq.NEXTVAL;
-            -- add 24.07.2026 BekmansurovRR: вставка через процедуру insert_act
+            -- add 24.07.2026 BekmansurovRR: РІСЃС‚Р°РІРєР° С‡РµСЂРµР· РїСЂРѕС†РµРґСѓСЂСѓ insert_act
             l_act.id := v_id;
             l_act.act_number := v_number;
             l_act.act_type := p_data.p_type;
@@ -2249,7 +2249,7 @@ as
             l_act.modified_by := p_data.p_user_id;
             insert_act (l_act);
         else
-            -- редактировать можно ТОЛЬКО Проект
+            -- СЂРµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ РўРћР›Р¬РљРћ РџСЂРѕРµРєС‚
             begin
                 select act_number, status, created_by
                   into v_number, v_cur_status, v_created_by
@@ -2258,24 +2258,24 @@ as
             exception
                 when NO_DATA_FOUND
                 then
-                    return format_error ('Акт не найден');
+                    return format_error ('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
             end;
 
-            -- Редактировать можно ТОЛЬКО Проект.
+            -- Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ РўРћР›Р¬РљРћ РџСЂРѕРµРєС‚.
             if v_cur_status not in ('draft', 'on_correction')
             then
                 return format_error (
-                           'Действующий/закрытый акт не редактируется ? аннулируйте и заведите новый');
+                           'Р”РµР№СЃС‚РІСѓСЋС‰РёР№/Р·Р°РєСЂС‹С‚С‹Р№ Р°РєС‚ РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ ? Р°РЅРЅСѓР»РёСЂСѓР№С‚Рµ Рё Р·Р°РІРµРґРёС‚Рµ РЅРѕРІС‹Р№');
             end if;
 
             if     NVL (v_created_by, -1) <> NVL (p_data.p_user_id, -1)
                and gu23_is_admin (p_data.p_user_id) <> 'Y'
             then
                 return format_error (
-                           'Редактировать акт может только создатель или администратор');
+                           'Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ Р°РєС‚ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ СЃРѕР·РґР°С‚РµР»СЊ РёР»Рё Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ');
             end if;
 
-            -- если у Проекта ещё нет номера - присваиваем
+            -- РµСЃР»Рё Сѓ РџСЂРѕРµРєС‚Р° РµС‰С‘ РЅРµС‚ РЅРѕРјРµСЂР° - РїСЂРёСЃРІР°РёРІР°РµРј
             if v_number is null
             then
                 v_number := g_next_number (v_dept_id);
@@ -2301,7 +2301,7 @@ as
                    linked_start_id = p_data.p_linked_start_id,
                    modified_at = SYSDATE,
                    modified_by = p_data.p_user_id,
-                   -- правка акта "на подписании" админом - новая версия
+                   -- РїСЂР°РІРєР° Р°РєС‚Р° "РЅР° РїРѕРґРїРёСЃР°РЅРёРё" Р°РґРјРёРЅРѕРј - РЅРѕРІР°СЏ РІРµСЂСЃРёСЏ
                    content_version =
                          NVL (content_version, 1)
                        + case
@@ -2327,12 +2327,12 @@ as
             end if;
         end if;
 
-        -- разбираем вагоны
+        -- СЂР°Р·Р±РёСЂР°РµРј РІР°РіРѕРЅС‹
         for w in (select * from table (parse_wagon_clob (p_data.p_wagons)))
         loop
             if p_data.p_type in ('start', 'other')
             then
-                -- данные по вагону из дислокации
+                -- РґР°РЅРЅС‹Рµ РїРѕ РІР°РіРѕРЅСѓ РёР· РґРёСЃР»РѕРєР°С†РёРё
                 begin
                     select owner,
                            kind,
@@ -2362,7 +2362,7 @@ as
                         vw_weight := null;
                 end;
             else
-                -- для окончания берём данные из акта начала
+                -- РґР»СЏ РѕРєРѕРЅС‡Р°РЅРёСЏ Р±РµСЂС‘Рј РґР°РЅРЅС‹Рµ РёР· Р°РєС‚Р° РЅР°С‡Р°Р»Р°
                 vw_owner := w.owner;
                 vw_kind := w.kind;
                 vw_from := w.st_from;
@@ -2371,13 +2371,13 @@ as
                 vw_weight := w.weight;
             end if;
 
-            -- запрет дубля открытого простоя
+            -- Р·Р°РїСЂРµС‚ РґСѓР±Р»СЏ РѕС‚РєСЂС‹С‚РѕРіРѕ РїСЂРѕСЃС‚РѕСЏ
             if     p_data.p_type = 'start'
                and p_data.p_status = 'active'
                and NVL (p_data.p_force, 'N') <> 'Y'
             then
-                -- дубль по вагону в пределах одного месяца
-                -- занятые циклы: active/signed/closed; annulled/rejected/draft - свободны
+                -- РґСѓР±Р»СЊ РїРѕ РІР°РіРѕРЅСѓ РІ РїСЂРµРґРµР»Р°С… РѕРґРЅРѕРіРѕ РјРµСЃСЏС†Р°
+                -- Р·Р°РЅСЏС‚С‹Рµ С†РёРєР»С‹: active/signed/closed; annulled/rejected/draft - СЃРІРѕР±РѕРґРЅС‹
                 v_dupnum := null;
 
                 begin
@@ -2402,14 +2402,14 @@ as
                 then
                     rollback;
                     return format_error (
-                                  'Нельзя создать акт "Начало простоя": по вагону '
+                                  'РќРµР»СЊР·СЏ СЃРѕР·РґР°С‚СЊ Р°РєС‚ "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ": РїРѕ РІР°РіРѕРЅСѓ '
                                || w.wagon_no
-                               || ' уже есть акт '
+                               || ' СѓР¶Рµ РµСЃС‚СЊ Р°РєС‚ '
                                || v_dupnum
-                               || ' за этот месяц');
+                               || ' Р·Р° СЌС‚РѕС‚ РјРµСЃСЏС†');
                 end if;
 
-                -- дубль по накладной в пределах 3 месяцев
+                -- РґСѓР±Р»СЊ РїРѕ РЅР°РєР»Р°РґРЅРѕР№ РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ
                 if w.waybill_no is not null
                 then
                     v_dupnum := null;
@@ -2436,16 +2436,16 @@ as
                     then
                         rollback;
                         return format_error (
-                                      'Нельзя создать акт "Начало простоя": по накладной '
+                                      'РќРµР»СЊР·СЏ СЃРѕР·РґР°С‚СЊ Р°РєС‚ "РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ": РїРѕ РЅР°РєР»Р°РґРЅРѕР№ '
                                    || w.waybill_no
-                                   || ' уже есть акт '
+                                   || ' СѓР¶Рµ РµСЃС‚СЊ Р°РєС‚ '
                                    || v_dupnum
-                                   || ' (в пределах 3 месяцев)');
+                                   || ' (РІ РїСЂРµРґРµР»Р°С… 3 РјРµСЃСЏС†РµРІ)');
                     end if;
                 end if;
             end if;
 
-            -- проверки для акта окончания
+            -- РїСЂРѕРІРµСЂРєРё РґР»СЏ Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ
             if p_data.p_type = 'end' and p_data.p_status = 'active'
             then
                 select COUNT (*)
@@ -2458,9 +2458,9 @@ as
                 then
                     rollback;
                     return format_error (
-                                  'Вагон '
+                                  'Р’Р°РіРѕРЅ '
                                || w.wagon_no
-                               || ' не относится к выбранному акту начала');
+                               || ' РЅРµ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє РІС‹Р±СЂР°РЅРЅРѕРјСѓ Р°РєС‚Сѓ РЅР°С‡Р°Р»Р°');
                 end if;
 
                 select COUNT (*)
@@ -2468,7 +2468,7 @@ as
                   from xx_disl_gu23_act e, xx_disl_gu23_act_row er
                  where     er.act_id = e.id
                        and e.act_type = 'end'
-                       and e.status in ('active', 'signed', 'closed') -- занят; rejected/annulled/draft - свободен
+                       and e.status in ('active', 'signed', 'closed') -- Р·Р°РЅСЏС‚; rejected/annulled/draft - СЃРІРѕР±РѕРґРµРЅ
                        and e.linked_start_id = p_data.p_linked_start_id
                        and e.id <> v_id
                        and er.wagon_no = w.wagon_no;
@@ -2477,9 +2477,9 @@ as
                 then
                     rollback;
                     return format_error (
-                                  'Вагон '
+                                  'Р’Р°РіРѕРЅ '
                                || w.wagon_no
-                               || ' уже закрыт другим актом окончания');
+                               || ' СѓР¶Рµ Р·Р°РєСЂС‹С‚ РґСЂСѓРіРёРј Р°РєС‚РѕРј РѕРєРѕРЅС‡Р°РЅРёСЏ');
                 end if;
             end if;
 
@@ -2497,24 +2497,24 @@ as
             v_wcnt := v_wcnt + 1;
         end loop;
 
-        -- при отправке на подписание обязательны и вагоны, и груз (для типа start/other)
+        -- РїСЂРё РѕС‚РїСЂР°РІРєРµ РЅР° РїРѕРґРїРёСЃР°РЅРёРµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹ Рё РІР°РіРѕРЅС‹, Рё РіСЂСѓР· (РґР»СЏ С‚РёРїР° start/other)
         if p_data.p_status = 'active'
         then
             if v_wcnt = 0
             then
                 rollback;
-                return format_error ('Добавьте хотя бы один вагон');
+                return format_error ('Р”РѕР±Р°РІСЊС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РІР°РіРѕРЅ');
             end if;
 
             if     p_data.p_type in ('start', 'other')
                and p_data.p_cargo_ref is null
             then
                 rollback;
-                return format_error ('Не указан груз');
+                return format_error ('РќРµ СѓРєР°Р·Р°РЅ РіСЂСѓР·');
             end if;
         end if;
 
-        -- разбираем подписантов: поля ref_id|fio|post|org
+        -- СЂР°Р·Р±РёСЂР°РµРј РїРѕРґРїРёСЃР°РЅС‚РѕРІ: РїРѕР»СЏ ref_id|fio|post|org
         v_len := NVL (DBMS_LOB.getlength (p_data.p_signers), 0);
         v_from := 1;
 
@@ -2534,7 +2534,7 @@ as
             vs_fio := g_field (v_rec, 2);
             vs_post := g_field (v_rec, 3);
             vs_org := g_field (v_rec, 4);
-            vs_stype := TRIM (g_field (v_rec, 5)); -- 'own' или 'rzd'; null = вручную
+            vs_stype := TRIM (g_field (v_rec, 5)); -- 'own' РёР»Рё 'rzd'; null = РІСЂСѓС‡РЅСѓСЋ
 
             if TRIM (vs_fio) is null
             then
@@ -2554,9 +2554,9 @@ as
         end loop;
 
         -- add 24.07.2026 BekmansurovRR
-        -- закрытие цикла вынесено в close_start_if_complete (единая логика):
-        -- акт начала закроется, когда по всем его вагонам подписаны акты
-        -- окончания. Здесь только вызываем.
+        -- Р·Р°РєСЂС‹С‚РёРµ С†РёРєР»Р° РІС‹РЅРµСЃРµРЅРѕ РІ close_start_if_complete (РµРґРёРЅР°СЏ Р»РѕРіРёРєР°):
+        -- Р°РєС‚ РЅР°С‡Р°Р»Р° Р·Р°РєСЂРѕРµС‚СЃСЏ, РєРѕРіРґР° РїРѕ РІСЃРµРј РµРіРѕ РІР°РіРѕРЅР°Рј РїРѕРґРїРёСЃР°РЅС‹ Р°РєС‚С‹
+        -- РѕРєРѕРЅС‡Р°РЅРёСЏ. Р—РґРµСЃСЊ С‚РѕР»СЊРєРѕ РІС‹Р·С‹РІР°РµРј.
         if     p_data.p_type = 'end'
            and p_data.p_status in ('active', 'closed')
            and p_data.p_linked_start_id is not null
@@ -2576,14 +2576,14 @@ as
                     case
                         when p_data.p_status = 'draft'
                         then
-                            'Акт создан (Проект)'
+                            'РђРєС‚ СЃРѕР·РґР°РЅ (РџСЂРѕРµРєС‚)'
                         else
-                            'Акт создан'
+                            'РђРєС‚ СЃРѕР·РґР°РЅ'
                     end
                 else
                     case
-                        when p_data.p_status = 'draft' then 'Проект изменён'
-                        else 'Акт изменён'
+                        when p_data.p_status = 'draft' then 'РџСЂРѕРµРєС‚ РёР·РјРµРЅС‘РЅ'
+                        else 'РђРєС‚ РёР·РјРµРЅС‘РЅ'
                     end
             end;
 
@@ -2613,7 +2613,7 @@ as
         if v_status <> 'draft'
         then
             return format_error (
-                       'Удалять можно только Проект. Действующий акт аннулируется.');
+                       'РЈРґР°Р»СЏС‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РџСЂРѕРµРєС‚. Р”РµР№СЃС‚РІСѓСЋС‰РёР№ Р°РєС‚ Р°РЅРЅСѓР»РёСЂСѓРµС‚СЃСЏ.');
         end if;
 
         delete from xx_disl_gu23_act
@@ -2624,14 +2624,14 @@ as
     exception
         when NO_DATA_FOUND
         then
-            return format_error ('Акт не найден');
+            return format_error ('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
         when others
         then
             rollback;
             return format_error ();
     end;
 
-    -- Закрытие акта
+    -- Р—Р°РєСЂС‹С‚РёРµ Р°РєС‚Р°
     function gu23_close_act (p_id in number, p_user_id in number)
         return varchar2
     is
@@ -2648,14 +2648,14 @@ as
         then
             return    'ERR'
                    || c_us
-                   || 'Закрыть можно только акт окончания простоя или прочий акт';
+                   || 'Р—Р°РєСЂС‹С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ Р°РєС‚ РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРѕСЃС‚РѕСЏ РёР»Рё РїСЂРѕС‡РёР№ Р°РєС‚';
         end if;
 
         if v_status not in ('active', 'signed')
         then
             return    'ERR'
                    || c_us
-                   || 'Акт должен быть в статусе "Открыт" или "Подписан"';
+                   || 'РђРєС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ СЃС‚Р°С‚СѓСЃРµ "РћС‚РєСЂС‹С‚" РёР»Рё "РџРѕРґРїРёСЃР°РЅ"';
         end if;
 
         update xx_disl_gu23_act
@@ -2666,10 +2666,10 @@ as
 
         log_act_history (p_act_id    => p_id,
                          p_user_id   => p_user_id,
-                         p_text      => 'Акт закрыт');
+                         p_text      => 'РђРєС‚ Р·Р°РєСЂС‹С‚');
 
         -- add 24.07.2026 BekmansurovRR
-        -- при ручном закрытии акта окончания пробуем закрыть акт начала
+        -- РїСЂРё СЂСѓС‡РЅРѕРј Р·Р°РєСЂС‹С‚РёРё Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРѕР±СѓРµРј Р·Р°РєСЂС‹С‚СЊ Р°РєС‚ РЅР°С‡Р°Р»Р°
         if v_type = 'end'
         then
             close_start_if_complete (v_link, p_user_id);
@@ -2680,7 +2680,7 @@ as
     exception
         when NO_DATA_FOUND
         then
-            return 'ERR' || c_us || 'Акт не найден';
+            return 'ERR' || c_us || 'РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ';
         when others
         then
             rollback;
@@ -2705,7 +2705,7 @@ as
                modified_by = p_data.p_user_id
          where id = p_data.p_id;
 
-        -- при аннулировании акта окончания - снова открываем связанный акт начала
+        -- РїСЂРё Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРё Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ - СЃРЅРѕРІР° РѕС‚РєСЂС‹РІР°РµРј СЃРІСЏР·Р°РЅРЅС‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р°
         if v_type = 'end' and v_linked is not null
         then
             update xx_disl_gu23_act
@@ -2715,7 +2715,7 @@ as
              where id = v_linked and status = 'closed';
         end if;
 
-        -- при аннулировании акта начала - каскадно аннулируем связанные акты окончания
+        -- РїСЂРё Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРё Р°РєС‚Р° РЅР°С‡Р°Р»Р° - РєР°СЃРєР°РґРЅРѕ Р°РЅРЅСѓР»РёСЂСѓРµРј СЃРІСЏР·Р°РЅРЅС‹Рµ Р°РєС‚С‹ РѕРєРѕРЅС‡Р°РЅРёСЏ
         if v_type = 'start'
         then
             for r
@@ -2727,7 +2727,7 @@ as
                 update xx_disl_gu23_act
                    set status = 'annulled',
                        annul_reason =
-                              'Каскадное аннулирование: аннулирован акт начала '
+                              'РљР°СЃРєР°РґРЅРѕРµ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅРёРµ: Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ Р°РєС‚ РЅР°С‡Р°Р»Р° '
                            || (select act_number
                                  from xx_disl_gu23_act
                                 where id = p_data.p_id),
@@ -2739,7 +2739,7 @@ as
                     p_act_id    => r.id,
                     p_user_id   => p_data.p_user_id,
                     p_text      =>
-                           'Акт аннулирован каскадно (аннулирован акт начала): '
+                           'РђРєС‚ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ РєР°СЃРєР°РґРЅРѕ (Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ Р°РєС‚ РЅР°С‡Р°Р»Р°): '
                         || p_data.p_reason);
             end loop;
         end if;
@@ -2747,14 +2747,14 @@ as
         log_act_history (
             p_act_id    => p_data.p_id,
             p_user_id   => p_data.p_user_id,
-            p_text      => 'Акт аннулирован: ' || p_data.p_reason);
+            p_text      => 'РђРєС‚ Р°РЅРЅСѓР»РёСЂРѕРІР°РЅ: ' || p_data.p_reason);
 
         commit;
         return 'done';
     exception
         when NO_DATA_FOUND
         then
-            return format_error ('Акт не найден');
+            return format_error ('РђРєС‚ РЅРµ РЅР°Р№РґРµРЅ');
         when others
         then
             rollback;
@@ -2762,7 +2762,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- поиск станций
+    -- РїРѕРёСЃРє СЃС‚Р°РЅС†РёР№
     -- ----------------------------------------------------------------
     function gu23_search_station (p_q in varchar2)
         return xx_disl_gu23_ref_tab
@@ -2792,7 +2792,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- согласование актов
+    -- СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ Р°РєС‚РѕРІ
     -- ----------------------------------------------------------------
 
     function gu23_approval_get_signers (p_act_id in number)
@@ -2802,7 +2802,7 @@ as
         l_row   t_gu23_approval_signer_row;
     begin
         for r
-            in (                       -- подписанты предприятия (stype='own')
+            in (                       -- РїРѕРґРїРёСЃР°РЅС‚С‹ РїСЂРµРґРїСЂРёСЏС‚РёСЏ (stype='own')
                   select u.id                        as approver_id,
                          u.full_name,
                          LOWER (u.email_address)     as email
@@ -2820,7 +2820,7 @@ as
         return;
     end;
 
-    -- Следущий подписант в маршруте
+    -- РЎР»РµРґСѓС‰РёР№ РїРѕРґРїРёСЃР°РЅС‚ РІ РјР°СЂС€СЂСѓС‚Рµ
     function gu23_approval_next_signer (p_act_id in number)
         return t_gu23_approval_signer_tab
         pipelined
@@ -2850,7 +2850,7 @@ as
                                      on     a.act_id = s.act_id
                                         and a.approver_id = u.id
                            where     s.act_id = p_act_id
-                                 and s.stype = 'own'        -- только МТФ люди
+                                 and s.stype = 'own'        -- С‚РѕР»СЊРєРѕ РњРўР¤ Р»СЋРґРё
                                  and NVL (a.status, 'pending') <> 'approved'
                         order by s.id)
                  where ROWNUM = 1)
@@ -2907,7 +2907,7 @@ as
             return format_error ();
     end;
 
-    -- данные подписаиня по токкену
+    -- РґР°РЅРЅС‹Рµ РїРѕРґРїРёСЃР°РёРЅСЏ РїРѕ С‚РѕРєРєРµРЅСѓ
     function gu23_approval_by_token (p_token in varchar2)
         return varchar2
     is
@@ -2971,20 +2971,20 @@ as
     end;
 
     -- add 24.07.2026 BekmansurovRR
-    -- Закрытие акта начала простоя. Акт начала закрывается, когда по каждому
-    -- его вагону есть подписанный (status = 'closed') акт окончания.
+    -- Р—Р°РєСЂС‹С‚РёРµ Р°РєС‚Р° РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ. РђРєС‚ РЅР°С‡Р°Р»Р° Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ, РєРѕРіРґР° РїРѕ РєР°Р¶РґРѕРјСѓ
+    -- РµРіРѕ РІР°РіРѕРЅСѓ РµСЃС‚СЊ РїРѕРґРїРёСЃР°РЅРЅС‹Р№ (status = 'closed') Р°РєС‚ РѕРєРѕРЅС‡Р°РЅРёСЏ.
     procedure close_start_if_complete (p_start_id   in number,
                                        p_user_id    in number default null)
     is
-        v_cnt    number;    -- всего вагонов в акте начала (защита от пустого)
-        v_open   number; -- вагоны акта начала без подписанного акта окончания
+        v_cnt    number;    -- РІСЃРµРіРѕ РІР°РіРѕРЅРѕРІ РІ Р°РєС‚Рµ РЅР°С‡Р°Р»Р° (Р·Р°С‰РёС‚Р° РѕС‚ РїСѓСЃС‚РѕРіРѕ)
+        v_open   number; -- РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р° Р±РµР· РїРѕРґРїРёСЃР°РЅРЅРѕРіРѕ Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ
     begin
         if p_start_id is null
         then
             return;
         end if;
 
-        -- у пустого акта начала закрывать нечего
+        -- Сѓ РїСѓСЃС‚РѕРіРѕ Р°РєС‚Р° РЅР°С‡Р°Р»Р° Р·Р°РєСЂС‹РІР°С‚СЊ РЅРµС‡РµРіРѕ
         select COUNT (*)
           into v_cnt
           from xx_disl_gu23_act_row
@@ -2995,7 +2995,7 @@ as
             return;
         end if;
 
-        -- вагоны акта начала, по которым НЕТ подписанного (closed) акта окончания
+        -- РІР°РіРѕРЅС‹ Р°РєС‚Р° РЅР°С‡Р°Р»Р°, РїРѕ РєРѕС‚РѕСЂС‹Рј РќР•Рў РїРѕРґРїРёСЃР°РЅРЅРѕРіРѕ (closed) Р°РєС‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ
         select COUNT (*)
           into v_open
           from xx_disl_gu23_act_row sr
@@ -3010,7 +3010,7 @@ as
                                and e.linked_start_id = p_start_id
                                and er.wagon_no = sr.wagon_no);
 
-        -- закрываем акт начала, только если не осталось незакрытых вагонов
+        -- Р·Р°РєСЂС‹РІР°РµРј Р°РєС‚ РЅР°С‡Р°Р»Р°, С‚РѕР»СЊРєРѕ РµСЃР»Рё РЅРµ РѕСЃС‚Р°Р»РѕСЃСЊ РЅРµР·Р°РєСЂС‹С‚С‹С… РІР°РіРѕРЅРѕРІ
         if v_open = 0
         then
             update xx_disl_gu23_act
@@ -3025,20 +3025,20 @@ as
                     p_act_id    => p_start_id,
                     p_user_id   => p_user_id,
                     p_text      =>
-                        'Цикл простоя полностью закрыт: по всем вагонам подписаны акты окончания');
+                        'Р¦РёРєР» РїСЂРѕСЃС‚РѕСЏ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РєСЂС‹С‚: РїРѕ РІСЃРµРј РІР°РіРѕРЅР°Рј РїРѕРґРїРёСЃР°РЅС‹ Р°РєС‚С‹ РѕРєРѕРЅС‡Р°РЅРёСЏ');
             end if;
         end if;
     end close_start_if_complete;
 
-    -- Автоматически обновить статус акта на основе подписантов.
-    -- Вызывается после каждого сохранения решения.
+    -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р° РЅР° РѕСЃРЅРѕРІРµ РїРѕРґРїРёСЃР°РЅС‚РѕРІ.
+    -- Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїРѕСЃР»Рµ РєР°Р¶РґРѕРіРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂРµС€РµРЅРёСЏ.
     procedure sync_act_status (p_act_id in number)
     is
         v_rejected   number;
         v_total      number;
         v_approved   number;
     begin
-        -- есть хоть одно отклонение - акт отклонён
+        -- РµСЃС‚СЊ С…РѕС‚СЊ РѕРґРЅРѕ РѕС‚РєР»РѕРЅРµРЅРёРµ - Р°РєС‚ РѕС‚РєР»РѕРЅС‘РЅ
         select COUNT (*)
           into v_rejected
           from xx_disl_gu23_approval
@@ -3053,7 +3053,7 @@ as
             return;
         end if;
 
-        -- подписанты предприятия (stype='own'): signer_ref_id = xx_disl_users.id - сами подписыввают
+        -- РїРѕРґРїРёСЃР°РЅС‚С‹ РїСЂРµРґРїСЂРёСЏС‚РёСЏ (stype='own'): signer_ref_id = xx_disl_users.id - СЃР°РјРё РїРѕРґРїРёСЃС‹РІРІР°СЋС‚
         select COUNT (*)
           into v_total
           from xx_disl_gu23_signer
@@ -3066,7 +3066,7 @@ as
             return;
         end if;
 
-        -- число тех, кто уже подписал
+        -- С‡РёСЃР»Рѕ С‚РµС…, РєС‚Рѕ СѓР¶Рµ РїРѕРґРїРёСЃР°Р»
         select COUNT (*)
           into v_approved
           from xx_disl_gu23_approval  a
@@ -3080,19 +3080,19 @@ as
         then
             update xx_disl_gu23_act
                set status = 'signed', modified_at = SYSDATE
-             where id = p_act_id and act_type = 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали
+             where id = p_act_id and act_type = 'start' -- add 23.07.2026 BekmansurovRR Р°РєС‚ РЅР° РЅР°С‡Р°Р»Рѕ РЅРµ Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ, РµСЃР»Рё РїРѕРґРїРёСЃР°Р»Рё
                                                         and status = 'active';
 
             update xx_disl_gu23_act
                set status = 'closed', modified_at = SYSDATE
              where     id = p_act_id
-                   and act_type != 'start' -- add 23.07.2026 BekmansurovRR акт на начало не закрывается, если подписали
+                   and act_type != 'start' -- add 23.07.2026 BekmansurovRR Р°РєС‚ РЅР° РЅР°С‡Р°Р»Рѕ РЅРµ Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ, РµСЃР»Рё РїРѕРґРїРёСЃР°Р»Рё
                    and status = 'active';
         end if;
 
         -- add 24.07.2026 BekmansurovRR
-        -- после синхронизации статуса: если это подписанный (закрытый) акт
-        -- окончания - пробуем закрыть связанный акт начала простоя
+        -- РїРѕСЃР»Рµ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё СЃС‚Р°С‚СѓСЃР°: РµСЃР»Рё СЌС‚Рѕ РїРѕРґРїРёСЃР°РЅРЅС‹Р№ (Р·Р°РєСЂС‹С‚С‹Р№) Р°РєС‚
+        -- РѕРєРѕРЅС‡Р°РЅРёСЏ - РїСЂРѕР±СѓРµРј Р·Р°РєСЂС‹С‚СЊ СЃРІСЏР·Р°РЅРЅС‹Р№ Р°РєС‚ РЅР°С‡Р°Р»Р° РїСЂРѕСЃС‚РѕСЏ
         for r
             in (select linked_start_id
                   from xx_disl_gu23_act
@@ -3105,7 +3105,7 @@ as
         end loop;
     end sync_act_status;
 
-    -- подписание/отклонение/корректировка по ссылке из письма.
+    -- РїРѕРґРїРёСЃР°РЅРёРµ/РѕС‚РєР»РѕРЅРµРЅРёРµ/РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєР° РїРѕ СЃСЃС‹Р»РєРµ РёР· РїРёСЃСЊРјР°.
     function gu23_approval_save_decision (
         p_act_id        in number,
         p_approver_id   in number,
@@ -3121,10 +3121,10 @@ as
         v_ver        number;
         v_next       number;
     begin
-        -- фиксируем IP
+        -- С„РёРєСЃРёСЂСѓРµРј IP
         gu23_set_client_ip (p_signer_ip);
 
-        -- текущая версия акта
+        -- С‚РµРєСѓС‰Р°СЏ РІРµСЂСЃРёСЏ Р°РєС‚Р°
         select NVL (content_version, 1)
           into v_ver
           from xx_disl_gu23_act
@@ -3141,16 +3141,16 @@ as
 
             if v_next is null
             then
-                return 'ERR' || c_us || 'Нет подписанта, ожидающего решения';
+                return 'ERR' || c_us || 'РќРµС‚ РїРѕРґРїРёСЃР°РЅС‚Р°, РѕР¶РёРґР°СЋС‰РµРіРѕ СЂРµС€РµРЅРёСЏ';
             elsif v_next <> p_approver_id
             then
                 return    'ERR'
                        || c_us
-                       || 'Сейчас ожидается решение другого подписанта';
+                       || 'РЎРµР№С‡Р°СЃ РѕР¶РёРґР°РµС‚СЃСЏ СЂРµС€РµРЅРёРµ РґСЂСѓРіРѕРіРѕ РїРѕРґРїРёСЃР°РЅС‚Р°';
             end if;
         end if;
 
-        -- Ищем по (act_id, approver_id)
+        -- РС‰РµРј РїРѕ (act_id, approver_id)
         select COUNT (*)
           into v_cnt
           from xx_disl_gu23_approval
@@ -3191,14 +3191,14 @@ as
                          p_signer_ip);
         end if;
 
-        -- Запись в историю акта
+        -- Р—Р°РїРёСЃСЊ РІ РёСЃС‚РѕСЂРёСЋ Р°РєС‚Р°
         if p_status = 'approved'
         then
-            v_hist_txt := 'Акт подписан: ' || g_user_name (p_approver_id);
+            v_hist_txt := 'РђРєС‚ РїРѕРґРїРёСЃР°РЅ: ' || g_user_name (p_approver_id);
         elsif p_status = 'rejected'
         then
             v_hist_txt :=
-                   'Акт отклонён: '
+                   'РђРєС‚ РѕС‚РєР»РѕРЅС‘РЅ: '
                 || g_user_name (p_approver_id)
                 || case
                        when p_comment is not null then ' - ' || p_comment
@@ -3207,7 +3207,7 @@ as
         elsif p_status = 'on_correction'
         then
             v_hist_txt :=
-                   'Отправлен на корректировку: '
+                   'РћС‚РїСЂР°РІР»РµРЅ РЅР° РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєСѓ: '
                 || g_user_name (p_approver_id)
                 || case
                        when p_comment is not null then ' - ' || p_comment
@@ -3252,10 +3252,10 @@ as
                                                    v_user_name,
                                                    p_comment,
                                                    p_base_url);
-                    -- Отправка письма на корректировку
+                    -- РћС‚РїСЂР°РІРєР° РїРёСЃСЊРјР° РЅР° РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєСѓ
                     gu23_send_mail (
                         p_to        => v_email,
-                        p_subject   => g_email_subject || ' (Корректировка)',
+                        p_subject   => g_email_subject || ' (РљРѕСЂСЂРµРєС‚РёСЂРѕРІРєР°)',
                         p_body      => v_body);
                 end if;
             exception
@@ -3268,7 +3268,7 @@ as
             return 'OK';
         end if;
 
-        -- Автоматически обновить статус акта
+        -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р°
         sync_act_status (p_act_id);
         commit;
         return 'OK';
@@ -3403,7 +3403,7 @@ as
         if sql%rowcount = 0
         then
             rollback;
-            return 'ERR' || c_us || 'Подписант не найден';
+            return 'ERR' || c_us || 'РџРѕРґРїРёСЃР°РЅС‚ РЅРµ РЅР°Р№РґРµРЅ';
         end if;
 
         commit;
@@ -3426,7 +3426,7 @@ as
         v_ver    number;
         v_next   number;
     begin
-        -- текущая версия акта
+        -- С‚РµРєСѓС‰Р°СЏ РІРµСЂСЃРёСЏ Р°РєС‚Р°
         select NVL (content_version, 1)
           into v_ver
           from xx_disl_gu23_act
@@ -3443,16 +3443,16 @@ as
 
             if v_next is null
             then
-                return 'ERR' || c_us || 'Нет подписанта, ожидающего решения';
+                return 'ERR' || c_us || 'РќРµС‚ РїРѕРґРїРёСЃР°РЅС‚Р°, РѕР¶РёРґР°СЋС‰РµРіРѕ СЂРµС€РµРЅРёСЏ';
             elsif v_next <> p_user_id
             then
                 return    'ERR'
                        || c_us
-                       || 'Сейчас ожидается решение другого подписанта';
+                       || 'РЎРµР№С‡Р°СЃ РѕР¶РёРґР°РµС‚СЃСЏ СЂРµС€РµРЅРёРµ РґСЂСѓРіРѕРіРѕ РїРѕРґРїРёСЃР°РЅС‚Р°';
             end if;
         end if;
 
-        -- Создаём запись если нет, иначе обновляем
+        -- РЎРѕР·РґР°С‘Рј Р·Р°РїРёСЃСЊ РµСЃР»Рё РЅРµС‚, РёРЅР°С‡Рµ РѕР±РЅРѕРІР»СЏРµРј
         merge into xx_disl_gu23_approval t
              using (select p_act_id as act_id, p_user_id as approver_id
                       from DUAL) s
@@ -3492,10 +3492,10 @@ as
 
         if sql%rowcount = 0
         then
-            return 'ERR' || c_us || 'Решение уже было принято ранее';
+            return 'ERR' || c_us || 'Р РµС€РµРЅРёРµ СѓР¶Рµ Р±С‹Р»Рѕ РїСЂРёРЅСЏС‚Рѕ СЂР°РЅРµРµ';
         end if;
 
-        -- Запись в историю
+        -- Р—Р°РїРёСЃСЊ РІ РёСЃС‚РѕСЂРёСЋ
         declare
             v_txt   varchar2 (1000);
         begin
@@ -3503,13 +3503,13 @@ as
                 case p_status
                     when 'approved'
                     then
-                        'Подписано'
+                        'РџРѕРґРїРёСЃР°РЅРѕ'
                     when 'rejected'
                     then
-                        'Отклонено: ' || p_comment
+                        'РћС‚РєР»РѕРЅРµРЅРѕ: ' || p_comment
                     when 'on_correction'
                     then
-                        'Отправлен на корректировку: ' || p_comment
+                        'РћС‚РїСЂР°РІР»РµРЅ РЅР° РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєСѓ: ' || p_comment
                     else
                         p_status
                 end;
@@ -3550,7 +3550,7 @@ as
                                                    p_base_url);
                     gu23_send_mail (
                         p_to        => v_email,
-                        p_subject   => g_email_subject || ' (Корректировка)',
+                        p_subject   => g_email_subject || ' (РљРѕСЂСЂРµРєС‚РёСЂРѕРІРєР°)',
                         p_body      => v_body);
                 end if;
             exception
@@ -3563,7 +3563,7 @@ as
             return 'OK';
         end if;
 
-        -- Автоматически обновить статус акта
+        -- РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р°РєС‚Р°
         sync_act_status (p_act_id);
         commit;
         return 'OK';
@@ -3575,7 +3575,7 @@ as
     end;
 
     -- ----------------------------------------------------------------
-    -- Роли и доступ
+    -- Р РѕР»Рё Рё РґРѕСЃС‚СѓРї
     -- ----------------------------------------------------------------
 
     function gu23_can_access (p_user_id in number)
@@ -3682,7 +3682,7 @@ as
     exception
         when DUP_VAL_ON_INDEX
         then
-            -- роль уже назначена
+            -- СЂРѕР»СЊ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅР°
             return 'OK';
         when others
         then
@@ -3713,7 +3713,7 @@ as
     begin
         if gu23_is_admin (p_user_id) = 'Y'
         then
-            -- администратор получает все права
+            -- Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РїРѕР»СѓС‡Р°РµС‚ РІСЃРµ РїСЂР°РІР°
             for r in (  select perm_code
                           from xx_disl_gu23_permissions
                       order by perm_code)
@@ -3835,9 +3835,9 @@ as
 
     -- ----------------------------------------------------------------
     -- add 22.07.2026 BekmansurovRR
-    -- Уведомления
+    -- РЈРІРµРґРѕРјР»РµРЅРёСЏ
     -- ----------------------------------------------------------------
-    -- Список актов для уведомления, которые требуется подписать в текущий момент.
+    -- РЎРїРёСЃРѕРє Р°РєС‚РѕРІ РґР»СЏ СѓРІРµРґРѕРјР»РµРЅРёСЏ, РєРѕС‚РѕСЂС‹Рµ С‚СЂРµР±СѓРµС‚СЃСЏ РїРѕРґРїРёСЃР°С‚СЊ РІ С‚РµРєСѓС‰РёР№ РјРѕРјРµРЅС‚.
     function gu23_notices_virtual (p_user_id in number)
         return t_gu23_notice_tab
     is
@@ -3850,9 +3850,9 @@ as
                   from xx_disl_gu23_act_v gu
                  where     gu.status = 'active'
                        -- add 24.07.2026 BekmansurovRR
-                       -- подписание последовательное: показываем уведомление только тому,
-                       -- чья сейчас очередь.
-                       -- Кто следующий? ? gu23_approval_next_signer
+                       -- РїРѕРґРїРёСЃР°РЅРёРµ РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅРѕРµ: РїРѕРєР°Р·С‹РІР°РµРј СѓРІРµРґРѕРјР»РµРЅРёРµ С‚РѕР»СЊРєРѕ С‚РѕРјСѓ,
+                       -- С‡СЊСЏ СЃРµР№С‡Р°СЃ РѕС‡РµСЂРµРґСЊ.
+                       -- РљС‚Рѕ СЃР»РµРґСѓСЋС‰РёР№? ? gu23_approval_next_signer
                        and exists
                                (select 1
                                   from table (
@@ -3872,25 +3872,25 @@ as
                 gu23_act_link (get23_base_url (),
                                '/gu23/card.php?id=' || r.id);
             l_result (l_result.LAST).title :=
-                'Требуется подписание акта ' || r.act_number;
+                'РўСЂРµР±СѓРµС‚СЃСЏ РїРѕРґРїРёСЃР°РЅРёРµ Р°РєС‚Р° ' || r.act_number;
             l_result (l_result.LAST).body :=
-                   'Требуется подписание акта '
+                   'РўСЂРµР±СѓРµС‚СЃСЏ РїРѕРґРїРёСЃР°РЅРёРµ Р°РєС‚Р° '
                 || r.act_number
                 || CHR (10)
-                || 'Причина: '
+                || 'РџСЂРёС‡РёРЅР°: '
                 || r.reason_name
                 || CHR (10)
-                || 'Обстоятельства: '
+                || 'РћР±СЃС‚РѕСЏС‚РµР»СЊСЃС‚РІР°: '
                 || r.circumstances
                 || CHR (10)
-                || 'Вагоны: '
+                || 'Р’Р°РіРѕРЅС‹: '
                 || SUBSTR (l_list_wagons, 1, 100)
                 || case
                        when LENGTH (l_list_wagons) > 100 then '...'
                        else ''
                    end
                 || CHR (10)
-                || 'Подробная информация доступна по ссылке: '
+                || 'РџРѕРґСЂРѕР±РЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ РґРѕСЃС‚СѓРїРЅР° РїРѕ СЃСЃС‹Р»РєРµ: '
                 || '<a href="'
                 || html_escape (v_card_url)
                 || '" style="color:#471364;font-weight:700;text-decoration:none;">'
@@ -3908,7 +3908,7 @@ as
                 then
                     l_result (l_result.LAST).notice_type := 'action_required';
                     l_result (l_result.LAST).notice_type_name :=
-                        'Требуют действия';
+                        'РўСЂРµР±СѓСЋС‚ РґРµР№СЃС‚РІРёСЏ';
             end;
 
             l_result (l_result.LAST).active := 'Y';
@@ -3920,8 +3920,8 @@ as
     end gu23_notices_virtual;
 
     function gu23_notices (p_user_id   in number,
-                           -- add 24.07.2026 BekmansurovRR: p_all='Y' ? управленческий список (всё:
-                           -- отключённые, вне срока, без учёта адресности)
+                           -- add 24.07.2026 BekmansurovRR: p_all='Y' ? СѓРїСЂР°РІР»РµРЅС‡РµСЃРєРёР№ СЃРїРёСЃРѕРє (РІСЃС‘:
+                           -- РѕС‚РєР»СЋС‡С‘РЅРЅС‹Рµ, РІРЅРµ СЃСЂРѕРєР°, Р±РµР· СѓС‡С‘С‚Р° Р°РґСЂРµСЃРЅРѕСЃС‚Рё)
                            p_all       in varchar2 default 'N')
         return t_gu23_notice_tab
         pipelined
@@ -3931,7 +3931,7 @@ as
         l_idx               pls_integer;
     begin
         -- add 24.07.2026 BekmansurovRR
-        -- формируем временные уведомления
+        -- С„РѕСЂРјРёСЂСѓРµРј РІСЂРµРјРµРЅРЅС‹Рµ СѓРІРµРґРѕРјР»РµРЅРёСЏ
         l_virtual_notices := gu23_notices_virtual (p_user_id);
 
         if l_virtual_notices is not null
@@ -3961,11 +3961,11 @@ as
                          TO_CHAR (n.created_at, c_dtf)
                              created_at,
                          -- add 23.07.2026 BekmansurovRR
-                         -- прочитано определяем по дате прочтения
+                         -- РїСЂРѕС‡РёС‚Р°РЅРѕ РѕРїСЂРµРґРµР»СЏРµРј РїРѕ РґР°С‚Рµ РїСЂРѕС‡С‚РµРЅРёСЏ
                          case when nr.read_at is null then 'N' else 'Y' end
                              is_read,
                          -- add 23.07.2026 BekmansurovRR
-                         -- признак "избранное" для пользователя
+                         -- РїСЂРёР·РЅР°Рє "РёР·Р±СЂР°РЅРЅРѕРµ" РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
                          NVL (nr.is_favorite, 'N')
                              is_favorite,
                          n.active
@@ -3980,8 +3980,8 @@ as
                              on     nr.notification_id = n.id
                                 and nr.user_id = p_user_id
                    where     n.module_code = 'GU23'
-                         -- add 24.07.2026 BekmansurovRR: при p_all='Y' фильтры видимости
-                         -- (активность / срок показа / адресность) не применяются
+                         -- add 24.07.2026 BekmansurovRR: РїСЂРё p_all='Y' С„РёР»СЊС‚СЂС‹ РІРёРґРёРјРѕСЃС‚Рё
+                         -- (Р°РєС‚РёРІРЅРѕСЃС‚СЊ / СЃСЂРѕРє РїРѕРєР°Р·Р° / Р°РґСЂРµСЃРЅРѕСЃС‚СЊ) РЅРµ РїСЂРёРјРµРЅСЏСЋС‚СЃСЏ
                          and (p_all = 'Y' or n.active = 'Y')
                          and (   p_all = 'Y'
                               or SYSDATE between n.start_date and n.end_date)
@@ -4007,7 +4007,7 @@ as
             l_row.created_at := r.created_at;
             l_row.is_read := r.is_read;
             -- add 23.07.2026 BekmansurovRR
-            -- отдаём признак избранного в результат
+            -- РѕС‚РґР°С‘Рј РїСЂРёР·РЅР°Рє РёР·Р±СЂР°РЅРЅРѕРіРѕ РІ СЂРµР·СѓР»СЊС‚Р°С‚
             l_row.is_favorite := r.is_favorite;
             l_row.active := r.active;
             l_row.section_notif := 'table';
@@ -4050,7 +4050,7 @@ as
                                and nr.read_at is not null);
 
         -- add 24.07.2026 BekmansurovRR
-        -- формируем временные уведомления
+        -- С„РѕСЂРјРёСЂСѓРµРј РІСЂРµРјРµРЅРЅС‹Рµ СѓРІРµРґРѕРјР»РµРЅРёСЏ
         l_virtual_notices := gu23_notices_virtual (p_user_id);
         l_cnt := l_virtual_notices.COUNT;
         l_count := l_count + NVL (l_cnt, 0);
@@ -4062,7 +4062,7 @@ as
     is
     begin
         -- add 23.07.2026 BekmansurovRR
-        -- MERGE вместо INSERT
+        -- MERGE РІРјРµСЃС‚Рѕ INSERT
         merge into xx_disl_module_notif_read t
              using (select n.id     as notification_id
                       from xx_disl_module_notif n
@@ -4109,7 +4109,7 @@ as
     is
     begin
         -- add 23.07.2026 BekmansurovRR
-        -- MERGE: помечаем прочитанными все видимые уведомления
+        -- MERGE: РїРѕРјРµС‡Р°РµРј РїСЂРѕС‡РёС‚Р°РЅРЅС‹РјРё РІСЃРµ РІРёРґРёРјС‹Рµ СѓРІРµРґРѕРјР»РµРЅРёСЏ
         merge into xx_disl_module_notif_read t
              using (select n.id     as notification_id
                       from xx_disl_module_notif n
@@ -4153,7 +4153,7 @@ as
     end gu23_notice_read_all;
 
     -- add 22.07.2026 BekmansurovRR
-    -- Сохраняем уведомление
+    -- РЎРѕС…СЂР°РЅСЏРµРј СѓРІРµРґРѕРјР»РµРЅРёРµ
     function gu23_notice_save (p_id            in number,
                                p_title         in varchar2,
                                p_body          in varchar2,
@@ -4175,7 +4175,7 @@ as
     begin
         if TRIM (p_title) is null
         then
-            return 'ERR' || c_us || 'Укажите заголовок';
+            return 'ERR' || c_us || 'РЈРєР°Р¶РёС‚Рµ Р·Р°РіРѕР»РѕРІРѕРє';
         end if;
 
         select NVL (
@@ -4341,8 +4341,8 @@ as
     end gu23_notice_toggle;
 
     -- add 23.07.2026 BekmansurovRR
-    -- Переключение признака "избранное" уведомления для пользователя.
-    -- Возвращает 'OK' || us || новое_состояние ('Y'/'N').
+    -- РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РїСЂРёР·РЅР°РєР° "РёР·Р±СЂР°РЅРЅРѕРµ" СѓРІРµРґРѕРјР»РµРЅРёСЏ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.
+    -- Р’РѕР·РІСЂР°С‰Р°РµС‚ 'OK' || us || РЅРѕРІРѕРµ_СЃРѕСЃС‚РѕСЏРЅРёРµ ('Y'/'N').
     function gu23_notice_favorite (p_user_id     in number,
                                    p_notice_id   in number)
         return varchar2
@@ -4397,8 +4397,8 @@ as
     end gu23_notice_favorite;
 
     -- add 23.07.2026 BekmansurovRR
-    -- Ручная установка признака прочтения (иконка-конверт).
-    -- p_read = 'Y' ? прочитано, иначе ? не прочитано.
+    -- Р СѓС‡РЅР°СЏ СѓСЃС‚Р°РЅРѕРІРєР° РїСЂРёР·РЅР°РєР° РїСЂРѕС‡С‚РµРЅРёСЏ (РёРєРѕРЅРєР°-РєРѕРЅРІРµСЂС‚).
+    -- p_read = 'Y' ? РїСЂРѕС‡РёС‚Р°РЅРѕ, РёРЅР°С‡Рµ ? РЅРµ РїСЂРѕС‡РёС‚Р°РЅРѕ.
     function gu23_notice_read_set (p_user_id     in number,
                                    p_notice_id   in number,
                                    p_read        in varchar2)
@@ -4447,7 +4447,7 @@ as
     end gu23_notice_read_set;
 
     -- ----------------------------------------------------------------
-    -- Администрирование справочников
+    -- РђРґРјРёРЅРёСЃС‚СЂРёСЂРѕРІР°РЅРёРµ СЃРїСЂР°РІРѕС‡РЅРёРєРѕРІ
     -- ----------------------------------------------------------------
 
     function gu23_ref_signers_all
@@ -4533,7 +4533,7 @@ as
                          p_post,
                          p_org,
                          p_unit,
-                         'Работник станции ОАО РЖД',
+                         'Р Р°Р±РѕС‚РЅРёРє СЃС‚Р°РЅС†РёРё РћРђРћ Р Р–Р”',
                          'Y');
         end if;
 
@@ -4592,9 +4592,9 @@ as
     exception
         when DUP_VAL_ON_INDEX
         then
-            -- причин уже назначена
+            -- РїСЂРёС‡РёРЅ СѓР¶Рµ РЅР°Р·РЅР°С‡РµРЅР°
             rollback;
-            return format_error ('Причина уже добавлена в справочник!');
+            return format_error ('РџСЂРёС‡РёРЅР° СѓР¶Рµ РґРѕР±Р°РІР»РµРЅР° РІ СЃРїСЂР°РІРѕС‡РЅРёРє!');
         when others
         then
             rollback;
@@ -4617,7 +4617,7 @@ as
     begin
         if v_name is null
         then
-            return format_error ('Не заполнено название причины');
+            return format_error ('РќРµ Р·Р°РїРѕР»РЅРµРЅРѕ РЅР°Р·РІР°РЅРёРµ РїСЂРёС‡РёРЅС‹');
         end if;
 
         if v_kind not in ('start',
@@ -4625,12 +4625,12 @@ as
                           'other',
                           'any')
         then
-            return format_error ('Некорректный тип акта: ' || p_act_kind);
+            return format_error ('РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С‚РёРї Р°РєС‚Р°: ' || p_act_kind);
         end if;
 
         if v_active not in ('Y', 'N')
         then
-            return format_error ('Некорректный статус причины: ' || p_active);
+            return format_error ('РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ СЃС‚Р°С‚СѓСЃ РїСЂРёС‡РёРЅС‹: ' || p_active);
         end if;
 
         if p_categ is not null
@@ -4645,9 +4645,9 @@ as
             if v_count = 0
             then
                 return format_error (
-                              'Категория с ID '
+                              'РљР°С‚РµРіРѕСЂРёСЏ СЃ ID '
                            || p_categ
-                           || ' не найдена или неактивна');
+                           || ' РЅРµ РЅР°Р№РґРµРЅР° РёР»Рё РЅРµР°РєС‚РёРІРЅР°');
             end if;
         end if;
 
@@ -4661,7 +4661,7 @@ as
             if v_count = 0
             then
                 return format_error (
-                           'Причина с ID ' || p_id || ' не найдена');
+                           'РџСЂРёС‡РёРЅР° СЃ ID ' || p_id || ' РЅРµ РЅР°Р№РґРµРЅР°');
             end if;
 
             v_id := p_id;
@@ -4681,8 +4681,8 @@ as
         if v_count > 0
         then
             return format_error (
-                          'Дубликат: причина с таким названием, типом акта'
-                       || ' и категорией уже существует');
+                          'Р”СѓР±Р»РёРєР°С‚: РїСЂРёС‡РёРЅР° СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј, С‚РёРїРѕРј Р°РєС‚Р°'
+                       || ' Рё РєР°С‚РµРіРѕСЂРёРµР№ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚');
         end if;
 
         if p_id is not null and p_id > 0
@@ -4712,7 +4712,7 @@ as
         when DUP_VAL_ON_INDEX
         then
             rollback;
-            return format_error ('Дубликат: причина уже существует');
+            return format_error ('Р”СѓР±Р»РёРєР°С‚: РїСЂРёС‡РёРЅР° СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚');
         when others
         then
             rollback;
@@ -4753,7 +4753,7 @@ as
                    '&#39;');
     end;
 
-    -- токкен для подписания через письмо (пока не отключили такую возможность, только через сайт)
+    -- С‚РѕРєРєРµРЅ РґР»СЏ РїРѕРґРїРёСЃР°РЅРёСЏ С‡РµСЂРµР· РїРёСЃСЊРјРѕ (РїРѕРєР° РЅРµ РѕС‚РєР»СЋС‡РёР»Рё С‚Р°РєСѓСЋ РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ, С‚РѕР»СЊРєРѕ С‡РµСЂРµР· СЃР°Р№С‚)
     function gu23_new_approval_token
         return varchar2
     is
@@ -4786,17 +4786,17 @@ as
 
         v_card_url :=
             gu23_act_link (p_base_url, '/gu23/card.php?id=' || p_act_id);
-        return    '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Акт ГУ-23 отправлен на корректировку</title></head>'
+        return    '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>РђРєС‚ Р“РЈ-23 РѕС‚РїСЂР°РІР»РµРЅ РЅР° РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєСѓ</title></head>'
                || '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222">'
                || '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0"><tr><td align="center">'
                || '<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
                || '<tr><td style="background:#471364;padding:24px 32px">'
-               || '<div style="font-size:20px;font-weight:700;color:#fff">Акт ГУ-23 отправлен на корректировку</div>'
-               || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
+               || '<div style="font-size:20px;font-weight:700;color:#fff">РђРєС‚ Р“РЈ-23 РѕС‚РїСЂР°РІР»РµРЅ РЅР° РєРѕСЂСЂРµРєС‚РёСЂРѕРІРєСѓ</div>'
+               || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">РђРєС‚ '
                || html_escape (v_act_number)
                || '</div></td></tr>'
                || '<tr><td style="padding:28px 32px">'
-               || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Документ возвращен для исправления замечаний. Ссылка на акт: '
+               || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Р”РѕРєСѓРјРµРЅС‚ РІРѕР·РІСЂР°С‰РµРЅ РґР»СЏ РёСЃРїСЂР°РІР»РµРЅРёСЏ Р·Р°РјРµС‡Р°РЅРёР№. РЎСЃС‹Р»РєР° РЅР° Р°РєС‚: '
                || '<a href="'
                || html_escape (v_card_url)
                || '" style="color:#471364;font-weight:700;text-decoration:none;">'
@@ -4804,19 +4804,19 @@ as
                || '</a></p>'
                || '<div style="border:1px solid #e0e4ea;border-radius:6px;background:#f8f9fb;padding:16px 18px">'
                || '<table cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;line-height:1.7">'
-               || '<tr><td style="color:#777;width:150px;vertical-align:top">Кто вернул:</td>'
+               || '<tr><td style="color:#777;width:150px;vertical-align:top">РљС‚Рѕ РІРµСЂРЅСѓР»:</td>'
                || '<td style="color:#222"><b>'
                || html_escape (p_user_name)
                || '</b></td></tr>'
-               || '<tr><td style="color:#777;vertical-align:top;padding-top:8px">Причина возврата:</td>'
+               || '<tr><td style="color:#777;vertical-align:top;padding-top:8px">РџСЂРёС‡РёРЅР° РІРѕР·РІСЂР°С‚Р°:</td>'
                || '<td style="color:#222;font-weight:700;padding-top:8px;line-height:1.4">'
                || html_escape (p_comment)
                || '</td></tr></table></div></td></tr>'
-               || '<tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Это автоматическое сообщение - не отвечайте на него.</td></tr>'
+               || '<tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Р­С‚Рѕ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ - РЅРµ РѕС‚РІРµС‡Р°Р№С‚Рµ РЅР° РЅРµРіРѕ.</td></tr>'
                || '</table></td></tr></table></body></html>';
     end;
 
-    -- Html письмо
+    -- Html РїРёСЃСЊРјРѕ
     function gu23_approval_mail_html (p_act_id           in number,
                                       p_approver_id      in number,
                                       p_token            in varchar2,
@@ -4886,64 +4886,64 @@ as
         v_card_url :=
             gu23_act_link (p_base_url, '/gu23/card.php?id=' || p_act_id);
         v_html :=
-               '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Подписание акта ГУ-23</title></head>'
+               '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>РџРѕРґРїРёСЃР°РЅРёРµ Р°РєС‚Р° Р“РЈ-23</title></head>'
             || '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#222">'
             || '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0"><tr><td align="center">'
             || '<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
-            || '<tr><td style="background:#471364;padding:24px 32px"><div style="font-size:20px;font-weight:700;color:#fff">Требуется подписание акта ГУ-23</div>'
-            || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">Акт '
+            || '<tr><td style="background:#471364;padding:24px 32px"><div style="font-size:20px;font-weight:700;color:#fff">РўСЂРµР±СѓРµС‚СЃСЏ РїРѕРґРїРёСЃР°РЅРёРµ Р°РєС‚Р° Р“РЈ-23</div>'
+            || '<div style="margin-top:8px;color:#d8c7e8;font-size:14px">РђРєС‚ '
             || html_escape (v_act_number)
             || '</div></td></tr><tr><td style="padding:28px 32px">'
-            || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">Подробная информация по акту доступна по ссылке: <a href="'
+            || '<p style="margin:0 0 18px;color:#666;font-size:13px;line-height:1.5">РџРѕРґСЂРѕР±РЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ РїРѕ Р°РєС‚Сѓ РґРѕСЃС‚СѓРїРЅР° РїРѕ СЃСЃС‹Р»РєРµ: <a href="'
             || v_card_url
             || '">'
             || html_escape (v_act_number)
             || '</a></p>'
             || '<div style="border:1px solid #e0e4ea;border-radius:6px;background:#f8f9fb;padding:14px 18px;margin-bottom:22px">'
             || '<table cellpadding="0" cellspacing="0" width="100%" style="font-size:13px;line-height:1.7">'
-            || '<tr><td style="color:#777;width:170px">Версия документа: </td><td><b>'
+            || '<tr><td style="color:#777;width:170px">Р’РµСЂСЃРёСЏ РґРѕРєСѓРјРµРЅС‚Р°: </td><td><b>'
             || html_escape (v_version)
-            || '</b></td></tr><tr><td style="color:#777;width:170px">Номер акта</td><td><b>'
+            || '</b></td></tr><tr><td style="color:#777;width:170px">РќРѕРјРµСЂ Р°РєС‚Р°</td><td><b>'
             || html_escape (v_act_number)
-            || '</td></tr><tr><td style="color:#777">Дата создания</td><td>'
+            || '</td></tr><tr><td style="color:#777">Р”Р°С‚Р° СЃРѕР·РґР°РЅРёСЏ</td><td>'
             || html_escape (v_created_at)
-            || '</td></tr><tr><td style="color:#777">Создал</td><td>'
+            || '</td></tr><tr><td style="color:#777">РЎРѕР·РґР°Р»</td><td>'
             || html_escape (v_created_by)
-            || '</b></td></tr><tr><td style="color:#777">Цех</td><td>'
+            || '</b></td></tr><tr><td style="color:#777">Р¦РµС…</td><td>'
             || html_escape (v_dept)
-            || '</td></tr><tr><td style="color:#777">Ст. составления</td><td>'
+            || '</td></tr><tr><td style="color:#777">РЎС‚. СЃРѕСЃС‚Р°РІР»РµРЅРёСЏ</td><td>'
             || html_escape (v_station)
-            || '</td></tr><tr><td style="color:#777">Ст. отправления</td><td>'
+            || '</td></tr><tr><td style="color:#777">РЎС‚. РѕС‚РїСЂР°РІР»РµРЅРёСЏ</td><td>'
             || html_escape (v_st_from)
-            || '</td></tr><tr><td style="color:#777">Ст. назначения</td><td>'
+            || '</td></tr><tr><td style="color:#777">РЎС‚. РЅР°Р·РЅР°С‡РµРЅРёСЏ</td><td>'
             || html_escape (v_st_to)
-            || '</td></tr><tr><td style="color:#777">Груз</td><td>'
+            || '</td></tr><tr><td style="color:#777">Р“СЂСѓР·</td><td>'
             || html_escape (v_cargo)
-            || '</td></tr><tr><td style="color:#777">Причина</td><td>'
+            || '</td></tr><tr><td style="color:#777">РџСЂРёС‡РёРЅР°</td><td>'
             || html_escape (v_reason)
-            || '</td></tr><tr><td style="color:#777">Начало простоя</td><td>'
+            || '</td></tr><tr><td style="color:#777">РќР°С‡Р°Р»Рѕ РїСЂРѕСЃС‚РѕСЏ</td><td>'
             || html_escape (v_start_at)
-            || '</td></tr><tr><td style="color:#777">Вагонов</td><td><b>'
+            || '</td></tr><tr><td style="color:#777">Р’Р°РіРѕРЅРѕРІ</td><td><b>'
             || NVL (TO_CHAR (v_wagon_cnt), '0')
-            || '</b></td></tr><tr><td style="color:#777">Обстоятельства</td><td><b>'
+            || '</b></td></tr><tr><td style="color:#777">РћР±СЃС‚РѕСЏС‚РµР»СЊСЃС‚РІР°</td><td><b>'
             || html_escape (v_circ)
             || '</b></td></tr></table></div>'
-            -- rem 15.07.2026 (пока не отключили такую возможность, только через сайт)
+            -- rem 15.07.2026 (РїРѕРєР° РЅРµ РѕС‚РєР»СЋС‡РёР»Рё С‚Р°РєСѓСЋ РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ, С‚РѕР»СЊРєРѕ С‡РµСЂРµР· СЃР°Р№С‚)
             || case
                    when UPPER (g_server_host) != 'M5000'
                    then
                           '<p style="margin:0 0 22px"><a href="'
                        || v_approve_url
-                       || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">Подписать</a>'
+                       || '" style="display:inline-block;background:#1e8e3e;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700;margin-right:8px">РџРѕРґРїРёСЃР°С‚СЊ</a>'
                        || '<a href="'
                        || v_reject_url
-                       || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">Отклонить</a></p>'
+                       || '" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:12px 26px;border-radius:5px;font-weight:700">РћС‚РєР»РѕРЅРёС‚СЊ</a></p>'
                end
-            || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">ПОДПИСАНТЫ</div>'
+            || '<div style="font-size:12px;font-weight:700;color:#666;letter-spacing:.4px;margin-bottom:10px">РџРћР”РџРРЎРђРќРўР«</div>'
             || '<table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e0e4ea;border-collapse:collapse">'
             || '<thead><tr style="background:#f0f4f8"><th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:32px">#</th>'
-            || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:left">ФИО / Должность</th>'
-            || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:140px">Статус</th></tr></thead><tbody>';
+            || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:left">Р¤РРћ / Р”РѕР»Р¶РЅРѕСЃС‚СЊ</th>'
+            || '<th style="padding:8px 10px;font-size:12px;color:#666;text-align:center;width:140px">РЎС‚Р°С‚СѓСЃ</th></tr></thead><tbody>';
 
         for s
             in (  select s.*,
@@ -4969,15 +4969,15 @@ as
                 if s.status = 'approved'
                 then
                     v_status_html :=
-                        '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Подписано</span>';
+                        '<span style="background:#e6f4ea;color:#137333;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">РџРѕРґРїРёСЃР°РЅРѕ</span>';
                 elsif s.status = 'rejected'
                 then
                     v_status_html :=
-                        '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">Отклонено</span>';
+                        '<span style="background:#fce8e6;color:#c5221f;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">РћС‚РєР»РѕРЅРµРЅРѕ</span>';
                 elsif s.signer_ref_id = p_approver_id
                 then
                     v_status_html :=
-                        '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">В процессе</span>';
+                        '<span style="background:#fef9e7;color:#b7770a;padding:2px 8px;border-radius:4px;font-size:11px">Р’ РїСЂРѕС†РµСЃСЃРµ</span>';
                 end if;
             end if;
 
@@ -5003,12 +5003,12 @@ as
 
         v_html :=
                v_html
-            || '</tbody></table></td></tr><tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Это автоматическое сообщение - не отвечайте на него.</td></tr>'
+            || '</tbody></table></td></tr><tr><td style="background:#f4f5f7;padding:16px 32px;color:#999;font-size:12px">Р­С‚Рѕ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ - РЅРµ РѕС‚РІРµС‡Р°Р№С‚Рµ РЅР° РЅРµРіРѕ.</td></tr>'
             || '</table></td></tr></table></body></html>';
         return v_html;
     end;
 
-    -- Отправка писем подписантам
+    -- РћС‚РїСЂР°РІРєР° РїРёСЃРµРј РїРѕРґРїРёСЃР°РЅС‚Р°Рј
     function gu23_send_approval_mail (
         p_act_id        in number,
         p_approver_id   in number,
@@ -5029,7 +5029,7 @@ as
 
         if v_email is null
         then
-            return 'ERR' || c_us || 'У подписанта не указан email';
+            return 'ERR' || c_us || 'РЈ РїРѕРґРїРёСЃР°РЅС‚Р° РЅРµ СѓРєР°Р·Р°РЅ email';
         end if;
 
         v_token := gu23_new_approval_token ();
@@ -5049,11 +5049,11 @@ as
         gu23_send_mail (p_to        => v_email,
                         p_subject   => g_email_subject,
                         p_body      => v_body);
-        return 'OK' || c_us;            --|| 'Ссылка отправлена: ' || v_email;
+        return 'OK' || c_us;            --|| 'РЎСЃС‹Р»РєР° РѕС‚РїСЂР°РІР»РµРЅР°: ' || v_email;
     exception
         when NO_DATA_FOUND
         then
-            return 'ERR' || c_us || 'Подписант не найден';
+            return 'ERR' || c_us || 'РџРѕРґРїРёСЃР°РЅС‚ РЅРµ РЅР°Р№РґРµРЅ';
         when others
         then
             return format_error ();
@@ -5075,7 +5075,7 @@ as
 
         if v_approver_id is null
         then
-            return 'OK' || c_us || 'Следующих подписантов нет';
+            return 'OK' || c_us || 'РЎР»РµРґСѓСЋС‰РёС… РїРѕРґРїРёСЃР°РЅС‚РѕРІ РЅРµС‚';
         end if;
 
         return gu23_send_approval_mail (p_act_id, v_approver_id, p_base_url);
@@ -5083,7 +5083,7 @@ as
 
     /*
        add 24.07.2026 BekmansurovRR
-       Фильтры пользователей.
+       Р¤РёР»СЊС‚СЂС‹ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№.
     */
     function gu23_filter_save (p_data in xx_disl_gu23_filter%rowtype)
         return varchar2
@@ -5105,13 +5105,13 @@ as
                  values (l_row.id,
                          l_row.user_id,
                          l_row.filter_name,
-                         l_row.params,     -- Данные(параметры) в формате json
+                         l_row.params,     -- Р”Р°РЅРЅС‹Рµ(РїР°СЂР°РјРµС‚СЂС‹) РІ С„РѕСЂРјР°С‚Рµ json
                          l_row.created_by,
                          l_row.is_default);
         else
             if l_row.is_default = 'Y'
             then
-                -- Сначала "удаляем" все записи по-умолчанию
+                -- РЎРЅР°С‡Р°Р»Р° "СѓРґР°Р»СЏРµРј" РІСЃРµ Р·Р°РїРёСЃРё РїРѕ-СѓРјРѕР»С‡Р°РЅРёСЋ
                 update xx_disl_gu23_filter
                    set is_default = 'N'
                  where user_id = l_row.user_id and id != l_row.id;
@@ -5134,12 +5134,12 @@ as
             return format_error ();
     end;
 
-    -- Удаление фильтра пользователя
+    -- РЈРґР°Р»РµРЅРёРµ С„РёР»СЊС‚СЂР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
     function gu23_filter_del (p_id in number, p_user_id in number)
         return varchar2
     is
     begin
-        -- удаляем только свой фильтр
+        -- СѓРґР°Р»СЏРµРј С‚РѕР»СЊРєРѕ СЃРІРѕР№ С„РёР»СЊС‚СЂ
         delete xx_disl_gu23_filter
          where id = p_id and user_id = p_user_id;
 
@@ -5164,7 +5164,7 @@ as
                            f.user_id,
                            f.created_by,
                            f.created_at,
-                           NVL (f.is_default, 'N')     as is_default -- фильтр по умолчанию
+                           NVL (f.is_default, 'N')     as is_default -- С„РёР»СЊС‚СЂ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
                       from xx_disl_gu23_filter f
                      where user_id = p_user_id
                   order by f.filter_name)
@@ -5181,7 +5181,7 @@ as
     end;
 
     -- add 27.07.2026 BekmansurovRR
-    -- Тип нового акта по умолчанию для пользователя.
+    -- РўРёРї РЅРѕРІРѕРіРѕ Р°РєС‚Р° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.
     function gu23_user_default_type (p_user_id in number)
         return varchar2
     is
@@ -5210,7 +5210,7 @@ as
            or l_act_type is null
            or l_act_type not in ('start', 'end', 'other')
         then
-            return format_error ('Некорректный тип акта');
+            return format_error ('РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С‚РёРї Р°РєС‚Р°');
         end if;
 
         merge into xx_disl_gu23_user_settings t
@@ -5244,7 +5244,7 @@ as
     end;
 
     /* ------------------------------------------------------------------ */
-    -- отправка письма
+    -- РѕС‚РїСЂР°РІРєР° РїРёСЃСЊРјР°
     procedure gu23_send_mail (
         p_to        in varchar2,
         p_subject   in varchar2,
@@ -5280,14 +5280,14 @@ as
                              x_sender);
             end if;
 
-            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
-                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
+            apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --РѕС‚РїСЂР°РІРёС‚РµР»СЊ
+                                                 p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --РїРѕР»СѓС‡Р°С‚РµР»СЊ
                                                  p_subject     => x_subject,
                                                  p_text_clob   => x_msg);
         else
             apps.xx_mtf_send_mail_pkg.send_mail (
-                p_sender      => x_sender,                       --отправитель
-                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
+                p_sender      => x_sender,                       --РѕС‚РїСЂР°РІРёС‚РµР»СЊ
+                p_recipient   => 'rustam.bekmansurov@ruschem.ru', --РїРѕР»СѓС‡Р°С‚РµР»СЊ
                 p_subject     => x_subject || ' -> ' || x_to_email,
                 p_text_clob   => x_msg);
         end if;
