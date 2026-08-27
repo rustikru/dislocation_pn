@@ -42,6 +42,86 @@
       g_client_ip := p_ip;
    end;
 
+   function translit_eng_to_rus (
+      p_text in varchar2
+   ) return varchar2 is
+      v_result varchar2(4000);
+      -- Один символ AL32UTF8 может занимать до 4 байт.
+      v_char   varchar2(4);
+   begin
+      v_result := '';
+
+        -- Проходим по каждому символу
+      for i in 1..length(p_text) loop
+         v_char := substr(
+            p_text,
+            i,
+            1
+         );
+
+            -- Заменяем английские буквы на русские
+         v_result := v_result
+                     ||
+            case v_char
+                       -- Заглавные
+               when 'A' then
+                  'А'
+               when 'B' then
+                  'В'
+               when 'C' then
+                  'С'
+               when 'E' then
+                  'Е'
+               when 'H' then
+                  'Н'
+               when 'K' then
+                  'К'
+               when 'M' then
+                  'М'
+               when 'O' then
+                  'О'
+               when 'P' then
+                  'Р'
+               when 'T' then
+                  'Т'
+               when 'X' then
+                  'Х'
+               when 'Y' then
+                  'У'
+                       -- Строчные
+               when 'a' then
+                  'а'
+               when 'b' then
+                  'в'
+               when 'c' then
+                  'с'
+               when 'e' then
+                  'е'
+               when 'h' then
+                  'н'
+               when 'k' then
+                  'к'
+               when 'm' then
+                  'м'
+               when 'o' then
+                  'о'
+               when 'p' then
+                  'р'
+               when 't' then
+                  'т'
+               when 'x' then
+                  'х'
+               when 'y' then
+                  'у'
+                       -- Остальные символы оставляем без изменений
+               else
+                  v_char
+            end;
+      end loop;
+
+      return v_result;
+   end;
+
     -- add 10.07.2026 BekmansurovRR
    procedure log_act_history (
       p_act_id  in number,
@@ -452,9 +532,9 @@
    begin
       begin
          select nvl(
-                   enterprise,
-                   2
-                )
+            enterprise,
+            2
+         )
            into v_org_id
            from xx_disl_users
           where id = p_row.created_by;
@@ -613,7 +693,7 @@
       l_idx         pls_integer;
       l_check_idx   pls_integer;
       l_count       number;
-      l_reason_id   number;
+      l_reason_id   varchar2(240);
       l_ord_no      number;
       l_dur_days    number;
       l_dur_hours   number;
@@ -738,8 +818,8 @@
 
          select count(*)
            into l_count
-           from xx_disl_gu23_ref_reason
-          where id = l_reason_id
+           from xx_disl_gu23_ref_reason_v
+          where to_char(id) = to_char(l_reason_id)
             and active = 'Y'
             and ( p_act.act_type is null
              or act_kind in ( 'any',
@@ -974,7 +1054,7 @@
    begin
       for r in (
          select rr.id,
-                rr.name,
+                xx_etw.xx_disl_gu23_pkg.translit_eng_to_rus(rr.name) as name,
                 rr.categ_name -- add 21.07.2026 BekmansurovRR
            from xx_disl_gu23_ref_reason_v rr
           where rr.active = 'Y'
@@ -983,7 +1063,7 @@
                                  p_kind ) )
           order by name
       ) loop
-         l_row.id := ( r.id );
+         l_row.id := to_char(r.id);
          l_row.code := to_char(r.id);
          l_row.name := r.name;
          l_row.categ_name := r.categ_name;
@@ -1003,15 +1083,22 @@
       l_row xx_disl_gu23_ref_row;
    begin
       for r in (
-         select id,
+         select to_char(id) as id,
                 code,
                 name
            from xx_disl_general_ref
           where ref_code = p_ref_code
             and sysdate between start_effect_date and end_effect_date
+            and ref_code != 'CATEG_CAUSE'
+         union all
+         select id,
+                null,
+                id as name
+           from xx_disl_gu23_categ_v
+          where p_ref_code = 'CATEG_CAUSE'
           order by name
       ) loop
-         l_row.id := r.id;
+         l_row.id := to_char(r.id);
          l_row.code := nvl(
             r.code,
             to_char(r.id)
@@ -1293,20 +1380,22 @@
                                        a.content_version,
                                        1
                                     ) content_version,
-                            a.rn
+                            p.rn
                                       from (
-                                       select a.*,
+                                       select h.id,
+                                              h.created_at,
                                               rownum rn
                                          from (
-                                          select *
-                                            from xx_disl_gu23_act_v a
+                                          select h.id,
+                                                 h.created_at
+                                            from xx_disl_gu23_act h
                                            where ( p_type is null
                                               or instr(
                                              ','
                                              || p_type
                                              || ',',
                                              ','
-                                             || a.act_type
+                                             || h.act_type
                                              || ','
                                           ) > 0 )
                                              and ( p_status is null
@@ -1315,7 +1404,7 @@
                                              || p_status
                                              || ',',
                                              ','
-                                             || a.status
+                                             || h.status
                                              || ','
                                           ) > 0 )
                                              and ( p_dept_id is null
@@ -1324,13 +1413,17 @@
                                              || p_dept_id
                                              || ',',
                                              ','
-                                             || a.dept_id
+                                             || h.dept_id
                                              || ','
                                           ) > 0 )
                                              and ( p_org_id is null
                                               or instr(
-                                             ',' || p_org_id || ',',
-                                             ',' || a.org_id || ','
+                                             ','
+                                             || p_org_id
+                                             || ',',
+                                             ','
+                                             || h.org_id
+                                             || ','
                                           ) > 0 )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
@@ -1340,42 +1433,28 @@
                                           ) = 'Y'
                                               or ( ( v_from is null
                                              and v_to is null )
-                                              or ( a.start_at is not null
+                                              or ( h.start_at is not null
                                              and ( v_from is null
-                                              or nvl(
-                                             a.start_at,
-                                             v_from
-                                          ) >= v_from )
+                                              or h.start_at >= v_from )
                                              and ( v_to is null
-                                              or nvl(
-                                             a.start_at,
-                                             v_to
-                                          ) < v_to ) )
-                                              or ( a.end_at is not null
+                                              or h.start_at < v_to ) )
+                                              or ( h.end_at is not null
                                              and ( v_from is null
-                                              or nvl(
-                                             a.end_at,
-                                             v_from
-                                          ) >= v_from )
+                                              or h.end_at >= v_from )
                                              and ( v_to is null
-                                              or nvl(
-                                             a.end_at,
-                                             v_to
-                                          ) < v_to ) )
-                                              or ( a.start_at is null
-                                             and a.end_at is null ) ) )
+                                              or h.end_at < v_to ) )
+                                              or ( h.start_at is null
+                                             and h.end_at is null ) ) )
                                              and ( p_reason_categ is null
-                                              or instr(
-                                             ','
-                                             || p_reason_categ
-                                             || ',',
-                                             ','
-                                             || nvl(
-                                                         a.categ_id,
-                                                         0
-                                                      )
-                                             || ','
-                                          ) > 0 )
+                                              or exists (
+                                             select 1
+                                               from xx_disl_gu23_ref_reason_v rr
+                                              where to_char(rr.id) = h.reason
+                                                and instr(
+                                                   ',' || p_reason_categ || ',',
+                                                   ',' || nvl(rr.categ, 0) || ','
+                                                ) > 0
+                                          ) )
                                              and ( nvl(
                                              p_has_signed,
                                              'N'
@@ -1383,23 +1462,33 @@
                                               or exists (
                                              select 1
                                                from xx_disl_gu23_file f
-                                              where f.act_id = a.id
+                                              where f.act_id = h.id
                                                 and f.file_category = 'signed'
                                           ) )
                                              and ( v_q is null
-                                          or lower(a.act_number) like '%'
+                                          or lower(h.act_number) like '%'
                                                    || v_q
                                                    || '%'
-                                          or lower(a.act_start_number) like '%'
-                                                   || v_q
-                                                   || '%'
-                                          or lower(a.reason_name) like '%'
-                                                                       || v_q
-                                                                       || '%'
+                                          or exists (
+                                             select 1
+                                               from xx_disl_gu23_act hs
+                                              where hs.id = h.linked_start_id
+                                                and lower(hs.act_number) like '%'
+                                                                                || v_q
+                                                                                || '%'
+                                          )
+                                          or exists (
+                                             select 1
+                                               from xx_disl_gu23_ref_reason_v rr
+                                              where to_char(rr.id) = h.reason
+                                                and lower(rr.name) like '%'
+                                                                        || v_q
+                                                                        || '%'
+                                          )
                                               or exists (
                                              select 1
                                                from xx_disl_gu23_act_row r
-                                              where r.act_id = a.id
+                                              where r.act_id = h.id
                                                 and r.wagon_no like '%'
                                                                     || v_q
                                                                     || '%'
@@ -1408,20 +1497,24 @@
                                              p_requires_action,
                                              'N'
                                           ) <> 'Y'
-                                              or ( a.status = 'active'
+                                              or ( h.status = 'active'
                                              and exists (
                                              select 1
-                                               from table ( gu23_approval_next_signer(a.id) ) ns
+                                               from table ( gu23_approval_next_signer(h.id) ) ns
                                               where ns.approver_id = p_user_id
                                           ) ) )
-                                           order by a.created_at desc
-                                       ) a
+                                           order by h.created_at desc,
+                                                    h.id desc
+                                       ) h
                                         where rownum <= v_end
-                                    ) a
+                                    ) p
+                                      join xx_disl_gu23_act_v a
+                                    on a.id = p.id
                                       left join xx_disl_users du
                                     on du.id = a.created_by
-                      where a.rn > v_off
-                      order by a.created_at desc;
+                      where p.rn > v_off
+                      order by p.created_at desc,
+                               p.id desc;
 
       loop
          fetch l_cur into l_row;
@@ -1464,14 +1557,14 @@
    begin
       select count(*)
         into v_cnt
-        from xx_disl_gu23_act_v a
+        from xx_disl_gu23_act h
        where ( p_type is null
           or instr(
          ','
          || p_type
          || ',',
          ','
-         || a.act_type
+         || h.act_type
          || ','
       ) > 0 )
          and ( p_status is null
@@ -1480,31 +1573,36 @@
          || p_status
          || ',',
          ','
-         || a.status
+         || h.status
          || ','
       ) > 0 )
          and ( p_reason_categ is null
-          or instr(
-         ','
-         || p_reason_categ
-         || ',',
-         ','
-         || a.categ_name
-         || ','
-      ) > 0 )
+          or exists (
+         select 1
+           from xx_disl_gu23_ref_reason_v rr
+          where to_char(rr.id) = h.reason
+            and instr(
+               ',' || p_reason_categ || ',',
+               ',' || nvl(rr.categ, 0) || ','
+            ) > 0
+      ) )
          and ( p_dept_id is null
           or instr(
          ','
          || p_dept_id
          || ',',
          ','
-         || a.dept_id
+         || h.dept_id
          || ','
       ) > 0 )
          and ( p_org_id is null
           or instr(
-         ',' || p_org_id || ',',
-         ',' || a.org_id || ','
+         ','
+         || p_org_id
+         || ',',
+         ','
+         || h.org_id
+         || ','
       ) > 0 )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
@@ -1514,16 +1612,18 @@
       ) = 'Y'
           or ( ( v_from is null
          and v_to is null )
-          or ( a.start_at is not null
+          or ( h.start_at is not null
          and ( v_from is null
-          or a.start_at >= v_from )
+          or h.start_at >= v_from )
          and ( v_to is null
-          or a.start_at < v_to ) )
-          or ( a.end_at is not null
+          or h.start_at < v_to ) )
+          or ( h.end_at is not null
          and ( v_from is null
-          or a.end_at >= v_from )
+          or h.end_at >= v_from )
          and ( v_to is null
-          or a.end_at < v_to ) ) ) )
+          or h.end_at < v_to ) )
+          or ( h.start_at is null
+         and h.end_at is null ) ) )
          and ( nvl(
          p_has_signed,
          'N'
@@ -1531,23 +1631,33 @@
           or exists (
          select 1
            from xx_disl_gu23_file f
-          where f.act_id = a.id
+          where f.act_id = h.id
             and f.file_category = 'signed'
       ) )
          and ( v_q is null
-      or lower(a.act_number) like '%'
+      or lower(h.act_number) like '%'
                || v_q
                || '%'
-      or lower(a.act_start_number) like '%'
-               || v_q
-               || '%'
-      or lower(a.reason_name) like '%'
-                                   || v_q
-                                   || '%'
+      or exists (
+         select 1
+           from xx_disl_gu23_act hs
+          where hs.id = h.linked_start_id
+            and lower(hs.act_number) like '%'
+                                            || v_q
+                                            || '%'
+      )
+      or exists (
+         select 1
+           from xx_disl_gu23_ref_reason_v rr
+          where to_char(rr.id) = h.reason
+            and lower(rr.name) like '%'
+                                    || v_q
+                                    || '%'
+      )
           or exists (
          select 1
            from xx_disl_gu23_act_row r
-          where r.act_id = a.id
+          where r.act_id = h.id
             and r.wagon_no like '%'
                                 || v_q
                                 || '%'
@@ -1556,10 +1666,10 @@
          p_requires_action,
          'N'
       ) <> 'Y'
-          or ( a.status = 'active'
+          or ( h.status = 'active'
          and exists (
          select 1
-           from table ( gu23_approval_next_signer(a.id) ) ns
+           from table ( gu23_approval_next_signer(h.id) ) ns
           where ns.approver_id = p_user_id
       ) ) );
 
@@ -2030,9 +2140,9 @@
                                       439, -- Согласование уведомления
                                       1116 -- Приемосдатчиком принято
                                       ,
-                                      38  -- Получатель уведомлен
+                                      38      -- Получатель уведомлен
                                       ,
-                                      42  -- Раскредитован
+                                      42             -- Раскредитован
                                        )
          and ei.inv_date_create > to_date('01.01.2026','dd.mm.rrrr')
          and ei.inv_recip_name <> 'ОАО "Метафракс"';
@@ -5127,7 +5237,7 @@
    begin
       for r in (
          select rr.id,
-                rr.name,
+                xx_etw.xx_disl_gu23_pkg.translit_eng_to_rus(rr.name) as name,
                 rr.act_kind,
                 rr.categ,
                 rr.categ_name,
@@ -5136,10 +5246,10 @@
           order by active desc,
                    name
       ) loop
-         l_row.id := r.id;
-         l_row.name := r.name;
+         l_row.id := to_char(r.id);
+         l_row.name := ( r.name );
          l_row.act_kind := r.act_kind;
-         l_row.categ := r.categ;
+         l_row.categ := to_char(r.categ);
          l_row.categ_name := r.categ_name;
          l_row.active := r.active;
          pipe row ( l_row );
@@ -6011,20 +6121,20 @@
                  x_msg,
                  x_sender );
          end if;
-            /*
+/*
             apps.xx_mtf_send_mail_pkg.send_mail (p_sender      => x_sender, --отправитель
                                                  p_recipient   => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
                                                  p_subject     => x_subject,
-                                                 p_text_clob   => x_msg);*/
+                                                 p_text_clob   => x_msg);
+                                                 */
       else
          null;
-        /*
+/*
             apps.xx_mtf_send_mail_pkg.send_mail (
                 p_sender      => x_sender,                       --отправитель
                 p_recipient   => 'rustam.bekmansurov@ruschem.ru', --получатель
                 p_subject     => x_subject || ' -> ' || x_to_email,
-                p_text_clob   => x_msg);
-                */
+                p_text_clob   => x_msg);*/
       end if;
 
       commit;

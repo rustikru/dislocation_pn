@@ -121,6 +121,27 @@ class GuActRepository
         return $this->isGu23Admin() || $login === 'USER1';
     }
 
+    /** Глобально разрешено ли изменение справочника причин. */
+    private function reasonEditingEnabled(): bool
+    {
+        static $enabled;
+        if ($enabled === null) {
+            $config = require dirname(__DIR__) . '/config.php';
+            $enabled = (bool) ($config['reason_editing_enabled'] ?? false);
+        }
+        return $enabled;
+    }
+
+    /** Остановить операцию изменения причин, если справочник доступен только для чтения. */
+    private function rejectDisabledReasonEditing(): bool
+    {
+        if ($this->reasonEditingEnabled()) {
+            return false;
+        }
+        echo json_encode(['ok' => false, 'msg' => 'Изменение справочника причин временно отключено']);
+        return true;
+    }
+
     public function runAction(string $action, array $post): void
     {
         ini_set('display_errors', '0');  // PHP-warning не должны попадать в JSON-ответ
@@ -1179,6 +1200,7 @@ class GuActRepository
             'total' => count($all),
             'page' => $page,
             'page_size' => $limit,
+            'reason_editing_enabled' => $this->reasonEditingEnabled(),
         ]);
     }
 
@@ -1335,6 +1357,9 @@ class GuActRepository
     /** Создать новую или обновить существующую причину (id=0 — новая). */
     private function refReasonSave(): void
     {
+        if ($this->rejectDisabledReasonEditing()) {
+            return;
+        }
         if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
@@ -1356,6 +1381,9 @@ class GuActRepository
     /** Импортировать причины из утверждённого XLSX-шаблона. */
     private function importReasonsExcel(): void
     {
+        if ($this->rejectDisabledReasonEditing()) {
+            return;
+        }
         if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;
@@ -1468,6 +1496,9 @@ class GuActRepository
     /** Переключить флаг active у причины. */
     private function refReasonToggle(): void
     {
+        if ($this->rejectDisabledReasonEditing()) {
+            return;
+        }
         if (!$this->permGranted('MANAGE_REFS')) {
             echo json_encode(['ok' => false, 'msg' => 'Недостаточно прав']);
             return;

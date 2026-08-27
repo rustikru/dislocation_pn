@@ -17,6 +17,7 @@ let reasonKinds = []
 let reasonKind = ''
 let reasonCateg = ''
 let reasonStatus = ''
+let reasonEditingEnabled = false
 let searchTimer = null
 
 const REFS_PAGE_SIZE = 20 //
@@ -31,6 +32,7 @@ export function showRefs(container) {
   reasonKind = ''
   reasonCateg = ''
   reasonStatus = ''
+  reasonEditingEnabled = false
 
   $(container).load('pages/refs.php', () => {
     prepareRefsPage(container)
@@ -71,7 +73,7 @@ function prepareRefsPage(container) {
   $(container).on('click.refs', '#btn-add-ref', () => {
     if (!hasPerm('MANAGE_REFS')) return
     if (refsTab === 'signers') showSignerForm(null)
-    else showReasonForm(null)
+    else if (reasonEditingEnabled) showReasonForm(null)
   })
 
   $(container).on('click.refs', '#btn-export-reasons', () => {
@@ -94,7 +96,12 @@ function prepareRefsPage(container) {
   })
 
   $(container).on('click.refs', '#btn-import-reasons', () => {
-    if (!hasPerm('MANAGE_REFS') || refsTab !== 'reasons') return
+    if (
+      !hasPerm('MANAGE_REFS') ||
+      refsTab !== 'reasons' ||
+      !reasonEditingEnabled
+    )
+      return
     $('#reason-import-file').val('').trigger('click')
   })
 
@@ -134,7 +141,9 @@ function loadRefsTab() {
     currentItems = data.items || []
     reasonCategories = data.categories || []
     reasonKinds = data.actKinds || []
+    reasonEditingEnabled = data.reason_editing_enabled === true
     refsPageSize = data.page_size || REFS_PAGE_SIZE
+    setActiveTab()
     if (refsTab === 'signers')
       showSignersList(currentItems, data.total, data.page)
     else showReasonsList(currentItems, data.total, data.page)
@@ -150,8 +159,11 @@ function setActiveTab() {
     $(this).toggleClass('refs-tab-active', $(this).data('tab') === refsTab)
   })
   $('#btn-export-reasons').toggle(refsTab === 'reasons')
+  $('#btn-add-ref').toggle(
+    hasPerm('MANAGE_REFS') && (refsTab === 'signers' || reasonEditingEnabled),
+  )
   $('#btn-import-reasons').toggle(
-    refsTab === 'reasons' && hasPerm('MANAGE_REFS'),
+    refsTab === 'reasons' && hasPerm('MANAGE_REFS') && reasonEditingEnabled,
   )
 }
 
@@ -473,7 +485,7 @@ function actKindLabel(code) {
 }
 
 function showReasonsList(items, total, page) {
-  const canEditRefs = hasPerm('MANAGE_REFS')
+  const canEditRefs = hasPerm('MANAGE_REFS') && reasonEditingEnabled
   const kindOptions =
     '<option value="">Все</option>' +
     actKindItems()
@@ -500,7 +512,8 @@ function showReasonsList(items, total, page) {
       const active = r.ACTIVE === 'Y'
       return `
       <tr data-id="${r.ID}" class="${active ? '' : 'row-inactive'}" style="${canEditRefs ? 'cursor:pointer;' : ''}font-size:13px" title="${canEditRefs ? 'Нажмите для редактирования' : ''}">
-        <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
+      <td style="padding:5px 8px">${escapeHtml(r.ID || '')}</td>  
+      <td style="padding:5px 8px">${escapeHtml(r.NAME || '')}</td>
         <td style="padding:5px 8px" class="muted">${actKindLabel(r.ACT_KIND || '')}</td>
         <td style="padding:5px 8px" class="muted">${escapeHtml(r.CATEG_NAME || '—')}</td>
         <td style="padding:5px 8px">
@@ -520,12 +533,14 @@ function showReasonsList(items, total, page) {
         <table class="tbl" style="width:100%;font-size:13px">
           <thead>
             <tr style="font-size:12px">
+              <th style="padding:5px 8px">Код</th>
               <th style="padding:5px 8px">Название</th>
               <th style="padding:5px 8px">Тип акта</th>
               <th style="padding:5px 8px">Категория</th>
               <th style="padding:5px 8px">Статус</th>
             </tr>
             <tr>
+              <th style="padding:3px 8px"></th>
               <th style="padding:3px 8px"></th>
               <th style="padding:3px 8px">
                 <select class="inp reason-filter" id="reason-filter-kind" style="font-size:12px;padding:3px 7px;min-width:120px;height:30px">${kindOptions}</select>
@@ -565,7 +580,7 @@ function showReasonsList(items, total, page) {
 }
 
 function showReasonForm(reason) {
-  if (!hasPerm('MANAGE_REFS')) return
+  if (!hasPerm('MANAGE_REFS') || !reasonEditingEnabled) return
   const isNew = !reason
   const kindOptions = actKindItems()
     .map(
