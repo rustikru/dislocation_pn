@@ -169,15 +169,15 @@ class GuActPhpWordReport
         foreach ($rows as $idx => $signer) {
             $num = $idx + 1;
             $doc->setValue("SIGNER_POST#$num", $this->cleanValue($this->signerCellText((string) ($signer['POST'] ?? ''), $idx, count($rows))));
-            $doc->setValue("SIGNER_FIO#$num", $this->cleanValue($this->signerCellText((string) ($signer['FIO'] ?? ''), $idx, count($rows))));
+            $doc->setValue("SIGNER_FIO#$num", $this->cleanValue($this->signerCellText($this->shortFio((string) ($signer['FIO'] ?? '')), $idx, count($rows))));
         }
 
         $doc->setValue('SIGNER_1_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
-        $doc->setValue('SIGNER_1_FIO', $this->cleanValue((string) ($signers[0]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_1_FIO', $this->cleanValue($this->shortFio((string) ($signers[0]['FIO'] ?? ''))));
         $doc->setValue('SIGNER_2_POST', $this->cleanValue((string) ($signers[1]['POST'] ?? '')));
-        $doc->setValue('SIGNER_2_FIO', $this->cleanValue((string) ($signers[1]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_2_FIO', $this->cleanValue($this->shortFio((string) ($signers[1]['FIO'] ?? ''))));
         $doc->setValue('SIGNER_3_POST', $this->cleanValue((string) ($signers[2]['POST'] ?? '')));
-        $doc->setValue('SIGNER_3_FIO', $this->cleanValue((string) ($signers[2]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_3_FIO', $this->cleanValue($this->shortFio((string) ($signers[2]['FIO'] ?? ''))));
     }
 
     private function rzdSigners(TemplateProcessor $doc, array $signers, bool $hasRzdBlock): void
@@ -192,11 +192,11 @@ class GuActPhpWordReport
         foreach ($rows as $idx => $signer) {
             $num = $idx + 1;
             $doc->setValue("SIGNER_RZD_POST#$num", $this->cleanValue($this->signerCellText((string) ($signer['POST'] ?? ''), $idx, count($rows))));
-            $doc->setValue("SIGNER_RZD_FIO#$num", $this->cleanValue($this->signerCellText((string) ($signer['FIO'] ?? ''), $idx, count($rows))));
+            $doc->setValue("SIGNER_RZD_FIO#$num", $this->cleanValue($this->signerCellText($this->shortFio((string) ($signer['FIO'] ?? '')), $idx, count($rows))));
         }
 
         $doc->setValue('SIGNER_RZD_POST', $this->cleanValue((string) ($signers[0]['POST'] ?? '')));
-        $doc->setValue('SIGNER_RZD_FIO', $this->cleanValue((string) ($signers[0]['FIO'] ?? '')));
+        $doc->setValue('SIGNER_RZD_FIO', $this->cleanValue($this->shortFio((string) ($signers[0]['FIO'] ?? ''))));
     }
 
     private function fixDocxXml(string $path, array $mainSigners, array $rzdSigners, array $pepApprovals): void
@@ -581,6 +581,31 @@ class GuActPhpWordReport
         }
 
         return $post !== '' ? 'Должность: ' . $post : 'Ф.И.О.: ' . $fio;
+    }
+
+    private function shortFio(string $fio): string
+    {
+        $parts = preg_split('/\s+/u', trim($fio), -1, PREG_SPLIT_NO_EMPTY);
+
+        if (count($parts) < 2) {
+            return trim($fio);
+        }
+
+        // ФИО может быть уже сокращено: «Иванов И.И.» или «Иванов И. И.».
+        // В этом случае не сокращаем повторно и не теряем вторую букву.
+        $initials = implode('', array_slice($parts, 1));
+        if (preg_match('/^(?:[А-ЯЁA-Z]\.){1,2}$/u', $initials)) {
+            return $parts[0] . ' ' . $initials;
+        }
+
+        $surname = array_shift($parts);
+        $initials = '';
+
+        foreach (array_slice($parts, 0, 2) as $part) {
+            $initials .= mb_substr($part, 0, 1, 'UTF-8') . '.';
+        }
+
+        return $surname . ' ' . $initials;
     }
 
     private function signerCellText(string $text, int $idx, int $count): string
