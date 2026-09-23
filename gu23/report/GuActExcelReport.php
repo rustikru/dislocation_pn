@@ -91,7 +91,7 @@ class GuActExcelReport
     private function acts(array $filter): array
     {
         $total = (int) $this->db->value(
-            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id, p_wagon_kind => :wagon_kind, p_wagon_owner => :wagon_owner)',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
@@ -102,6 +102,8 @@ class GuActExcelReport
                 ':date_to' => $filter['date_to'] ?? null,
                 ':has_signed' => $filter['has_signed'] ?? null,
                 ':reason_categ' => $filter['reason_categ'] ?? null,
+                ':wagon_kind' => $filter['wagon_kind'] ?? null,
+                ':wagon_owner' => $filter['wagon_owner'] ?? null,
                 ':user_id' => $filter['user_id'] ?? null,
                 ':requires_action' => $filter['requires_action'] ?? null,
             ],
@@ -110,7 +112,7 @@ class GuActExcelReport
 
         $limit = max(1, $total);
         return $this->db->rows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id, p_wagon_kind => :wagon_kind, p_wagon_owner => :wagon_owner))',
             [
                 ':q' => $filter['q'] ?? null,
                 ':type' => $filter['type'] ?? null,
@@ -121,6 +123,8 @@ class GuActExcelReport
                 ':date_to' => $filter['date_to'] ?? null,
                 ':has_signed' => $filter['has_signed'] ?? null,
                 ':reason_categ' => $filter['reason_categ'] ?? null,
+                ':wagon_kind' => $filter['wagon_kind'] ?? null,
+                ':wagon_owner' => $filter['wagon_owner'] ?? null,
                 ':page' => 1,
                 ':page_size' => $limit,
                 ':user_id' => $filter['user_id'] ?? null,
@@ -288,6 +292,8 @@ class GuActExcelReport
             ['Цех', $this->filterNames($filter['dept'] ?? '', $this->deptNames())],
             ['Организация', $this->filterNames($filter['org_id'] ?? '', $this->organizationNames())],
             ['Категория причины', $this->filterNames($filter['reason_categ'] ?? '', $this->reasonCategoryNames())],
+            ['Род вагона', $this->filterNames($filter['wagon_kind'] ?? '', $this->wagonKindNames())],
+            ['Собственник вагона', $this->filterNames($filter['wagon_owner'] ?? '', $this->wagonOwnerNames())],
             ['Дата с', $this->filterText($filter['date_from'] ?? '')],
             ['Дата по', $this->filterText($filter['date_to'] ?? '')],
             ['Подписанный файл', (($filter['has_signed'] ?? '') === 'Y') ? 'Да' : 'Все'],
@@ -424,6 +430,34 @@ class GuActExcelReport
             $id = trim((string) ($row['ID'] ?? ''));
             if ($id !== '') {
                 $names[$id] = trim((string) ($row['NAME'] ?? ''));
+            }
+        }
+        return $names;
+    }
+
+    private function wagonKindNames(): array
+    {
+        return $this->referenceNames('gu23_get_ref_wagon_kind');
+    }
+
+    private function wagonOwnerNames(): array
+    {
+        return $this->referenceNames('gu23_get_ref_wagon_owner');
+    }
+
+    private function referenceNames(string $functionName): array
+    {
+        $rows = $this->db->rows(
+            'select * from table(xx_disl_gu23_pkg.' . $functionName . '())'
+        );
+        $names = [];
+        foreach ($rows as $row) {
+            $id = trim((string) ($row['ID'] ?? ''));
+            $code = trim((string) ($row['CODE'] ?? ''));
+            $name = trim((string) ($row['NAME'] ?? ''));
+            $value = $id !== '' ? $id : ($code !== '' ? $code : $name);
+            if ($value !== '') {
+                $names[$value] = $name !== '' ? $name : $value;
             }
         }
         return $names;

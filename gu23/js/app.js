@@ -28,6 +28,7 @@ export function navigateTo(pageName, selectedId = null) {
 }
 
 function openPage(pageName, selectedId = null) {
+  applicationState.previousPage = applicationState.currentPage
   applicationState.currentPage = pageName
 
   // Сохраняем выбранный ID
@@ -94,7 +95,13 @@ export function showApplication() {
   }
   // Если текущая страница не найдена, показываем реестр
   const showCurrentScreen = screens[applicationState.currentPage] || showArchive
-  showCurrentScreen(container)
+  if (showCurrentScreen === showArchive) {
+    showArchive(container, {
+      restoreState: applicationState.previousPage === 'card',
+    })
+  } else {
+    showCurrentScreen(container)
+  }
 }
 
 $(document).ready(() => {

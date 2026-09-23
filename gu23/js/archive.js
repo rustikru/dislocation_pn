@@ -14,6 +14,23 @@ import {
   closeModalWindow,
 } from './ui.js'
 
+let savedArchiveState = null
+
+function readArchiveState() {
+  return savedArchiveState
+}
+
+function saveArchiveState(filter, selectedPresetId) {
+  savedArchiveState = {
+    filter: { ...filter },
+    selectedPresetId: selectedPresetId || '',
+  }
+}
+
+function clearArchiveState() {
+  savedArchiveState = null
+}
+
 export function showArchive(container, options = {}) {
   $(container).load('pages/archive.php', () =>
     showArchivePage(container, options),
@@ -21,6 +38,10 @@ export function showArchive(container, options = {}) {
 }
 
 function showArchivePage(container, options = {}) {
+  if (options.restoreState === false) {
+    clearArchiveState()
+  }
+  const restoredState = readArchiveState()
   // По умолчанию — текущий месяц (фильтр по дате начала ИЛИ окончания)
   const twoDigits = (n) => String(n).padStart(2, '0')
   const toFilterDate = (d) =>
@@ -39,11 +60,16 @@ function showArchivePage(container, options = {}) {
     dept: '',
     org_id: '',
     reason_categ: '',
+    wagon_kind: '',
+    wagon_owner: '',
     date_from: defaultDateFrom,
     date_to: defaultDateTo,
     has_signed: '', // 'Y' = только с подписанным документом
     requires_action: '', // 'Y' = текущий пользователь должен подписать акт
     page: 1,
+  }
+  if (restoredState && restoredState.filter) {
+    Object.assign(archiveFilter, restoredState.filter)
   }
 
   // add 24.07.2026 BekmansurovRR: личные шаблоны фильтров
@@ -55,8 +81,12 @@ function showArchivePage(container, options = {}) {
     dept: 'Цех',
     org_id: 'Организация',
     reason_categ: 'Категория',
+    wagon_kind: 'Род вагона',
+    wagon_owner: 'Собственник вагона',
   }
-  let selectedPresetId = ''
+  let selectedPresetId = String(
+    (restoredState && restoredState.selectedPresetId) || '',
+  )
 
   const presetParams = () => ({
     q: archiveFilter.q,
@@ -65,6 +95,8 @@ function showArchivePage(container, options = {}) {
     dept: archiveFilter.dept,
     org_id: archiveFilter.org_id,
     reason_categ: archiveFilter.reason_categ,
+    wagon_kind: archiveFilter.wagon_kind,
+    wagon_owner: archiveFilter.wagon_owner,
     has_signed: archiveFilter.has_signed,
   })
 
@@ -124,16 +156,13 @@ function showArchivePage(container, options = {}) {
     options.forEach((filterValue, idx) => {
       if (filterValue === '') return
       filterLabelMap[key][filterValue] = labels[idx]
-      const checkedAttr = selected.indexOf(filterValue) !== -1 ? ' checked' : ''
-      $menu.append(
-        '<label class="ms-item"><input type="checkbox" value="' +
-          filterValue +
-          '"' +
-          checkedAttr +
-          '><span>' +
-          labels[idx] +
-          '</span></label>',
-      )
+      const $item = $('<label class="ms-item"></label>')
+      const $checkbox = $('<input type="checkbox">')
+        .val(filterValue)
+        .prop('checked', selected.indexOf(filterValue) !== -1)
+      const $label = $('<span></span>').text(labels[idx])
+      $item.append($checkbox, $label)
+      $menu.append($item)
     })
 
     const refreshFilterButton = () => {
@@ -232,6 +261,22 @@ function showArchivePage(container, options = {}) {
       'reason_categ',
     )
 
+    const refValue = (row) => String(row.ID || row.CODE || row.NAME || '')
+    addMultiChoiceFilter(
+      [''].concat(references.wagonKindsList.map(refValue)),
+      ['Все рода вагонов'].concat(
+        references.wagonKindsList.map((row) => row.NAME || row.CODE || row.ID),
+      ),
+      'wagon_kind',
+    )
+    addMultiChoiceFilter(
+      [''].concat(references.ownersList.map(refValue)),
+      ['Все собственники'].concat(
+        references.ownersList.map((row) => row.NAME || row.CODE || row.ID),
+      ),
+      'wagon_owner',
+    )
+
     // закрытие выпадающих меню по клику вне
     $(document)
       .off('click.msfilter')
@@ -305,6 +350,11 @@ function showArchivePage(container, options = {}) {
   }
 
   buildFilters()
+  $('#search-input').val(archiveFilter.q)
+  $('#btn-awaiting-my-signature').toggleClass(
+    'active',
+    archiveFilter.requires_action === 'Y',
+  )
 
   $('#btn-toggle-filters').on('click', (e) => {
     e.stopPropagation()
@@ -319,6 +369,8 @@ function showArchivePage(container, options = {}) {
     if (archiveFilter.dept) count++
     if (archiveFilter.org_id) count++
     if (archiveFilter.reason_categ) count++
+    if (archiveFilter.wagon_kind) count++
+    if (archiveFilter.wagon_owner) count++
     if (archiveFilter.has_signed) count++
     $('#btn-toggle-filters').text(count ? 'Фильтры (' + count + ')' : 'Фильтры')
   }
@@ -327,7 +379,15 @@ function showArchivePage(container, options = {}) {
   // Сводка по применённому шаблону: «Цех: АКМ», «Статус (3)» и т.п.
   function showFilterSummary(presetName) {
     const parts = []
-    ;['type', 'status', 'dept', 'org_id', 'reason_categ'].forEach((key) => {
+    ;[
+      'type',
+      'status',
+      'dept',
+      'org_id',
+      'reason_categ',
+      'wagon_kind',
+      'wagon_owner',
+    ].forEach((key) => {
       const values = String(archiveFilter[key] || '')
         .split(',')
         .filter(Boolean)
@@ -371,6 +431,8 @@ function showArchivePage(container, options = {}) {
     // Старые шаблоны не содержат org_id: для них применяется «Все организации».
     archiveFilter.org_id = params.org_id || ''
     archiveFilter.reason_categ = params.reason_categ || ''
+    archiveFilter.wagon_kind = params.wagon_kind || ''
+    archiveFilter.wagon_owner = params.wagon_owner || ''
     archiveFilter.date_from = defaultDateFrom
     archiveFilter.date_to = defaultDateTo
     archiveFilter.has_signed = params.has_signed || ''
@@ -424,6 +486,7 @@ function showArchivePage(container, options = {}) {
       if (presetToSelect) {
         selectedPresetId = String(presetToSelect.ID)
         $select.val(selectedPresetId)
+        showFilterSummary(presetToSelect.FILTER_NAME)
       } else if (options.applyDefault !== false && defaultPreset) {
         $select.val(defaultPreset.ID)
         applyPreset(defaultPreset, {
@@ -444,6 +507,7 @@ function showArchivePage(container, options = {}) {
     if (!id) {
       // Явный выбор «Без шаблона» — вернуть системные фильтры,
       // не применяя пользовательский шаблон по умолчанию.
+      clearArchiveState()
       showArchive(container, { applyDefaultPreset: false })
       return
     }
@@ -558,13 +622,15 @@ function showArchivePage(container, options = {}) {
 
   // Явный сброс возвращает системные фильтры (текущий месяц) и не должен
   // повторно применять пользовательский шаблон по умолчанию.
-  $('#btn-reset-filters').on('click', () =>
-    showArchive(container, { applyDefaultPreset: false }),
-  )
+  $('#btn-reset-filters').on('click', () => {
+    clearArchiveState()
+    showArchive(container, { applyDefaultPreset: false })
+  })
 
   // Быстрый фильтр: активные акты, где сейчас очередь пользователя.
   $('#btn-awaiting-my-signature').on('click', () => {
     if (archiveFilter.requires_action === 'Y') {
+      clearArchiveState()
       showArchive(container, { applyDefaultPreset: false })
       return
     }
@@ -575,6 +641,8 @@ function showArchivePage(container, options = {}) {
     archiveFilter.dept = ''
     archiveFilter.org_id = ''
     archiveFilter.reason_categ = ''
+    archiveFilter.wagon_kind = ''
+    archiveFilter.wagon_owner = ''
     archiveFilter.has_signed = ''
     archiveFilter.requires_action = 'Y'
     archiveFilter.page = 1
@@ -600,6 +668,8 @@ function showArchivePage(container, options = {}) {
         <input type="hidden" name="dept">
         <input type="hidden" name="org_id">
         <input type="hidden" name="reason_categ">
+        <input type="hidden" name="wagon_kind">
+        <input type="hidden" name="wagon_owner">
         <input type="hidden" name="date_from">
         <input type="hidden" name="date_to">
         <input type="hidden" name="has_signed">
@@ -612,6 +682,8 @@ function showArchivePage(container, options = {}) {
     $form.find('[name="dept"]').val(archiveFilter.dept)
     $form.find('[name="org_id"]').val(archiveFilter.org_id)
     $form.find('[name="reason_categ"]').val(archiveFilter.reason_categ)
+    $form.find('[name="wagon_kind"]').val(archiveFilter.wagon_kind)
+    $form.find('[name="wagon_owner"]').val(archiveFilter.wagon_owner)
     $form.find('[name="date_from"]').val(archiveFilter.date_from)
     $form.find('[name="date_to"]').val(archiveFilter.date_to)
     $form.find('[name="has_signed"]').val(archiveFilter.has_signed)
@@ -646,6 +718,7 @@ function showArchivePage(container, options = {}) {
   function loadArchiveData() {
     // add 24.07.2026 BekmansurovRR: держим счётчик «Фильтры (N)» в актуальном виде
     showFilterCount()
+    saveArchiveState(archiveFilter, selectedPresetId)
     sendApiRequest('gu23_get_acts', archiveFilter).done((resp) => {
       const acts =
         resp && resp.acts ? resp.acts : Array.isArray(resp) ? resp : []
@@ -862,7 +935,9 @@ function showArchivePage(container, options = {}) {
   // и только после этого один раз загружаем архив. При ошибке загрузки шаблонов
   // таблица всё равно откроется с системными фильтрами.
   loadPresets({
-    applyDefault: options.applyDefaultPreset !== false,
+    selectId: selectedPresetId,
+    applyDefault:
+      !restoredState && options.applyDefaultPreset !== false,
     loadDataAfter: true,
   }).always(loadArchiveData)
 }

@@ -1191,6 +1191,44 @@
       return;
    end;
 
+    -- Значения фильтра архива «Род вагона».
+   function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
+      pipelined
+   is
+        l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select du.*
+           from xx_disl_gu23_kind_v du
+          where 1 = 1
+          order by du.kind
+      ) loop
+         l_row.code := trim(r.kind);
+         l_row.name := trim(r.kind);
+         pipe row ( l_row );
+      end loop;
+      return;
+   end;
+
+    -- Значения фильтра архива «Собственник вагона».
+   function gu23_get_ref_wagon_owner return xx_disl_gu23_ref_tab
+      pipelined
+   is
+        l_row xx_disl_gu23_ref_row;
+   begin
+      for r in (
+         select du.*
+           from xx_disl_gu23_owner_v du
+          where 1 = 1
+          order by du.owner
+      ) loop
+         l_row.code := trim(r.owner);
+         l_row.name := trim(r.owner);
+         pipe row ( l_row );
+      end loop;
+      return;
+   end;
+
     -- подписанты - работники предприятия
    function gu23_get_ref_signer_own (
       p_dept_id in varchar2 default null
@@ -1303,7 +1341,9 @@
       p_page_size       in number,
       p_user_id         in number default null,
       p_requires_action in varchar2 default null,
-      p_org_id          in varchar2 default null
+      p_org_id          in varchar2 default null,
+      p_wagon_kind      in varchar2 default null,
+      p_wagon_owner     in varchar2 default null
    ) return xx_disl_gu23_act_tab
       pipelined
    is
@@ -1425,6 +1465,34 @@
                                              || h.org_id
                                              || ','
                                           ) > 0 )
+                                             and ( p_wagon_kind is null
+                                              or exists (
+                                             select 1
+                                               from xx_disl_gu23_act_row r
+                                              where r.act_id = h.id
+                                                and instr(
+                                                ','
+                                                || upper(p_wagon_kind)
+                                                || ',',
+                                                ','
+                                                || upper(trim(xx_bi.bi_disl_rjd.get_short_car_type(r.kind)))
+                                                || ','
+                                             ) > 0
+                                          ) )
+                                             and ( p_wagon_owner is null
+                                              or exists (
+                                             select 1
+                                               from xx_disl_gu23_act_row r
+                                              where r.act_id = h.id
+                                                and instr(
+                                                ','
+                                                || upper(p_wagon_owner)
+                                                || ',',
+                                                ','
+                                                || upper(trim(nvl(r.owner, '*')))
+                                                || ','
+                                             ) > 0
+                                          ) )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
                                              and ( v_q is not null
                                               or nvl(
@@ -1547,7 +1615,9 @@
       p_reason_categ    in varchar2,
       p_user_id         in number default null,
       p_requires_action in varchar2 default null,
-      p_org_id          in varchar2 default null
+      p_org_id          in varchar2 default null,
+      p_wagon_kind      in varchar2 default null,
+      p_wagon_owner     in varchar2 default null
    ) return number is
       v_q    varchar2(4000) := lower(p_q);
       v_from date :=
@@ -1620,6 +1690,26 @@
          || h.org_id
          || ','
       ) > 0 )
+         and ( p_wagon_kind is null
+         or exists (
+         select 1
+           from xx_disl_gu23_act_row r
+          where r.act_id = h.id
+            and instr(
+                   ',' || upper(p_wagon_kind) || ',',
+                   ',' || upper(trim(nvl(xx_bi.bi_disl_rjd.get_short_car_type(r.kind), '*'))) || ','
+                ) > 0
+      ) )
+         and ( p_wagon_owner is null
+          or exists (
+         select 1
+           from xx_disl_gu23_act_row r
+          where r.act_id = h.id
+            and instr(
+                   ',' || upper(p_wagon_owner) || ',',
+                   ',' || upper(trim(nvl(r.owner, '*'))) || ','
+                ) > 0
+      ) )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
           or nvl(
@@ -2159,7 +2249,8 @@
                                       42             -- Раскредитован
                                        )
          and ei.inv_date_create > to_date('01.01.2026','dd.mm.rrrr')
-         and ei.inv_recip_name <> 'ОАО "Метафракс"';
+         and ei.inv_recip_name <> 'ОАО "Метафракс"'
+       order by ei.invoice_id asc;
 
         -- Проставляет l_row.dup_act/dup_by, если по вагону (в пределах месяца)
         -- или накладной (в пределах 3 месяцев) уже есть занятый акт начала.

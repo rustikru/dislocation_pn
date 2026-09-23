@@ -312,6 +312,16 @@ as
         return xx_disl_gu23_ref_tab
         pipelined;
 
+    -- Значения фильтра архива «Род вагона».
+    function gu23_get_ref_wagon_kind
+        return xx_disl_gu23_ref_tab
+        pipelined;
+
+    -- Значения фильтра архива «Собственник вагона».
+    function gu23_get_ref_wagon_owner
+        return xx_disl_gu23_ref_tab
+        pipelined;
+
     -- Справочники подписантов
     -- работники предприятия; p_dept ? код цеха для фильтрации (null = все)
     function gu23_get_ref_signer_own (p_dept_id in varchar2 default null)
@@ -341,7 +351,9 @@ as
                             p_page_size         in number,
                             p_user_id           in number default null,
                             p_requires_action   in varchar2 default null,
-                            p_org_id            in varchar2 default null)
+                            p_org_id            in varchar2 default null,
+                            p_wagon_kind        in varchar2 default null,
+                            p_wagon_owner       in varchar2 default null)
         return xx_disl_gu23_act_tab
         pipelined;
 
@@ -356,7 +368,9 @@ as
                               p_reason_categ      in varchar2,
                               p_user_id           in number default null,
                               p_requires_action   in varchar2 default null,
-                              p_org_id            in varchar2 default null)
+                              p_org_id            in varchar2 default null,
+                              p_wagon_kind        in varchar2 default null,
+                              p_wagon_owner       in varchar2 default null)
         return number;
 
     function gu23_get_act (p_id in number)

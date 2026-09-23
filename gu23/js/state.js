@@ -17,6 +17,7 @@ export const references = {
 // Текущее состояние
 export const applicationState = {
   currentPage: 'archive',
+  previousPage: null,
   selectedActId: null,
   isAdmin: false,
   userPerms: new Set(), // коды полномочий текущего пользователя

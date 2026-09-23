@@ -160,10 +160,13 @@ function setActiveTab() {
   })
   $('#btn-export-reasons').toggle(refsTab === 'reasons')
   $('#btn-add-ref').toggle(
-    hasPerm('MANAGE_REFS') && (refsTab === 'signers' || reasonEditingEnabled),
+    hasPerm('MANAGE_REFS') &&
+      (refsTab === 'signers' || reasonEditingEnabled),
   )
   $('#btn-import-reasons').toggle(
-    refsTab === 'reasons' && hasPerm('MANAGE_REFS') && reasonEditingEnabled,
+    refsTab === 'reasons' &&
+      hasPerm('MANAGE_REFS') &&
+      reasonEditingEnabled,
   )
 }
 

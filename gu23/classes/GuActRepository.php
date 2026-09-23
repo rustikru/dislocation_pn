@@ -428,6 +428,8 @@ class GuActRepository
             'organizations' => $this->selectRows('select id, name from xx_disl_gu23_org_v order by name'),
             'reasons' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_reason(null))'),
             'reasonCategories' => $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('CATEG_CAUSE'))"),
+            'kinds' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_kind())'),
+            'owners' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_wagon_owner())'),
             'noticeTypes' => $this->selectRows("select * from table(xx_disl_gu23_pkg.gu23_get_general_ref('GU23_NOTICE_TYPE'))"),
             'stations' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_station_compile())'),
             'stations_from' => $this->selectRows('select * from table(xx_disl_gu23_pkg.gu23_get_ref_st_from())'),
@@ -454,6 +456,8 @@ class GuActRepository
         $dept = filter_input(INPUT_POST, 'dept') ?: null;
         $orgId = filter_input(INPUT_POST, 'org_id') ?: null;
         $reasonCateg = filter_input(INPUT_POST, 'reason_categ') ?: null;
+        $wagonKind = filter_input(INPUT_POST, 'wagon_kind') ?: null;
+        $wagonOwner = filter_input(INPUT_POST, 'wagon_owner') ?: null;
         $dateFrom = filter_input(INPUT_POST, 'date_from') ?: null;
         $dateTo = filter_input(INPUT_POST, 'date_to') ?: null;
         $signedFile = filter_input(INPUT_POST, 'has_signed') ?: null; // 'Y' = есть подписанный файл
@@ -464,7 +468,7 @@ class GuActRepository
 
         // Общее количество
         $total = (int) $this->callPackageFunction(
-            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id)',
+            'xx_disl_gu23_pkg.gu23_count_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id, p_wagon_kind => :wagon_kind, p_wagon_owner => :wagon_owner)',
             [
                 ':q' => $q,
                 ':type' => $type,
@@ -475,6 +479,8 @@ class GuActRepository
                 ':date_to' => $dateTo,
                 ':has_signed' => $signedFile,
                 ':reason_categ' => $reasonCateg,
+                ':wagon_kind' => $wagonKind,
+                ':wagon_owner' => $wagonOwner,
                 ':user_id' => $userId,
                 ':requires_action' => $requiresAction,
             ],
@@ -482,7 +488,7 @@ class GuActRepository
         );
 
         $acts = $this->selectRows(
-            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id))',
+            'select * from table(xx_disl_gu23_pkg.gu23_get_acts(p_q => :q, p_type => :type, p_status => :status, p_dept_id => :dept, p_date_from => :date_from, p_date_to => :date_to, p_has_signed => :has_signed, p_reason_categ => :reason_categ, p_page => :page, p_page_size => :page_size, p_user_id => :user_id, p_requires_action => :requires_action, p_org_id => :org_id, p_wagon_kind => :wagon_kind, p_wagon_owner => :wagon_owner))',
             [
                 ':q' => $q,
                 ':type' => $type,
@@ -493,6 +499,8 @@ class GuActRepository
                 ':date_to' => $dateTo,
                 ':has_signed' => $signedFile,
                 ':reason_categ' => $reasonCateg,
+                ':wagon_kind' => $wagonKind,
+                ':wagon_owner' => $wagonOwner,
                 ':page' => $page,
                 ':page_size' => $limit,
                 ':user_id' => $userId,
@@ -513,6 +521,8 @@ class GuActRepository
             'dept' => filter_input(INPUT_POST, 'dept') ?: null,
             'org_id' => filter_input(INPUT_POST, 'org_id') ?: null,
             'reason_categ' => filter_input(INPUT_POST, 'reason_categ') ?: null,
+            'wagon_kind' => filter_input(INPUT_POST, 'wagon_kind') ?: null,
+            'wagon_owner' => filter_input(INPUT_POST, 'wagon_owner') ?: null,
             'date_from' => filter_input(INPUT_POST, 'date_from') ?: null,
             'date_to' => filter_input(INPUT_POST, 'date_to') ?: null,
             'has_signed' => filter_input(INPUT_POST, 'has_signed') ?: null,
