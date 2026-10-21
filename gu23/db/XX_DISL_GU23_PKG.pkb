@@ -11,6 +11,8 @@
                                                раздельные справочники станций и подписантов;
                                                справочник грузов.
      1.2        25.06.2026   BekmansurovRR   1. Добавлена рассылка писем и уведомлений подписантам.
+     1.3        23.09.2026   BekmansurovRR   по наряду 0000126481  добавлены параметры фильтра "Род вагона" и "Собственник"
+     1.4        21.10.2026   BekmansurovRR   по наряду 0000129256 Проверка корректности номера вагона через xx_dislocation.check_car_number.
   **********************************************************************************************************************************/
    c_package       constant varchar2(30) := 'xx_disl_gu23_pkg';
    c_dtf           constant varchar2(30) := 'YYYY-MM-DD HH24:MI:SS';
@@ -626,6 +628,20 @@
       p_row in xx_disl_gu23_act_row%rowtype
    ) is
    begin
+      if nvl(
+         xx_dislocation.check_car_number(trim(p_row.wagon_no)),
+         0
+      ) = 0 then
+         raise_application_error(
+            -20001,
+            'Неверный номер вагона: '
+            || nvl(
+               trim(p_row.wagon_no),
+               '<не указан>'
+            )
+         );
+      end if;
+
       insert into xx_disl_gu23_act_row (
          id,
          act_id,
@@ -845,6 +861,25 @@
             return;
          end if;
       end if;
+
+        -- Проверяем все номера до вставки заголовка акта.
+      l_idx := p_act_rows.first;
+      while l_idx is not null loop
+         if nvl(
+            xx_dislocation.check_car_number(trim(p_act_rows(l_idx).wagon_no)),
+            0
+         ) = 0 then
+            set_error('Строка вагона ['
+                      || l_idx
+                      || ']: неверный номер вагона: ' || nvl(
+               trim(p_act_rows(l_idx).wagon_no),
+               '<не указан>'
+            ));
+            return;
+         end if;
+
+         l_idx := p_act_rows.next(l_idx);
+      end loop;
 
         -- Проверяем переданных подписантов до вставки шапки акта.
       l_idx := p_signers.first;
@@ -1190,12 +1225,13 @@
 
       return;
    end;
-
-    -- Значения фильтра архива «Род вагона».
+    
+    -- add 23.09.2026 BekmansurovRR по наряду 0000126481 
+    -- Значения фильтра архива ?Род вагона?.
    function gu23_get_ref_wagon_kind return xx_disl_gu23_ref_tab
       pipelined
    is
-        l_row xx_disl_gu23_ref_row;
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select du.*
@@ -1207,14 +1243,16 @@
          l_row.name := trim(r.kind);
          pipe row ( l_row );
       end loop;
+
       return;
    end;
-
-    -- Значения фильтра архива «Собственник вагона».
+    
+    -- add 23.09.2026 BekmansurovRR по наряду 0000126481 
+    -- Значения фильтра архива ?Собственник вагона?.
    function gu23_get_ref_wagon_owner return xx_disl_gu23_ref_tab
       pipelined
    is
-        l_row xx_disl_gu23_ref_row;
+      l_row xx_disl_gu23_ref_row;
    begin
       for r in (
          select du.*
@@ -1226,6 +1264,7 @@
          l_row.name := trim(r.owner);
          pipe row ( l_row );
       end loop;
+
       return;
    end;
 
@@ -1391,13 +1430,13 @@
                             a.categ_name,
                             a.circumstances,
                             to_char(
-                                       a.start_at,
-                                       c_dtf
-                                    ) start_at,
+                               a.start_at,
+                               c_dtf
+                            ) start_at,
                             to_char(
-                                       a.end_at,
-                                       c_dtf
-                                    ) end_at,
+                               a.end_at,
+                               c_dtf
+                            ) end_at,
                             a.dur_days,
                             a.dur_hours,
                             a.dur_total_h,
@@ -1408,190 +1447,195 @@
                             a.file_cnt,
                             a.annul_reason,
                             to_char(
-                                       a.created_at,
-                                       c_dtf
-                                    ) created_at,
+                               a.created_at,
+                               c_dtf
+                            ) created_at,
                             du.full_name created_by,
                             to_char(
-                                       a.modified_at,
-                                       c_dtf
-                                    ) modified_at,
+                               a.modified_at,
+                               c_dtf
+                            ) modified_at,
                             nvl(
-                                       a.content_version,
-                                       1
-                                    ) content_version,
+                               a.content_version,
+                               1
+                            ) content_version,
                             p.rn
-                                      from (
-                                       select h.id,
-                                              h.created_at,
-                                              rownum rn
-                                         from (
-                                          select h.id,
-                                                 h.created_at
-                                            from xx_disl_gu23_act h
-                                           where ( p_type is null
-                                              or instr(
-                                             ','
-                                             || p_type
-                                             || ',',
-                                             ','
-                                             || h.act_type
-                                             || ','
-                                          ) > 0 )
-                                             and ( p_status is null
-                                              or instr(
-                                             ','
-                                             || p_status
-                                             || ',',
-                                             ','
-                                             || h.status
-                                             || ','
-                                          ) > 0 )
-                                             and ( p_dept_id is null
-                                              or instr(
-                                             ','
-                                             || p_dept_id
-                                             || ',',
-                                             ','
-                                             || h.dept_id
-                                             || ','
-                                          ) > 0 )
-                                             and ( p_org_id is null
-                                              or instr(
-                                             ','
-                                             || p_org_id
-                                             || ',',
-                                             ','
-                                             || h.org_id
-                                             || ','
-                                          ) > 0 )
-                                             and ( p_wagon_kind is null
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_act_row r
-                                              where r.act_id = h.id
-                                                and instr(
-                                                ','
-                                                || upper(p_wagon_kind)
-                                                || ',',
-                                                ','
-                                                || upper(trim(xx_bi.bi_disl_rjd.get_short_car_type(r.kind)))
-                                                || ','
-                                             ) > 0
-                                          ) )
-                                             and ( p_wagon_owner is null
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_act_row r
-                                              where r.act_id = h.id
-                                                and instr(
-                                                ','
-                                                || upper(p_wagon_owner)
-                                                || ',',
-                                                ','
-                                                || upper(trim(nvl(r.owner, '*')))
-                                                || ','
-                                             ) > 0
-                                          ) )
+        from (
+         select h.id,
+                h.created_at,
+                rownum rn
+           from (
+            select h.id,
+                   h.created_at
+              from xx_disl_gu23_act h
+             where ( p_type is null
+                or instr(
+               ','
+               || p_type
+               || ',',
+               ','
+               || h.act_type
+               || ','
+            ) > 0 )
+               and ( p_status is null
+                or instr(
+               ','
+               || p_status
+               || ',',
+               ','
+               || h.status
+               || ','
+            ) > 0 )
+               and ( p_dept_id is null
+                or instr(
+               ','
+               || p_dept_id
+               || ',',
+               ','
+               || h.dept_id
+               || ','
+            ) > 0 )
+               and ( p_org_id is null
+                or instr(
+               ','
+               || p_org_id
+               || ',',
+               ','
+               || h.org_id
+               || ','
+            ) > 0 )
+                                       -- add 23.09.2026 BekmansurovRR по наряду 0000126481 
+               and ( p_wagon_kind is null
+                or exists (
+               select 1
+                 from xx_disl_gu23_act_row r
+                where r.act_id = h.id
+                  and instr(
+                  ','
+                  || upper(p_wagon_kind)
+                  || ',',
+                  ','
+                  || upper(trim(xx_bi.bi_disl_rjd.get_short_car_type(r.kind)))
+                  || ','
+               ) > 0
+            ) )
+                                       -- add 23.09.2026 BekmansurovRR по наряду 0000126481 
+               and ( p_wagon_owner is null
+                or exists (
+               select 1
+                 from xx_disl_gu23_act_row r
+                where r.act_id = h.id
+                  and instr(
+                  ','
+                  || upper(p_wagon_owner)
+                  || ',',
+                  ','
+                  || upper(trim(nvl(
+                                 r.owner,
+                                 '*'
+                              )))
+                  || ','
+               ) > 0
+            ) )
                                        -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
-                                             and ( v_q is not null
-                                              or nvl(
-                                             p_requires_action,
-                                             'N'
-                                          ) = 'Y'
-                                              or ( ( v_from is null
-                                             and v_to is null )
-                                              or ( h.start_at is not null
-                                             and ( v_from is null
-                                              or h.start_at >= v_from )
-                                             and ( v_to is null
-                                              or h.start_at < v_to ) )
-                                              or ( h.end_at is not null
-                                             and ( v_from is null
-                                              or h.end_at >= v_from )
-                                             and ( v_to is null
-                                              or h.end_at < v_to ) )
-                                              or ( h.start_at is null
-                                             and h.end_at is null ) ) )
-                                             and ( p_reason_categ is null
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_ref_reason_v rr
-                                              where to_char(rr.id) = h.reason
-                                                and instr(
-                                                ','
-                                                || p_reason_categ
-                                                || ',',
-                                                ','
-                                                || nvl(
-                                                               rr.categ,
-                                                               0
-                                                            )
-                                                || ','
-                                             ) > 0
-                                          ) )
-                                             and ( nvl(
-                                             p_has_signed,
-                                             'N'
-                                          ) <> 'Y'
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_file f
-                                              where f.act_id = h.id
-                                                and f.file_category = 'signed'
-                                          ) )
-                                             and ( v_q is null
-                                              or lower(h.act_number) like '%'
-                                                                          || v_q
-                                                                          || '%'
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_act hs
-                                              where hs.id = h.linked_start_id
-                                                and lower(hs.act_number) like '%'
-                                                                              || v_q
-                                                                              || '%'
-                                          )
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_ref_reason_v rr
-                                              where to_char(rr.id) = h.reason
-                                                and lower(rr.name) like '%'
-                                                                        || v_q
-                                                                        || '%'
-                                          )
-                                              or exists (
-                                             select 1
-                                               from xx_disl_gu23_act_row r
-                                              where r.act_id = h.id
-                                                and r.wagon_no like '%'
-                                                                    || v_q
-                                                                    || '%'
-                                          ) )
-                                             and ( nvl(
-                                             p_requires_action,
-                                             'N'
-                                          ) <> 'Y'
-                                              or ( h.status = 'active'
-                                             and exists (
-                                             select 1
-                                               from table ( gu23_approval_next_signer(h.id) ) ns
-                                              where ns.approver_id = p_user_id
-                                          ) ) )
-                                           order by h.created_at desc,
-                                                    h.id desc
-                                       ) h
-                                        where rownum <= v_end
-                                    ) p
-                                      join xx_disl_gu23_act_v a
-                                    on a.id = p.id
-                                      left join xx_disl_users du
-                                    on du.id = a.created_by
-                      where p.rn > v_off
-                      order by a.start_at,
-                               a.act_type,
-                               p.created_at desc,
-                               p.id desc;
+               and ( v_q is not null
+                or nvl(
+               p_requires_action,
+               'N'
+            ) = 'Y'
+                or ( ( v_from is null
+               and v_to is null )
+                or ( h.start_at is not null
+               and ( v_from is null
+                or h.start_at >= v_from )
+               and ( v_to is null
+                or h.start_at < v_to ) )
+                or ( h.end_at is not null
+               and ( v_from is null
+                or h.end_at >= v_from )
+               and ( v_to is null
+                or h.end_at < v_to ) )
+                or ( h.start_at is null
+               and h.end_at is null ) ) )
+               and ( p_reason_categ is null
+                or exists (
+               select 1
+                 from xx_disl_gu23_ref_reason_v rr
+                where to_char(rr.id) = h.reason
+                  and instr(
+                  ','
+                  || p_reason_categ
+                  || ',',
+                  ','
+                  || nvl(
+                                 rr.categ,
+                                 0
+                              )
+                  || ','
+               ) > 0
+            ) )
+               and ( nvl(
+               p_has_signed,
+               'N'
+            ) <> 'Y'
+                or exists (
+               select 1
+                 from xx_disl_gu23_file f
+                where f.act_id = h.id
+                  and f.file_category = 'signed'
+            ) )
+               and ( v_q is null
+                or lower(h.act_number) like '%'
+                                            || v_q
+                                            || '%'
+                or exists (
+               select 1
+                 from xx_disl_gu23_act hs
+                where hs.id = h.linked_start_id
+                  and lower(hs.act_number) like '%'
+                                                || v_q
+                                                || '%'
+            )
+                or exists (
+               select 1
+                 from xx_disl_gu23_ref_reason_v rr
+                where to_char(rr.id) = h.reason
+                  and lower(rr.name) like '%'
+                                          || v_q
+                                          || '%'
+            )
+                or exists (
+               select 1
+                 from xx_disl_gu23_act_row r
+                where r.act_id = h.id
+                  and r.wagon_no like '%'
+                                      || v_q
+                                      || '%'
+            ) )
+               and ( nvl(
+               p_requires_action,
+               'N'
+            ) <> 'Y'
+                or ( h.status = 'active'
+               and exists (
+               select 1
+                 from table ( gu23_approval_next_signer(h.id) ) ns
+                where ns.approver_id = p_user_id
+            ) ) )
+             order by h.created_at desc,
+                      h.id desc
+         ) h
+          where rownum <= v_end
+      ) p
+        join xx_disl_gu23_act_v a
+      on a.id = p.id
+        left join xx_disl_users du
+      on du.id = a.created_by
+       where p.rn > v_off
+       order by a.start_at,
+                a.act_type,
+                p.created_at desc,
+                p.id desc;
 
       loop
          fetch l_cur into l_row;
@@ -1691,14 +1735,21 @@
          || ','
       ) > 0 )
          and ( p_wagon_kind is null
-         or exists (
+          or exists (
          select 1
            from xx_disl_gu23_act_row r
           where r.act_id = h.id
             and instr(
-                   ',' || upper(p_wagon_kind) || ',',
-                   ',' || upper(trim(nvl(xx_bi.bi_disl_rjd.get_short_car_type(r.kind), '*'))) || ','
-                ) > 0
+            ','
+            || upper(p_wagon_kind)
+            || ',',
+            ','
+            || upper(trim(nvl(
+                     xx_bi.bi_disl_rjd.get_short_car_type(r.kind),
+                     '*'
+                  )))
+            || ','
+         ) > 0
       ) )
          and ( p_wagon_owner is null
           or exists (
@@ -1706,9 +1757,16 @@
            from xx_disl_gu23_act_row r
           where r.act_id = h.id
             and instr(
-                   ',' || upper(p_wagon_owner) || ',',
-                   ',' || upper(trim(nvl(r.owner, '*'))) || ','
-                ) > 0
+            ','
+            || upper(p_wagon_owner)
+            || ',',
+            ','
+            || upper(trim(nvl(
+                     r.owner,
+                     '*'
+                  )))
+            || ','
+         ) > 0
       ) )
                -- add 24.07.2026 BekmansurovRR: при поиске (v_q) период игнорируем
          and ( v_q is not null
@@ -2174,7 +2232,7 @@
                  eis.spc_custom_text,
                  '[^[[:digit:]]]*'
               )
-      ) as wagon_no,                                   -- вагон
+      ) as wagon_no,                                 -- вагон
              (
                 select sum(ef.car_weight_net)
                   from xx_etw.etw_inv_car ef
@@ -2188,13 +2246,13 @@
                 )
              ) as weight,
              ecar.car_type_name as wagon_type_code,
-             ei.inv_number as waybill_no,                             -- накладная
-             eif.freight_name as cargo_name,                                  -- груз
-             ( ecar.car_owner_name ) as owner,                                 -- собственнк
+             ei.inv_number as waybill_no,                           -- накладная
+             eif.freight_name as cargo_name,                                -- груз
+             ( ecar.car_owner_name ) as owner,                               -- собственнк
              inv_from_station_code as st_from_code,
              inv_to_station_code as st_to_code,
-             upper(trim(inv_to_station_name)) as dest_station,                  -- станция назначения
-             upper(trim(inv_from_station_name)) as depart_station                -- станция отправления
+             upper(trim(inv_to_station_name)) as dest_station,                -- станция назначения
+             upper(trim(inv_from_station_name)) as depart_station              -- станция отправления
         from xx_etw.etw_invoice ei,
              xx_etw.etw_inv_car ecar,
              xx_etw.etw_clm_otpr eco,
@@ -2241,12 +2299,12 @@
          and ei.front_end_id = eis.front_end_id (+)
          and ei.front_end_id = src.front_end_id (+)
          and ei.front_end_id = eif.front_end_id (+)
-         and ei.invoice_state_id in ( 31,     --Накладная предъявлена
+         and ei.invoice_state_id in ( 31,   --Накладная предъявлена
                                       44, --Работа с документом окончена (44)
                                       439, -- Согласование уведомления
                                       1116, -- Приемосдатчиком принято
-                                      38,      -- Получатель уведомлен                                                 
-                                      42             -- Раскредитован
+                                      38,   -- Получатель уведомлен
+                                      42           -- Раскредитован
                                        )
          and ei.inv_date_create > to_date('01.01.2026','dd.mm.rrrr')
          and ei.inv_recip_name <> 'ОАО "Метафракс"'
@@ -2309,7 +2367,7 @@
                                     'signed',
                                     'closed' )
                   and r.waybill_no = l_row.waybill_no
-                  and r.wagon_no = l_row.wagon_no -- add 02.09.2026
+                  and r.wagon_no = l_row.wagon_no   -- add 02.09.2026
                   and a.start_at >= add_months(
                   sysdate,
                   -3
@@ -2723,6 +2781,22 @@
          end if;
       end if;
 
+        -- Проверяем номера до INSERT/UPDATE 
+      for w in (
+         select *
+           from table ( parse_wagon_clob(p_data.p_wagons) )
+      ) loop
+         if nvl(
+            xx_dislocation.check_car_number(trim(w.wagon_no)),
+            0
+         ) = 0 then
+            return format_error('Неверный номер вагона: ' || nvl(
+               trim(w.wagon_no),
+               '<не указан>'
+            ));
+         end if;
+      end loop;
+
       v_station_id := nullif(
          trim(p_data.p_station),
          ''
@@ -3020,7 +3094,7 @@
                                        'closed' )
                      and a.id <> v_id
                      and r.waybill_no = w.waybill_no
-                     and r.wagon_no = w.wagon_no -- add 02.09.2026
+                     and r.wagon_no = w.wagon_no   -- add 02.09.2026
                      and a.start_at >= add_months(
                      v_start,
                      -3
@@ -3160,9 +3234,10 @@
          if trim(vs_fio) is null then
             continue;
          end if;
+
             -- add 10.09.2026
             -- При отправке на согласование для сотрудника проверяем
-            -- актуальную должность 
+            -- актуальную должность
          if
             p_data.p_status = 'active'
             and lower(trim(vs_stype)) = 'own'

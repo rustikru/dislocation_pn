@@ -312,12 +312,12 @@ as
         return xx_disl_gu23_ref_tab
         pipelined;
 
-    -- Значения фильтра архива «Род вагона».
+    -- Значения фильтра архива ?Род вагона?.
     function gu23_get_ref_wagon_kind
         return xx_disl_gu23_ref_tab
         pipelined;
 
-    -- Значения фильтра архива «Собственник вагона».
+    -- Значения фильтра архива ?Собственник вагона?.
     function gu23_get_ref_wagon_owner
         return xx_disl_gu23_ref_tab
         pipelined;
