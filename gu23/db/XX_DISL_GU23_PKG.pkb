@@ -628,7 +628,7 @@
       p_row in xx_disl_gu23_act_row%rowtype
    ) is
    begin
-      if nvl(
+      /*if nvl(
          xx_dislocation.check_car_number(trim(p_row.wagon_no)),
          0
       ) = 0 then
@@ -641,6 +641,7 @@
             )
          );
       end if;
+      */
 
       insert into xx_disl_gu23_act_row (
          id,
@@ -865,7 +866,7 @@
         -- Проверяем все номера до вставки заголовка акта.
       l_idx := p_act_rows.first;
       while l_idx is not null loop
-         if nvl(
+         /*if nvl(
             xx_dislocation.check_car_number(trim(p_act_rows(l_idx).wagon_no)),
             0
          ) = 0 then
@@ -877,6 +878,7 @@
             ));
             return;
          end if;
+         */
 
          l_idx := p_act_rows.next(l_idx);
       end loop;
@@ -1515,7 +1517,7 @@
                   || upper(p_wagon_kind)
                   || ',',
                   ','
-                  || upper(trim(xx_bi.bi_disl_rjd.get_short_car_type(r.kind)))
+                  || r.kind--upper(trim(xx_bi.bi_disl_rjd.get_short_car_type(r.kind)))
                   || ','
                ) > 0
             ) )
@@ -1745,7 +1747,7 @@
             || ',',
             ','
             || upper(trim(nvl(
-                     xx_bi.bi_disl_rjd.get_short_car_type(r.kind),
+                     r.kind,--xx_bi.bi_disl_rjd.get_short_car_type(r.kind),
                      '*'
                   )))
             || ','
@@ -2786,7 +2788,8 @@
          select *
            from table ( parse_wagon_clob(p_data.p_wagons) )
       ) loop
-         if nvl(
+         null;
+         /*if nvl(
             xx_dislocation.check_car_number(trim(w.wagon_no)),
             0
          ) = 0 then
@@ -2794,7 +2797,7 @@
                trim(w.wagon_no),
                '<не указан>'
             ));
-         end if;
+         end if;*/
       end loop;
 
       v_station_id := nullif(
@@ -3884,6 +3887,430 @@
       end loop;
    end sync_act_status;
 
+    -- Создать сертификат ПЭП либо вернуть уже существующий активный.
+   procedure gu23_pep_create (
+      p_user_id     in number,
+      p_out_cert_id out number,
+      p_out_status  out varchar2,
+      p_out_message out varchar2
+   ) is
+      v_cert_number xx_disl_gu23_pep_cert.cert_number%type;
+      v_login       xx_disl_gu23_pep_cert.login_snapshot%type;
+      v_fio         xx_disl_gu23_pep_cert.fio_snapshot%type;
+      v_org_id      xx_disl_gu23_pep_cert.org_id%type;
+      v_org_code    xx_disl_gu23_pep_cert.org_code%type;
+      v_login_code  varchar2(3);
+      v_random_code varchar2(10);
+      v_attempt     pls_integer := 0;
+      v_old_login   xx_disl_gu23_pep_cert.login_snapshot%type;
+      v_old_fio     xx_disl_gu23_pep_cert.fio_snapshot%type;
+      v_old_org_id  xx_disl_gu23_pep_cert.org_id%type;
+   begin
+      p_out_cert_id := null;
+      p_out_status := 'E';
+      p_out_message := null;
+      if p_user_id is null then
+         p_out_message := 'Не указан пользователь для создания сертификата ПЭП';
+         return;
+      end if;
+      begin
+         select regexp_replace(
+            trim(u.login),
+            '[[:space:]]+',
+            ' '
+         ),
+                regexp_replace(
+                   trim(u.full_name),
+                   '[[:space:]]+',
+                   ' '
+                ),
+                u.enterprise
+           into
+            v_login,
+            v_fio,
+            v_org_id
+           from xx_disl_users u
+          where u.id = p_user_id;
+      exception
+         when no_data_found then
+            p_out_message := 'Пользователь ID='
+                             || p_user_id
+                             || ' не найден';
+            return;
+         when too_many_rows then
+            p_out_message := 'Найдено несколько пользователей с ID=' || p_user_id;
+            return;
+      end;
+
+      if v_login is null then
+         p_out_message := 'У пользователя не указан логин';
+         return;
+      end if;
+      if length(v_login) < 3 then
+         p_out_message := 'Логин пользователя должен содержать не менее трёх символов';
+         return;
+      end if;
+      if v_fio is null then
+         p_out_message := 'У пользователя не указано ФИО';
+         return;
+      end if;
+      if v_org_id is null then
+         p_out_message := 'У пользователя не указана организация';
+         return;
+      end if;
+
+        -- Коды организаций ПЭП. Новые организации добавляются здесь.
+      v_org_code :=
+         case v_org_id
+            when 2 then
+               'MT'
+            when 3 then
+               'MD'
+            else
+               null
+         end;
+      if v_org_code is null then
+         p_out_message := 'Не настроен код ПЭП для организации ID=' || v_org_id;
+         return;
+      end if;
+
+        -- Используем активный сертификат, пока не изменились логин, ФИО или организация.
+      begin
+         select id,
+                login_snapshot,
+                fio_snapshot,
+                org_id
+           into
+            p_out_cert_id,
+            v_old_login,
+            v_old_fio,
+            v_old_org_id
+           from xx_disl_gu23_pep_cert
+          where user_id = p_user_id
+            and active = 'Y';
+
+         if
+            upper(regexp_replace(
+               trim(v_old_login),
+               '[[:space:]]+',
+               ' '
+            )) = upper(regexp_replace(
+               trim(v_login),
+               '[[:space:]]+',
+               ' '
+            ))
+            and upper(regexp_replace(
+               trim(v_old_fio),
+               '[[:space:]]+',
+               ' '
+            )) = upper(regexp_replace(
+               trim(v_fio),
+               '[[:space:]]+',
+               ' '
+            ))
+            and v_old_org_id = v_org_id
+         then
+            p_out_status := 'S';
+            p_out_message := 'Действующий сертификат ПЭП уже существует';
+            return;
+         end if;
+
+         update xx_disl_gu23_pep_cert
+            set active = 'N',
+                closed_at = sysdate
+          where id = p_out_cert_id
+            and active = 'Y';
+
+         p_out_cert_id := null;
+      exception
+         when no_data_found then
+            p_out_cert_id := null;
+      end;
+
+        -- Первая, последняя и предпоследняя буквы логина.
+      v_login_code := substr(
+         upper(v_login),
+         1,
+         1
+      )
+                      || substr(
+         upper(v_login),
+         -1,
+         1
+      )
+                      || substr(
+         upper(v_login),
+         -2,
+         1
+      );
+
+      loop
+         v_attempt := v_attempt + 1;
+         if v_attempt > 10 then
+            p_out_cert_id := null;
+            p_out_message := 'Не удалось сформировать уникальный номер сертификата ПЭП';
+            return;
+         end if;
+
+            -- SYS_GUID и точное время дают уникальный исходный набор,
+            -- MD5 приводит его к компактному шестнадцатеричному коду.
+         select substr(
+                   rawtohex(
+                      standard_hash(
+                           rawtohex(sys_guid())
+                           || to_char(systimestamp,'YYYYMMDDHH24MISSFF9')
+                           || to_char(p_user_id)
+                           || to_char(v_attempt),
+                         'MD5'
+                      )
+                   ),
+                   1,
+                   5
+                )
+           into v_random_code
+           from dual;
+
+         v_cert_number := to_char(
+            sysdate,
+            'DDMMYYYY'
+         )
+                          || v_login_code
+                          || lpad(
+            to_char(p_user_id),
+            4,
+            '0'
+         )
+                          || upper(v_org_code)
+                          || v_random_code;
+
+         p_out_cert_id := xx_disl_gu23_pep_cert_seq.nextval;
+         begin
+            insert into xx_disl_gu23_pep_cert (
+               id,
+               user_id,
+               cert_number,
+               login_snapshot,
+               fio_snapshot,
+               org_id,
+               org_code,
+               issued_at,
+               closed_at,
+               active,
+               created_at,
+               created_by
+            ) values
+               ( p_out_cert_id,
+                 p_user_id,
+                 v_cert_number,
+                 v_login,
+                 v_fio,
+                 v_org_id,
+                 upper(v_org_code),
+                 sysdate,
+                 null,
+                 'Y',
+                 sysdate,
+                 p_user_id );
+
+            p_out_status := 'S';
+            p_out_message := 'Сертификат ПЭП создан: ' || v_cert_number;
+            return;
+         exception
+            when dup_val_on_index then
+               begin
+                  select id
+                    into p_out_cert_id
+                    from xx_disl_gu23_pep_cert
+                   where user_id = p_user_id
+                     and active = 'Y';
+
+                  p_out_status := 'S';
+                  p_out_message := 'Действующий сертификат ПЭП уже существует';
+                  return;
+               exception
+                  when no_data_found then
+                     p_out_cert_id := null;
+               end;
+         end;
+      end loop;
+   exception
+      when others then
+         p_out_cert_id := null;
+         p_out_status := 'E';
+         p_out_message := 'Ошибка создания сертификата ПЭП: ' || sqlerrm;
+   end gu23_pep_create;
+
+    -- Реестр сертификатов ПЭП с фильтрами и постраничным выводом.
+   function gu23_pep_registry_get (
+      p_q           in varchar2,
+      p_org_id      in number,
+      p_issued_from in varchar2,
+      p_issued_to   in varchar2,
+      p_active      in varchar2,
+      p_page        in number,
+      p_page_size   in number
+   ) return t_gu23_pep_registry_tab
+      pipelined
+   is
+      l_row  t_gu23_pep_registry_row;
+      v_q    varchar2(4000) := upper(trim(p_q));
+      v_from date :=
+         case
+            when p_issued_from is not null then
+               to_date(p_issued_from,
+                       'YYYY-MM-DD')
+         end;
+      v_to   date :=
+         case
+            when p_issued_to is not null then
+               to_date(p_issued_to,
+                       'YYYY-MM-DD') + 1
+         end;
+      v_size number := greatest(
+         nvl(
+            p_page_size,
+            20
+         ),
+         1
+      );
+      v_off  number := ( greatest(
+         nvl(
+            p_page,
+            1
+         ),
+         1
+      ) - 1 ) * v_size;
+      v_end  number := v_off + v_size;
+   begin
+      for r in (
+         select x.*
+           from (
+            select c.id,
+                   c.user_id,
+                   c.org_id,
+                   e.name as org_name,
+                   c.fio_snapshot as fio,
+                   c.login_snapshot as login,
+                   nvl(u.open, 'N') as user_active,
+                   c.cert_number,
+                   c.issued_at,
+                   c.closed_at,
+                   c.active,
+                   row_number()
+                   over(
+                       order by c.issued_at desc,
+                                c.id desc
+                   ) as rn
+              from xx_disl_gu23_pep_cert c
+              left join xx_disl_enterprise e
+            on e.id = c.org_id
+              left join xx_disl_users u
+            on u.id = c.user_id
+             where ( v_q is null
+                or instr(
+               upper(c.fio_snapshot),
+               v_q
+            ) > 0
+                or instr(
+               upper(c.login_snapshot),
+               v_q
+            ) > 0
+                or instr(
+               upper(c.cert_number),
+               v_q
+            ) > 0 )
+               and ( p_org_id is null
+                or c.org_id = p_org_id )
+               and ( v_from is null
+                or c.issued_at >= v_from )
+               and ( v_to is null
+                or c.issued_at < v_to )
+               and ( p_active is null
+                or nvl(u.open, 'N') = p_active )
+         ) x
+          where x.rn > v_off
+            and x.rn <= v_end
+          order by x.rn
+      ) loop
+         l_row.id := r.id;
+         l_row.user_id := r.user_id;
+         l_row.org_id := r.org_id;
+         l_row.org_name := r.org_name;
+         l_row.fio := r.fio;
+         l_row.login := r.login;
+         l_row.user_active := r.user_active;
+         l_row.cert_number := r.cert_number;
+         l_row.issued_at := to_char(
+            r.issued_at,
+            'YYYY-MM-DD HH24:MI:SS'
+         );
+         l_row.closed_at :=
+            case
+               when r.closed_at is not null then
+                  to_char(
+                     r.closed_at,
+                     'YYYY-MM-DD HH24:MI:SS'
+                  )
+            end;
+         l_row.active := r.active;
+         pipe row ( l_row );
+      end loop;
+
+      return;
+   end gu23_pep_registry_get;
+
+   function gu23_pep_registry_count (
+      p_q           in varchar2,
+      p_org_id      in number,
+      p_issued_from in varchar2,
+      p_issued_to   in varchar2,
+      p_active      in varchar2
+   ) return number is
+      v_q     varchar2(4000) := upper(trim(p_q));
+      v_from  date :=
+         case
+            when p_issued_from is not null then
+               to_date(p_issued_from,
+                       'YYYY-MM-DD')
+         end;
+      v_to    date :=
+         case
+            when p_issued_to is not null then
+               to_date(p_issued_to,
+                       'YYYY-MM-DD') + 1
+         end;
+      v_count number;
+   begin
+      select count(*)
+        into v_count
+        from xx_disl_gu23_pep_cert c
+        left join xx_disl_users u
+          on u.id = c.user_id
+       where ( v_q is null
+          or instr(
+         upper(c.fio_snapshot),
+         v_q
+      ) > 0
+          or instr(
+         upper(c.login_snapshot),
+         v_q
+      ) > 0
+          or instr(
+         upper(c.cert_number),
+         v_q
+      ) > 0 )
+         and ( p_org_id is null
+          or c.org_id = p_org_id )
+         and ( v_from is null
+          or c.issued_at >= v_from )
+         and ( v_to is null
+          or c.issued_at < v_to )
+         and ( p_active is null
+          or nvl(u.open, 'N') = p_active );
+
+      return v_count;
+   end gu23_pep_registry_count;
+
     -- подписание/отклонение/корректировка по ссылке из письма.
    function gu23_approval_save_decision (
       p_act_id      in number,
@@ -3898,6 +4325,9 @@
       v_hist_txt varchar2(1000);
       v_ver      number;
       v_next     number;
+      v_cert_id  number;
+      v_pep_st   varchar2(1);
+      v_pep_msg  varchar2(4000);
    begin
         -- фиксируем IP
       gu23_set_client_ip(p_signer_ip);
@@ -3933,6 +4363,25 @@
          end if;
       end if;
 
+      if p_status = 'approved' then
+         gu23_pep_create(
+            p_user_id     => p_approver_id,
+            p_out_cert_id => v_cert_id,
+            p_out_status  => v_pep_st,
+            p_out_message => v_pep_msg
+         );
+
+         if v_pep_st <> 'S'
+         or v_cert_id is null then
+            return 'ERR'
+                   || c_us
+                   || nvl(
+               v_pep_msg,
+               'Не удалось получить сертификат ПЭП'
+            );
+         end if;
+      end if;
+
         -- Ищем по (act_id, approver_id)
       select count(*)
         into v_cnt
@@ -3947,7 +4396,8 @@
                 decided_at = sysdate,
                 token_sig = p_token_sig,
                 signed_version = v_ver,
-                signer_ip = p_signer_ip
+                signer_ip = p_signer_ip,
+                pep_cert_id = v_cert_id
           where act_id = p_act_id
             and approver_id = p_approver_id;
       else
@@ -3962,7 +4412,8 @@
             decided_at,
             token_sig,
             signed_version,
-            signer_ip
+            signer_ip,
+            pep_cert_id
          ) values
             ( xx_disl_gu23_approval_seq.nextval,
               p_act_id,
@@ -3974,7 +4425,8 @@
               sysdate,
               p_token_sig,
               v_ver,
-              p_signer_ip );
+              p_signer_ip,
+              v_cert_id );
       end if;
 
         -- Запись в историю акта
@@ -4136,10 +4588,16 @@
                 ) as decided_at,
                 a.comment_txt,
                 a.signed_version,
-                a.signer_ip
+                a.signer_ip,
+                e.name as pep_org_name,
+                pc.cert_number as pep_cert_number
            from xx_disl_gu23_approval a
            join xx_disl_users_emp_v u
          on u.id = a.approver_id
+           left join xx_disl_gu23_pep_cert pc
+         on pc.id = a.pep_cert_id
+           left join xx_disl_enterprise e
+         on e.id = pc.org_id
           where a.act_id = p_act_id
           order by a.id
       ) loop
@@ -4150,6 +4608,8 @@
          l_row.comment_txt := r.comment_txt;
          l_row.signed_version := r.signed_version;
          l_row.signer_ip := r.signer_ip;
+         l_row.pep_org_name := r.pep_org_name;
+         l_row.pep_cert_number := r.pep_cert_number;
          pipe row ( l_row );
       end loop;
 
@@ -4243,8 +4703,11 @@
       p_signer_ip in varchar2 default null,
       p_base_url  in varchar2 default null
    ) return varchar2 is
-      v_ver  number;
-      v_next number;
+      v_ver     number;
+      v_next    number;
+      v_cert_id number;
+      v_pep_st  varchar2(1);
+      v_pep_msg varchar2(4000);
    begin
         -- текущая версия акта
       select nvl(
@@ -4277,6 +4740,25 @@
          end if;
       end if;
 
+      if p_status = 'approved' then
+         gu23_pep_create(
+            p_user_id     => p_user_id,
+            p_out_cert_id => v_cert_id,
+            p_out_status  => v_pep_st,
+            p_out_message => v_pep_msg
+         );
+
+         if v_pep_st <> 'S'
+         or v_cert_id is null then
+            return 'ERR'
+                   || c_us
+                   || nvl(
+               v_pep_msg,
+               'Не удалось получить сертификат ПЭП'
+            );
+         end if;
+      end if;
+
         -- Создаём запись если нет, иначе обновляем
       merge into xx_disl_gu23_approval t
       using (
@@ -4290,7 +4772,8 @@
           comment_txt = p_comment,
           decided_at = sysdate,
           signed_version = v_ver,
-          signer_ip = p_signer_ip
+          signer_ip = p_signer_ip,
+          pep_cert_id = v_cert_id
        where t.status = 'pending'
       when not matched then
       insert (
@@ -4304,7 +4787,8 @@
          decided_at,
          token_sig,
          signed_version,
-         signer_ip )
+         signer_ip,
+         pep_cert_id )
       values
          ( xx_disl_gu23_approval_seq.nextval,
            p_act_id,
@@ -4316,7 +4800,8 @@
            sysdate,
            null,
            v_ver,
-           p_signer_ip );
+           p_signer_ip,
+           v_cert_id );
 
       if sql%rowcount = 0 then
          return 'ERR'
@@ -6318,22 +6803,23 @@
          upper(g_server_host) = 'M5000'
          and x_to_email is not null
       then
-         apps.xx_mtf_send_mail_pkg.send_mail(
+         null;
+         /*apps.xx_mtf_send_mail_pkg.send_mail(
             p_sender    => x_sender, --отправитель
             p_recipient => x_to_email, --'rustam.bekmansurov@ruschem.ru',       --получатель
             p_subject   => x_subject,
             p_text_clob => x_msg
-         );
+         );*/
       else
          null;
-         apps.xx_mtf_send_mail_pkg.send_mail(
+         /*apps.xx_mtf_send_mail_pkg.send_mail(
             p_sender    => x_sender,                       --отправитель
             p_recipient => 'rustam.bekmansurov@ruschem.ru', --получатель
             p_subject   => x_subject
                          || ' -> '
                          || x_to_email,
             p_text_clob => x_msg
-         );
+         );*/
       end if;
 
       commit;

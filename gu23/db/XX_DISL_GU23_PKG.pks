@@ -531,6 +531,50 @@ as
                                     p_token_sig      in varchar2)
         return varchar2;
 
+    -- Создать сертификат ПЭП либо вернуть уже существующий активный.
+    procedure gu23_pep_create (
+        p_user_id       in  number,
+        p_out_cert_id   out number,
+        p_out_status    out varchar2,
+        p_out_message   out varchar2);
+
+    -- Реестр сертификатов ПЭП пользователей ГУ-23.
+    type t_gu23_pep_registry_row is record
+    (
+        id             number,
+        user_id        number,
+        org_id         number,
+        org_name       varchar2 (256),
+        fio            varchar2 (256),
+        login          varchar2 (150),
+        user_active    varchar2 (1),
+        cert_number    varchar2 (50),
+        issued_at      varchar2 (20),
+        closed_at      varchar2 (20),
+        active         varchar2 (1)
+    );
+
+    type t_gu23_pep_registry_tab is table of t_gu23_pep_registry_row;
+
+    function gu23_pep_registry_get (
+        p_q             in varchar2,
+        p_org_id        in number,
+        p_issued_from   in varchar2,
+        p_issued_to     in varchar2,
+        p_active        in varchar2,
+        p_page          in number,
+        p_page_size     in number)
+        return t_gu23_pep_registry_tab
+        pipelined;
+
+    function gu23_pep_registry_count (
+        p_q             in varchar2,
+        p_org_id        in number,
+        p_issued_from   in varchar2,
+        p_issued_to     in varchar2,
+        p_active        in varchar2)
+        return number;
+
     -- Сохранить решение согласующего; возвращает 'OK' или 'ERR'||CHR(31)||текст
     function gu23_approval_save_decision (
         p_act_id        in number,
@@ -557,7 +601,9 @@ as
         decided_at        varchar2 (20),
         comment_txt       varchar2 (1000),
         signed_version    number,
-        signer_ip         varchar2 (64)
+        signer_ip         varchar2 (64),
+        pep_org_name      varchar2 (256),
+        pep_cert_number   varchar2 (50)
     );
 
     type t_gu23_approval_tab is table of t_gu23_approval_row;
